@@ -1,42 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* D&D 5e Design System - Player's Handbook Theme */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* D&D Color Palette - Red/Black/Ivory */
+    --background: 42 15% 94%; /* Parchment ivory */
+    --foreground: 0 0% 8%; /* Deep black */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 42 20% 96%; /* Light parchment */
+    --card-foreground: 0 0% 8%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 42 20% 96%;
+    --popover-foreground: 0 0% 8%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* D&D Red Primary */
+    --primary: 0 65% 45%; /* D&D crimson red */
+    --primary-foreground: 42 15% 94%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Muted parchment tones */
+    --secondary: 42 12% 88%;
+    --secondary-foreground: 0 0% 20%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 42 8% 85%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 0 45% 55%; /* Lighter red accent */
+    --accent-foreground: 42 15% 94%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 42 15% 94%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Borders and inputs */
+    --border: 0 0% 25%; /* Dark border for D&D frames */
+    --input: 42 20% 92%;
+    --ring: 0 65% 45%;
 
-    --radius: 0.5rem;
+    --radius: 0.25rem; /* Sharper corners for D&D aesthetic */
+
+    /* D&D specific design tokens */
+    --parchment: 42 15% 94%;
+    --parchment-dark: 42 12% 88%;
+    --gold: 45 90% 60%;
+    --gold-dark: 45 85% 45%;
+    --crimson: 0 65% 45%;
+    --crimson-dark: 0 70% 35%;
+    
+    /* Shadows and effects */
+    --shadow-parchment: 0 4px 12px rgba(0, 0, 0, 0.15);
+    --shadow-deep: 0 8px 24px rgba(0, 0, 0, 0.25);
+    --border-frame: 2px solid hsl(var(--border));
+    
+    /* Typography */
+    --font-heading: 'Cinzel', serif;
+    --font-body: 'Crimson Text', serif;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
 
     --sidebar-background: 0 0% 98%;
 
@@ -54,44 +84,6 @@ All colors MUST be HSL.
 
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
 }
 
 @layer base {
@@ -100,6 +92,63 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-body;
+    background-image: 
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(120, 119, 198, 0.1) 0%, transparent 50%);
+  }
+}
+
+@layer components {
+  /* D&D Frame Component */
+  .dnd-frame {
+    @apply border-2 border-border bg-card rounded-sm;
+    box-shadow: 
+      inset 0 1px 2px rgba(255, 255, 255, 0.5),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dnd-frame-thick {
+    @apply border-4 border-border bg-card;
+    border-image: linear-gradient(45deg, hsl(var(--border)), hsl(var(--border)) 50%, hsl(var(--muted)) 50%, hsl(var(--border))) 1;
+  }
+
+  /* Parchment texture */
+  .parchment {
+    background-color: hsl(var(--parchment));
+    background-image: 
+      radial-gradient(circle at 100% 50%, transparent 20%, rgba(139, 119, 85, 0.1) 21%, rgba(139, 119, 85, 0.1) 34%, transparent 35%, transparent),
+      linear-gradient(0deg, rgba(139, 119, 85, 0.05) 50%, transparent 50%);
+  }
+
+  /* Gold accent */
+  .gold-accent {
+    color: hsl(var(--gold));
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Ability Score styling */
+  .ability-score {
+    @apply dnd-frame p-2 text-center min-w-16;
+    background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--muted)));
+  }
+
+  .ability-score-value {
+    @apply text-2xl font-bold text-primary;
+    font-family: var(--font-heading);
+  }
+
+  .ability-score-modifier {
+    @apply text-sm text-muted-foreground;
+  }
+
+  /* Character sheet sections */
+  .character-section {
+    @apply dnd-frame p-4 space-y-3;
+  }
+
+  .character-section-title {
+    @apply text-lg font-semibold text-primary border-b border-border pb-1;
+    font-family: var(--font-heading);
   }
 }

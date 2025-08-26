@@ -18,6 +18,10 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				'heading': ['Cinzel', 'serif'],
+				'body': ['Crimson Text', 'serif'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -61,6 +65,18 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				parchment: {
+					DEFAULT: 'hsl(var(--parchment))',
+					dark: 'hsl(var(--parchment-dark))'
+				},
+				gold: {
+					DEFAULT: 'hsl(var(--gold))',
+					dark: 'hsl(var(--gold-dark))'
+				},
+				crimson: {
+					DEFAULT: 'hsl(var(--crimson))',
+					dark: 'hsl(var(--crimson-dark))'
 				}
 			},
 			borderRadius: {

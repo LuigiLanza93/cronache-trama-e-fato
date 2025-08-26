@@ -1,0 +1,96 @@
+{
+  "slug": "gigi",
+  "basicInfo": {
+    "characterName": "Gigi Thunderstrike",
+    "classAndLevel": "Barbarian 3",
+    "background": "Folk Hero",
+    "playerName": "Marco",
+    "race": "Half-Orc",
+    "alignment": "Chaotic Good",
+    "experiencePoints": 900
+  },
+  "abilityScores": {
+    "strength": { "score": 17, "modifier": 3 },
+    "dexterity": { "score": 14, "modifier": 2 },
+    "constitution": { "score": 16, "modifier": 3 },
+    "intelligence": { "score": 10, "modifier": 0 },
+    "wisdom": { "score": 12, "modifier": 1 },
+    "charisma": { "score": 8, "modifier": -1 }
+  },
+  "combatStats": {
+    "armorClass": 13,
+    "initiative": 2,
+    "speed": 30,
+    "hitPointMaximum": 34,
+    "currentHitPoints": 34,
+    "temporaryHitPoints": 0,
+    "hitDice": "3d12",
+    "deathSaves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "proficiencies": {
+    "proficiencyBonus": 2,
+    "savingThrows": ["Strength", "Constitution"],
+    "skills": [
+      { "name": "Animal Handling", "proficient": true },
+      { "name": "Intimidation", "proficient": true },
+      { "name": "Perception", "proficient": true },
+      { "name": "Survival", "proficient": true }
+    ],
+    "languages": ["Common", "Orc"],
+    "otherProficiencies": ["Light armor", "Medium armor", "Shields", "Simple weapons", "Martial weapons"]
+  },
+  "equipment": {
+    "attacks": [
+      {
+        "name": "Greataxe",
+        "attackBonus": 5,
+        "damageType": "1d12+3 slashing"
+      },
+      {
+        "name": "Javelin",
+        "attackBonus": 5,
+        "damageType": "1d6+3 piercing"
+      }
+    ],
+    "equipment": [
+      "Greataxe",
+      "2 Javelins",
+      "Explorer's pack",
+      "Leather armor",
+      "Smith's tools",
+      "Set of artisan's tools"
+    ]
+  },
+  "features": [
+    {
+      "name": "Rage",
+      "description": "You can enter a rage as a bonus action. While raging, you gain advantage on Strength checks and saving throws, +2 damage to Strength-based melee attacks, and resistance to bludgeoning, piercing, and slashing damage.",
+      "uses": "3/Long Rest"
+    },
+    {
+      "name": "Unarmored Defense",
+      "description": "While not wearing armor, your AC equals 10 + Dex modifier + Con modifier."
+    },
+    {
+      "name": "Reckless Attack",
+      "description": "Starting at 2nd level, you can throw aside all concern for defense to attack with fierce desperation. When you make your first attack on your turn, you can decide to attack recklessly."
+    },
+    {
+      "name": "Danger Sense",
+      "description": "You have advantage on Dexterity saving throws against effects that you can see, such as traps and spells."
+    },
+    {
+      "name": "Relentless Endurance",
+      "description": "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. You can't use this feature again until you finish a long rest."
+    }
+  ],
+  "spells": [],
+  "personalityTraits": "I judge people by their actions, not their words.",
+  "ideals": "People deserve to be treated with dignity and respect.",
+  "bonds": "I worked the land, I love the land, and I will protect the land.",
+  "flaws": "I have trouble trusting in my allies.",
+  "backstory": "Gigi grew up in a small farming village where they learned the value of hard work and protecting those who cannot protect themselves. After their village was threatened by bandits, Gigi took up arms and became a folk hero, eventually leaving to seek greater adventures and challenges."
+}
