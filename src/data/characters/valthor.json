@@ -1,0 +1,113 @@
+{
+  "slug": "gigi",
+  "basicInfo": {
+    "characterName": "Valthor",
+    "class": "Warlock",
+    "level": 1,
+    "background": "Nobile Decaduto",
+    "playerName": "Luigi",
+    "race": "Tiefling",
+    "alignment": "Neutrale buono",
+    "experiencePoints": 0
+  },
+  "abilityScores": {
+    "strength": 10,
+    "dexterity": 11,
+    "constitution": 12,
+    "intelligence": 16,
+    "wisdom": 10,
+    "charisma": 16
+  },
+  "combatStats": {
+    "armorClass": 11,
+    "initiative": 0,
+    "speed": 9,
+    "hitPointMaximum": 9,
+    "currentHitPoints": 1,
+    "temporaryHitPoints": 1,
+    "hitDice": "1d8",
+    "deathSaves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "proficiencies": {
+    "savingThrows": [
+      "Froza",
+      "Costituzione"
+    ],
+    "languages": [
+      "Comune",
+      "Infernale",
+      "Draconico"
+    ]
+  },
+  "equipment": {
+    "attacks": [
+      {
+        "name": "Spruzzo Velenoso",
+        "attackBonus": null,
+        "damageType": "1d12 Veleno",
+        "equipped": true
+      },
+      {
+        "name": "Dardo Incantato",
+        "attackBonus": null,
+        "damageType": "1d12 Fulmine",
+        "equipped": true
+      },
+      {
+        "name": "comando",
+        "attackBonus": null,
+        "damageType": "controlla avversario",
+        "equipped": true
+      },
+      {
+        "name": "Mani Brucianti",
+        "attackBonus": null,
+        "damageType": "3d6 Fuoco",
+        "equipped": true
+      },
+      {
+        "name": "Ascia Bipenne",
+        "attackBonus": null,
+        "damageType": "1d12 Taglienti",
+        "equipped": true
+      }
+    ],
+    "equipment": [
+      "Explorer's pack",
+      "Armatura di Cuoio",
+      "Deflagrazione occulta",
+      "Spruzzo Velenoso",
+      "Dardo Incantato",
+      "comando",
+      "Mani Brucianti",
+      "Ascia Bipenne",
+      "pugnale"
+    ],
+    "coins": {
+      "cp": 0,
+      "sp": 0,
+      "ep": 0,
+      "gp": 120,
+      "pp": 0
+    }
+  },
+  "features": [
+    {
+      "name": "Armatura di Agathys (warlock, Lv 1)",
+      "description": "Livello 1 · Abiurazione\nTempo di lancio: 1 azione\nGittata: Sé\nComponenti: V, S, M (una coppa d’acqua)\nDurata: 1 ora\n\nUno scudo gelido ti riveste: ottieni PF temporanei. Finché durano, ogni creatura che ti colpisce con un attacco in mischia subisce danni da freddo.\n\nUso: Ottimo pre-buff per warlock da mischia o quando prevedi di subire colpi ravvicinati."
+    },
+    {
+      "name": "Deflagrazione Occulta (warlock, Lv 0)",
+      "description": "Livello 0 · null · Concentrazione\nTempo di lancio: 1 azione\nGittata: 36\nComponenti: V, S\nDurata: Istantanea\n\nUn raggio di energia crepitante sfreccia verso una creatura entro gittata. L'incantatore effettua un attacco a distanza con questo incantesimo contro il bersaglio. Se lo colpisce, il bersaglio subisce ldlO danni da forza. Quando l'incantatore arriva ai livelli superiori, l'incantesimo crea più raggi: due raggi al 5° livello, tre raggi all'll' livello e quattro raggi al 17. livello. Vincantatore può indirizzare i raggi contro lo stesso bersaglio o contro bersagli diversi, effettuando un tiro per colpire separato per ogni raggio.\n"
+    }
+  ],
+  "spells": [],
+  "personalityTraits": "Non cerco la gloria, cerco la prova. Ogni battaglia mi dice chi sono davvero, non posso voltare le spalle a chi è più debole, sarebbe come tradire me stesso.",
+  "ideals": "Protezione: 'La mia spada vale qualcosa solo se difende chi non può brandirne una.' Crescita: 'Ogni sfida, ogni ferita, ogni duello è un passo per diventare più forte di ieri.'",
+  "bonds": "Porta con sé la vecchia spada scheggiata che usò nel suo primo vero combattimento: simbolo del momento in cui ha scelto la sua strada.",
+  "flaws": "Non riesce a resistere al richiamo di una sfida: il rischio di superare se stesso lo spinge anche quando dovrebbe fermarsi.",
+  "backstory": ""
+}

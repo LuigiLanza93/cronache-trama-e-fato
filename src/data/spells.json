@@ -1747,6 +1747,24 @@
       "description": "Canalizzi energia necrotica attraverso la tua mano: ad ogni round puoi compiere un attacco melee magico che infligge danni e ti guarisce parzialmente.",
       "usage": "Sustain in mischia quando hai bisogno di auto-guarigione in combattimento.",
       "rest": null
+    },
+        {
+      "name": "Deflagrazione Occulta",
+      "level": 0,
+      "school": null,
+      "casting_time": "1 azione",
+      "range": "36",
+      "components": "V, S",
+      "duration": "Istantanea",
+      "concentration": true,
+      "saving_throw": null,
+      "attack_roll": true,
+      "damage": "1d10 forza per colpo",
+      "scaling": null,
+      "ritual": false,
+      "description": "Un raggio di energia crepitante sfreccia verso una creatura entro gittata. L'incantatore effettua un attacco a distanza con questo incantesimo contro il bersaglio. Se lo colpisce, il bersaglio subisce ldlO danni da forza. Quando l'incantatore arriva ai livelli superiori, l'incantesimo crea più raggi: due raggi al 5° livello, tre raggi all'll' livello e quattro raggi al 17. livello. Vincantatore può indirizzare i raggi contro lo stesso bersaglio o contro bersagli diversi, effettuando un tiro per colpire separato per ogni raggio.",
+      "usage": null,
+      "rest": null
     }
   ]
 }

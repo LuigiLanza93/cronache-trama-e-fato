@@ -1,0 +1,113 @@
+{
+  "slug": "gigi",
+  "basicInfo": {
+    "characterName": "Narak",
+    "class": "Bardo",
+    "level": 1,
+    "background": "Ciarlatano",
+    "playerName": "Roberto",
+    "race": "Mezzelfo",
+    "alignment": "Caotico neutrale",
+    "experiencePoints": 0
+  },
+  "abilityScores": {
+    "strength": 11,
+    "dexterity": 14,
+    "constitution": 14,
+    "intelligence": 11,
+    "wisdom": 10,
+    "charisma": 17
+  },
+  "combatStats": {
+    "armorClass": 13,
+    "initiative": 2,
+    "speed": 9,
+    "hitPointMaximum": 10,
+    "currentHitPoints": 10,
+    "temporaryHitPoints": 0,
+    "hitDice": "1d8",
+    "deathSaves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "proficiencies": {
+    "savingThrows": [
+      "Froza",
+      "Costituzione"
+    ],
+    "languages": [
+      "Comune",
+      "Elfico",
+      "Abissale"
+    ]
+  },
+  "equipment": {
+    "attacks": [
+      {
+        "name": "Spada lunga",
+        "attackBonus": 0,
+        "damageType": "1d8 tagliente",
+        "equipped": true
+      },
+      {
+        "name": "Flauto",
+        "attackBonus": 0,
+        "damageType": "0",
+        "equipped": false
+      },
+      {
+        "name": "Armatura di cuoio",
+        "attackBonus": 0,
+        "damageType": "11 + DEX",
+        "equipped": true
+      },
+      {
+        "name": "Pugnale",
+        "attackBonus": 0,
+        "damageType": "1d4 perforante",
+        "equipped": false
+      }
+    ],
+    "equipment": [
+      "Spada lunga",
+      "Flauto",
+      "Armatura di cuoio",
+      "Pugnale",
+      "5 dardi avvelenati",
+      "Guanto con ragno ricamato",
+      "Anello di ‘maestro’ nemico contro mercante"
+    ],
+    "coins": {
+      "cp": 0,
+      "sp": 0,
+      "ep": 0,
+      "gp": 120,
+      "pp": 0
+    }
+  },
+  "features": [
+    {
+      "name": "Parola Guaritrice (bardo, Lv 1)",
+      "description": "Livello 1 · Evocazione\nTempo di lancio: 1 azione bonus\nGittata: 18 m\nComponenti: V\nDurata: Istantanea\n\nUna creatura entro gittata recupera 1d4 + il tuo modificatore da incantatore PF.\n\nUso: Rialzare compagni a terra senza usare l’azione principale."
+    },
+    {
+      "name": "Individuazione del Magico (bardo, Lv 1)",
+      "description": "Livello 1 · Divinazione (Rituale) · Concentrazione · Rituale\nTempo di lancio: 1 azione (10 minuti se rituale)\nGittata: Sé\nComponenti: V, S\nDurata: Concentrazione, fino a 10 minuti\n\nPercepisci la presenza di magia entro 9 m da te e puoi vedere l’aura e la scuola di magia degli oggetti o effetti.\n\nUso: Scovare trappole magiche, porte segrete mistiche, oggetti incantati."
+    },
+    {
+      "name": "Charme su Persone (bardo, Lv 1)",
+      "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 9 m\nComponenti: V, S\nDurata: 1 ora\n\nUn umanoide che fallisce il TS è affascinato da te e ti considera amichevole. Al termine capisce di essere stato incantato.\n\nUso: Trattative delicate, evitare risse, ottenere udienze."
+    },
+    {
+      "name": "Sussurri Dissonanti (bardo, Lv 1)",
+      "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 18 m\nComponenti: V\nDurata: Istantanea\n\nUn sussurro straziante infligge danni psichici a una creatura e la costringe a usare immediatamente la sua reazione per allontanarsi da te lungo un percorso sicuro.\n\nUso: Forzare disimpegno, rompere concentrazione, togliere nemici dal corpo a corpo."
+    }
+  ],
+  "spells": [],
+  "personalityTraits": "Non cerco la gloria, cerco la prova. Ogni battaglia mi dice chi sono davvero, non posso voltare le spalle a chi è più debole, sarebbe come tradire me stesso.",
+  "ideals": "Protezione: 'La mia spada vale qualcosa solo se difende chi non può brandirne una.' Crescita: 'Ogni sfida, ogni ferita, ogni duello è un passo per diventare più forte di ieri.'",
+  "bonds": "Porta con sé la vecchia spada scheggiata che usò nel suo primo vero combattimento: simbolo del momento in cui ha scelto la sua strada.",
+  "flaws": "Non riesce a resistere al richiamo di una sfida: il rischio di superare se stesso lo spinge anche quando dovrebbe fermarsi.",
+  "backstory": ""
+}

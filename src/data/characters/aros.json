@@ -1,0 +1,104 @@
+{
+  "slug": "gigi",
+  "basicInfo": {
+    "characterName": "Aros",
+    "class": "Guerriero",
+    "level": 1,
+    "background": "Soldato",
+    "playerName": "Luigi",
+    "race": "Umano",
+    "alignment": "Caotico buono",
+    "experiencePoints": 0
+  },
+  "abilityScores": {
+    "strength": 16,
+    "dexterity": 14,
+    "constitution": 16,
+    "intelligence": 11,
+    "wisdom": 14,
+    "charisma": 9
+  },
+  "combatStats": {
+    "armorClass": 18,
+    "initiative": 2,
+    "speed": 9,
+    "hitPointMaximum": 13,
+    "currentHitPoints": 11,
+    "temporaryHitPoints": 0,
+    "hitDice": "3d4",
+    "deathSaves": {
+      "successes": 0,
+      "failures": 0
+    }
+  },
+  "proficiencies": {
+    "savingThrows": [
+      "Froza",
+      "Costituzione"
+    ],
+    "languages": [
+      "Comune",
+      "Nanico"
+    ]
+  },
+  "equipment": {
+    "attacks": [
+      {
+        "name": "Arco lungo",
+        "attackBonus": 0,
+        "damageType": "1d8 perforanti",
+        "equipped": true
+      },
+      {
+        "name": "Scudo borchiato",
+        "attackBonus": 2,
+        "damageType": "0",
+        "equipped": true
+      },
+      {
+        "name": "Balestra a mano",
+        "attackBonus": 0,
+        "damageType": "1d6 perforanti",
+        "equipped": true
+      },
+      {
+        "name": "Cotta di maglia",
+        "attackBonus": 16,
+        "damageType": "0",
+        "equipped": true
+      },
+      {
+        "name": "Spada lunga",
+        "attackBonus": 2,
+        "damageType": "1d8 taglienti",
+        "equipped": true
+      },
+      {
+        "name": "Pugnale",
+        "attackBonus": 0,
+        "damageType": "1d4 perforante",
+        "equipped": false
+      }
+    ],
+    "equipment": [
+      "20 frecce",
+      "20 quadrelli",
+      "Dotazione avventuriero",
+      "Pugnale"
+    ],
+    "coins": {
+      "cp": 0,
+      "sp": 0,
+      "ep": 0,
+      "gp": 140,
+      "pp": 0
+    }
+  },
+  "features": [],
+  "spells": [],
+  "personalityTraits": "Non cerco la gloria, cerco la prova. Ogni battaglia mi dice chi sono davvero, non posso voltare le spalle a chi è più debole, sarebbe come tradire me stesso.",
+  "ideals": "Protezione: 'La mia spada vale qualcosa solo se difende chi non può brandirne una.' Crescita: 'Ogni sfida, ogni ferita, ogni duello è un passo per diventare più forte di ieri.'",
+  "bonds": "Porta con sé la vecchia spada scheggiata che usò nel suo primo vero combattimento: simbolo del momento in cui ha scelto la sua strada.",
+  "flaws": "Non riesce a resistere al richiamo di una sfida: il rischio di superare se stesso lo spinge anche quando dovrebbe fermarsi.",
+  "backstory": ""
+}
