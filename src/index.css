@@ -9,10 +9,10 @@
 @layer base {
   :root {
     /* D&D Color Palette - Red/Black/Ivory */
-    --background: 42 15% 94%; /* Parchment ivory */
+    --background: 0 0% 100%; /* Parchment ivory */
     --foreground: 0 0% 8%; /* Deep black */
 
-    --card: 42 20% 96%; /* Light parchment */
+    --card: 0 0% 100%; /* Light parchment */
     --card-foreground: 0 0% 8%;
 
     --popover: 42 20% 96%;
@@ -26,7 +26,7 @@
     --secondary: 42 12% 88%;
     --secondary-foreground: 0 0% 20%;
 
-    --muted: 42 8% 85%;
+    --muted: 0 0% 100%;
     --muted-foreground: 0 0% 40%;
 
     --accent: 0 45% 55%; /* Lighter red accent */

@@ -1,0 +1,1391 @@
+{
+  "races": [
+    {
+      "name_it": "Dragonide",
+      "size": "Media",
+      "speed": "9 m",
+      "asi_it": "Forza +2, Carisma +1",
+      "vision_it": "—",
+      "languages_it": "Comune, Draconico",
+      "traits": [
+        {
+          "name": "Arma a Soffio",
+          "summary": "Usa l'azione per esalare un soffio (cono o linea) in base alla discendenza; CD = 8 + mod Costituzione + bonus competenza; tipo di danno e area variano."
+        },
+        {
+          "name": "Resistenza ai Danni",
+          "summary": "Resistenza al tipo di danno della tua discendenza draconica."
+        }
+      ],
+      "source_url": "https://dungeonedraghi.it/compendio/razze/dragonide/"
+    },
+    {
+      "name_it": "Elfo",
+      "size": "Media",
+      "speed": "9 m",
+      "asi_it": "Destrezza +2",
+      "vision_it": "Scurovisione 18 m",
+      "languages_it": "Comune, Elfico",
+      "traits": [
+        {
+          "name": "Sensi Acuti",
+          "summary": "Competenza in Percezione."
+        },
+        {
+          "name": "Retaggio Fatato",
+          "summary": "Vantaggio ai TS contro l'essere affascinato; immunità al sonno magico."
+        },
+        {
+          "name": "Trance",
+          "summary": "Mediti 4 ore invece di dormire 8."
+        }
+      ],
+      "source_url": "https://dungeonedraghi.it/compendio/razze/elfo/"
+    },
+    {
+      "name_it": "Gnomo",
+      "size": "Piccola",
+      "speed": "7,5 m",
+      "asi_it": "Intelligenza +2",
+      "vision_it": "Scurovisione 18 m",
+      "languages_it": "Comune, Gnomesco",
+      "traits": [
+        {
+          "name": "Astuzia Gnomesca",
+          "summary": "Vantaggio ai TS di Intelligenza, Saggezza e Carisma contro la magia."
+        }
+      ],
+      "source_url": "https://dungeonedraghi.it/compendio/razze/gnomo/"
+    },
+    {
+      "name_it": "Halfling",
+      "size": "Piccola",
+      "speed": "7,5 m",
+      "asi_it": "Destrezza +2",
+      "vision_it": "—",
+      "languages_it": "Comune, Halfling",
+      "traits": [
+        {
+          "name": "Fortunato",
+          "summary": "Quando tiri un 1 al d20 per attacco/TS/prova, puoi ritirare il dado."
+        },
+        {
+          "name": "Coraggioso",
+          "summary": "Vantaggio ai TS contro la condizione Spaventato."
+        },
+        {
+          "name": "Agile",
+          "summary": "Puoi muoverti nello spazio di creature più grandi di te."
+        }
+      ],
+      "source_url": "https://dungeonedraghi.it/compendio/razze/halfling/"
+    },
+    {
+      "name_it": "Mezzelfo",
+      "size": "Media",
+      "speed": "9 m",
+      "asi_it": "Carisma +2; +1 a due altre caratteristiche a scelta",
+      "vision_it": "Scurovisione 18 m",
+      "languages_it": "Comune, Elfico + uno a scelta",
+      "traits": [
+        {
+          "name": "Versatilità nelle Abilità",
+          "summary": "Competenza in due abilità a scelta."
+        },
+        {
+          "name": "Retaggio Fatato",
+          "summary": "Vantaggio ai TS contro l'essere affascinato; immunità al sonno magico."
+        }
+      ],
+      "source_url": "https://dungeonedraghi.it/compendio/razze/mezzelfo/"
+    },
+    {
+      "name_it": "Umano",
+      "size": "Media",
+      "speed": "9 m",
+      "asi_it": "+1 a tutte le caratteristiche",
+      "vision_it": "—",
+      "languages_it": "Comune + uno a scelta",
+      "traits": [
+        {
+          "name": "Versatilità Umana",
+          "summary": "+1 a Forza, Destrezza, Costituzione, Intelligenza, Saggezza e Carisma (variante: talenti/competenze)."
+        }
+      ],
+      "source_url": "https://dungeonedraghi.it/compendio/razze/umano/"
+    },
+    {
+      "name_it": "Tiefling",
+      "size": "Media",
+      "speed": "9 m",
+      "asi_it": "Carisma +2, Intelligenza +1",
+      "vision_it": "Scurovisione 18 m",
+      "languages_it": "Comune, Infernale",
+      "traits": [
+        {
+          "name": "Resistenza Infernale",
+          "summary": "Resistenza ai danni da fuoco."
+        },
+        {
+          "name": "Eredità Infernale",
+          "summary": "Conosci Taumaturgia (truc.); livelli più alti: Ingiuria Infernale, poi Oscurità."
+        }
+      ],
+      "source_url": "https://dungeonedraghi.it/compendio/razze/tiefling/"
+    },
+    {
+      "name_it": "Nano",
+      "size": "Media",
+      "speed": "7,5 m",
+      "asi_it": "Costituzione +2",
+      "vision_it": "Scurovisione 18 m",
+      "languages_it": "Comune, Nanico",
+      "traits": [
+        {
+          "name": "Resilienza Nanica",
+          "summary": "Vantaggio ai TS contro veleno; resistenza ai danni da veleno."
+        },
+        {
+          "name": "Addestramento Nanico alle Armi",
+          "summary": "Competenza in asce e martelli."
+        },
+        {
+          "name": "Competenza negli Strumenti",
+          "summary": "Un set da artigiano a scelta."
+        }
+      ],
+      "source_url": "https://dungeonedraghi.it/compendio/razze/nano/"
+    },
+    {
+      "name_it": "Mezzorco",
+      "size": "Media",
+      "speed": "9 m",
+      "asi_it": "Forza +2, Costituzione +1",
+      "vision_it": "Scurovisione 18 m",
+      "languages_it": "Comune, Orchesco",
+      "traits": [
+        {
+          "name": "Tenacia Implacabile",
+          "summary": "Quando scendi a 0 PF ma non sei ucciso, resti a 1 PF (1 per riposo lungo)."
+        },
+        {
+          "name": "Attacchi Selvaggi",
+          "summary": "Quando ottieni un critico con un attacco in mischia, tiri un dado danno aggiuntivo e lo sommi."
+        }
+      ],
+      "source_url": "https://dungeonedraghi.it/compendio/razze/mezzorco/"
+    }
+  ],
+  "classes": [
+    {
+      "name": "Barbaro",
+      "hit_die": "d12",
+      "primary_abilities": [
+        "STR",
+        "CON"
+      ],
+      "saving_throws": [
+        "STR",
+        "CON"
+      ],
+      "armor_proficiencies": [
+        "Armature leggere",
+        "Armature medie",
+        "Scudi"
+      ],
+      "weapon_proficiencies": [
+        "Armi semplici",
+        "Armi da guerra"
+      ],
+      "tool_proficiencies": [],
+      "skill_choices": [
+        "Addestrare Animali",
+        "Atletica",
+        "Intimidire",
+        "Natura",
+        "Percezione",
+        "Sopravvivenza"
+      ],
+      "num_skills": 2,
+      "features": [
+        {
+          "level": 1,
+          "name": "Ira",
+          "description": "Danni bonus e resistenze mentre sei in Ira; usi/giorno aumentano con il livello."
+        },
+        {
+          "level": 1,
+          "name": "Difesa Senza Armatura",
+          "description": "CA = 10 + DES + CON quando non indossi armature."
+        },
+        {
+          "level": 2,
+          "name": "Attacco Sconsiderato",
+          "description": "Vantaggio ai colpi in mischia con STR; attacchi contro di te hanno vantaggio fino al tuo prossimo turno."
+        },
+        {
+          "level": 2,
+          "name": "Percezione del Pericolo",
+          "description": "Vantaggio ai TS DES contro effetti che puoi vedere."
+        },
+        {
+          "level": 3,
+          "name": "Sentiero Primitivo",
+          "description": "Sottoclasse (privilegi aggiuntivi a 6°, 10° e 14°)."
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 5,
+          "name": "Attacco Extra"
+        },
+        {
+          "level": 5,
+          "name": "Movimento Veloce",
+          "description": "+3 m se non indossi armatura pesante."
+        },
+        {
+          "level": 7,
+          "name": "Istinto Feroce",
+          "description": "Vantaggio all’iniziativa; non sei sorpreso se entri in Ira subito."
+        },
+        {
+          "level": 9,
+          "name": "Critico Brutale (1 dado)",
+          "description": "Dadi extra ai critici; aumenta a 13° (2) e 17° (3)."
+        },
+        {
+          "level": 11,
+          "name": "Ira Implacabile",
+          "description": "Se scendi a 0 PF, TS CON per restare a 1 PF (finché sei in Ira)."
+        },
+        {
+          "level": 15,
+          "name": "Ira Persistente",
+          "description": "L’Ira termina solo se svieni o la interrompi."
+        },
+        {
+          "level": 18,
+          "name": "Forza Indomita",
+          "description": "Le prove basate su STR non scendono sotto 20, considerando bonus."
+        },
+        {
+          "level": 20,
+          "name": "Campione Primordiale",
+          "description": "STR e CON +4 (max 24) mentre sei in Ira."
+        },
+        {
+          "level": 6,
+          "name": "Privilegio del Sentiero"
+        },
+        {
+          "level": 8,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 10,
+          "name": "Privilegio del Sentiero"
+        },
+        {
+          "level": 12,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 14,
+          "name": "Privilegio del Sentiero"
+        },
+        {
+          "level": 16,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 19,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        }
+      ]
+    },
+    {
+      "name": "Bardo",
+      "hit_die": "d8",
+      "primary_abilities": [
+        "CHA"
+      ],
+      "saving_throws": [
+        "DEX",
+        "CHA"
+      ],
+      "armor_proficiencies": [
+        "Armature leggere"
+      ],
+      "weapon_proficiencies": [
+        "Armi semplici",
+        "Balestre a mano",
+        "Spade corte",
+        "Spade lunghe",
+        "Stocchi"
+      ],
+      "tool_proficiencies": [
+        "3 strumenti musicali a scelta"
+      ],
+      "skill_choices": [
+        "Acrobazia",
+        "Addestrare Animali",
+        "Arcano",
+        "Atletica",
+        "Furtività",
+        "Indagare",
+        "Inganno",
+        "Intimidire",
+        "Interpretazione",
+        "Intuizione",
+        "Medicina",
+        "Natura",
+        "Percezione",
+        "Persuasione",
+        "Religione",
+        "Rapidità di Mano",
+        "Sopravvivenza",
+        "Storia"
+      ],
+      "num_skills": 3,
+      "spellcasting": {
+        "ability": "CHA",
+        "progression": "pieno"
+      },
+      "features": [
+        {
+          "level": 1,
+          "name": "Ispirazione Bardica (d6)"
+        },
+        {
+          "level": 1,
+          "name": "Incantesimi"
+        },
+        {
+          "level": 2,
+          "name": "Canto del Riposo (d6)"
+        },
+        {
+          "level": 3,
+          "name": "Collegio Bardico"
+        },
+        {
+          "level": 3,
+          "name": "Competenza Esperta",
+          "description": "Raddoppia il bonus competenza su 2 abilità; altre 2 al 10°."
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 5,
+          "name": "Ispirazione Bardica (d8)"
+        },
+        {
+          "level": 6,
+          "name": "Controincantesimo Migliorato / feature di Collegio"
+        },
+        {
+          "level": 10,
+          "name": "Segreti Magici"
+        },
+        {
+          "level": 10,
+          "name": "Ispirazione Bardica (d10)"
+        },
+        {
+          "level": 14,
+          "name": "Segreti Magici Superiori"
+        },
+        {
+          "level": 15,
+          "name": "Ispirazione Superiore"
+        },
+        {
+          "level": 18,
+          "name": "Canto del Riposo (d12)"
+        },
+        {
+          "level": 20,
+          "name": "Ispirazione Bardica (d12)"
+        },
+        {
+          "level": 8,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 12,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 16,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 19,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        }
+      ]
+    },
+    {
+      "name": "Chierico",
+      "hit_die": "d8",
+      "primary_abilities": [
+        "WIS"
+      ],
+      "saving_throws": [
+        "WIS",
+        "CHA"
+      ],
+      "armor_proficiencies": [
+        "Armature leggere",
+        "Armature medie",
+        "Scudi"
+      ],
+      "weapon_proficiencies": [
+        "Armi semplici"
+      ],
+      "tool_proficiencies": [],
+      "skill_choices": [
+        "Intuizione",
+        "Medicina",
+        "Persuasione",
+        "Religione",
+        "Storia"
+      ],
+      "num_skills": 2,
+      "spellcasting": {
+        "ability": "WIS",
+        "progression": "pieno",
+        "rituals": true
+      },
+      "features": [
+        {
+          "level": 1,
+          "name": "Dominio Divino",
+          "description": "Scegli un dominio; conferisce incantesimi e benefici (altri a 2°, 6°, 8°, 17°)."
+        },
+        {
+          "level": 1,
+          "name": "Incantesimi",
+          "description": "Preparazione su WIS + livello; trucchetti noti come da tabella."
+        },
+        {
+          "level": 2,
+          "name": "Incanalare Divinità (1/riposo)",
+          "description": "Scacciare Non Morti + effetto del dominio (2 usi al 6°, 3 usi al 18°)."
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica",
+          "description": "ASI; anche a 8°, 12°, 16°, 19°."
+        },
+        {
+          "level": 5,
+          "name": "Distruggere Non Morti (GS 1/2)",
+          "description": "Soglia GS cresce: 1 al 8°, 2 al 11°, 3 al 14°, 4 al 17°."
+        },
+        {
+          "level": 10,
+          "name": "Intervento Divino",
+          "description": "Richiesta d’aiuto alla divinità; successo ≤ livello su d100."
+        },
+        {
+          "level": 20,
+          "name": "Intervento Divino Migliorato",
+          "description": "Intervento riesce automaticamente."
+        }
+      ]
+    },
+    {
+      "name": "Druido",
+      "hit_die": "d8",
+      "primary_abilities": [
+        "WIS"
+      ],
+      "saving_throws": [
+        "INT",
+        "WIS"
+      ],
+      "armor_proficiencies": [
+        "Armature leggere (non metalliche)",
+        "Armature medie (non metalliche)",
+        "Scudi (non metallici)"
+      ],
+      "weapon_proficiencies": [
+        "Bastoni",
+        "Pugnali",
+        "Fionde",
+        "Randelli",
+        "Lance",
+        "Giavellotti",
+        "Scimitarre"
+      ],
+      "tool_proficiencies": [
+        "Kit di erborista"
+      ],
+      "skill_choices": [
+        "Arcano",
+        "Intuizione",
+        "Medicina",
+        "Natura",
+        "Percezione",
+        "Religione",
+        "Sopravvivenza",
+        "Addestrare Animali"
+      ],
+      "num_skills": 2,
+      "spellcasting": {
+        "ability": "WIS",
+        "progression": "pieno",
+        "rituals": true
+      },
+      "features": [
+        {
+          "level": 1,
+          "name": "Linguaggio Druidico"
+        },
+        {
+          "level": 1,
+          "name": "Incantesimi"
+        },
+        {
+          "level": 2,
+          "name": "Forma Selvatica"
+        },
+        {
+          "level": 2,
+          "name": "Circolo Druidico"
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 4,
+          "name": "Miglioramento Forma Selvatica"
+        },
+        {
+          "level": 6,
+          "name": "Miglioramento Forma Selvatica"
+        },
+        {
+          "level": 8,
+          "name": "Miglioramento Forma Selvatica"
+        },
+        {
+          "level": 8,
+          "name": "Incantesimi Selvatici"
+        },
+        {
+          "level": 12,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 16,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 18,
+          "name": "Corpo senza Età",
+          "description": "Ignori gli effetti dell’età; non puoi essere invecchiato magicamente."
+        },
+        {
+          "level": 18,
+          "name": "Forma Bestiale Illimitata"
+        },
+        {
+          "level": 19,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 20,
+          "name": "Arcidruido"
+        }
+      ]
+    },
+    {
+      "name": "Guerriero",
+      "hit_die": "d10",
+      "primary_abilities": [
+        "STR",
+        "DEX"
+      ],
+      "saving_throws": [
+        "STR",
+        "CON"
+      ],
+      "armor_proficiencies": [
+        "Tutte le armature",
+        "Scudi"
+      ],
+      "weapon_proficiencies": [
+        "Armi semplici",
+        "Armi da guerra"
+      ],
+      "tool_proficiencies": [],
+      "skill_choices": [
+        "Acrobazia",
+        "Addestrare Animali",
+        "Atletica",
+        "Intimidire",
+        "Intuizione",
+        "Percezione",
+        "Sopravvivenza",
+        "Storia"
+      ],
+      "num_skills": 2,
+      "features": [
+        {
+          "level": 1,
+          "name": "Recuperare Energie",
+          "description": "Azione bonus: recuperi 1d10 + livello PF (riposare per riusarlo)."
+        },
+        {
+          "level": 1,
+          "name": "Stile di Combattimento",
+          "description": "Scegli uno stile (Difesa, Duellare, Tiro, Protezione, Armi Possenti, Due Armi, ecc.)."
+        },
+        {
+          "level": 2,
+          "name": "Azione Impetuosa (un uso)",
+          "description": "Un’azione addizionale nel tuo turno (si ricarica a riposo; 2 usi al 17°)."
+        },
+        {
+          "level": 3,
+          "name": "Archetipo Marziale",
+          "description": "Sottoclasse (privilegi anche a 7°, 10°, 15°, 18°)."
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica",
+          "description": "ASI; anche a 6°, 8°, 12°, 14°, 16°, 19°."
+        },
+        {
+          "level": 5,
+          "name": "Attacco Extra",
+          "description": "Due attacchi quando usi Attaccare."
+        },
+        {
+          "level": 9,
+          "name": "Indomito (un uso)",
+          "description": "Ritira un TS fallito (2 usi al 13°, 3 usi al 17°)."
+        },
+        {
+          "level": 11,
+          "name": "Attacco Extra (2)",
+          "description": "Tre attacchi quando usi Attaccare."
+        },
+        {
+          "level": 20,
+          "name": "Attacco Extra (3)",
+          "description": "Quattro attacchi quando usi Attaccare."
+        }
+      ]
+    },
+    {
+      "name": "Ladro",
+      "hit_die": "d8",
+      "primary_abilities": [
+        "DEX"
+      ],
+      "saving_throws": [
+        "DEX",
+        "INT"
+      ],
+      "armor_proficiencies": [
+        "Armature leggere"
+      ],
+      "weapon_proficiencies": [
+        "Armi semplici",
+        "Balestre a mano",
+        "Spade lunghe",
+        "Stocchi",
+        "Spade corte"
+      ],
+      "tool_proficiencies": [
+        "Attrezzi da scasso"
+      ],
+      "skill_choices": [
+        "Acrobazia",
+        "Atletica",
+        "Furtività",
+        "Indagare",
+        "Inganno",
+        "Intimidire",
+        "Intrattenere",
+        "Intuizione",
+        "Percezione",
+        "Persuasione",
+        "Rapidità di Mano"
+      ],
+      "num_skills": 4,
+      "features": [
+        {
+          "level": 1,
+          "name": "Attacco Furtivo (1d6)",
+          "description": "Danni extra con vantaggio o alleato entro 1,5 m; scala con il livello."
+        },
+        {
+          "level": 1,
+          "name": "Gergo Ladresco",
+          "description": "Codici e segni segreti dei ladri."
+        },
+        {
+          "level": 1,
+          "name": "Maestria",
+          "description": "Raddoppia il bonus competenza su 2 abilità/attrezzi (al 6° su altre 2)."
+        },
+        {
+          "level": 2,
+          "name": "Azione Scaltra",
+          "description": "Azione bonus per Disimpegnarsi/Nascondersi/Scattare."
+        },
+        {
+          "level": 3,
+          "name": "Archetipo Ladresco",
+          "description": "Sottoclasse (privilegi anche a 9°, 13°, 17°)."
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica",
+          "description": "ASI; anche a 8°, 10°, 12°, 16°, 19°."
+        },
+        {
+          "level": 5,
+          "name": "Schivata Prodigiosa",
+          "description": "Reazione: dimezza i danni di un attacco che ti colpisce."
+        },
+        {
+          "level": 7,
+          "name": "Elusione",
+          "description": "TS DEX su effetti ad area: nessun danno su successo, metà su fallimento."
+        },
+        {
+          "level": 11,
+          "name": "Dote Affidabile",
+          "description": "Tratta i risultati ≤9 come 10 su prove con competenza."
+        },
+        {
+          "level": 14,
+          "name": "Percezione Cieca",
+          "description": "Percepisci creature invisibili entro 3 m se le senti."
+        },
+        {
+          "level": 15,
+          "name": "Mente Sfuggente",
+          "description": "Competenza nei TS WIS."
+        },
+        {
+          "level": 18,
+          "name": "Inafferrabile",
+          "description": "Nessun tiro per colpire ha vantaggio contro di te (se non sei inabile)."
+        },
+        {
+          "level": 20,
+          "name": "Colpo di Fortuna",
+          "description": "Trasforma un mancato in colpito o una prova fallita in 20 (1/ riposo breve o lungo)."
+        }
+      ]
+    },
+    {
+      "name": "Mago",
+      "hit_die": "d6",
+      "primary_abilities": [
+        "INT"
+      ],
+      "saving_throws": [
+        "INT",
+        "WIS"
+      ],
+      "armor_proficiencies": [],
+      "weapon_proficiencies": [
+        "Pugnali",
+        "Dardi",
+        "Bastoni",
+        "Balestre leggere"
+      ],
+      "tool_proficiencies": [],
+      "skill_choices": [
+        "Arcano",
+        "Storia",
+        "Indagare",
+        "Intuizione",
+        "Medicina",
+        "Religione"
+      ],
+      "num_skills": 2,
+      "spellcasting": {
+        "ability": "INT",
+        "progression": "pieno",
+        "rituals": true
+      },
+      "features": [
+        {
+          "level": 1,
+          "name": "Incantesimi",
+          "description": "Libro degli incantesimi; preparazione su INT + livello; trucchetti noti come da tabella."
+        },
+        {
+          "level": 1,
+          "name": "Recupero Arcano",
+          "description": "1/gg dopo riposo breve, recuperi slot fino a metà livello (arrotondato per eccesso), max 5°."
+        },
+        {
+          "level": 2,
+          "name": "Tradizione Arcana",
+          "description": "Sottoclasse di scuola; privilegi anche a 6°, 10°, 14°."
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica",
+          "description": "ASI; anche a 8°, 12°, 16°, 19°."
+        },
+        {
+          "level": 18,
+          "name": "Maestria negli Incantesimi",
+          "description": "Lancia a volontà un incantesimo di 1° e uno di 2° (preparati) al livello base."
+        },
+        {
+          "level": 20,
+          "name": "Incantesimi Personali",
+          "description": "Due incantesimi di 3°: sempre preparati, 1/l’uno al 3° senza slot (si ricaricano con riposo breve/lungo)."
+        }
+      ]
+    },
+    {
+      "name": "Monaco",
+      "hit_die": "d8",
+      "primary_abilities": [
+        "DEX",
+        "WIS"
+      ],
+      "saving_throws": [
+        "STR",
+        "DEX"
+      ],
+      "armor_proficiencies": [],
+      "weapon_proficiencies": [
+        "Armi semplici",
+        "Spade corte"
+      ],
+      "tool_proficiencies": [
+        "Uno strumento da artigiano o uno strumento musicale"
+      ],
+      "skill_choices": [
+        "Acrobazia",
+        "Atletica",
+        "Furtività",
+        "Intuizione",
+        "Religione",
+        "Storia"
+      ],
+      "num_skills": 2,
+      "features": [
+        {
+          "level": 1,
+          "name": "Arti Marziali",
+          "description": "Usi DEX per colpire/danni con armi da monaco e colpi senz’armi; dado scala col livello."
+        },
+        {
+          "level": 2,
+          "name": "Ki",
+          "description": "Punti Ki per Colpo Stordente, Difesa Paziente, Passo del Vento."
+        },
+        {
+          "level": 2,
+          "name": "Movimento Ininterrotto",
+          "description": "Aumenti progressivi alla velocità."
+        },
+        {
+          "level": 3,
+          "name": "Tradizione Monastica"
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 5,
+          "name": "Attacco Extra"
+        },
+        {
+          "level": 5,
+          "name": "Colpo Stordente"
+        },
+        {
+          "level": 6,
+          "name": "Colpi Potenziati dal Ki"
+        },
+        {
+          "level": 7,
+          "name": "Schivata Prodigiosa (Evasione)"
+        },
+        {
+          "level": 7,
+          "name": "Tranquillità Mentale"
+        },
+        {
+          "level": 10,
+          "name": "Purezza del Corpo"
+        },
+        {
+          "level": 13,
+          "name": "Lingua del Sole e della Luna"
+        },
+        {
+          "level": 14,
+          "name": "Corpo Vuoto"
+        },
+        {
+          "level": 15,
+          "name": "Anima Diadamantina"
+        },
+        {
+          "level": 18,
+          "name": "Corpo Vuoto Migliorato"
+        },
+        {
+          "level": 20,
+          "name": "Perfezione del Corpo"
+        },
+        {
+          "level": 8,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 12,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 16,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 19,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        }
+      ]
+    },
+    {
+      "name": "Paladino",
+      "hit_die": "d10",
+      "primary_abilities": [
+        "STR",
+        "CHA"
+      ],
+      "saving_throws": [
+        "WIS",
+        "CHA"
+      ],
+      "armor_proficiencies": [
+        "Tutte le armature",
+        "Scudi"
+      ],
+      "weapon_proficiencies": [
+        "Armi semplici",
+        "Armi da guerra"
+      ],
+      "tool_proficiencies": [],
+      "skill_choices": [
+        "Atletica",
+        "Intimidire",
+        "Intuizione",
+        "Medicina",
+        "Persuasione",
+        "Religione"
+      ],
+      "num_skills": 2,
+      "spellcasting": {
+        "ability": "CHA",
+        "progression": "mezzo"
+      },
+      "features": [
+        {
+          "level": 1,
+          "name": "Percezione del Divino"
+        },
+        {
+          "level": 1,
+          "name": "Imposizione delle Mani"
+        },
+        {
+          "level": 2,
+          "name": "Stile di Combattimento"
+        },
+        {
+          "level": 2,
+          "name": "Punizione Divina"
+        },
+        {
+          "level": 2,
+          "name": "Incantesimi"
+        },
+        {
+          "level": 3,
+          "name": "Giuramento Sacro",
+          "description": "Sottoclasse; privilegi aggiuntivi a 7°, 15° e incantesimi del giuramento."
+        },
+        {
+          "level": 3,
+          "name": "Salute Divina"
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 5,
+          "name": "Attacco Extra"
+        },
+        {
+          "level": 6,
+          "name": "Aura di Protezione"
+        },
+        {
+          "level": 10,
+          "name": "Aura di Coraggio"
+        },
+        {
+          "level": 11,
+          "name": "Punizione Divina Migliorata"
+        },
+        {
+          "level": 14,
+          "name": "Pulizia della Malattia"
+        },
+        {
+          "level": 18,
+          "name": "Aura Migliorata",
+          "description": "Raggio aumentato."
+        },
+        {
+          "level": 20,
+          "name": "Campione Sacro",
+          "description": "Capstone del tuo giuramento."
+        },
+        {
+          "level": 8,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 12,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 16,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 19,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 7,
+          "name": "Privilegio del Giuramento"
+        }
+      ]
+    },
+    {
+      "name": "Ranger",
+      "hit_die": "d10",
+      "primary_abilities": [
+        "DEX",
+        "WIS"
+      ],
+      "saving_throws": [
+        "STR",
+        "DEX"
+      ],
+      "armor_proficiencies": [
+        "Armature leggere",
+        "Armature medie",
+        "Scudi"
+      ],
+      "weapon_proficiencies": [
+        "Armi semplici",
+        "Armi da guerra"
+      ],
+      "tool_proficiencies": [],
+      "skill_choices": [
+        "Acrobazia",
+        "Addestrare Animali",
+        "Atletica",
+        "Intuizione",
+        "Indagare",
+        "Natura",
+        "Percezione",
+        "Furtività",
+        "Sopravvivenza"
+      ],
+      "num_skills": 3,
+      "spellcasting": {
+        "ability": "WIS",
+        "progression": "mezzo"
+      },
+      "features": [
+        {
+          "level": 1,
+          "name": "Nemico Prescelto"
+        },
+        {
+          "level": 1,
+          "name": "Esploratore Nativo (Terreno Prescelto)"
+        },
+        {
+          "level": 2,
+          "name": "Stile di Combattimento"
+        },
+        {
+          "level": 2,
+          "name": "Incantesimi"
+        },
+        {
+          "level": 3,
+          "name": "Conclave del Ranger",
+          "description": "Sottoclasse (privilegi a 3°, 7°, 11°, 15°)."
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 5,
+          "name": "Attacco Extra"
+        },
+        {
+          "level": 8,
+          "name": "Passo del Vento di Terra",
+          "description": "Camminare senza Tracce / Passo Lungo — a seconda della versione SRD/Conclave."
+        },
+        {
+          "level": 10,
+          "name": "Nascondersi in Piena Vista"
+        },
+        {
+          "level": 14,
+          "name": "Vagabondo"
+        },
+        {
+          "level": 18,
+          "name": "Uccisore Implacabile"
+        },
+        {
+          "level": 20,
+          "name": "Cacciatore Perfetto / Capstone di Conclave"
+        },
+        {
+          "level": 8,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 12,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 16,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 19,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        }
+      ]
+    },
+    {
+      "name": "Stregone",
+      "hit_die": "d6",
+      "primary_abilities": [
+        "CHA"
+      ],
+      "saving_throws": [
+        "CON",
+        "CHA"
+      ],
+      "armor_proficiencies": [],
+      "weapon_proficiencies": [
+        "Balestre leggere",
+        "Bastoni ferrati",
+        "Dardi",
+        "Fionde",
+        "Pugnali"
+      ],
+      "tool_proficiencies": [],
+      "skill_choices": [
+        "Arcano",
+        "Inganno",
+        "Intimidire",
+        "Intuizione",
+        "Persuasione",
+        "Religione"
+      ],
+      "num_skills": 2,
+      "spellcasting": {
+        "ability": "CHA",
+        "progression": "pieno",
+        "metamagic": true
+      },
+      "features": [
+        {
+          "level": 1,
+          "name": "Origine Stregonesca",
+          "description": "Sottoclasse; determina tratti come Resilienza Draconica o Magia Selvaggia."
+        },
+        {
+          "level": 2,
+          "name": "Fonti di Magia",
+          "description": "Punti Stregoneria."
+        },
+        {
+          "level": 3,
+          "name": "Metamagia"
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 10,
+          "name": "Metamagia Aggiuntiva"
+        },
+        {
+          "level": 20,
+          "name": "Magia Sorprendente",
+          "description": "Capstone della classe (rendimento/recupero punti varia a seconda della versione SRD)."
+        },
+        {
+          "level": 8,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 12,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 16,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 19,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 6,
+          "name": "Privilegio dell’Origine"
+        },
+        {
+          "level": 14,
+          "name": "Privilegio dell’Origine"
+        },
+        {
+          "level": 18,
+          "name": "Privilegio dell’Origine"
+        }
+      ]
+    },
+    {
+      "name": "Warlock",
+      "hit_die": "d8",
+      "primary_abilities": [
+        "CHA"
+      ],
+      "saving_throws": [
+        "WIS",
+        "CHA"
+      ],
+      "armor_proficiencies": [
+        "Armature leggere"
+      ],
+      "weapon_proficiencies": [
+        "Armi semplici"
+      ],
+      "tool_proficiencies": [],
+      "skill_choices": [
+        "Arcano",
+        "Inganno",
+        "Intimidire",
+        "Investigare",
+        "Natura",
+        "Religione",
+        "Storia"
+      ],
+      "num_skills": 2,
+      "spellcasting": {
+        "ability": "CHA",
+        "progression": "patto",
+        "slots": "pochi slot che si ricaricano a riposo breve"
+      },
+      "features": [
+        {
+          "level": 1,
+          "name": "Patrono Ultraterreno",
+          "description": "Sottoclasse; conferisce invocazioni e incantesimi."
+        },
+        {
+          "level": 2,
+          "name": "Invocazioni Occulte"
+        },
+        {
+          "level": 3,
+          "name": "Dono del Patto",
+          "description": "Catena, Lama o Tomo."
+        },
+        {
+          "level": 4,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 5,
+          "name": "Invocazioni Aggiuntive"
+        },
+        {
+          "level": 7,
+          "name": "Slot di Incantesimo (Livello 4)"
+        },
+        {
+          "level": 11,
+          "name": "Misteri Arcani (6°)"
+        },
+        {
+          "level": 13,
+          "name": "Misteri Arcani (7°)"
+        },
+        {
+          "level": 15,
+          "name": "Misteri Arcani (8°)"
+        },
+        {
+          "level": 17,
+          "name": "Misteri Arcani (9°)"
+        },
+        {
+          "level": 20,
+          "name": "Maestro del Patto"
+        },
+        {
+          "level": 8,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 12,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 16,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 19,
+          "name": "Incremento dei Punteggi di Caratteristica"
+        },
+        {
+          "level": 9,
+          "name": "Slot di Incantesimo (Livello 5)"
+        }
+      ]
+    }
+  ]
+}

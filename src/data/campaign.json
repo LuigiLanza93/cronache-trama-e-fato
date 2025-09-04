@@ -1,25 +1,13 @@
 {
   "campaignInfo": {
-    "name": "The Lost Mine of Phandelver",
-    "dm": "Sarah",
+    "name": "Nome campagna",
+    "dm": "Gaetano",
     "session": 12,
-    "location": "Phandalin",
-    "date": "2024-01-15"
+    "location": "Faerûn",
+    "date": "2025-09-04"
   },
-  "activePlayers": [
-    {
-      "name": "Gigi Thunderstrike",
-      "slug": "gigi",
-      "class": "Barbarian",
-      "level": 3,
-      "player": "Marco",
-      "status": "active"
-    }
-  ],
-  "currentEncounter": null,
   "notes": [
-    "Players arrived in Phandalin",
-    "Met Toblen Stonehill at the inn",
-    "Learned about goblin troubles on the road"
+    "Nota n1",
+    "Nota n2"
   ]
 }
