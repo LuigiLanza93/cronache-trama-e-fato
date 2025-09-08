@@ -45,30 +45,6 @@
   "equipment": {
     "attacks": [
       {
-        "name": "Spruzzo Velenoso",
-        "attackBonus": null,
-        "damageType": "1d12 Veleno",
-        "equipped": true
-      },
-      {
-        "name": "Dardo Incantato",
-        "attackBonus": null,
-        "damageType": "1d12 Fulmine",
-        "equipped": true
-      },
-      {
-        "name": "comando",
-        "attackBonus": null,
-        "damageType": "controlla avversario",
-        "equipped": true
-      },
-      {
-        "name": "Mani Brucianti",
-        "attackBonus": null,
-        "damageType": "3d6 Fuoco",
-        "equipped": true
-      },
-      {
         "name": "Ascia Bipenne",
         "attackBonus": null,
         "damageType": "1d12 Taglienti",
@@ -78,11 +54,6 @@
     "equipment": [
       "Explorer's pack",
       "Armatura di Cuoio",
-      "Deflagrazione occulta",
-      "Spruzzo Velenoso",
-      "Dardo Incantato",
-      "comando",
-      "Mani Brucianti",
       "Ascia Bipenne",
       "pugnale"
     ],
@@ -102,6 +73,22 @@
     {
       "name": "Deflagrazione Occulta (warlock, Lv 0)",
       "description": "Livello 0 · null · Concentrazione\nTempo di lancio: 1 azione\nGittata: 36\nComponenti: V, S\nDurata: Istantanea\n\nUn raggio di energia crepitante sfreccia verso una creatura entro gittata. L'incantatore effettua un attacco a distanza con questo incantesimo contro il bersaglio. Se lo colpisce, il bersaglio subisce ldlO danni da forza. Quando l'incantatore arriva ai livelli superiori, l'incantesimo crea più raggi: due raggi al 5° livello, tre raggi all'll' livello e quattro raggi al 17. livello. Vincantatore può indirizzare i raggi contro lo stesso bersaglio o contro bersagli diversi, effettuando un tiro per colpire separato per ogni raggio.\n"
+    },
+    {
+      "name": "Spruzzo Velenoso (warlock, Lv 0)",
+      "description": "Livello 0 · Evocazione\nTempo di lancio: 1 azione\nGittata: 3 metri\nComponenti: V, S\nDurata: Istantanea\n\nStendi la mano verso una creatura a gittata e che puoi vedere, e proietti una nube di gas velenoso dal tuo palmo. La creatura deve superare un tiro salvezza su Costituzione o subire 1d12 danni da veleno. Il danno dell’incantesimo aumenta di 1d12 quando raggiungi il 5° livello (2d12), 11° livello (3d12) e 17° livello (4d12).\n"
+    },
+    {
+      "name": "Dardo Incantato (warlock, Lv 1)",
+      "description": "Livello 1 · Invocazione\nTempo di lancio: 1 azione\nGittata: 36 metri\nComponenti: V, S\nDurata: Istantanea\n\nCrei tre dardi luminosi di forza magica. Ciascun dardo colpisce una creatura a gittata che puoi vedere, scelta da te. Un dardo infligge 1d4 + 1 danni da forza al suo bersaglio. I dardi colpiscono tutti simultaneamente, e li puoi dirigere perché colpiscano una o più creature.\n"
+    },
+    {
+      "name": "Mani Brucianti (mago, Lv 1)",
+      "description": "Livello 1 · Invocazione\nTempo di lancio: 1 azione\nGittata: Incantatore (cono di 4,5 metri)\nComponenti: V, S\nDurata: Istantanea\n\nMentre tieni le mani con i pollici che si toccano e le dita tese, un sottile fiotto di fiamme parte da ciascuna delle punta delle tue dita. Ogni creatura in un cono di 4,5 metri deve effettuare un tiro salvezza su Destrezza. Una creatura subisce 3d6 danni da fuoco se fallisce il tiro salvezza, o la metà se lo supera. Il fuoco incendia gli oggetti infiammabili nell’area che non siano indossati o trasportati.\n"
+    },
+    {
+      "name": "Comando (chierico, Lv 1)",
+      "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V\nDurata: 1 round\n\nPronunci un comando di una parola verso una creatura a gittata e che puoi vedere. Il bersaglio deve superare un tiro salvezza su Saggezza o eseguire il comando durante il suo prossimo turno. L’incantesimo non ha effetto se il bersaglio è non morto, se non capisce la tua lingua, o se il tuo comando gli recherebbe danni. Seguono alcuni tipici comandi e i loro effetti. Puoi dare comandi diversi da quelli descritti qui, e in quel caso il GM determinerà il comportamento del bersaglio. Se il bersaglio non può eseguire il tuo comando, l’incantesimo ha fine.\n"
     }
   ],
   "spells": [],
