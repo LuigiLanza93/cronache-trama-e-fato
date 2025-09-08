@@ -612,7 +612,7 @@ const CharacterSheet = () => {
                 <div className="text-xs text-muted-foreground">Iniziativa</div>
                 <div className="text-2xl font-bold text-primary mt-auto">
                   <Input
-                    value={characterData.combatStats.initiative}
+                    value={abilityModifier(characterData.abilityScores["dexterity"])}
                     className="text-center text-xl md:text-xl font-bold max-w-[70px]"
                     onChange={makeChangeHandler("combatStats.initiative", "int")}
                   />

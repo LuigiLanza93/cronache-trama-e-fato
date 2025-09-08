@@ -20,7 +20,7 @@
   },
   "combatStats": {
     "armorClass": 13,
-    "initiative": 2,
+    "initiative": 5,
     "speed": 9,
     "hitPointMaximum": 10,
     "currentHitPoints": 10,
