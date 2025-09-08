@@ -654,7 +654,7 @@ const CharacterSheet = () => {
                           onChange={makeChangeHandler("combatStats.hitPointMaximum", "int")}
                         />
                       ) : (
-                        characterData.combatStats.hitPointMaximum + characterData.combatStats.temporaryHitPoints
+                        ((abilityModifier(characterData.abilityScores["constitution"])+parseInt(characterData.combatStats.hitDice.split("d")[1],10))*characterData.basicInfo.level)+characterData.combatStats.temporaryHitPoints
                       )}
                     </div>
                   </div>
@@ -668,7 +668,7 @@ const CharacterSheet = () => {
                   </div>
                 </div>
                 <div className="text-center">
-                  <Label className="text-xs text-muted-foreground">Dado per colpire</Label>
+                  <Label className="text-xs text-muted-foreground">Dado Vita</Label>
                   {editDiceMode ? (
                     <Input value={characterData.combatStats.hitDice} onChange={makeChangeHandler("combatStats.hitDice")} />
                   ) : (
