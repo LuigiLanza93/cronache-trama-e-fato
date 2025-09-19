@@ -29,7 +29,9 @@ const HitPoints = ({
             }));
             // Update on server (and JSON file)
             if (characterData.slug) {
-                updateCharacter(characterData.slug, { combatStats: { hitPointMaximum: maxHP } });
+                setTimeout(() => {
+                    updateCharacter(characterData.slug, { combatStats: { hitPointMaximum: maxHP } });
+                }, 500);
             }
         }
     }, [

@@ -129,14 +129,12 @@ export default function DMDashboard({ campaign, monsters }: DMDashboardProps) {
   // Listener GLOBALI: snapshot completi e patch incrementali
   useEffect(() => {
     const offState = onCharacterState(({ slug, state }: { slug: string; state: CharacterState }) => {
-      console.log('offState', slug, state);
 
       fullStatesRef.current[slug] = state;
       setSummaries((prev) => ({ ...prev, [slug]: toSummary(slug, state) }));
     });
 
     const offPatch = onCharacterPatch(({ slug, patch }: { slug: string; patch: any }) => {
-      console.log('offpatch', slug, patch);
       try {
         const prev = fullStatesRef.current[slug] ?? {};
         const next = applyPatch(prev, patch); // deve ritornare NUOVA reference
@@ -156,7 +154,6 @@ export default function DMDashboard({ campaign, monsters }: DMDashboardProps) {
   // Per la UI Players
   const playerCards = useMemo(() => {
     const list = Object.values(summaries);
-    console.log('list: ', list);
 
     return list.sort((a, b) =>
       (a.name || a.slug)?.localeCompare(b.name || b.slug, undefined, { sensitivity: "base" })

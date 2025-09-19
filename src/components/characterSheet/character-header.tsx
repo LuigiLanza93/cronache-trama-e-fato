@@ -1,97 +1,164 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { updateCharacter } from "@/realtime";
 
 const CharacterHeader = ({
     characterData,
     editMode,
     setEditMode,
-    makeChangeHandler,
-}: any) => (
-    <div className="dnd-frame-thick p-6 text-center">
-        <h1 className="text-4xl font-heading font-bold text-primary mb-2">
-            {characterData.basicInfo.characterName} {characterData.combatStats.deathSaves?.failures > 0 && (
-                <div className="inline-block text-2xl text-red-600 mb-2">
-                    {Array.from({ length: characterData.combatStats.deathSaves.failures }).map((_, i) => (
-                        <span key={i}>💀</span>
-                    ))}
+}: any) => {
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+
+        const patch = {
+            characterName: characterData.basicInfo.characterName,
+            class: formData.get("class") as string,
+            level: parseInt(formData.get("level") as string, 10) || 1,
+            background: formData.get("background") as string,
+            playerName: formData.get("playerName") as string,
+            race: formData.get("race") as string,
+            alignment: formData.get("alignment") as string,
+            experiencePoints: parseInt(formData.get("experiencePoints") as string, 10) || 0,
+        }
+
+        updateCharacter(characterData.slug, { basicInfo: { ...patch } });
+        setEditMode(false);
+    };
+
+    return (
+        <div className="dnd-frame-thick p-6 text-center">
+            <form onSubmit={handleSubmit}>
+                <h1 className="text-4xl font-heading font-bold text-primary mb-2">
+                    {characterData.basicInfo.characterName}
+                </h1>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-2">
+                        <div>
+                            <Label className="text-xs text-muted-foreground">Classe</Label>
+                            {editMode ? (
+                                <Input
+                                    name="class"
+                                    defaultValue={characterData.basicInfo.class}
+                                />
+                            ) : (
+                                <div className="font-semibold">
+                                    {characterData.basicInfo.class}
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <Label className="text-xs text-muted-foreground">Livello</Label>
+                            {editMode ? (
+                                <Input
+                                    name="level"
+                                    type="number"
+                                    defaultValue={characterData.basicInfo.level}
+                                />
+                            ) : (
+                                <div className="font-semibold">
+                                    {characterData.basicInfo.level}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground">Background</Label>
+                        {editMode ? (
+                            <Input
+                                name="background"
+                                defaultValue={characterData.basicInfo.background}
+                            />
+                        ) : (
+                            <div className="font-semibold">
+                                {characterData.basicInfo.background}
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground">Nome giocatore</Label>
+                        {editMode ? (
+                            <Input
+                                name="playerName"
+                                defaultValue={characterData.basicInfo.playerName}
+                            />
+                        ) : (
+                            <div className="font-semibold">
+                                {characterData.basicInfo.playerName}
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground">Razza</Label>
+                        {editMode ? (
+                            <Input
+                                name="race"
+                                defaultValue={characterData.basicInfo.race}
+                            />
+                        ) : (
+                            <div className="font-semibold">
+                                {characterData.basicInfo.race}
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground">Allineamento</Label>
+                        {editMode ? (
+                            <Input
+                                name="alignment"
+                                defaultValue={characterData.basicInfo.alignment}
+                            />
+                        ) : (
+                            <div className="font-semibold">
+                                {characterData.basicInfo.alignment}
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground">Punti Esperienza</Label>
+                        {editMode ? (
+                            <Input
+                                name="experiencePoints"
+                                type="number"
+                                defaultValue={characterData.basicInfo.experiencePoints}
+                            />
+                        ) : (
+                            <div className="font-semibold">
+                                {characterData.basicInfo.experiencePoints}
+                            </div>
+                        )}
+                    </div>
                 </div>
-            )}
-        </h1>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-            <div className="grid grid-cols-2">
+
                 <div>
-                    <Label className="text-xs text-muted-foreground">Classe</Label>
                     {editMode ? (
-                        <Input value={characterData.basicInfo.class} onChange={makeChangeHandler("basicInfo.class")} />
+                        <Button
+                            type="submit"
+                            variant="outline"
+                            size="sm"
+                            className="mt-4 bg-primary text-white"
+                        // niente onClick, ci pensa il submit
+                        >
+                            Salva
+                        </Button>
                     ) : (
-                        <div className="font-semibold">{characterData.basicInfo.class}</div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-4 bg-primary text-white"
+                            onMouseDown={() => setEditMode(true)} // switcha PRIMA del click
+                        >
+                            Modifica
+                        </Button>
                     )}
                 </div>
-                <div>
-                    <Label className="text-xs text-muted-foreground">Livello</Label>
-                    {editMode ? (
-                        <Input value={characterData.basicInfo.level} onChange={makeChangeHandler("basicInfo.level", "int")} />
-                    ) : (
-                        <div className="font-semibold">{characterData.basicInfo.level}</div>
-                    )}
-                </div>
-            </div>
-            <div>
-                <Label className="text-xs text-muted-foreground">Background</Label>
-                {editMode ? (
-                    <Input value={characterData.basicInfo.background} onChange={makeChangeHandler("basicInfo.background")} />
-                ) : (
-                    <div className="font-semibold">{characterData.basicInfo.background}</div>
-                )}
-            </div>
-            <div>
-                <Label className="text-xs text-muted-foreground">Nome giocatore</Label>
-                {editMode ? (
-                    <Input value={characterData.basicInfo.playerName} onChange={makeChangeHandler("basicInfo.playerName")} />
-                ) : (
-                    <div className="font-semibold">{characterData.basicInfo.playerName}</div>
-                )}
-            </div>
-            <div>
-                <Label className="text-xs text-muted-foreground">Razza</Label>
-                {editMode ? (
-                    <Input value={characterData.basicInfo.race} onChange={makeChangeHandler("basicInfo.race")} />
-                ) : (
-                    <div className="font-semibold">{characterData.basicInfo.race}</div>
-                )}
-            </div>
-            <div>
-                <Label className="text-xs text-muted-foreground">Allineamento</Label>
-                {editMode ? (
-                    <Input value={characterData.basicInfo.alignment} onChange={makeChangeHandler("basicInfo.alignment")} />
-                ) : (
-                    <div className="font-semibold">{characterData.basicInfo.alignment}</div>
-                )}
-            </div>
-            <div>
-                <Label className="text-xs text-muted-foreground">Punti Esperienza</Label>
-                {editMode ? (
-                    <Input
-                        value={characterData.basicInfo.experiencePoints}
-                        onChange={makeChangeHandler("basicInfo.experiencePoints", "int")}
-                    />
-                ) : (
-                    <div className="font-semibold">{characterData.basicInfo.experiencePoints}</div>
-                )}
-            </div>
+
+            </form>
         </div>
-        <div>
-            <Button
-                variant="outline"
-                size="sm"
-                className="mt-4 bg-primary text-white"
-                onClick={() => setEditMode(!editMode)}
-            >
-                {editMode ? "Salva" : "Modifica"}
-            </Button>
-        </div>
-    </div>
-);
+    );
+};
 
 export default CharacterHeader;

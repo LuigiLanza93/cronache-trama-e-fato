@@ -2,8 +2,8 @@
   "slug": "gigi",
   "basicInfo": {
     "characterName": "Gigi",
-    "class": "Guerriero",
-    "level": 3,
+    "class": "Bardo",
+    "level": 5,
     "background": "Protettore Errante",
     "playerName": "Luigi",
     "race": "Umano",
@@ -22,13 +22,63 @@
     "armorClass": 18,
     "initiative": 1,
     "speed": 10,
-    "hitPointMaximum": 6,
+    "hitPointMaximum": 10,
     "currentHitPoints": 2,
     "temporaryHitPoints": 0,
     "hitDice": "3d4",
     "deathSaves": {
       "successes": 0,
       "failures": 0
+    },
+    "spellSlots": {
+      "1": [
+        {
+          "id": 1,
+          "active": false
+        },
+        {
+          "id": 2,
+          "active": false
+        },
+        {
+          "id": 3,
+          "active": false
+        },
+        {
+          "id": 4,
+          "active": false
+        }
+      ],
+      "2": [
+        {
+          "id": 1,
+          "active": false
+        },
+        {
+          "id": 2,
+          "active": false
+        },
+        {
+          "id": 3,
+          "active": false
+        }
+      ],
+      "3": [
+        {
+          "id": 1,
+          "active": false
+        },
+        {
+          "id": 2,
+          "active": false
+        }
+      ],
+      "4": [],
+      "5": [],
+      "6": [],
+      "7": [],
+      "8": [],
+      "9": []
     }
   },
   "proficiencies": {
@@ -71,5 +121,18 @@
   "ideals": "Protezione: 'La mia spada vale qualcosa solo se difende chi non può brandirne una.' Crescita: 'Ogni sfida, ogni ferita, ogni duello è un passo per diventare più forte di ieri.'",
   "bonds": "Porta con sé la vecchia spada scheggiata che usò nel suo primo vero combattimento: simbolo del momento in cui ha scelto la sua strada.",
   "flaws": "Non riesce a resistere al richiamo di una sfida: il rischio di superare se stesso lo spinge anche quando dovrebbe fermarsi.",
-  "backstory": ""
+  "backstory": "",
+  "spellSlots.1.0.active": false,
+  "spellSlots.2.0.active": false,
+  "spellSlots.2.1.active": false,
+  "spellSlots.1.2.active": false,
+  "spellSlots.1.1.active": false,
+  "characterName": "Gigi",
+  "class": "Warlock",
+  "level": 41,
+  "background": "Protettore Errante",
+  "playerName": "Luigi",
+  "race": "Umano",
+  "alignment": "Neutrale buono",
+  "experiencePoints": 0
 }
