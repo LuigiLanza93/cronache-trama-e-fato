@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { updateCharacter } from "@/realtime";
 
 const Proficiencies = ({
     characterData,
@@ -48,10 +49,25 @@ const Proficiencies = ({
                                         onChange={() => {
                                             const next = [...deathSaves.success];
                                             next[i] = !next[i];
+                                            // Deselect following if unchecked
                                             if (!next[i]) {
                                                 for (let j = i + 1; j < next.length; j++) next[j] = false;
                                             }
+                                            const successes = next.filter(Boolean).length;
                                             setDeathSaves({ ...deathSaves, success: next });
+
+                                            // Update JSON/server
+                                            if (characterData.slug) {
+                                                updateCharacter(characterData.slug, {
+                                                    combatStats: {
+                                                        ...characterData.combatStats,
+                                                        deathSaves: {
+                                                            ...characterData.combatStats.deathSaves,
+                                                            successes,
+                                                        },
+                                                    },
+                                                });
+                                            }
                                         }}
                                         aria-label={`Riuscita ${i + 1}`}
                                         className="w-5 h-5 accent-green-600 rounded border-2 border-green-400"
@@ -75,10 +91,25 @@ const Proficiencies = ({
                                         onChange={() => {
                                             const next = [...deathSaves.fail];
                                             next[i] = !next[i];
+                                            // Deselect following if unchecked
                                             if (!next[i]) {
                                                 for (let j = i + 1; j < next.length; j++) next[j] = false;
                                             }
+                                            const failures = next.filter(Boolean).length;
                                             setDeathSaves({ ...deathSaves, fail: next });
+
+                                            // Update JSON/server
+                                            if (characterData.slug) {
+                                                updateCharacter(characterData.slug, {
+                                                    combatStats: {
+                                                        ...characterData.combatStats,
+                                                        deathSaves: {
+                                                            ...characterData.combatStats.deathSaves,
+                                                            failures,
+                                                        },
+                                                    },
+                                                });
+                                            }
                                         }}
                                         aria-label={`Fallimento ${i + 1}`}
                                         className="deathsave-checkbox w-5 h-5 accent-red-600 rounded border-2 border-red-400"

@@ -26,7 +26,8 @@ type LiveSummary = {
   hp?: { current?: number; max?: number; temp?: number };
   ac?: number;
   status?: string;
-  player?: string; // se lo hai
+  player?: string; 
+  deathSavesFailures?: number;
 };
 
 type DMDashboardProps = {
@@ -64,6 +65,7 @@ function toSummary(slug: string, s: CharacterState): LiveSummary {
     ac: s?.combatStats?.armorClass ?? s?.ac,
     status: s?.status ?? s?.conditions?.join?.(", "),
     player: s?.player ?? s?.owner,
+    deathSavesFailures: s?.combatStats?.deathSaves?.failures ?? 0,
   };
 }
 
@@ -266,7 +268,13 @@ export default function DMDashboard({ campaign, monsters }: DMDashboardProps) {
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
                           <h3 className="font-heading text-lg font-semibold text-primary">
-                            {p.name}
+                            {p.name} {p.deathSavesFailures > 0 && (
+                              <div className="inline-block text-2xl text-red-600 mb-2">
+                                {Array.from({ length: p.deathSavesFailures }).map((_, i) => (
+                                  <span key={i}>💀</span>
+                                ))}
+                              </div>
+                            )}
                           </h3>
                           <div className="text-sm text-muted-foreground">
                             {p.class ? `${p.class}` : "Adventurer"}

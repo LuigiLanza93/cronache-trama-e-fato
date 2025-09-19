@@ -10,7 +10,13 @@ const CharacterHeader = ({
 }: any) => (
     <div className="dnd-frame-thick p-6 text-center">
         <h1 className="text-4xl font-heading font-bold text-primary mb-2">
-            {characterData.basicInfo.characterName}
+            {characterData.basicInfo.characterName} {characterData.combatStats.deathSaves?.failures > 0 && (
+                <div className="inline-block text-2xl text-red-600 mb-2">
+                    {Array.from({ length: characterData.combatStats.deathSaves.failures }).map((_, i) => (
+                        <span key={i}>💀</span>
+                    ))}
+                </div>
+            )}
         </h1>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             <div className="grid grid-cols-2">
