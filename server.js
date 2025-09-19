@@ -119,7 +119,7 @@ async function start() {
       const current = readCharacter(slug) || {};
       const next = deepMerge(current, patch);
       scheduleWrite(slug, next);
-      socket.to(`char:${slug}`).emit("character:patch", patch);
+      socket.to(`char:${slug}`).emit("character:patch", { slug, patch });
       socket.emit("character:state", next);
     });
 

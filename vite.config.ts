@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    watch: {
+      ignored: ["**/*.json"], // Ignore JSON files for live reload
+    },
   },
   plugins: [
     react(),

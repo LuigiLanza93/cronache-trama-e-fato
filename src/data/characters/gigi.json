@@ -2,7 +2,7 @@
   "slug": "gigi",
   "basicInfo": {
     "characterName": "Gigi",
-    "class": "Bardo",
+    "class": "Guerriero",
     "level": 3,
     "background": "Protettore Errante",
     "playerName": "Luigi",
@@ -12,19 +12,19 @@
   },
   "abilityScores": {
     "strength": 14,
-    "dexterity": 10,
+    "dexterity": 11,
     "constitution": 6,
     "intelligence": 19,
     "wisdom": 10,
     "charisma": 10
   },
   "combatStats": {
-    "armorClass": 10,
-    "initiative": 10,
+    "armorClass": 18,
+    "initiative": 1,
     "speed": 10,
-    "hitPointMaximum": 43,
-    "currentHitPoints": 47,
-    "temporaryHitPoints": 8,
+    "hitPointMaximum": 6,
+    "currentHitPoints": 2,
+    "temporaryHitPoints": 0,
     "hitDice": "3d4",
     "deathSaves": {
       "successes": 0,
