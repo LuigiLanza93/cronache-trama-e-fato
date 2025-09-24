@@ -25,7 +25,7 @@
     "hitPointMaximum": 13,
     "currentHitPoints": 11,
     "temporaryHitPoints": 0,
-    "hitDice": "3d4",
+    "hitDice": "1d10",
     "deathSaves": {
       "successes": 0,
       "failures": 0
@@ -47,7 +47,7 @@
         "name": "Arco lungo",
         "attackBonus": 0,
         "damageType": "1d8 perforanti",
-        "equipped": true
+        "equipped": false
       },
       {
         "name": "Scudo borchiato",
@@ -59,7 +59,7 @@
         "name": "Balestra a mano",
         "attackBonus": 0,
         "damageType": "1d6 perforanti",
-        "equipped": true
+        "equipped": false
       },
       {
         "name": "Cotta di maglia",
