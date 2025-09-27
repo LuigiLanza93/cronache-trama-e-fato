@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Aros",
     "class": "Guerriero",
-    "level": 1,
+    "level": 2,
     "background": "Soldato",
     "playerName": "Luigi",
     "race": "Umano",
@@ -22,8 +22,8 @@
     "armorClass": 18,
     "initiative": 2,
     "speed": 9,
-    "hitPointMaximum": 13,
-    "currentHitPoints": 11,
+    "hitPointMaximum": 26,
+    "currentHitPoints": 26,
     "temporaryHitPoints": 0,
     "hitDice": "1d10",
     "deathSaves": {
@@ -47,7 +47,7 @@
         "name": "Arco lungo",
         "attackBonus": 0,
         "damageType": "1d8 perforanti",
-        "equipped": false
+        "equipped": true
       },
       {
         "name": "Scudo borchiato",
@@ -71,26 +71,35 @@
         "name": "Spada lunga",
         "attackBonus": 2,
         "damageType": "1d8 taglienti",
-        "equipped": true
+        "equipped": false
       },
       {
         "name": "Pugnale",
         "attackBonus": 0,
         "damageType": "1d4 perforante",
         "equipped": false
+      },
+      {
+        "name": "Spadalunga con runa luminosa",
+        "attackBonus": 2,
+        "damageType": "1d8 tagliente",
+        "equipped": true
       }
     ],
     "equipment": [
       "20 frecce",
       "20 quadrelli",
       "Dotazione avventuriero",
-      "Pugnale"
+      "Pugnale",
+      "Ciondolo d'argento corroso",
+      "2 pozioni",
+      "1d12"
     ],
     "coins": {
       "cp": 0,
       "sp": 0,
       "ep": 0,
-      "gp": 140,
+      "gp": 147,
       "pp": 0
     }
   },

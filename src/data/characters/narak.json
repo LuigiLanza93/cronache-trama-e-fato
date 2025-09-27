@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Narak",
     "class": "Bardo",
-    "level": 1,
+    "level": 2,
     "background": "Ciarlatano",
     "playerName": "Roberto",
     "race": "Mezzelfo",
@@ -22,8 +22,8 @@
     "armorClass": 13,
     "initiative": 5,
     "speed": 9,
-    "hitPointMaximum": 10,
-    "currentHitPoints": 10,
+    "hitPointMaximum": 20,
+    "currentHitPoints": 20,
     "temporaryHitPoints": 0,
     "hitDice": "1d8",
     "deathSaves": {
@@ -38,6 +38,10 @@
         },
         {
           "id": 2,
+          "active": false
+        },
+        {
+          "id": 3,
           "active": false
         }
       ],
@@ -68,7 +72,7 @@
         "name": "Spada lunga",
         "attackBonus": 0,
         "damageType": "1d8 tagliente",
-        "equipped": true
+        "equipped": false
       },
       {
         "name": "Flauto",
@@ -87,6 +91,36 @@
         "attackBonus": 0,
         "damageType": "1d4 perforante",
         "equipped": false
+      },
+      {
+        "name": "Spada lunga (versatile)",
+        "attackBonus": 2,
+        "damageType": "1d8 tagliente",
+        "equipped": true
+      },
+      {
+        "name": "Spada corta",
+        "attackBonus": 0,
+        "damageType": "1d6",
+        "equipped": false
+      },
+      {
+        "name": "Arco corto",
+        "attackBonus": 0,
+        "damageType": "1d6",
+        "equipped": false
+      },
+      {
+        "name": "Violino del cantore d’ossa",
+        "attackBonus": 0,
+        "damageType": "0",
+        "equipped": true
+      },
+      {
+        "name": "Pozione",
+        "attackBonus": 2,
+        "damageType": "2d4",
+        "equipped": false
       }
     ],
     "equipment": [
@@ -96,13 +130,18 @@
       "Pugnale",
       "5 dardi avvelenati",
       "Guanto con ragno ricamato",
-      "Anello di ‘maestro’ nemico contro mercante"
+      "Anello di ‘maestro’ nemico contro mercante",
+      "Spada lunga (versatile)",
+      "Spada corta",
+      "Arco corto",
+      "Violino del cantore d’ossa",
+      "Pozione"
     ],
     "coins": {
       "cp": 0,
       "sp": 0,
       "ep": 0,
-      "gp": 120,
+      "gp": 148,
       "pp": 0
     }
   },
@@ -120,8 +159,12 @@
       "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 9 m\nComponenti: V, S\nDurata: 1 ora\n\nUn umanoide che fallisce il TS è affascinato da te e ti considera amichevole. Al termine capisce di essere stato incantato.\n\nUso: Trattative delicate, evitare risse, ottenere udienze."
     },
     {
+      "name": "Frantumare (bardo, Lv 2)",
+      "description": "Livello 2 · Invocazione\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (un frammento di metallo)\nDurata: Istantanea\n\nUn forte squillo, molto intenso, erutta da un punto a gittata di tua scelta. Ogni creatura in una sfera di 3 metri di raggio centrata su quel punto deve effettuare un tiro salvezza su Costituzione. Una creatura subisce 3d8 danni da tuono se fallisce il tiro salvezza, o la metà di questi danni se lo supera. Una creatura composta di materiale inorganico, come pietra, cristallo o metallo, ha svantaggio sul tiro salvezza. Un oggetto non magico che non è indossato né trasportato subisce anch’esso danni se si trova nell’area dell’incantesimo.\n"
+    },
+    {
       "name": "Sussurri Dissonanti (bardo, Lv 1)",
-      "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 18 m\nComponenti: V\nDurata: Istantanea\n\nUn sussurro straziante infligge danni psichici a una creatura e la costringe a usare immediatamente la sua reazione per allontanarsi da te lungo un percorso sicuro.\n\nUso: Forzare disimpegno, rompere concentrazione, togliere nemici dal corpo a corpo."
+      "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 18 m\nComponenti: V\nDurata: Istantanea\n\nL'incantatore sussurra una melodia dissonante che soltanto una creatura a sua scelta e situata entro gittata è in grado di udire; quella creatura sarà scossa da un dolore lancinante. Il bersaglio deve effettuare un tiro salvezza su Saggezza. Se lo fallisce, subisce 3d6 danni psichici e. se disponibile, deve usare immediatamente la sua reazione per muoversi fin dove la sua velocità glielo consente, allontanandosi dall'incantatore. La creatura non si muove su terreno palesemente pericoloso come un incendio o una fossa. Se invece supera il tiro salvezza, il bersaglio subisce soltanto la metà di quei danni e non deve muoversi per allontanarsi. Una creatura assordata supera automaticamente il tiro salvezza. Ai Livelli Superiori. Quando l'incantatore lancia questo incantesimo usando uno slot incantesimo di 2° livello o superiore, i danni aumentano di ld6 per ogni slot di livello superiore al 1°.\n\nUso: Forzare disimpegno, rompere concentrazione, togliere nemici dal corpo a corpo."
     }
   ],
   "spells": [],

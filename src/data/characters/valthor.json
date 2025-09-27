@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Valthor",
     "class": "Warlock",
-    "level": 1,
+    "level": 2,
     "background": "Nobile Decaduto",
     "playerName": "Luigi",
     "race": "Tiefling",
@@ -22,9 +22,9 @@
     "armorClass": 11,
     "initiative": 0,
     "speed": 9,
-    "hitPointMaximum": 9,
-    "currentHitPoints": 1,
-    "temporaryHitPoints": 0,
+    "hitPointMaximum": 18,
+    "currentHitPoints": 25,
+    "temporaryHitPoints": 7,
     "hitDice": "1d8",
     "deathSaves": {
       "successes": 0,
@@ -34,6 +34,10 @@
       "1": [
         {
           "id": 1,
+          "active": false
+        },
+        {
+          "id": 2,
           "active": false
         }
       ],
@@ -61,23 +65,54 @@
   "equipment": {
     "attacks": [
       {
-        "name": "Ascia Bipenne",
-        "attackBonus": null,
-        "damageType": "1d12 Taglienti",
+        "name": "DEFLAGRAZIONE AGONIZZANTE Prerequisito: trucchetto deflagrazione occulta Quando il warlock lancia deflagrazione occulta, aggiunge il suo modificatore di Carisma ai danni che inftigge quando colpisce il bersaglio.",
+        "attackBonus": 0,
+        "damageType": "+CARISMA",
+        "equipped": true
+      },
+      {
+        "name": "Spada corta",
+        "attackBonus": 0,
+        "damageType": "1d6",
+        "equipped": true
+      },
+      {
+        "name": "Arco corto",
+        "attackBonus": 0,
+        "damageType": "1d6",
+        "equipped": true
+      },
+      {
+        "name": "Anello della vita sepolcrale: 1 volta per riposo lungo permette di rimanere con 1PF invece di 0",
+        "attackBonus": 0,
+        "damageType": "+2Cure Magiche",
+        "equipped": true
+      },
+      {
+        "name": "Pozione di cura",
+        "attackBonus": 0,
+        "damageType": "2d4 +2 PF",
         "equipped": false
       }
     ],
     "equipment": [
       "Explorer's pack",
       "Armatura di Cuoio",
-      "Ascia Bipenne",
-      "pugnale"
+      "pugnale",
+      "DEFLAGRAZIONE AGONIZZANTE Prerequisito: trucchetto deflagrazione occulta Quando il warlock lancia deflagrazione occulta, aggiunge il suo modificatore di Carisma ai danni che inftigge quando colpisce il bersaglio.",
+      "Vigore immondo: ti warlock può lanciare vita falsata su se stesso a volontà  come incantesimo di 1' livello, senza spendere uno slot  incantesimo o componenti materiali.",
+      "2 componenti arcani",
+      "Pietra misteriosa d20",
+      "Spada corta",
+      "Arco corto",
+      "Anello della vita sepolcrale: 1 volta per riposo lungo permette di rimanere con 1PF invece di 0",
+      "Pozione di cura"
     ],
     "coins": {
       "cp": 0,
       "sp": 0,
       "ep": 0,
-      "gp": 120,
+      "gp": 150,
       "pp": 0
     }
   },
@@ -105,6 +140,18 @@
     {
       "name": "Comando (chierico, Lv 1)",
       "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V\nDurata: 1 round\n\nPronunci un comando di una parola verso una creatura a gittata e che puoi vedere. Il bersaglio deve superare un tiro salvezza su Saggezza o eseguire il comando durante il suo prossimo turno. L’incantesimo non ha effetto se il bersaglio è non morto, se non capisce la tua lingua, o se il tuo comando gli recherebbe danni. Seguono alcuni tipici comandi e i loro effetti. Puoi dare comandi diversi da quelli descritti qui, e in quel caso il GM determinerà il comportamento del bersaglio. Se il bersaglio non può eseguire il tuo comando, l’incantesimo ha fine.\n"
+    },
+    {
+      "name": "Vita Falsata (mago, Lv 1)",
+      "description": "Livello 1 · Necromanzia\nTempo di lancio: 1 azione\nGittata: Incantatore\nComponenti: V, S, M (un piccolo ammontare di alcool o spirito distillato)\nDurata: 1 ora\n\nPotenziandoti con una parvenza necromantica di vitalità, ottieni 1d4 + 4 punti ferita temporanei per la durata.\n"
+    },
+    {
+      "name": "Servitore Inosservato (warlock, Lv 1)",
+      "description": "Livello 1 · Evocazione · Rituale\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (un pezzo di corda e un pezzo di legno)\nDurata: 1 ora\n\nQuesto incantesimo crea una forza invisibile, senza cervello e informe, che svolge dei semplici compiti al tuo comando, fino al termine dell’incantesimo. Il servitore si forma in uno spazio sul terreno non occupato, entro la gittata. Ha CA 10, 1 punto ferita, Forza 2 e non può attaccare. Se scende a 0 punti ferita, l’incantesimo ha termine. Come azione bonus, durante ciascun tuo turno, puoi comandare mentalmente il servitore di muoversi fino a 4,5 metri e interagire con un oggetto. Il servitore può svolgere dei semplici compiti alla stregua di un servitore umano, come raccogliere cose, pulire, riparare, piegare abiti, accendere fuochi, servire il cibo e versare il vino. Una volta impartito il comando, il servitore svolgerà il compito al meglio delle sue capacità finché non l’avràcompletato, e poi aspetterà il tuo prossimo comando. Se comandi al servitore di svolgere un compito che lo farà muovere a più di 18 metri da te, l’incantesimo termina.\n"
+    },
+    {
+      "name": "Ritirata Rapida (warlock, Lv 1)",
+      "description": "Livello 1 · Trasmutazione · Concentrazione\nTempo di lancio: 1 azione bonus\nGittata: Incantatore\nComponenti: V, S\nDurata: Concentrazione, massimo 10 minuti\n\nQuesto incantesimo ti permette di muoverti a un’andatura incredibile. Quando lanci questo incantesimo, e poi con un’azione bonus durante ciascun tuo turno fino al termine dell’incantesimo, puoi effettuare l’azione Scattare.\n"
     }
   ],
   "spells": [],

@@ -210,6 +210,24 @@
       "_source": "https://dungeonedraghi.it/compendio/incantesimi/anatema/"
     },
     {
+      "name": "Sussurri Dissonanti",
+      "level": 1,
+      "school": "Ammaliamento",
+      "casting_time": "1 azione",
+      "range": "18 m",
+      "components": "V",
+      "duration": "Istantanea",
+      "concentration": false,
+      "saving_throw": "Saggezza (metà danni, niente fuga)",
+      "attack_roll": false,
+      "damage": "3d6 psichici (+1d6 per slot superiore)",
+      "scaling": "+1d6 per ogni slot oltre il 1°",
+      "ritual": false,
+      "description": "L'incantatore sussurra una melodia dissonante che soltanto una creatura a sua scelta e situata entro gittata è in grado di udire; quella creatura sarà scossa da un dolore lancinante. Il bersaglio deve effettuare un tiro salvezza su Saggezza. Se lo fallisce, subisce 3d6 danni psichici e. se disponibile, deve usare immediatamente la sua reazione per muoversi fin dove la sua velocità glielo consente, allontanandosi dall'incantatore. La creatura non si muove su terreno palesemente pericoloso come un incendio o una fossa. Se invece supera il tiro salvezza, il bersaglio subisce soltanto la metà di quei danni e non deve muoversi per allontanarsi. Una creatura assordata supera automaticamente il tiro salvezza. Ai Livelli Superiori. Quando l'incantatore lancia questo incantesimo usando uno slot incantesimo di 2° livello o superiore, i danni aumentano di ld6 per ogni slot di livello superiore al 1°.",
+      "usage": "Forzare disimpegno, rompere concentrazione, togliere nemici dal corpo a corpo.",
+      "rest": null
+    },
+    {
       "name": "Caduta Morbida",
       "level": 1,
       "school": "Trasmutazione",
@@ -13485,6 +13503,25 @@
       "rest": null,
       "_source": "https://dungeonedraghi.it/compendio/incantesimi/servitore-inosservato/"
     },
+    {
+      "name": "Sortilegio",
+      "level": 1,
+      "school": "Ammaliamento",
+      "casting_time": "1 azione bonus",
+      "range": "27 metri",
+      "components": "V, S, M (l'occhio pietrificato di un girino)",
+      "duration": "1 ora",
+      "concentration": true,
+      "saving_throw": null,
+      "attack_roll": false,
+      "damage": null,
+      "scaling": null,
+      "ritual": true,
+      "description": "L'incantatore scaglia una maledizione su una creatura entro gittata e che egli sia in grado di vedere. Finché l'incantesimo non termina, l'incantatore infligge ld6 danni necrotici extra al bersaglio ogni volta che lo colpisce con un attacco. Inoltre, quando l'incantatore lancia l'incantesimo, sceglie una caratteristica. Il bersaglio subisce svantaggio alle prove di caratteristica effettuate con la caratteristica scelta. Se il bersaglio scende a O punti ferita prima che questo incantesimo termini, l'incantatore può usare un'azione bonus in un suo turno successivo per maledire una nuova creatura. Un incantesimo rimuovi maledizione lanciato sul bersaglio termina questo incantesimo prematuramente. Al Livelll Superiori. Quando l'incantatore lancia questo incantesimo usando uno slot incantesimo di 3a o 4 livello. può mantenere la concentrazione sull'incantesimo fino a un massimo di 8 ore. Quando usa uno slot incantesimo di s􀁍 livello o superiore, può mantenere la concentrazione sull'incantesimo fino a un massimo di 24 ore.",
+      "usage": null,
+      "rest": null,
+      "_source": "https://dungeonedraghi.it/compendio/incantesimi/sortilegio/"
+    },    
     {
       "name": "Blocca Persone",
       "level": 2,
