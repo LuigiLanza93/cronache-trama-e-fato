@@ -28,6 +28,16 @@ const Inventory = ({
     setItemAtkBonus,
     itemDmgType,
     setItemDmgType,
+    /** --- nuove props per skills categorizzate --- */
+    itemSkill,                 // legacy (ignorata nella UI nuova, ma lasciata per compatibilità)
+    setItemSkill,              // legacy
+    itemSkillType,             // "volonta" | "incontro" | "riposoBreve" | "riposoLungo"
+    setItemSkillType,
+    itemSkillInput,
+    setItemSkillInput,
+    itemSkillsByType,          // { volonta: SkillEntry[]; incontro: ...; riposoBreve: ...; riposoLungo: ... }
+    setItemSkillsByType,
+    /** --- fine nuove props --- */
     invError,
     removeAttack,
     removeItem,
@@ -41,6 +51,42 @@ const Inventory = ({
         mp: "pp",
     } as const;
     type CoinAbbr = keyof typeof COIN_KEYS;
+
+    // === mapping categorie ===
+    const SKILL_TYPES = ["volonta", "incontro", "riposoBreve", "riposoLungo"] as const;
+    type SkillType = typeof SKILL_TYPES[number];
+    const LABELS: Record<SkillType, string> = {
+        volonta: "Volontà",
+        incontro: "Incontro",
+        riposoBreve: "Riposo Breve",
+        riposoLungo: "Riposo Lungo",
+    };
+
+    // === helpers per aggiungere/rimuovere skill per categoria ===
+    const addSkillToCurrentType = (raw: string) => {
+        const s = (raw ?? "").trim();
+        if (!s) return;
+        const t = itemSkillType as SkillType;
+        const list = (itemSkillsByType?.[t] ?? []) as Array<{ name: string; used: boolean }>;
+
+        // evita duplicati (case-insensitive)
+        const exists = list.some((e) => e.name.toLowerCase() === s.toLowerCase());
+        if (exists) {
+            setItemSkillInput("");
+            return;
+        }
+
+        const nextList = [...list, { name: s, used: false }];
+        setItemSkillsByType({ ...itemSkillsByType, [t]: nextList });
+        setItemSkillInput("");
+    };
+
+    const removeSkillFromType = (t: SkillType, idx: number) => {
+        const list = (itemSkillsByType?.[t] ?? []) as Array<{ name: string; used: boolean }>;
+        const nextList = list.filter((_, i) => i !== idx);
+        setItemSkillsByType({ ...itemSkillsByType, [t]: nextList });
+    };
+
     return (
         <Card className="character-section">
             <div className="character-section-title">Inventario</div>
@@ -221,6 +267,71 @@ const Inventory = ({
                                         />
                                     </div>
                                 </div>
+
+                                {/* ====== SKILL CATEGORIZZATE ====== */}
+                                <div className="space-y-2">
+                                    <Label className="block">Skill (per categoria)</Label>
+
+                                    {/* Selettore categoria */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        {SKILL_TYPES.map((t) => (
+                                            <Button
+                                                key={t}
+                                                type="button"
+                                                size="sm"
+                                                variant={itemSkillType === t ? "default" : "outline"}
+                                                onClick={() => setItemSkillType(t)}
+                                            >
+                                                {LABELS[t]}
+                                            </Button>
+                                        ))}
+                                    </div>
+
+                                    {/* Input singolo per aggiungere una skill nella categoria selezionata */}
+                                    <Input
+                                        className="mt-2"
+                                        value={itemSkillInput}
+                                        onChange={(e) => setItemSkillInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter" || e.key === ",") {
+                                                e.preventDefault();
+                                                addSkillToCurrentType(itemSkillInput);
+                                            }
+                                        }}
+                                        placeholder="Digita una skill e premi Invio (o ,)"
+                                    />
+
+                                    {/* Chip per ciascuna categoria (solo se presenti) */}
+                                    <div className="space-y-2 mt-2">
+                                        {SKILL_TYPES.map((t) => {
+                                            const arr = (itemSkillsByType?.[t] ?? []) as Array<{ name: string; used: boolean }>;
+                                            if (!arr.length) return null;
+                                            return (
+                                                <div key={t}>
+                                                    <div className="text-xs font-medium text-muted-foreground">{LABELS[t]}</div>
+                                                    <div className="mt-1 flex flex-wrap gap-2">
+                                                        {arr.map((s, idx) => (
+                                                            <div key={`${t}-${idx}`} className="px-2 py-1 rounded bg-muted text-xs flex items-center gap-1">
+                                                                <span className="italic">{s.name}</span>
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-5 px-1"
+                                                                    onClick={() => removeSkillFromType(t as SkillType, idx)}
+                                                                    aria-label={`Rimuovi ${s.name}`}
+                                                                >
+                                                                    ×
+                                                                </Button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                                {/* ====== /SKILL CATEGORIZZATE ====== */}
                             </div>
                         )}
 

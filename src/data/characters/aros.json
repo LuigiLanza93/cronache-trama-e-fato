@@ -80,10 +80,18 @@
         "equipped": false
       },
       {
-        "name": "Spadalunga con runa luminosa",
-        "attackBonus": 2,
-        "damageType": "1d8 tagliente",
-        "equipped": true
+        "name": "Spada Lunga del Legame Sepolcrale",
+        "attackBonus": 1,
+        "damageType": "1d8+1 tagliente",
+        "equipped": true,
+        "skillsByType": {
+          "riposoLungo": [
+            {
+              "name": "Una volta per lungo riposo, se stai per scendere a 0 PF mentre impugni la spada, invece rimani a 1 PF.",
+              "used": false
+            }
+          ]
+        }
       }
     ],
     "equipment": [
@@ -93,7 +101,8 @@
       "Pugnale",
       "Ciondolo d'argento corroso",
       "2 pozioni",
-      "1d12"
+      "1d12",
+      "Spada Lunga del Legame Sepolcrale"
     ],
     "coins": {
       "cp": 0,
@@ -105,9 +114,9 @@
   },
   "features": [],
   "spells": [],
-  "personalityTraits": "Non cerco la gloria, cerco la prova. Ogni battaglia mi dice chi sono davvero, non posso voltare le spalle a chi è più debole, sarebbe come tradire me stesso.",
-  "ideals": "Protezione: 'La mia spada vale qualcosa solo se difende chi non può brandirne una.' Crescita: 'Ogni sfida, ogni ferita, ogni duello è un passo per diventare più forte di ieri.'",
-  "bonds": "Porta con sé la vecchia spada scheggiata che usò nel suo primo vero combattimento: simbolo del momento in cui ha scelto la sua strada.",
-  "flaws": "Non riesce a resistere al richiamo di una sfida: il rischio di superare se stesso lo spinge anche quando dovrebbe fermarsi.",
+  "personalityTraits": "",
+  "ideals": "",
+  "bonds": "",
+  "flaws": "",
   "backstory": ""
 }

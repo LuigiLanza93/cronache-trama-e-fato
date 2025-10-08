@@ -43,6 +43,16 @@ import Languages from "@/components/characterSheet/languages";
 type InputEl = HTMLInputElement | HTMLTextAreaElement;
 type Coins = { cp: number; sp: number; ep: number; gp: number; pp: number };
 
+/** === Nuovi tipi per skills categorizzate === */
+type SkillType = "volonta" | "incontro" | "riposoBreve" | "riposoLungo";
+type SkillEntry = { name: string; used: boolean };
+type SkillsByType = {
+  volonta: SkillEntry[];
+  incontro: SkillEntry[];
+  riposoBreve: SkillEntry[];
+  riposoLungo: SkillEntry[];
+};
+
 interface Character {
   slug: string;
   basicInfo: {
@@ -74,7 +84,18 @@ interface Character {
     languages: string[];
   };
   equipment: {
-    attacks: Array<{ name: string; attackBonus: number; damageType: string; equipped?: boolean }>;
+    attacks: Array<{
+      name: string;
+      attackBonus: number;
+      damageType: string;
+      equipped?: boolean;
+      /** legacy: singola skill */
+      skill?: string;
+      /** legacy: lista piatta */
+      skills?: string[];
+      /** nuovo: per categoria con stato di utilizzo */
+      skillsByType?: Partial<SkillsByType>;
+    }>;
     equipment: string[];
     coins?: Partial<Coins>;
   };
@@ -107,6 +128,8 @@ const COIN_KEYS = {
 } as const;
 type CoinAbbr = keyof typeof COIN_KEYS;
 
+const SKILL_TYPES: SkillType[] = ["volonta", "incontro", "riposoBreve", "riposoLungo"];
+
 const CharacterSheet = () => {
   const { character } = useParams();
   const [characterData, setCharacterData] = useState<Character | null>(null);
@@ -130,6 +153,19 @@ const CharacterSheet = () => {
   const [itemAtkBonus, setItemAtkBonus] = useState<string>("");
   const [itemDmgType, setItemDmgType] = useState<string>("");
   const [invError, setInvError] = useState<string>("");
+
+  /** legacy singola skill (manteniamo fino all’update di Inventory) */
+  const [itemSkill, setItemSkill] = useState<string>("");
+
+  /** === NUOVO: gestione per categoria nel form === */
+  const [itemSkillType, setItemSkillType] = useState<SkillType>("volonta");
+  const [itemSkillInput, setItemSkillInput] = useState<string>("");
+  const [itemSkillsByType, setItemSkillsByType] = useState<SkillsByType>({
+    volonta: [],
+    incontro: [],
+    riposoBreve: [],
+    riposoLungo: [],
+  });
 
   // ======= ADD SPELL dialog (CTA) =======
   const [addSpellOpen, setAddSpellOpen] = useState(false);
@@ -252,6 +288,11 @@ const CharacterSheet = () => {
     setItemName("");
     setItemAtkBonus("");
     setItemDmgType("");
+    setItemSkill(""); // legacy
+    // nuovi stati categorizzati
+    setItemSkillType("volonta");
+    setItemSkillInput("");
+    setItemSkillsByType({ volonta: [], incontro: [], riposoBreve: [], riposoLungo: [] });
     setInvError("");
     setCoinFlow("add");
   };
@@ -275,6 +316,24 @@ const CharacterSheet = () => {
     );
     const patch = { equipment: { attacks: nextAttacks } };
     setCharacterData((prev) => (prev ? { ...prev, equipment: { ...prev.equipment, attacks: nextAttacks } } : prev));
+    if (character) updateCharacter(character, patch);
+  };
+
+  /** === NUOVO: toggle checkbox “usata” per una skill categorizzata === */
+  const toggleAttackSkillUsed = (attackIndex: number, type: SkillType, skillIndex: number) => {
+    if (!characterData) return;
+    const prevAttack = characterData.equipment.attacks[attackIndex];
+    const byType = prevAttack.skillsByType ?? {};
+    const list = [...(byType[type] ?? [])];
+    if (!list[skillIndex]) return;
+    const updated = { ...list[skillIndex], used: !list[skillIndex].used };
+    list[skillIndex] = updated;
+    const nextSkillsByType = { ...byType, [type]: list };
+    const nextAttack = { ...prevAttack, skillsByType: nextSkillsByType };
+    const nextAttacks = characterData.equipment.attacks.map((a, i) => (i === attackIndex ? nextAttack : a));
+    const patch = { equipment: { attacks: nextAttacks } };
+
+    setCharacterData((p) => (p ? { ...p, equipment: { ...p.equipment, attacks: nextAttacks } } : p));
     if (character) updateCharacter(character, patch);
   };
 
@@ -328,12 +387,25 @@ const CharacterSheet = () => {
       return;
     }
     const prevEq = characterData.equipment;
+
+    // calcolo se abbiamo almeno una skill categorizzata
+    const hasAnyCategorized = SKILL_TYPES.some((t) => (itemSkillsByType[t]?.length ?? 0) > 0);
+    // pruno gli array vuoti per il payload
+    const prunedSkillsByType = SKILL_TYPES.reduce((acc, t) => {
+      const arr = itemSkillsByType[t] ?? [];
+      if (arr.length) acc[t] = arr;
+      return acc;
+    }, {} as Partial<SkillsByType>);
+
     if (attackFieldsFilled) {
       const attack = {
         name: itemName.trim(),
         attackBonus: Number(itemAtkBonus),
         damageType: itemDmgType.trim(),
         equipped: false,
+        ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
+        // fallback legacy se non hai usato il nuovo input ancora
+        ...(!hasAnyCategorized && itemSkill.trim() ? { skill: itemSkill.trim() } : {}),
       };
       const nextAttacks = [...prevEq.attacks, attack];
       const alsoList = prevEq.equipment.includes(itemName.trim()) ? prevEq.equipment : [...prevEq.equipment, itemName.trim()];
@@ -458,6 +530,7 @@ const CharacterSheet = () => {
             <AttacksAndSpells
               characterData={characterData}
               toggleEquipAttack={toggleEquipAttack}
+              toggleAttackSkillUsed={toggleAttackSkillUsed} // << nuova prop
             />
           </div>
           <div className="space-y-6">
@@ -491,6 +564,16 @@ const CharacterSheet = () => {
               setItemAtkBonus={setItemAtkBonus}
               itemDmgType={itemDmgType}
               setItemDmgType={setItemDmgType}
+              /** legacy singolo campo (resta finché aggiorniamo Inventory) */
+              itemSkill={itemSkill}
+              setItemSkill={setItemSkill}
+              /** nuove props per skills categorizzate (useremo nel prossimo file) */
+              itemSkillType={itemSkillType}
+              setItemSkillType={setItemSkillType}
+              itemSkillInput={itemSkillInput}
+              setItemSkillInput={setItemSkillInput}
+              itemSkillsByType={itemSkillsByType}
+              setItemSkillsByType={setItemSkillsByType}
               invError={invError}
               removeAttack={removeAttack}
               removeItem={removeItem}

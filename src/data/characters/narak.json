@@ -111,16 +111,28 @@
         "equipped": false
       },
       {
-        "name": "Violino del cantore d’ossa",
-        "attackBonus": 0,
-        "damageType": "0",
-        "equipped": true
-      },
-      {
         "name": "Pozione",
         "attackBonus": 2,
         "damageType": "2d4",
         "equipped": false
+      },
+      {
+        "name": "Violino del Cantore Sepolto",
+        "attackBonus": 0,
+        "damageType": "0",
+        "equipped": true,
+        "skillsByType": {
+          "riposoLungo": [
+            {
+              "name": "Una volta per lungo riposo, quando usi Ispirazione Bardica, il beneficiario ottiene anche PF temporanei pari al dado di ispirazione.",
+              "used": false
+            },
+            {
+              "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
+              "used": false
+            }
+          ]
+        }
       }
     ],
     "equipment": [
@@ -134,8 +146,8 @@
       "Spada lunga (versatile)",
       "Spada corta",
       "Arco corto",
-      "Violino del cantore d’ossa",
-      "Pozione"
+      "Pozione",
+      "Violino del Cantore Sepolto"
     ],
     "coins": {
       "cp": 0,

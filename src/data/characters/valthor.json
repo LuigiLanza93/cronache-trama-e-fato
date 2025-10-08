@@ -83,16 +83,30 @@
         "equipped": true
       },
       {
-        "name": "Anello della vita sepolcrale: 1 volta per riposo lungo permette di rimanere con 1PF invece di 0",
-        "attackBonus": 0,
-        "damageType": "+2Cure Magiche",
-        "equipped": true
-      },
-      {
         "name": "Pozione di cura",
         "attackBonus": 0,
         "damageType": "2d4 +2 PF",
         "equipped": false
+      },
+      {
+        "name": "Anello della Vita Sepolcrale",
+        "attackBonus": 0,
+        "damageType": "0",
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            {
+              "name": "Ogni volta che recuperi PF tramite magia, ottieni +2 PF extra.",
+              "used": false
+            }
+          ],
+          "riposoLungo": [
+            {
+              "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
+              "used": false
+            }
+          ]
+        }
       }
     ],
     "equipment": [
@@ -106,7 +120,8 @@
       "Spada corta",
       "Arco corto",
       "Anello della vita sepolcrale: 1 volta per riposo lungo permette di rimanere con 1PF invece di 0",
-      "Pozione di cura"
+      "Pozione di cura",
+      "Anello della Vita Sepolcrale"
     ],
     "coins": {
       "cp": 0,
