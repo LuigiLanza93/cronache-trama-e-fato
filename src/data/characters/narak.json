@@ -57,13 +57,105 @@
   },
   "proficiencies": {
     "savingThrows": [
-      "Froza",
-      "Costituzione"
+      "Destrezza",
+      "Carisma"
     ],
     "languages": [
       "Comune",
       "Elfico",
       "Abissale"
+    ],
+    "skills": [
+      {
+        "name": "Acrobazia",
+        "ability": "dexterity",
+        "proficient": false
+      },
+      {
+        "name": "Addestrare Animali",
+        "ability": "wisdom",
+        "proficient": false
+      },
+      {
+        "name": "Arcano",
+        "ability": "intelligence",
+        "proficient": false
+      },
+      {
+        "name": "Atletica",
+        "ability": "strength",
+        "proficient": false
+      },
+      {
+        "name": "Inganno",
+        "ability": "charisma",
+        "proficient": true
+      },
+      {
+        "name": "Storia",
+        "ability": "intelligence",
+        "proficient": false
+      },
+      {
+        "name": "Intuizione",
+        "ability": "wisdom",
+        "proficient": false
+      },
+      {
+        "name": "Intimidire",
+        "ability": "charisma",
+        "proficient": false
+      },
+      {
+        "name": "Indagare",
+        "ability": "intelligence",
+        "proficient": false
+      },
+      {
+        "name": "Medicina",
+        "ability": "wisdom",
+        "proficient": false
+      },
+      {
+        "name": "Natura",
+        "ability": "intelligence",
+        "proficient": false
+      },
+      {
+        "name": "Percezione",
+        "ability": "wisdom",
+        "proficient": false
+      },
+      {
+        "name": "Intrattenere",
+        "ability": "charisma",
+        "proficient": false
+      },
+      {
+        "name": "Persuasione",
+        "ability": "charisma",
+        "proficient": false
+      },
+      {
+        "name": "Religione",
+        "ability": "intelligence",
+        "proficient": false
+      },
+      {
+        "name": "Rapidità di Mano",
+        "ability": "dexterity",
+        "proficient": true
+      },
+      {
+        "name": "Furtività",
+        "ability": "dexterity",
+        "proficient": false
+      },
+      {
+        "name": "Sopravvivenza",
+        "ability": "wisdom",
+        "proficient": false
+      }
     ]
   },
   "equipment": {
