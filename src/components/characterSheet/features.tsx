@@ -162,7 +162,7 @@ const Features = ({
                                                     : "bg-background"
                                             )}
                                         >
-                                            {i + 1}
+                                           
                                         </button>
                                     ))}
                                 </div>
