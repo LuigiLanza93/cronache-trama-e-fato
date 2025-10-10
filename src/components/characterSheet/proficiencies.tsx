@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { updateCharacter } from "@/realtime";
+import { Eye } from "lucide-react";
 
 const Proficiencies = ({
     characterData,
@@ -67,6 +68,18 @@ const Proficiencies = ({
 
     const profBonus = proficiencyBonus(characterData.basicInfo.level);
     const skillsCalc = calculateSkillValues(characterData) || [];
+
+    // ===== Percezione passiva =====
+    // Trova l'oggetto skill "Percezione" (fallback: "Perception")
+    const perceptionSkill = skillsCalc.find(
+        (s: any) =>
+            typeof s?.name === "string" &&
+            ["percezione", "perception"].includes(s.name.toLowerCase())
+    );
+    const wisMod = perceptionSkill?.value ?? 0;
+    // Usa la mappa persistita (non il draft) per il calcolo ufficiale
+    const isPerceptionProficient = !!persistedProfsMap[perceptionSkill?.name ?? "Percezione"];
+    const passivePerception = 10 + wisMod + (isPerceptionProficient ? profBonus : 0);
 
     return (
         <Card className="character-section">
@@ -177,6 +190,22 @@ const Proficiencies = ({
                         </div>
                     </div>
                 </div>
+
+                {/* ===== Percezione passiva (blocco singolo con icona) ===== */}
+                <Separator />
+                <div>
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                        Percezione passiva
+                    </Label>
+                    <div
+                        className="text-lg font-bold text-primary"
+                        aria-label={`Percezione passiva: ${passivePerception}`}
+                    >
+                        {passivePerception}
+                    </div>
+                </div>
+                {/* ===== Fine Percezione passiva ===== */}
 
                 <Separator />
 

@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Aros",
     "class": "Guerriero",
-    "level": 2,
+    "level": 3,
     "background": "Soldato",
     "playerName": "Luigi",
     "race": "Umano",
@@ -22,8 +22,8 @@
     "armorClass": 18,
     "initiative": 2,
     "speed": 9,
-    "hitPointMaximum": 26,
-    "currentHitPoints": 26,
+    "hitPointMaximum": 39,
+    "currentHitPoints": 39,
     "temporaryHitPoints": 0,
     "hitDice": "1d10",
     "deathSaves": {

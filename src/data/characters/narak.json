@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Narak",
     "class": "Bardo",
-    "level": 2,
+    "level": 3,
     "background": "Ciarlatano",
     "playerName": "Roberto",
     "race": "Mezzelfo",
@@ -22,8 +22,8 @@
     "armorClass": 13,
     "initiative": 5,
     "speed": 9,
-    "hitPointMaximum": 20,
-    "currentHitPoints": 20,
+    "hitPointMaximum": 30,
+    "currentHitPoints": 30,
     "temporaryHitPoints": 0,
     "hitDice": "1d8",
     "deathSaves": {
@@ -43,9 +43,22 @@
         {
           "id": 3,
           "active": false
+        },
+        {
+          "id": 4,
+          "active": false
         }
       ],
-      "2": [],
+      "2": [
+        {
+          "id": 1,
+          "active": false
+        },
+        {
+          "id": 2,
+          "active": false
+        }
+      ],
       "3": [],
       "4": [],
       "5": [],
