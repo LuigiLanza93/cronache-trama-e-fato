@@ -23,7 +23,7 @@
     "initiative": 5,
     "speed": 9,
     "hitPointMaximum": 30,
-    "currentHitPoints": 30,
+    "currentHitPoints": 6,
     "temporaryHitPoints": 0,
     "hitDice": "1d8",
     "deathSaves": {
@@ -34,19 +34,19 @@
       "1": [
         {
           "id": 1,
-          "active": false
+          "active": true
         },
         {
           "id": 2,
-          "active": false
+          "active": true
         },
         {
           "id": 3,
-          "active": false
+          "active": true
         },
         {
           "id": 4,
-          "active": false
+          "active": true
         }
       ],
       "2": [
@@ -82,7 +82,7 @@
       {
         "name": "Acrobazia",
         "ability": "dexterity",
-        "proficient": false
+        "proficient": true
       },
       {
         "name": "Addestrare Animali",
@@ -117,7 +117,7 @@
       {
         "name": "Intimidire",
         "ability": "charisma",
-        "proficient": false
+        "proficient": true
       },
       {
         "name": "Indagare",
@@ -142,12 +142,12 @@
       {
         "name": "Intrattenere",
         "ability": "charisma",
-        "proficient": false
+        "proficient": true
       },
       {
         "name": "Persuasione",
         "ability": "charisma",
-        "proficient": false
+        "proficient": true
       },
       {
         "name": "Religione",
@@ -162,7 +162,7 @@
       {
         "name": "Furtività",
         "ability": "dexterity",
-        "proficient": false
+        "proficient": true
       },
       {
         "name": "Sopravvivenza",
@@ -201,7 +201,7 @@
         "name": "Spada lunga (versatile)",
         "attackBonus": 2,
         "damageType": "1d8 tagliente",
-        "equipped": true
+        "equipped": false
       },
       {
         "name": "Spada corta",
@@ -213,12 +213,6 @@
         "name": "Arco corto",
         "attackBonus": 0,
         "damageType": "1d6",
-        "equipped": false
-      },
-      {
-        "name": "Pozione",
-        "attackBonus": 2,
-        "damageType": "2d4",
         "equipped": false
       },
       {
@@ -234,10 +228,74 @@
             },
             {
               "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
+              "used": true
+            }
+          ]
+        }
+      },
+      {
+        "name": "Collegio bardico del valore",
+        "attackBonus": 0,
+        "damageType": "0",
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            {
+              "name": "Competenza in armature medie negli scudi e nelle armi da guerra",
+              "used": false
+            },
+            {
+              "name": "Posso ispirare gli altri",
+              "used": false
+            },
+            {
+              "name": "Al livello 6 posso attaccare 2 volte",
               "used": false
             }
           ]
         }
+      },
+      {
+        "name": "Maestria",
+        "attackBonus": 0,
+        "damageType": "0",
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            {
+              "name": "Al 3 livello un bardo sceglie due tra le sue competenze nelle abilità. Il suo bonus di competenza raddoppia in ogni prova di caratteristica effettuata usando una delle competenze scelte.",
+              "used": false
+            },
+            {
+              "name": "Al 10 livello un bardo può scegliere altre due competenze nelle abilità per ottenere questo beneficio.",
+              "used": false
+            }
+          ]
+        }
+      },
+      {
+        "name": "Oggetti del ragno",
+        "attackBonus": 0,
+        "damageType": "0",
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            {
+              "name": "Guanto con ragno ricamato sopra",
+              "used": false
+            },
+            {
+              "name": "Anello di “maestro” del ragno",
+              "used": false
+            }
+          ]
+        }
+      },
+      {
+        "name": "Ascia bipenne",
+        "attackBonus": 0,
+        "damageType": "1d12",
+        "equipped": true
       }
     ],
     "equipment": [
@@ -246,19 +304,21 @@
       "Armatura di cuoio",
       "Pugnale",
       "5 dardi avvelenati",
-      "Guanto con ragno ricamato",
-      "Anello di ‘maestro’ nemico contro mercante",
       "Spada lunga (versatile)",
       "Spada corta",
       "Arco corto",
       "Pozione",
-      "Violino del Cantore Sepolto"
+      "Violino del Cantore Sepolto",
+      "Collegio bardico del valore",
+      "Maestria",
+      "Oggetti del ragno",
+      "Ascia bipenne"
     ],
     "coins": {
       "cp": 0,
       "sp": 0,
       "ep": 0,
-      "gp": 148,
+      "gp": 51,
       "pp": 0
     }
   },
@@ -282,6 +342,18 @@
     {
       "name": "Sussurri Dissonanti (bardo, Lv 1)",
       "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 18 m\nComponenti: V\nDurata: Istantanea\n\nL'incantatore sussurra una melodia dissonante che soltanto una creatura a sua scelta e situata entro gittata è in grado di udire; quella creatura sarà scossa da un dolore lancinante. Il bersaglio deve effettuare un tiro salvezza su Saggezza. Se lo fallisce, subisce 3d6 danni psichici e. se disponibile, deve usare immediatamente la sua reazione per muoversi fin dove la sua velocità glielo consente, allontanandosi dall'incantatore. La creatura non si muove su terreno palesemente pericoloso come un incendio o una fossa. Se invece supera il tiro salvezza, il bersaglio subisce soltanto la metà di quei danni e non deve muoversi per allontanarsi. Una creatura assordata supera automaticamente il tiro salvezza. Ai Livelli Superiori. Quando l'incantatore lancia questo incantesimo usando uno slot incantesimo di 2° livello o superiore, i danni aumentano di ld6 per ogni slot di livello superiore al 1°.\n\nUso: Forzare disimpegno, rompere concentrazione, togliere nemici dal corpo a corpo."
+    },
+    {
+      "name": "Prestidigitazione (bardo, Lv 0)",
+      "description": "Livello 0 · Trasmutazione\nTempo di lancio: 1 azione\nGittata: 3 metri\nComponenti: V, S\nDurata: Massimo 1 ora\n\nQuesto incantesimo è un trucco magico minore che gli incantatori novizi impiegano per fare pratica. Crei a gittata uno dei seguenti effetti magici:\nCrei un effetto sensoriale innocuo e istantaneo come una pioggia di scintille, un soffio di vento, una debole nota musicale o uno strano odore. Illumini o spegni istantaneamente una candela, una torcia o piccolo fuoco da campo. Ripulisci o insozzi istantaneamente un oggetto non più grosso di 0,03 metri cubi. Raffreddi, riscaldi o insapori per 1 ora fino a 0,03 metri cubi di materiale non vivente. Fai comparire per 1 ora un colore, un piccolo segno o un simbolo su di un oggetto o una superficie. Crei un ninnolo non magico o un’immagine illusoria che entri nella tua mano e che resta fino al termine del tuo prossimo turno.\nSe lanci questo incantesimo più volte, puoi tenere attivi fino a tre effetti non istantanei alla volta, e puoi interrompere uno di questi effetti con un’azione.\n"
+    },
+    {
+      "name": "Illusione Minore (bardo, Lv 0)",
+      "description": "Livello 0 · Illusione\nTempo di lancio: 1 azione\nGittata: 9 metri\nComponenti: S, M (un pezzo di vello)\nDurata: 1 minuto\n\nCrei l’immagine di un oggetto o un suono a gittata per la durata dell’incantesimo. L’illusione ha termine se la interrompi con un’azione o lanci di nuovo questo incantesimo.\nSe crei un suono, il suo volume può variare da quello di un bisbiglio a un urlo. Può essere la tua voce, la voce di qualcun altro, il ruggito di un leone, un battito di tamburi, o qualsiasi altro suono tu scelga. Il suono continua incessante per tutta la durata, oppure puoi produrre suoni diversi in momenti diversi prima del termine dell’incantesimo.\nSe crei l’immagine di un oggetto (come una sedia, un’impronta fangosa o un piccolo forziere) non può essere più grande di un cubo di 1,5 metri di spigolo. L’immagine non può produrre suoni, luci, odori o qualsiasi altro effetto sensoriale. L’interazione fisica con l’oggetto lo rivela come illusione, perché le cose lo possono attraversare.\nUna creatura che usa la sua azione per esaminare il suono o l’immagine può determinare che si tratta di un’illusione con una prova riuscita di Intelligenza (Indagare) contro la CD del tiro salvezza del tuo incantesimo. Se una creatura riconosce l’illusione per quello che è, per lei l’illusione sbiadisce.\n"
+    },
+    {
+      "name": "Trama Ipnotica (bardo, Lv 3)",
+      "description": "Livello 3 · Illusione · Concentrazione\nTempo di lancio: 1 azione\nGittata: 36 metri\nComponenti: S, M (un bastoncino luminoso di incenso o una fiala di cristallo piena di materiale fosforescente)\nDurata: Concentrazione, massimo 1 minuto\n\nCrei a gittata una trama contorta di colori che si muove nell’aria all’interno di un cubo di 9 metri di spigolo. La trama appare per un momento e poi svanisce. Ogni creatura nell’area che veda la trama deve effettuare un tiro salvezza su Saggezza. Se fallisce il tiro salvezza, una creatura rimane affascinata per la durata. Mentre è affascinata da questo incantesimo, la creatura è inabile e ha velocità 0.\nL’incantesimo termina per la creatura soggetta, qualora questa subisca danni o se qualcuno usa un’azione per scuoterla dal suo stato confusionale.\n"
     }
   ],
   "spells": [],

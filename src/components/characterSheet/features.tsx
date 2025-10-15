@@ -148,7 +148,7 @@ const Features = ({
                         return (
                             <div key={lvl}>
                                 <div className="text-xs text-muted-foreground mb-1">
-                                    Livello {lvl}
+                                    {characterData.basicInfo.class === 'Guerriero' ? 'Manovre' : `Livello ${lvl}`}
                                 </div>
                                 <div className="flex gap-2 flex-wrap">
                                     {lvlSlots.map((slot: any, i: number) => (

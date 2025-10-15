@@ -29,6 +29,30 @@
     "deathSaves": {
       "successes": 0,
       "failures": 0
+    },
+    "spellSlots": {
+      "1": [
+        {
+          "id": 1,
+          "active": false
+        },
+        {
+          "id": 2,
+          "active": false
+        },
+        {
+          "id": 3,
+          "active": false
+        }
+      ],
+      "2": [],
+      "3": [],
+      "4": [],
+      "5": [],
+      "6": [],
+      "7": [],
+      "8": [],
+      "9": []
     }
   },
   "proficiencies": {
@@ -44,7 +68,7 @@
       {
         "name": "Acrobazia",
         "ability": "dexterity",
-        "proficient": false
+        "proficient": true
       },
       {
         "name": "Addestrare Animali",
@@ -99,7 +123,7 @@
       {
         "name": "Percezione",
         "ability": "wisdom",
-        "proficient": false
+        "proficient": true
       },
       {
         "name": "Intrattenere",
@@ -184,6 +208,28 @@
             }
           ]
         }
+      },
+      {
+        "name": "Manovre",
+        "attackBonus": 0,
+        "damageType": "0",
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            {
+              "name": "Attacco adescante: Con un rapido inganno di spada, distrai l’avversario per colpire con precisione. Effetto: spendi un Dado di Superiorità e usi un’Azione Bonus per fingere un attacco; ottieni vantaggio sul prossimo tiro per colpire contro la stessa creatura entro il turno e, se colpisci, aggiungi il dado al danno.",
+              "used": false
+            },
+            {
+              "name": "Incoraggiamento: Con parole di comando o un gesto ispirante, infondi coraggio in un alleato. Effetto: spendi un Dado di Superiorità per dare a un alleato entro 9 m Punti Ferita Temporanei pari al tiro del dado + il tuo modificatore di Carisma.",
+              "used": false
+            },
+            {
+              "name": "Parata: Deviando il colpo all’ultimo momento, riduci l’impatto dell’attacco. Effetto: quando una creatura ti colpisce con un attacco in mischia, spendi un Dado di Superiorità come Reazione per ridurre i danni subiti di un ammontare pari al tiro del dado + il tuo modificatore di Destrezza.",
+              "used": false
+            }
+          ]
+        }
       }
     ],
     "equipment": [
@@ -194,13 +240,13 @@
       "Ciondolo d'argento corroso",
       "2 pozioni",
       "1d12",
-      "Spada Lunga del Legame Sepolcrale"
+      "Guanto e anello"
     ],
     "coins": {
       "cp": 0,
       "sp": 0,
       "ep": 0,
-      "gp": 147,
+      "gp": 69,
       "pp": 0
     }
   },

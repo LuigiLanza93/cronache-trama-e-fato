@@ -14452,6 +14452,24 @@
       "usage": null,
       "rest": null,
       "_source": "https://dungeonedraghi.it/compendio/incantesimi/dardo-incantato/"
-    }
+    },
+{
+"name": "Nube di Pugnali",
+"level": 2,
+"school": "Evocazione",
+"casting_time": "1 azione",
+"range": "18 metri",
+"components": "V, S, M (una scheggia di vetro)",
+"duration": "Fino a 1 minuto",
+"concentration": true,
+"saving_throw": null,
+"attack_roll": false,
+"damage": "4d4 (taglienti)",
+"scaling": "Quando lanci questo incantesimo usando uno slot incantesimo di 3° livello o superiore, i danni aumentano di 2d4 per ogni livello dello slot sopra il 2°.",
+"ritual": false,
+"description": "Crei una nube di pugnali che riempie un cubo di 1,5 metri di lato, centrato su un punto a gittata che puoi vedere. Una creatura subisce 4d4 danni taglienti quando entra per la prima volta in un turno nell’area dell’incantesimo o quando inizia il suo turno lì.",
+"usage": null,
+"rest": null
+}
   ]
 }

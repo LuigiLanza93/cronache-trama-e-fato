@@ -24,7 +24,7 @@
     "speed": 9,
     "hitPointMaximum": 27,
     "currentHitPoints": 27,
-    "temporaryHitPoints": 0,
+    "temporaryHitPoints": 7,
     "hitDice": "1d8",
     "deathSaves": {
       "successes": 0,
@@ -75,7 +75,7 @@
       {
         "name": "Arcano",
         "ability": "intelligence",
-        "proficient": false
+        "proficient": true
       },
       {
         "name": "Atletica",
@@ -115,7 +115,7 @@
       {
         "name": "Natura",
         "ability": "intelligence",
-        "proficient": false
+        "proficient": true
       },
       {
         "name": "Percezione",
@@ -199,6 +199,12 @@
             }
           ]
         }
+      },
+      {
+        "name": "Vigore Immondo: ti warlock può lanciare vita falsata su se stesso a volontà  come incantesimo di 1' livello, senza spendere uno slot  incantesimo o componenti materiali.",
+        "attackBonus": 0,
+        "damageType": "0",
+        "equipped": true
       }
     ],
     "equipment": [
@@ -219,7 +225,7 @@
       "cp": 0,
       "sp": 0,
       "ep": 0,
-      "gp": 150,
+      "gp": 75,
       "pp": 0
     }
   },
@@ -237,28 +243,20 @@
       "description": "Livello 0 · Evocazione\nTempo di lancio: 1 azione\nGittata: 3 metri\nComponenti: V, S\nDurata: Istantanea\n\nStendi la mano verso una creatura a gittata e che puoi vedere, e proietti una nube di gas velenoso dal tuo palmo. La creatura deve superare un tiro salvezza su Costituzione o subire 1d12 danni da veleno. Il danno dell’incantesimo aumenta di 1d12 quando raggiungi il 5° livello (2d12), 11° livello (3d12) e 17° livello (4d12).\n"
     },
     {
-      "name": "Dardo Incantato (warlock, Lv 1)",
-      "description": "Livello 1 · Invocazione\nTempo di lancio: 1 azione\nGittata: 36 metri\nComponenti: V, S\nDurata: Istantanea\n\nCrei tre dardi luminosi di forza magica. Ciascun dardo colpisce una creatura a gittata che puoi vedere, scelta da te. Un dardo infligge 1d4 + 1 danni da forza al suo bersaglio. I dardi colpiscono tutti simultaneamente, e li puoi dirigere perché colpiscano una o più creature.\n"
-    },
-    {
       "name": "Mani Brucianti (mago, Lv 1)",
       "description": "Livello 1 · Invocazione\nTempo di lancio: 1 azione\nGittata: Incantatore (cono di 4,5 metri)\nComponenti: V, S\nDurata: Istantanea\n\nMentre tieni le mani con i pollici che si toccano e le dita tese, un sottile fiotto di fiamme parte da ciascuna delle punta delle tue dita. Ogni creatura in un cono di 4,5 metri deve effettuare un tiro salvezza su Destrezza. Una creatura subisce 3d6 danni da fuoco se fallisce il tiro salvezza, o la metà se lo supera. Il fuoco incendia gli oggetti infiammabili nell’area che non siano indossati o trasportati.\n"
-    },
-    {
-      "name": "Comando (chierico, Lv 1)",
-      "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V\nDurata: 1 round\n\nPronunci un comando di una parola verso una creatura a gittata e che puoi vedere. Il bersaglio deve superare un tiro salvezza su Saggezza o eseguire il comando durante il suo prossimo turno. L’incantesimo non ha effetto se il bersaglio è non morto, se non capisce la tua lingua, o se il tuo comando gli recherebbe danni. Seguono alcuni tipici comandi e i loro effetti. Puoi dare comandi diversi da quelli descritti qui, e in quel caso il GM determinerà il comportamento del bersaglio. Se il bersaglio non può eseguire il tuo comando, l’incantesimo ha fine.\n"
     },
     {
       "name": "Vita Falsata (mago, Lv 1)",
       "description": "Livello 1 · Necromanzia\nTempo di lancio: 1 azione\nGittata: Incantatore\nComponenti: V, S, M (un piccolo ammontare di alcool o spirito distillato)\nDurata: 1 ora\n\nPotenziandoti con una parvenza necromantica di vitalità, ottieni 1d4 + 4 punti ferita temporanei per la durata.\n"
     },
     {
-      "name": "Servitore Inosservato (warlock, Lv 1)",
-      "description": "Livello 1 · Evocazione · Rituale\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (un pezzo di corda e un pezzo di legno)\nDurata: 1 ora\n\nQuesto incantesimo crea una forza invisibile, senza cervello e informe, che svolge dei semplici compiti al tuo comando, fino al termine dell’incantesimo. Il servitore si forma in uno spazio sul terreno non occupato, entro la gittata. Ha CA 10, 1 punto ferita, Forza 2 e non può attaccare. Se scende a 0 punti ferita, l’incantesimo ha termine. Come azione bonus, durante ciascun tuo turno, puoi comandare mentalmente il servitore di muoversi fino a 4,5 metri e interagire con un oggetto. Il servitore può svolgere dei semplici compiti alla stregua di un servitore umano, come raccogliere cose, pulire, riparare, piegare abiti, accendere fuochi, servire il cibo e versare il vino. Una volta impartito il comando, il servitore svolgerà il compito al meglio delle sue capacità finché non l’avràcompletato, e poi aspetterà il tuo prossimo comando. Se comandi al servitore di svolgere un compito che lo farà muovere a più di 18 metri da te, l’incantesimo termina.\n"
-    },
-    {
       "name": "Ritirata Rapida (warlock, Lv 1)",
       "description": "Livello 1 · Trasmutazione · Concentrazione\nTempo di lancio: 1 azione bonus\nGittata: Incantatore\nComponenti: V, S\nDurata: Concentrazione, massimo 10 minuti\n\nQuesto incantesimo ti permette di muoverti a un’andatura incredibile. Quando lanci questo incantesimo, e poi con un’azione bonus durante ciascun tuo turno fino al termine dell’incantesimo, puoi effettuare l’azione Scattare.\n"
+    },
+    {
+      "name": "Nube di Pugnali (warlock, Lv 2)",
+      "description": "Livello 2 · Evocazione · Concentrazione\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (una scheggia di vetro)\nDurata: Fino a 1 minuto\n\nCrei una nube di pugnali che riempie un cubo di 1,5 metri di lato, centrato su un punto a gittata che puoi vedere. Una creatura subisce 4d4 danni taglienti quando entra per la prima volta in un turno nell’area dell’incantesimo o quando inizia il suo turno lì.\n"
     }
   ],
   "spells": [],
