@@ -260,87 +260,87 @@
         "equipped": true
       },
       {
+        "type": "consumable",
+        "name": "Dardi avvelenati",
+        "quantity": 5,
+        "subtype": "generic",
+        "description": "Gittata 6/18 m. Danno 1d4 perforante. Veleno base: TS COS CD 10 o +1d4 veleno (0 al successo)."
+      },
+      {
         "type": "object",
         "name": "Flauto",
         "description": "Strumento musicale.",
         "equippable": false,
         "equipped": false
-      },      
+      },
       {
         "type": "object",
-        "name": "aa",
-        "description": "aa",
-        "equippable": false,
-        "equipped": false
+        "name": "Violino del Cantore Sepolto",
+        "description": "Lo strumento emette un suono cupo e malinconico, come un lamento distante.",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "riposoLungo": [
+            {
+              "name": "Una volta per lungo riposo, quando usi Ispirazione Bardica, il beneficiario ottiene anche PF temporanei pari al dado di ispirazione.",
+              "used": false
+            },
+            {
+              "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
+              "used": true
+            }
+          ]
+        }
       },
-        {
-    "type": "object",
-    "name": "Violino del Cantore Sepolto",
-    "description": "Lo strumento emette un suono cupo e malinconico, come un lamento distante.",
-    "equippable": true,
-    "equipped": true,
-    "skillsByType": {
-      "riposoLungo": [
-        {
-          "name": "Una volta per lungo riposo, quando usi Ispirazione Bardica, il beneficiario ottiene anche PF temporanei pari al dado di ispirazione.",
-          "used": false
-        },
-        {
-          "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
-          "used": true
+      {
+        "type": "object",
+        "name": "Collegio bardico del valore",
+        "description": "Indicazioni di sottoclasse:",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            {
+              "name": "Competenza in armature medie negli scudi e nelle armi da guerra",
+              "used": false
+            },
+            {
+              "name": "Posso ispirare gli altri",
+              "used": false
+            },
+            {
+              "name": "Al livello 6 posso attaccare 2 volte",
+              "used": false
+            }
+          ]
         }
-      ]
-    }
-  },
-  {
-    "type": "object",
-    "name": "Collegio bardico del valore",
-    "description": "Indicazioni di sottoclasse:",
-    "equippable": true,
-    "equipped": true,
-    "skillsByType": {
-      "volonta": [
-        {
-          "name": "Competenza in armature medie negli scudi e nelle armi da guerra",
-          "used": false
-        },
-        {
-          "name": "Posso ispirare gli altri",
-          "used": false
-        },
-        {
-          "name": "Al livello 6 posso attaccare 2 volte",
-          "used": false
+      },
+      {
+        "type": "object",
+        "name": "Maestria",
+        "description": "Caratteristica di classe del Bardo:",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            {
+              "name": "Al 3 livello un bardo sceglie due tra le sue competenze nelle abilità. Il suo bonus di competenza raddoppia in ogni prova di caratteristica effettuata usando una delle competenze scelte.",
+              "used": false
+            },
+            {
+              "name": "Al 10 livello un bardo può scegliere altre due competenze nelle abilità per ottenere questo beneficio.",
+              "used": false
+            }
+          ]
         }
-      ]
-    }
-  },
-  {
-    "type": "object",
-    "name": "Maestria",
-    "description": "Caratteristica di classe del Bardo:",
-    "equippable": true,
-    "equipped": true,
-    "skillsByType": {
-      "volonta": [
-        {
-          "name": "Al 3 livello un bardo sceglie due tra le sue competenze nelle abilità. Il suo bonus di competenza raddoppia in ogni prova di caratteristica effettuata usando una delle competenze scelte.",
-          "used": false
-        },
-        {
-          "name": "Al 10 livello un bardo può scegliere altre due competenze nelle abilità per ottenere questo beneficio.",
-          "used": false
-        }
-      ]
-    }
-  },
-  {
-    "type": "object",
-    "name": "Oggetti del ragno",
-    "description": "- Guanto con ragno ricamato sopra\n- Anello di “maestro” del ragno",
-    "equippable": true,
-    "equipped": true
-  }
+      },
+      {
+        "type": "object",
+        "name": "Oggetti del ragno",
+        "description": "- Guanto con ragno ricamato sopra\n- Anello di “maestro” del ragno",
+        "equippable": true,
+        "equipped": true
+      }
     ]
   },
   "features": [

@@ -205,12 +205,6 @@
         "equipped": true
       }
     ],
-    "equipment": [
-      "Dotazione avventuriero",
-      "Ciondolo d'argento corroso",
-      "1d12",
-      "Guanto e anello"
-    ],
     "coins": {
       "cp": 0,
       "sp": 0,
@@ -243,7 +237,7 @@
       {
         "type": "object",
         "name": "Dotazione avventuriero",
-        "description": "",
+        "description": "Zaino - Piede di porco - Martello - 10 chiodi - 10 torce - Acciarino - Pietra focaia - Otre - 15m di corda",
         "equippable": false
       },
       {

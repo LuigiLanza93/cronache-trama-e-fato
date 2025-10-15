@@ -6,43 +6,8 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
-
-/** Select minimale, senza dipendenze extra */
-function Select({
-  value,
-  onChange,
-  children,
-  id,
-  className = "",
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  id?: string;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <select
-      id={id}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`w-full border rounded-md px-3 py-2 text-sm bg-background ${className}`}
-    >
-      {children}
-    </select>
-  );
-}
-
-/** parser retro-compatibilità: "1d8+3 tagliente" -> { dice, type } */
-function parseLegacyDamage(s: string | undefined): { dice?: string; type?: string } {
-  const src = (s ?? "").trim();
-  if (!src) return {};
-  const m = src.match(/^\s*([^\s]+)\s+(tagliente|perforante|contundente)\s*$/i);
-  if (m) return { dice: m[1], type: m[2].toLowerCase() };
-  return { dice: src };
-}
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 const Inventory = ({
   coins,
@@ -65,22 +30,21 @@ const Inventory = ({
   setItemAtkBonus,
   itemDmgType,
   setItemDmgType,
-  /** --- nuove props per skills categorizzate --- */
-  itemSkill,                 // legacy
-  setItemSkill,              // legacy
-  itemSkillType,             // "volonta" | "incontro" | "riposoBreve" | "riposoLungo"
+  /** legacy singolo campo (resta per compat) */
+  itemSkill,
+  setItemSkill,
+  /** nuove props per skills categorizzate */
+  itemSkillType,
   setItemSkillType,
   itemSkillInput,
   setItemSkillInput,
   itemSkillsByType,
   setItemSkillsByType,
-  /** --- fine nuove props --- */
   invError,
   removeAttack,
   removeItem,
   toggleEquipAttack,
-
-  // opzionali per i nuovi tipi (oggetti/consumabili già gestiti)
+  /** NEW oggetti/consumabili */
   itemDescription,
   setItemDescription,
   itemQuantity,
@@ -91,15 +55,12 @@ const Inventory = ({
   setItemKind,
   potionDice,
   setPotionDice,
-
-  // ===== NEW: per oggetto equipaggiabile =====
   itemEquippable,
   setItemEquippable,
-
-  // handler opzionali per elenco strutturato
-  removeStructuredItem,                 // (index: number) => void
-  bumpConsumableQuantity,               // (index: number, delta: number) => void
-  toggleEquipItem,                      // (index: number) => void   // NEW opzionale
+  /** handlers elenco strutturato */
+  removeStructuredItem,
+  bumpConsumableQuantity,
+  toggleEquipItem,
 }: any) => {
   const COIN_KEYS = {
     mr: "cp",
@@ -110,7 +71,6 @@ const Inventory = ({
   } as const;
   type CoinAbbr = keyof typeof COIN_KEYS;
 
-  // === mapping categorie ===
   const SKILL_TYPES = ["volonta", "incontro", "riposoBreve", "riposoLungo"] as const;
   type SkillType = typeof SKILL_TYPES[number];
   const LABELS: Record<SkillType, string> = {
@@ -120,41 +80,6 @@ const Inventory = ({
     riposoLungo: "Riposo Lungo",
   };
 
-  // gestione locale del "kind" (weapon|object|consumable)
-  const [fallbackKind, setFallbackKind] = useState<"weapon" | "object" | "consumable">("weapon");
-  const kind: "weapon" | "object" | "consumable" = itemKind ?? fallbackKind;
-  const setKind = setItemKind ?? setFallbackKind;
-
-  // ---- Stati locali aggiuntivi per le ARMI ----
-  const [weaponCategory, setWeaponCategory] = useState<"melee" | "ranged">("melee"); // Miscia/Distanza
-  const [weaponHands, setWeaponHands] = useState<"1" | "2" | "versatile">("1");       // solo mischia
-  const [weaponRange, setWeaponRange] = useState<string>("");                         // solo distanza, es. 80/320
-  const [damageKind, setDamageKind] = useState<"tagliente" | "perforante" | "contundente">("tagliente");
-  // NB: itemDmgType rimane il "dado" (es. 1d8+3). I nuovi metadati li passiamo nel payload.
-
-  // ---- Stati locali per oggetti/consumabili ----
-  const [fallbackSubtype, setFallbackSubtype] = useState<"generic" | "potion">("generic");
-  const consumableSubtype: "generic" | "potion" = itemConsumableSubtype ?? fallbackSubtype;
-  const setConsumableSubtype = setItemConsumableSubtype ?? setFallbackSubtype;
-
-  const [fallbackDescription, setFallbackDescription] = useState<string>("");
-  const descriptionVal: string = (itemDescription ?? fallbackDescription);
-  const setDescription = setItemDescription ?? setFallbackDescription;
-
-  const [fallbackQuantity, setFallbackQuantity] = useState<string>("");
-  const quantityVal: string = (itemQuantity ?? fallbackQuantity);
-  const setQuantity = setItemQuantity ?? setFallbackQuantity;
-
-  const [fallbackPotionDice, setFallbackPotionDice] = useState<string>("");
-  const potionDiceVal: string = (potionDice ?? fallbackPotionDice);
-  const setPotionDiceVal = setPotionDice ?? setFallbackPotionDice;
-
-  // NEW: stato locale equipaggiabile (se parent non lo gestisce)
-  const [fallbackEquippable, setFallbackEquippable] = useState<boolean>(false);
-  const equippableVal: boolean = (typeof itemEquippable === "boolean" ? itemEquippable : fallbackEquippable);
-  const setEquippable = (setItemEquippable ?? setFallbackEquippable);
-
-  // === helpers per skills ===
   const addSkillToCurrentType = (raw: string) => {
     const s = (raw ?? "").trim();
     if (!s) return;
@@ -176,54 +101,13 @@ const Inventory = ({
     setItemSkillsByType({ ...itemSkillsByType, [t]: nextList });
   };
 
-  const renderSkillsChips = (skillsByType?: Record<SkillType, { name: string; used: boolean }[]>) => {
-    if (!skillsByType) return null;
-    const blocks = SKILL_TYPES.map((t) => {
-      const arr = (skillsByType?.[t] ?? []);
-      if (!arr.length) return null;
-      return (
-        <div key={`disp-${t}`} className="mt-1">
-          <div className="text-xs font-medium text-muted-foreground">{LABELS[t]}</div>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {arr.map((s, idx) => (
-              <div key={`${t}-${idx}`} className="px-2 py-1 rounded bg-muted text-xs">
-                <span className="italic">{s.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    });
-    return <div className="mt-2 space-y-2">{blocks}</div>;
-  };
+  const attacks = Array.isArray(characterData?.equipment?.attacks)
+    ? characterData.equipment.attacks
+    : [];
 
-  const formType = mode === "coins" ? "coins" : `item-${kind}`;
-
-  // items strutturati (se presenti) — per oggetti/consumabili
-  const structuredItems = characterData?.equipment?.items as
-    | Array<
-      | { type: "object"; name: string; description?: string; equippable?: boolean; equipped?: boolean; skillsByType?: Record<SkillType, { name: string; used: boolean }[]>; }
-      | { type: "consumable"; name: string; quantity: number; subtype?: "generic" | "potion"; dice?: string; skillsByType?: Record<SkillType, { name: string; used: boolean }[]>; }
-    >
-    | undefined;
-
-  const hasStructuredObjects = !!structuredItems?.some((it) => it?.type === "object");
-  const hasStructuredConsumables = !!structuredItems?.some((it) => it?.type === "consumable");
-
-  // ==== helper per render armi (retro-compat) ====
-  const buildAttackDetail = (atk: any) => {
-    const bonus = `+${atk.attackBonus}`;
-    const dice = atk.damageDice ?? parseLegacyDamage(atk.damageType).dice ?? "";
-    const dtype = (atk.damageType && atk.damageDice) ? atk.damageType : (parseLegacyDamage(atk.damageType).type ?? "");
-    const cat = atk.category as "melee" | "ranged" | undefined;
-    const hands =
-      cat === "melee" && atk.hands
-        ? (atk.hands === "1" ? " • 1 mano" : atk.hands === "2" ? " • 2 mani" : " • versatile")
-        : "";
-    const range = cat === "ranged" && atk.range ? ` • gittata: ${atk.range}` : "";
-    const dmg = [dice, dtype].filter(Boolean).join(" ");
-    return `${bonus} • ${dmg}${hands}${range}`;
-  };
+  const structuredItems = Array.isArray(characterData?.equipment?.items)
+    ? characterData.equipment.items
+    : [];
 
   return (
     <Card className="character-section">
@@ -239,7 +123,7 @@ const Inventory = ({
             ["ME", "ep"],
             ["MO", "gp"],
             ["MP", "pp"],
-          ]).map(([label, key]) => (
+          ] as const).map(([label, key]) => (
             <div key={key} className="flex items-center justify-between">
               <span>
                 {label}: {coins[key]}
@@ -274,21 +158,34 @@ const Inventory = ({
       <Separator className="my-3" />
 
       {/* Armi */}
-      {characterData.equipment.attacks?.length > 0 && (
+      {attacks?.length > 0 && (
         <div className="space-y-2 mb-4">
           <div className="font-semibold text-primary">Armi</div>
-          {characterData.equipment.attacks.map((atk: any, i: number) => (
+          {attacks.map((atk: any, i: number) => (
             <div key={`${atk.name}-${i}`} className="flex items-center justify-between text-sm dnd-frame p-2">
               <div className="flex-1">
                 <div className="font-medium">
                   {atk.name} {atk.equipped ? "(equipaggiata)" : ""}
                 </div>
                 <div className="text-muted-foreground">
-                  {buildAttackDetail(atk)}
+                  {/* nuovo dettaglio */}
+                  {(() => {
+                    const bonus = typeof atk.attackBonus === "number" ? `+${atk.attackBonus}` : "";
+                    const dice = atk.damageDice || "";
+                    const type = atk.damageType || "";
+                    const cat = atk.category;
+                    const hands =
+                      cat === "melee" && atk.hands
+                        ? atk.hands === "1" ? " • 1 mano" : atk.hands === "2" ? " • 2 mani" : " • versatile"
+                        : "";
+                    const range = cat === "ranged" && atk.range ? ` • gittata: ${atk.range}` : "";
+                    const dmg = [dice, type].filter(Boolean).join(" ");
+                    return [bonus, "•", dmg, hands, range].filter(Boolean).join(" ");
+                  })()}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                {atk.name && (atk.damageDice || atk.damageType) && (
+                {atk.name && atk.attackBonus !== undefined && (atk.damageDice || atk.damageType) && (
                   <Button
                     size="sm"
                     variant={atk.equipped ? "outline" : "default"}
@@ -306,127 +203,125 @@ const Inventory = ({
         </div>
       )}
 
-      {/* Consumabili */}
-      {hasStructuredConsumables && (
-        <div className="space-y-2 mb-4">
-          <div className="font-semibold text-primary">Consumabili</div>
-          {structuredItems!.map((it, idx) => {
-            if (it?.type !== "consumable") return null;
-            const qty = typeof it.quantity === "number" ? it.quantity : 0;
-            const isPotion = (it.subtype ?? "generic") === "potion";
-            const canDec = qty <= 0;
+      {/* Oggetti strutturati */}
+      <div className="space-y-2">
+        <div className="font-semibold text-primary">Oggetti</div>
+
+        {/* Oggetti/consumabili (nuovo schema) */}
+        {structuredItems.map((it: any, index: number) => {
+          if (!it) return null;
+          if (it.type === "object") {
             return (
-              <div key={`cons-${idx}`} className="text-sm dnd-frame p-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="font-medium">{it.name}</div>
-                    {isPotion && it.dice && (
-                      <div className="text-muted-foreground text-sm mt-1">effetto: {it.dice}</div>
-                    )}
-                    {renderSkillsChips(it.skillsByType as any)}
+              <div key={`obj-${index}`} className="flex items-center justify-between text-sm dnd-frame p-2">
+                <div className="flex-1">
+                  <div className="font-medium">
+                    {it.name} {it.equippable ? (it.equipped ? "(equipaggiato)" : "") : ""}
                   </div>
-
-                  {!!bumpConsumableQuantity && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1" aria-label={`Quantità di ${it.name}`}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 w-7 px-0 text-sm"
-                          disabled={canDec}
-                          onClick={() => bumpConsumableQuantity(idx, -1)}
-                          aria-disabled={canDec}
-                          aria-label="Diminuisci"
-                        >
-                          −
-                        </Button>
-                        <div className="w-10 text-center text-sm font-semibold select-none tabular-nums">
-                          {qty}
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 w-7 px-0 text-sm"
-                          onClick={() => bumpConsumableQuantity(idx, +1)}
-                          aria-label="Aumenta"
-                        >
-                          +
-                        </Button>
-                      </div>
-
-                      {!!removeStructuredItem && (
-                        <Button size="icon" variant="ghost" aria-label="Rimuovi consumabile" onClick={() => removeStructuredItem(idx)}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
+                  {it.description && <div className="text-muted-foreground whitespace-pre-wrap">{it.description}</div>}
+                  {/* skillsByType per oggetti: solo chips */}
+                  {it.skillsByType && (
+                    <div className="mt-2 space-y-1">
+                      {(["volonta", "incontro", "riposoBreve", "riposoLungo"] as const).map((t) => {
+                        const arr = (it.skillsByType?.[t] ?? []) as Array<{ name: string; used: boolean }>;
+                        if (!arr?.length) return null;
+                        return (
+                          <div key={`obj-${t}`} className="text-xs">
+                            <div className="font-medium text-muted-foreground">
+                              {t === "volonta" ? "Volontà" : t === "incontro" ? "Incontro" : t === "riposoBreve" ? "Riposo Breve" : "Riposo Lungo"}
+                            </div>
+                            <div className="mt-1 flex flex-wrap gap-2">
+                              {arr.map((s, si) => (
+                                <span key={`obj-${t}-${si}`} className="italic">{s.name}</span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Oggetti (strutturati) */}
-      {hasStructuredObjects && (
-        <div className="space-y-2 mb-4">
-          <div className="font-semibold text-primary">Oggetti</div>
-          {structuredItems!.map((it, idx) => {
-            if (it?.type !== "object") return null;
-            const equippable = !!it.equippable;
-            const equipped = !!it.equipped;
-            return (
-              <div key={`obj-${idx}`} className="text-sm dnd-frame p-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="font-medium">
-                      {it.name} {equippable && equipped ? "(equipaggiato)" : ""}
-                    </div>
-                    {it.description && (
-                      <div className="text-muted-foreground whitespace-pre-wrap">{it.description}</div>
-                    )}
-                    {renderSkillsChips(it.skillsByType as any)}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {equippable && !!toggleEquipItem && (
-                      <Button
-                        size="sm"
-                        variant={equipped ? "outline" : "default"}
-                        onClick={() => toggleEquipItem(idx)}
-                      >
-                        {equipped ? "Disequipaggia" : "Equipaggia"}
-                      </Button>
-                    )}
-                    {!!removeStructuredItem && (
-                      <Button size="icon" variant="ghost" aria-label="Rimuovi oggetto" onClick={() => removeStructuredItem(idx)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+                <div className="flex items-center gap-2">
+                  {it.equippable && (
+                    <Button size="sm" variant={it.equipped ? "outline" : "default"} onClick={() => toggleEquipItem(index)}>
+                      {it.equipped ? "Disequipaggia" : "Equipaggia"}
+                    </Button>
+                  )}
+                  <Button size="icon" variant="ghost" aria-label="Rimuovi oggetto" onClick={() => removeStructuredItem(index)}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             );
-          })}
-        </div>
-      )}
+          }
 
-      {/* Oggetti (legacy) – solo se NON ci sono oggetti strutturati */}
-      {!hasStructuredObjects && (
-        <div>
-          <div className="font-semibold text-primary">Oggetti</div>
-          {characterData.equipment.equipment.map((item: string, index: number) => (
-            <div key={index} className="flex items-center justify-between text-sm">
-              <span>• {item}</span>
-              <Button size="icon" variant="ghost" aria-label="Rimuovi oggetto" onClick={() => removeItem(index)}>
-                <X className="h-4 w-4" />
-              </Button>
+          // consumable
+          return (
+            <div key={`cons-${index}`} className="flex items-center justify-between text-sm dnd-frame p-2">
+              <div className="flex-1">
+                <div className="font-medium">
+                  {it.name} 
+                </div>
+                {it.subtype === "potion" && it.dice && (
+                  <div className="text-muted-foreground">{it.dice}</div>
+                )}
+                {/* NEW: mostra descrizione (danni/effetti) se presente */}
+                {it.description && (
+                  <div className="text-xs text-muted-foreground whitespace-pre-wrap mt-1">
+                    {it.description}
+                  </div>
+                )}
+                {/* skillsByType opzionale: chips */}
+                {it.skillsByType && (
+                  <div className="mt-2 space-y-1">
+                    {(["volonta", "incontro", "riposoBreve", "riposoLungo"] as const).map((t) => {
+                      const arr = (it.skillsByType?.[t] ?? []) as Array<{ name: string; used: boolean }>;
+                      if (!arr?.length) return null;
+                      return (
+                        <div key={`cons-${t}`} className="text-xs">
+                          <div className="font-medium text-muted-foreground">
+                            {t === "volonta" ? "Volontà" : t === "incontro" ? "Incontro" : t === "riposoBreve" ? "Riposo Breve" : "Riposo Lungo"}
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-2">
+                            {arr.map((s, si) => (
+                              <span key={`cons-${t}-${si}`} className="italic">{s.name}</span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center rounded border">
+                  <button
+                    className="px-2 py-1 text-lg leading-none"
+                    aria-label="Decrementa quantità"
+                    onClick={() => bumpConsumableQuantity(index, -1)}
+                  >
+                    –
+                  </button>
+                  <div className="px-2 py-1 min-w-[2.5rem] text-center font-medium">
+                    {it.quantity ?? 0}
+                  </div>
+                  <button
+                    className="px-2 py-1 text-lg leading-none"
+                    aria-label="Incrementa quantità"
+                    onClick={() => bumpConsumableQuantity(index, +1)}
+                  >
+                    +
+                  </button>
+                </div>
+                <Button size="icon" variant="ghost" aria-label="Rimuovi consumabile" onClick={() => removeStructuredItem(index)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
-      {/* Modale Aggiungi */}
+      {/* Modale */}
       <Dialog
         open={invOpen}
         onOpenChange={(v) => {
@@ -446,47 +341,52 @@ const Inventory = ({
                 ? coinFlow === "add"
                   ? "Aggiungi monete"
                   : "Rimuovi monete"
-                : kind === "weapon"
-                  ? "Aggiungi arma"
-                  : kind === "object"
-                    ? "Aggiungi oggetto"
-                    : "Aggiungi consumabile"}
-            </DialogTitle>
+                : "Aggiungi elemento"}
+          </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
               <Label className="mb-2 block">Tipo</Label>
-              <RadioGroup
-                value={formType}
-                onValueChange={(v) => {
-                  if (v === "coins") {
-                    setMode("coins");
-                  } else {
-                    setMode("item");
-                    const k = v.replace("item-", "") as "weapon" | "object" | "consumable";
-                    setKind(k);
-                  }
-                }}
-                className="grid grid-cols-2 gap-2"
-              >
+              <RadioGroup value={mode} onValueChange={(v) => setMode(v as any)} className="grid grid-cols-2 gap-2 mb-3">
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="coins" id="r-coins" />
                   <Label htmlFor="r-coins">Monete</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="item-weapon" id="r-weapon" />
-                  <Label htmlFor="r-weapon">Armi</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="item-object" id="r-object" />
-                  <Label htmlFor="r-object">Oggetti</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="item-consumable" id="r-consumable" />
-                  <Label htmlFor="r-consumable">Consumabili</Label>
+                  <RadioGroupItem value="item" id="r-item" />
+                  <Label htmlFor="r-item">Inventario</Label>
                 </div>
               </RadioGroup>
+
+              {mode === "item" && (
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={itemKind === "weapon" ? "default" : "outline"}
+                    onClick={() => setItemKind("weapon")}
+                  >
+                    Arma
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={itemKind === "object" ? "default" : "outline"}
+                    onClick={() => setItemKind("object")}
+                  >
+                    Oggetto
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={itemKind === "consumable" ? "default" : "outline"}
+                    onClick={() => setItemKind("consumable")}
+                  >
+                    Consumabile
+                  </Button>
+                </div>
+              )}
             </div>
 
             {mode === "coins" ? (
@@ -521,34 +421,16 @@ const Inventory = ({
               </div>
             ) : (
               <>
-                {kind === "weapon" && (
+                {/* Campo nome comune */}
+                <div>
+                  <Label className="mb-1 block">Nome *</Label>
+                  <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Es. Spada lunga" />
+                </div>
+
+                {/* Sezione specifica per tipo */}
+                {itemKind === "weapon" && (
                   <div className="space-y-3">
-                    <div>
-                      <Label className="mb-1 block">Nome *</Label>
-                      <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Es. Spada lunga" />
-                    </div>
-
-                    {/* Categoria arma */}
-                    <div>
-                      <Label className="mb-1 block">Categoria</Label>
-                      <RadioGroup
-                        value={weaponCategory}
-                        onValueChange={(v) => setWeaponCategory(v as "melee" | "ranged")}
-                        className="grid grid-cols-2 gap-2"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="melee" id="w-melee" />
-                          <Label htmlFor="w-melee">Mischia</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="ranged" id="w-ranged" />
-                          <Label htmlFor="w-ranged">Distanza</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    {/* Bonus + Dado + Tipo danno */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="mb-1 block">Bonus attacco</Label>
                         <Input
@@ -566,38 +448,78 @@ const Inventory = ({
                           placeholder="Es. 1d8+3"
                         />
                       </div>
-                      <div>
-                        <Label className="mb-1 block">Tipo di danno</Label>
-                        <Select value={damageKind} onChange={(v) => setDamageKind(v as any)} id="damage-kind">
-                          <option value="tagliente">Tagliente</option>
-                          <option value="perforante">Perforante</option>
-                          <option value="contundente">Contundente</option>
-                        </Select>
-                      </div>
                     </div>
 
-                    {/* Specifici per categoria */}
-                    {weaponCategory === "ranged" ? (
-                      <div>
+                    {/* Categoria arma */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={characterData?.__weaponCategory === "melee" ? "default" : "outline"}
+                        onClick={() => (characterData.__weaponCategory = "melee")}
+                      >
+                        Mischia
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={characterData?.__weaponCategory === "ranged" ? "default" : "outline"}
+                        onClick={() => (characterData.__weaponCategory = "ranged")}
+                      >
+                        Distanza
+                      </Button>
+                    </div>
+
+                    {/* Sotto-opzioni (mani / gittata / tipo danno) */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {/* Mani (solo mischia) */}
+                      <div className={cn(characterData?.__weaponCategory === "melee" ? "" : "opacity-50 pointer-events-none")}>
+                        <Label className="mb-1 block">Impugnatura</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(["1", "2", "versatile"] as const).map((h) => (
+                            <Button
+                              key={h}
+                              type="button"
+                              size="sm"
+                              variant={characterData?.__weaponHands === h ? "default" : "outline"}
+                              onClick={() => (characterData.__weaponHands = h)}
+                            >
+                              {h === "1" ? "1 mano" : h === "2" ? "2 mani" : "Versatile"}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Gittata (solo distanza) */}
+                      <div className={cn(characterData?.__weaponCategory === "ranged" ? "" : "opacity-50 pointer-events-none")}>
                         <Label className="mb-1 block">Gittata</Label>
                         <Input
-                          value={weaponRange}
-                          onChange={(e) => setWeaponRange(e.target.value)}
-                          placeholder="Es. 80/320"
+                          value={characterData?.__weaponRange || ""}
+                          onChange={(e) => (characterData.__weaponRange = e.target.value)}
+                          placeholder="Es. 24/96 m"
                         />
                       </div>
-                    ) : (
-                      <div>
-                        <Label className="mb-1 block">Mani</Label>
-                        <Select value={weaponHands} onChange={(v) => setWeaponHands(v as any)} id="weapon-hands" className="w-full">
-                          <option value="1">Una mano</option>
-                          <option value="2">Due mani</option>
-                          <option value="versatile">Versatile</option>
-                        </Select>
-                      </div>
-                    )}
 
-                    {/* SKILL CATEGORIZZATE */}
+                      {/* Tipo di danno */}
+                      <div>
+                        <Label className="mb-1 block">Tipo di danno</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(["tagliente", "perforante", "contundente"] as const).map((k) => (
+                            <Button
+                              key={k}
+                              type="button"
+                              size="sm"
+                              variant={characterData?.__damageKind === k ? "default" : "outline"}
+                              onClick={() => (characterData.__damageKind = k)}
+                            >
+                              {k}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Skills categorizzate */}
                     <div className="space-y-2">
                       <Label className="block">Skill (per categoria)</Label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -657,35 +579,23 @@ const Inventory = ({
                   </div>
                 )}
 
-                {kind === "object" && (
+                {itemKind === "object" && (
                   <div className="space-y-3">
-                    <div>
-                      <Label className="mb-1 block">Nome *</Label>
-                      <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Es. Corda di canapa" />
-                    </div>
                     <div>
                       <Label className="mb-1 block">Descrizione</Label>
-                      <Textarea
-                        value={descriptionVal}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Dettagli, effetti narrativi, condizioni d'uso…"
-                        rows={4}
+                      <textarea
+                        value={itemDescription}
+                        onChange={(e) => setItemDescription(e.target.value)}
+                        className="w-full border rounded px-2 py-1 h-24"
+                        placeholder='Es. "CA: 11 + DES" oppure testo libero.'
                       />
                     </div>
-
-                    {/* NEW: Equipaggiabile */}
                     <div className="flex items-center gap-2">
-                      <input
-                        id="obj-equippable"
-                        type="checkbox"
-                        checked={!!equippableVal}
-                        onChange={(e) => setEquippable(e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      <Label htmlFor="obj-equippable">Equipaggiabile</Label>
+                      <Switch id="equippable" checked={itemEquippable} onCheckedChange={setItemEquippable} />
+                      <Label htmlFor="equippable">Equipaggiabile</Label>
                     </div>
 
-                    {/* SKILL come per armi */}
+                    {/* Skills categorizzate (oggetti) */}
                     <div className="space-y-2">
                       <Label className="block">Skill (per categoria)</Label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -745,55 +655,65 @@ const Inventory = ({
                   </div>
                 )}
 
-                {kind === "consumable" && (
+                {itemKind === "consumable" && (
                   <div className="space-y-3">
-                    <div>
-                      <Label className="mb-1 block">Nome *</Label>
-                      <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Es. Razioni" />
-                    </div>
-
-                    <div>
-                      <Label className="mb-1 block">Sottotipo</Label>
-                      <RadioGroup
-                        value={consumableSubtype}
-                        onValueChange={(v) => setConsumableSubtype(v as "generic" | "potion")}
-                        className="grid grid-cols-2 gap-2"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="generic" id="sub-generic" />
-                          <Label htmlFor="sub-generic">Generico</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="potion" id="sub-potion" />
-                          <Label htmlFor="sub-potion">Pozione</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-1">
                         <Label className="mb-1 block">Quantità</Label>
                         <Input
                           inputMode="numeric"
-                          value={quantityVal}
-                          onChange={(e) => setQuantity(e.target.value)}
-                          placeholder="Es. 3"
+                          value={itemQuantity}
+                          onChange={(e) => setItemQuantity(e.target.value)}
+                          placeholder="Es. 5"
                         />
                       </div>
-
-                      {consumableSubtype === "potion" && (
-                        <div>
-                          <Label className="mb-1 block">Tiro di dado (effetto)</Label>
-                          <Input
-                            value={potionDiceVal}
-                            onChange={(e) => setPotionDiceVal(e.target.value)}
-                            placeholder="Es. 2d4+2"
-                          />
+                      <div className="col-span-2">
+                        <Label className="mb-1 block">Sottotipo</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={itemConsumableSubtype === "generic" ? "default" : "outline"}
+                            onClick={() => setItemConsumableSubtype("generic")}
+                          >
+                            Generico
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={itemConsumableSubtype === "potion" ? "default" : "outline"}
+                            onClick={() => setItemConsumableSubtype("potion")}
+                          >
+                            Pozione
+                          </Button>
                         </div>
-                      )}
+                      </div>
                     </div>
 
-                    {/* SKILL come per armi */}
+                    {/* Pozioni: dado cura */}
+                    {itemConsumableSubtype === "potion" && (
+                      <div>
+                        <Label className="mb-1 block">Dado (cura)</Label>
+                        <Input
+                          value={potionDice}
+                          onChange={(e) => setPotionDice(e.target.value)}
+                          placeholder="Es. 2d4+2"
+                        />
+                      </div>
+                    )}
+
+                    {/* NEW: descrizione per consumabili */}
+                    <div>
+                      <Label className="mb-1 block">Descrizione (opzionale)</Label>
+                      <textarea
+                        value={itemDescription}
+                        onChange={(e) => setItemDescription(e.target.value)}
+                        placeholder='Es. "Munizioni (dardo). Danno 1d4 perforante; +2d4 veleno, TS COS CD 12: metà."'
+                        className="w-full border rounded px-2 py-1 h-24"
+                      />
+                    </div>
+
+                    {/* Skills categorizzate (se vuoi) */}
                     <div className="space-y-2">
                       <Label className="block">Skill (per categoria)</Label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -862,23 +782,44 @@ const Inventory = ({
             <DialogClose asChild>
               <Button variant="outline">Annulla</Button>
             </DialogClose>
+
             <Button
-              onClick={() =>
-                handleInventorySubmit({
-                  kind,
-                  // nuovi campi arma:
-                  weaponCategory,
-                  weaponHands: weaponCategory === "melee" ? weaponHands : undefined,
-                  weaponRange: weaponCategory === "ranged" ? weaponRange?.trim() || undefined : undefined,
-                  damageKind, // "tagliente" | "perforante" | "contundente"
-                  // campi oggetti/consumabili:
-                  description: (kind === "object" ? (descriptionVal?.trim() || undefined) : (descriptionVal?.trim() || undefined)),
-                  equippable: (kind === "object" ? !!equippableVal : undefined), // NEW
-                  consumableSubtype,
-                  quantity: Number.isNaN(parseInt(quantityVal)) ? 0 : parseInt(quantityVal, 10),
-                  potionDice: potionDiceVal?.trim() || undefined,
-                })
-              }
+              onClick={() => {
+                if (mode === "coins") {
+                  handleInventorySubmit(); // monete: stesso flusso di prima
+                  return;
+                }
+                if (itemKind === "weapon") {
+                  handleInventorySubmit({
+                    kind: "weapon",
+                    weaponCategory: (characterData as any).__weaponCategory,
+                    weaponHands: (characterData as any).__weaponHands,
+                    weaponRange: (characterData as any).__weaponRange,
+                    damageKind: (characterData as any).__damageKind,
+                  });
+                  return;
+                }
+                if (itemKind === "object") {
+                  handleInventorySubmit({
+                    kind: "object",
+                    description: itemDescription,
+                    equippable: !!itemEquippable,
+                  });
+                  return;
+                }
+                if (itemKind === "consumable") {
+                  handleInventorySubmit({
+                    kind: "consumable",
+                    consumableSubtype: (["generic", "potion"] as const).includes(itemConsumableSubtype)
+                      ? itemConsumableSubtype
+                      : "generic",
+                    quantity: Number(itemQuantity) || 0,
+                    potionDice,
+                    description: itemDescription, // NEW
+                  });
+                  return;
+                }
+              }}
             >
               Salva
             </Button>
@@ -886,7 +827,7 @@ const Inventory = ({
         </DialogContent>
       </Dialog>
     </Card>
-  )
-}
+  );
+};
 
 export default Inventory;

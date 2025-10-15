@@ -157,13 +157,13 @@
   "equipment": {
     "attacks": [
       {
-      "name": "Spada corta",
-      "attackBonus": 0,
-      "damageDice": "1d6",
-      "damageType": "perforante",
-      "category": "melee",
-      "hands": "1",
-      "equipped": true
+        "name": "Spada corta",
+        "attackBonus": 0,
+        "damageDice": "1d6",
+        "damageType": "perforante",
+        "category": "melee",
+        "hands": "1",
+        "equipped": true
       },
       {
         "name": "Arco corto",
@@ -188,18 +188,18 @@
     "items": [
       {
         "type": "object",
-        "name": "Oggetto equipaggiabile di riferimento",
-        "description": "prova",
-        "equippable": true,
-        "equipped": false
-      },
-      {
-        "type": "object",
         "name": "Armatura di cuoio",
         "description": "CA: 11 + DES",
         "equippable": true,
         "equipped": true
       },
+      {
+        "type": "object",
+        "name": "Dotazione da Esploratore",
+        "description": "Zaino - Giaciglio - Gavetta - Acciarino - Pietra Focaia - 10 Torce - Otre - 15m di corda",
+        "equippable": true,
+        "equipped": true
+      },      
       {
         "type": "object",
         "name": "Anello della Vita Sepolcrale",
@@ -229,7 +229,10 @@
         "equipped": true,
         "skillsByType": {
           "volonta": [
-            { "name": "Mod. CAR ai danni di Deflagrazione Occulta", "used": false }
+            {
+              "name": "Mod. CAR ai danni di Deflagrazione Occulta",
+              "used": false
+            }
           ]
         }
       },
@@ -241,7 +244,10 @@
         "equipped": true,
         "skillsByType": {
           "volonta": [
-            { "name": "Vita Falsata (1°) a volontà", "used": false }
+            {
+              "name": "Vita Falsata (1°) a volontà",
+              "used": false
+            }
           ]
         }
       },
