@@ -31,7 +31,14 @@
       "failures": 0
     },
     "spellSlots": {
-      "1": [
+      "1": [],
+      "2": [],
+      "3": [],
+      "4": [],
+      "5": [],
+      "6": [],
+      "7": [],
+      "8": [
         {
           "id": 1,
           "active": false
@@ -43,16 +50,16 @@
         {
           "id": 3,
           "active": false
+        },
+        {
+          "id": 4,
+          "active": false
         }
       ],
-      "2": [],
-      "3": [],
-      "4": [],
-      "5": [],
-      "6": [],
-      "7": [],
-      "8": [],
-      "9": []
+      "9": [],
+      "10": [],
+      "11": [],
+      "12": []
     }
   },
   "proficiencies": {
@@ -160,30 +167,6 @@
   "equipment": {
     "attacks": [
       {
-        "name": "Arco lungo",
-        "attackBonus": 0,
-        "damageType": "1d8 perforanti",
-        "equipped": true
-      },
-      {
-        "name": "Scudo borchiato",
-        "attackBonus": 2,
-        "damageType": "0",
-        "equipped": true
-      },
-      {
-        "name": "Balestra a mano",
-        "attackBonus": 0,
-        "damageType": "1d6 perforanti",
-        "equipped": false
-      },
-      {
-        "name": "Cotta di maglia",
-        "attackBonus": 16,
-        "damageType": "0",
-        "equipped": true
-      },
-      {
         "name": "Spada lunga",
         "attackBonus": 2,
         "damageType": "1d8 taglienti",
@@ -198,7 +181,10 @@
       {
         "name": "Spada Lunga del Legame Sepolcrale",
         "attackBonus": 1,
-        "damageType": "1d8+1 tagliente",
+        "damageDice": "1d8+1",
+        "damageType": "tagliente",
+        "hands": "1",
+        "category": "melee",
         "equipped": true,
         "skillsByType": {
           "riposoLungo": [
@@ -210,35 +196,18 @@
         }
       },
       {
-        "name": "Manovre",
+        "name": "Arco Lungo",
         "attackBonus": 0,
-        "damageType": "0",
-        "equipped": true,
-        "skillsByType": {
-          "volonta": [
-            {
-              "name": "Attacco adescante: Con un rapido inganno di spada, distrai l’avversario per colpire con precisione. Effetto: spendi un Dado di Superiorità e usi un’Azione Bonus per fingere un attacco; ottieni vantaggio sul prossimo tiro per colpire contro la stessa creatura entro il turno e, se colpisci, aggiungi il dado al danno.",
-              "used": false
-            },
-            {
-              "name": "Incoraggiamento: Con parole di comando o un gesto ispirante, infondi coraggio in un alleato. Effetto: spendi un Dado di Superiorità per dare a un alleato entro 9 m Punti Ferita Temporanei pari al tiro del dado + il tuo modificatore di Carisma.",
-              "used": false
-            },
-            {
-              "name": "Parata: Deviando il colpo all’ultimo momento, riduci l’impatto dell’attacco. Effetto: quando una creatura ti colpisce con un attacco in mischia, spendi un Dado di Superiorità come Reazione per ridurre i danni subiti di un ammontare pari al tiro del dado + il tuo modificatore di Destrezza.",
-              "used": false
-            }
-          ]
-        }
+        "damageDice": "1d8",
+        "damageType": "perforante",
+        "category": "ranged",
+        "range": "45/180",
+        "equipped": true
       }
     ],
     "equipment": [
-      "20 frecce",
-      "20 quadrelli",
       "Dotazione avventuriero",
-      "Pugnale",
       "Ciondolo d'argento corroso",
-      "2 pozioni",
       "1d12",
       "Guanto e anello"
     ],
@@ -248,9 +217,83 @@
       "ep": 0,
       "gp": 69,
       "pp": 0
-    }
+    },
+    "items": [
+      {
+        "type": "consumable",
+        "name": "Pozione Cura",
+        "quantity": 2,
+        "subtype": "potion",
+        "dice": "2d4+2"
+      },
+      {
+        "type": "consumable",
+        "name": "Quadrelli",
+        "quantity": 20,
+        "subtype": "generic",
+        "dice": "2d4+2"
+      },
+      {
+        "type": "consumable",
+        "name": "Frecce",
+        "quantity": 20,
+        "subtype": "generic",
+        "dice": "2d4+2"
+      },
+      {
+        "type": "object",
+        "name": "Dotazione avventuriero",
+        "description": "",
+        "equippable": false
+      },
+      {
+        "type": "object",
+        "name": "Ciondolo d'argento corroso",
+        "description": "Un semplice ciondolo d'argento molto vecchio.",
+        "equippable": false
+      },
+      {
+        "type": "object",
+        "name": "1d12",
+        "description": "Pietra a 12 facce che sembra modificare l'ambiente circostante.",
+        "equippable": false
+      },
+      {
+        "type": "object",
+        "name": "Guanto e anello",
+        "description": "Guanto e anello col simbolo del ragno.",
+        "equippable": false
+      },
+      {
+        "type": "object",
+        "name": "Scudo borchiato",
+        "description": "CA: +2",
+        "equippable": true,
+        "equipped": true
+      },
+      {
+        "type": "object",
+        "name": "Cotta di maglia",
+        "description": "CA: 16",
+        "equippable": true,
+        "equipped": true
+      }
+    ]
   },
-  "features": [],
+  "features": [
+    {
+      "name": "Attacco Adescante (guerriero, Lv 0)",
+      "description": "Livello 0 · Manovra\nTempo di lancio: N/A (quando colpisci con un attacco)\nGittata: Bersaglio colpito\nComponenti: -\nDurata: Fino alla fine del tuo prossimo turno\n\nQuando il guerriero colpisce una\ncreatura con un attacco con un'arma, può spendere un\ndado di superiorità per indurre il bersaglio ad attaccarlo.\nIl guerriero aggiunge il dado di superiorità al tiro per i danni\ndell'attacco, e il bersaglio deve effettuare un tiro salvezza\nsu Saggezza. Se lo fallisce, il bersaglio subisce svantaggio\na tutti i tiri per colpire contro bersagli diversi dal guerriero\nfino alla fine del turno successivo del guerriero.\n\nUso: 1 dado di superiorità"
+    },
+    {
+      "name": "Incoraggiamento (guerriero, Lv 0)",
+      "description": "Livello 0 · Manovra\nTempo di lancio: Azione bonus\nGittata: Alleato che ti vede o ti sente\nComponenti: -\nDurata: Istantanea\n\nNel proprio turno, il guerriero può\nusare un'azione bonus e spendere un dado di superiorità\nper incitare uno dei suoi compagni. Quando lo fa, sceglie\nuna creatura amica che sia in grado di vederlo o di sentirlo.\nQuella creatura ottiene un ammontare di punti ferita\ntemporanei pari al risultato del tiro del dado di superiorità\n+ il modificatore di Carisma del guerriero.\n\nUso: 1 dado di superiorità"
+    },
+    {
+      "name": "Parata (guerriero, Lv 0)",
+      "description": "Livello 0 · Manovra\nTempo di lancio: Reazione (quando subisci danni da un attacco in mischia)\nGittata: Se stesso\nComponenti: -\nDurata: Istantanea\n\nQuando un'altra creatura infligge danni al\nguerriero con un attacco in mischia, il guerriero può usare\nla sua reazione e spendere un dado di superiorità per\nridurre i danni del numero ottenuto con il tiro del suo dado\ndi superiorità + il suo modificatore di Destrezza.\n\nUso: 1 dado di superiorità"
+    }
+  ],
   "spells": [],
   "personalityTraits": "",
   "ideals": "",

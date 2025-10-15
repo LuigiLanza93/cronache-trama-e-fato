@@ -176,125 +176,55 @@
       {
         "name": "Spada lunga",
         "attackBonus": 0,
-        "damageType": "1d8 tagliente",
+        "damageDice": "1d8",
+        "damageType": "tagliente",
+        "category": "melee",
+        "hands": "versatile",
         "equipped": false
-      },
-      {
-        "name": "Flauto",
-        "attackBonus": 0,
-        "damageType": "0",
-        "equipped": false
-      },
-      {
-        "name": "Armatura di cuoio",
-        "attackBonus": 0,
-        "damageType": "11 + DEX",
-        "equipped": true
       },
       {
         "name": "Pugnale",
         "attackBonus": 0,
-        "damageType": "1d4 perforante",
+        "damageDice": "1d4",
+        "damageType": "perforante",
+        "category": "melee",
+        "hands": "1",
         "equipped": false
       },
       {
         "name": "Spada lunga (versatile)",
         "attackBonus": 2,
-        "damageType": "1d8 tagliente",
+        "damageDice": "1d8",
+        "damageType": "tagliente",
+        "category": "melee",
+        "hands": "versatile",
         "equipped": false
       },
       {
         "name": "Spada corta",
         "attackBonus": 0,
-        "damageType": "1d6",
+        "damageDice": "1d6",
+        "damageType": "perforante",
+        "category": "melee",
+        "hands": "1",
         "equipped": false
       },
       {
         "name": "Arco corto",
         "attackBonus": 0,
-        "damageType": "1d6",
+        "damageDice": "1d6",
+        "damageType": "perforante",
+        "category": "ranged",
+        "range": "24/96 m",
         "equipped": false
-      },
-      {
-        "name": "Violino del Cantore Sepolto",
-        "attackBonus": 0,
-        "damageType": "0",
-        "equipped": true,
-        "skillsByType": {
-          "riposoLungo": [
-            {
-              "name": "Una volta per lungo riposo, quando usi Ispirazione Bardica, il beneficiario ottiene anche PF temporanei pari al dado di ispirazione.",
-              "used": false
-            },
-            {
-              "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
-              "used": true
-            }
-          ]
-        }
-      },
-      {
-        "name": "Collegio bardico del valore",
-        "attackBonus": 0,
-        "damageType": "0",
-        "equipped": true,
-        "skillsByType": {
-          "volonta": [
-            {
-              "name": "Competenza in armature medie negli scudi e nelle armi da guerra",
-              "used": false
-            },
-            {
-              "name": "Posso ispirare gli altri",
-              "used": false
-            },
-            {
-              "name": "Al livello 6 posso attaccare 2 volte",
-              "used": false
-            }
-          ]
-        }
-      },
-      {
-        "name": "Maestria",
-        "attackBonus": 0,
-        "damageType": "0",
-        "equipped": true,
-        "skillsByType": {
-          "volonta": [
-            {
-              "name": "Al 3 livello un bardo sceglie due tra le sue competenze nelle abilità. Il suo bonus di competenza raddoppia in ogni prova di caratteristica effettuata usando una delle competenze scelte.",
-              "used": false
-            },
-            {
-              "name": "Al 10 livello un bardo può scegliere altre due competenze nelle abilità per ottenere questo beneficio.",
-              "used": false
-            }
-          ]
-        }
-      },
-      {
-        "name": "Oggetti del ragno",
-        "attackBonus": 0,
-        "damageType": "0",
-        "equipped": true,
-        "skillsByType": {
-          "volonta": [
-            {
-              "name": "Guanto con ragno ricamato sopra",
-              "used": false
-            },
-            {
-              "name": "Anello di “maestro” del ragno",
-              "used": false
-            }
-          ]
-        }
       },
       {
         "name": "Ascia bipenne",
         "attackBonus": 0,
-        "damageType": "1d12",
+        "damageDice": "1d12",
+        "damageType": "tagliente",
+        "category": "melee",
+        "hands": "2",
         "equipped": true
       }
     ],
@@ -320,7 +250,98 @@
       "ep": 0,
       "gp": 51,
       "pp": 0
+    },
+    "items": [
+      {
+        "type": "object",
+        "name": "Armatura di cuoio",
+        "description": "CA: 11 + DES",
+        "equippable": true,
+        "equipped": true
+      },
+      {
+        "type": "object",
+        "name": "Flauto",
+        "description": "Strumento musicale.",
+        "equippable": false,
+        "equipped": false
+      },      
+      {
+        "type": "object",
+        "name": "aa",
+        "description": "aa",
+        "equippable": false,
+        "equipped": false
+      },
+        {
+    "type": "object",
+    "name": "Violino del Cantore Sepolto",
+    "description": "Lo strumento emette un suono cupo e malinconico, come un lamento distante.",
+    "equippable": true,
+    "equipped": true,
+    "skillsByType": {
+      "riposoLungo": [
+        {
+          "name": "Una volta per lungo riposo, quando usi Ispirazione Bardica, il beneficiario ottiene anche PF temporanei pari al dado di ispirazione.",
+          "used": false
+        },
+        {
+          "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
+          "used": true
+        }
+      ]
     }
+  },
+  {
+    "type": "object",
+    "name": "Collegio bardico del valore",
+    "description": "Indicazioni di sottoclasse:",
+    "equippable": true,
+    "equipped": true,
+    "skillsByType": {
+      "volonta": [
+        {
+          "name": "Competenza in armature medie negli scudi e nelle armi da guerra",
+          "used": false
+        },
+        {
+          "name": "Posso ispirare gli altri",
+          "used": false
+        },
+        {
+          "name": "Al livello 6 posso attaccare 2 volte",
+          "used": false
+        }
+      ]
+    }
+  },
+  {
+    "type": "object",
+    "name": "Maestria",
+    "description": "Caratteristica di classe del Bardo:",
+    "equippable": true,
+    "equipped": true,
+    "skillsByType": {
+      "volonta": [
+        {
+          "name": "Al 3 livello un bardo sceglie due tra le sue competenze nelle abilità. Il suo bonus di competenza raddoppia in ogni prova di caratteristica effettuata usando una delle competenze scelte.",
+          "used": false
+        },
+        {
+          "name": "Al 10 livello un bardo può scegliere altre due competenze nelle abilità per ottenere questo beneficio.",
+          "used": false
+        }
+      ]
+    }
+  },
+  {
+    "type": "object",
+    "name": "Oggetti del ragno",
+    "description": "- Guanto con ragno ricamato sopra\n- Anello di “maestro” del ragno",
+    "equippable": true,
+    "equipped": true
+  }
+    ]
   },
   "features": [
     {

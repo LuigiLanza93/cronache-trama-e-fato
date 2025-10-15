@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 import SPELL_SLOT_TABLE from "@/data/spellSlots.json"; // <-- il mega JSON
 
-const MAX_SPELL_LEVEL = 9;
+const MAX_SPELL_LEVEL = 12;
 
 const Features = ({
     characterData,
@@ -148,7 +148,7 @@ const Features = ({
                         return (
                             <div key={lvl}>
                                 <div className="text-xs text-muted-foreground mb-1">
-                                    {characterData.basicInfo.class === 'Guerriero' ? 'Manovre' : `Livello ${lvl}`}
+                                    {characterData.basicInfo.class === 'Guerriero' ? <>Manovre<br/>1d{lvl}</>  : <>Livello {lvl}</>}
                                 </div>
                                 <div className="flex gap-2 flex-wrap">
                                     {lvlSlots.map((slot: any, i: number) => (

@@ -157,33 +157,54 @@
   "equipment": {
     "attacks": [
       {
-        "name": "DEFLAGRAZIONE AGONIZZANTE Prerequisito: trucchetto deflagrazione occulta Quando il warlock lancia deflagrazione occulta, aggiunge il suo modificatore di Carisma ai danni che inftigge quando colpisce il bersaglio.",
-        "attackBonus": 0,
-        "damageType": "+CARISMA",
-        "equipped": true
-      },
-      {
-        "name": "Spada corta",
-        "attackBonus": 0,
-        "damageType": "1d6",
-        "equipped": true
+      "name": "Spada corta",
+      "attackBonus": 0,
+      "damageDice": "1d6",
+      "damageType": "perforante",
+      "category": "melee",
+      "hands": "1",
+      "equipped": true
       },
       {
         "name": "Arco corto",
         "attackBonus": 0,
-        "damageType": "1d6",
+        "damageDice": "1d6",
+        "damageType": "perforante",
+        "category": "ranged",
+        "range": "24/96 m",
         "equipped": true
-      },
+      }
+    ],
+    "equipment": [
+      "Explorer's pack"
+    ],
+    "coins": {
+      "cp": 0,
+      "sp": 0,
+      "ep": 0,
+      "gp": 75,
+      "pp": 0
+    },
+    "items": [
       {
-        "name": "Pozione di cura",
-        "attackBonus": 0,
-        "damageType": "2d4 +2 PF",
+        "type": "object",
+        "name": "Oggetto equipaggiabile di riferimento",
+        "description": "prova",
+        "equippable": true,
         "equipped": false
       },
       {
+        "type": "object",
+        "name": "Armatura di cuoio",
+        "description": "CA: 11 + DES",
+        "equippable": true,
+        "equipped": true
+      },
+      {
+        "type": "object",
         "name": "Anello della Vita Sepolcrale",
-        "attackBonus": 0,
-        "damageType": "0",
+        "description": "L’anello è d’argento annerito, decorato con un piccolo teschio.",
+        "equippable": true,
         "equipped": true,
         "skillsByType": {
           "volonta": [
@@ -201,33 +222,50 @@
         }
       },
       {
-        "name": "Vigore Immondo: ti warlock può lanciare vita falsata su se stesso a volontà  come incantesimo di 1' livello, senza spendere uno slot  incantesimo o componenti materiali.",
-        "attackBonus": 0,
-        "damageType": "0",
-        "equipped": true
+        "type": "object",
+        "name": "Deflagrazione Agonizzante",
+        "description": "Prerequisito: trucchetto Deflagrazione Occulta.\nEffetto: quando lanci Deflagrazione Occulta, aggiungi il tuo modificatore di Carisma ai danni di ogni raggio che colpisce.",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            { "name": "Mod. CAR ai danni di Deflagrazione Occulta", "used": false }
+          ]
+        }
+      },
+      {
+        "type": "object",
+        "name": "Vigore immondo",
+        "description": "Puoi lanciare Vita Falsata su te stesso a volontà come incantesimo di 1° livello, senza spendere slot incantesimo né componenti materiali.",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            { "name": "Vita Falsata (1°) a volontà", "used": false }
+          ]
+        }
+      },
+      {
+        "type": "consumable",
+        "name": "Pozione di Cura",
+        "quantity": 1,
+        "subtype": "potion",
+        "dice": "2d4+2"
+      },
+      {
+        "type": "consumable",
+        "name": "Componenti Arcani",
+        "quantity": 2,
+        "subtype": "generic"
+      },
+      {
+        "type": "object",
+        "name": "Pietra Misteriosa d20",
+        "description": "Pietra Misteriosa a 20 facce che può modificare dei consumabili in modo casuale",
+        "equippable": false,
+        "equipped": false
       }
-    ],
-    "equipment": [
-      "Explorer's pack",
-      "Armatura di Cuoio",
-      "pugnale",
-      "DEFLAGRAZIONE AGONIZZANTE Prerequisito: trucchetto deflagrazione occulta Quando il warlock lancia deflagrazione occulta, aggiunge il suo modificatore di Carisma ai danni che inftigge quando colpisce il bersaglio.",
-      "Vigore immondo: ti warlock può lanciare vita falsata su se stesso a volontà  come incantesimo di 1' livello, senza spendere uno slot  incantesimo o componenti materiali.",
-      "2 componenti arcani",
-      "Pietra misteriosa d20",
-      "Spada corta",
-      "Arco corto",
-      "Anello della vita sepolcrale: 1 volta per riposo lungo permette di rimanere con 1PF invece di 0",
-      "Pozione di cura",
-      "Anello della Vita Sepolcrale"
-    ],
-    "coins": {
-      "cp": 0,
-      "sp": 0,
-      "ep": 0,
-      "gp": 75,
-      "pp": 0
-    }
+    ]
   },
   "features": [
     {

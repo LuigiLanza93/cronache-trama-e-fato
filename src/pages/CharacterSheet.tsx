@@ -53,6 +53,25 @@ type SkillsByType = {
   riposoLungo: SkillEntry[];
 };
 
+/** === Tipi nuovi per items strutturati === */
+type StructuredObjectItem = {
+  type: "object";
+  name: string;
+  description?: string;
+  equippable?: boolean;
+  equipped?: boolean;
+  skillsByType?: Partial<SkillsByType>;
+};
+type StructuredConsumableItem = {
+  type: "consumable";
+  name: string;
+  quantity: number;
+  subtype?: "generic" | "potion";
+  dice?: string; // per pozioni (es. "2d4+2")
+  skillsByType?: Partial<SkillsByType>;
+};
+type StructuredItem = StructuredObjectItem | StructuredConsumableItem;
+
 interface Character {
   slug: string;
   basicInfo: {
@@ -76,6 +95,8 @@ interface Character {
     currentHitPoints: number;
     temporaryHitPoints: number;
     hitDice: string;
+    // opzionale: struttura slot, usata anche per manovre
+    spellSlots?: Record<number, Array<{ active: boolean }>>;
   };
   proficiencies: {
     proficiencyBonus: number;
@@ -87,16 +108,21 @@ interface Character {
     attacks: Array<{
       name: string;
       attackBonus: number;
-      damageType: string;
+      /** nuovo */
+      damageDice?: string; // es. "1d8+3"
+      damageType?: "tagliente" | "perforante" | "contundente"; // nuovo significato (solo tipo)
+      category?: "melee" | "ranged";
+      hands?: "1" | "2" | "versatile";
+      range?: string;
+      /** legacy: manteniamo compatibilità */
       equipped?: boolean;
-      /** legacy: singola skill */
       skill?: string;
-      /** legacy: lista piatta */
       skills?: string[];
-      /** nuovo: per categoria con stato di utilizzo */
       skillsByType?: Partial<SkillsByType>;
+      /** legacy totale: alcuni vecchi record hanno damageType="1d8+3 tagliente" */
     }>;
-    equipment: string[];
+    equipment: string[]; // legacy lista piatta (non aggiorniamo più)
+    items?: StructuredItem[]; // nuovo inventario strutturato
     coins?: Partial<Coins>;
   };
   features: Array<{ name: string; description: string; uses?: string }>;
@@ -149,6 +175,8 @@ const CharacterSheet = () => {
   const [coinType, setCoinType] = useState<CoinAbbr>("mo");
   const [coinQty, setCoinQty] = useState<string>("");
   const [coinFlow, setCoinFlow] = useState<"add" | "remove">("add");
+
+  // campi comuni item/weapon legacy
   const [itemName, setItemName] = useState("");
   const [itemAtkBonus, setItemAtkBonus] = useState<string>("");
   const [itemDmgType, setItemDmgType] = useState<string>("");
@@ -167,9 +195,17 @@ const CharacterSheet = () => {
     riposoLungo: [],
   });
 
+  // campi per oggetto/consumabile nella modale
+  const [itemDescription, setItemDescription] = useState<string>("");
+  const [itemQuantity, setItemQuantity] = useState<string>("");
+  const [itemConsumableSubtype, setItemConsumableSubtype] = useState<"generic" | "potion">("generic");
+  const [itemKind, setItemKind] = useState<"weapon" | "object" | "consumable">("weapon");
+  const [potionDice, setPotionDice] = useState<string>("");
+  const [itemEquippable, setItemEquippable] = useState<boolean>(false);
+
   // ======= ADD SPELL dialog (CTA) =======
   const [addSpellOpen, setAddSpellOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<string>(characterData?.basicInfo.class.toLowerCase());
+  const [selectedClass, setSelectedClass] = useState<string>(characterData?.basicInfo.class?.toLowerCase?.());
   const [spellQuery, setSpellQuery] = useState("");
 
   // ======= SPELL DETAILS modal (click su riga) =======
@@ -293,6 +329,13 @@ const CharacterSheet = () => {
     setItemSkillType("volonta");
     setItemSkillInput("");
     setItemSkillsByType({ volonta: [], incontro: [], riposoBreve: [], riposoLungo: [] });
+    // oggetti/consumabili
+    setItemDescription("");
+    setItemQuantity("");
+    setItemConsumableSubtype("generic");
+    setItemKind("weapon");
+    setPotionDice("");
+    setItemEquippable(false);
     setInvError("");
     setCoinFlow("add");
   };
@@ -319,7 +362,44 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
-  /** === NUOVO: toggle checkbox “usata” per una skill categorizzata === */
+  /** === NUOVO: toggle per oggetti equipaggiabili === */
+  const toggleEquipItem = (index: number) => {
+    if (!characterData) return;
+    const items = characterData.equipment.items ?? [];
+    const nextItems = items.map((it, i) =>
+      i === index && it?.type === "object" && (it as StructuredObjectItem).equippable
+        ? { ...it, equipped: !(it as StructuredObjectItem).equipped }
+        : it
+    );
+    const patch = { equipment: { items: nextItems } };
+    setCharacterData((prev) => (prev ? { ...prev, equipment: { ...prev.equipment, items: nextItems } } : prev));
+    if (character) updateCharacter(character, patch);
+  };
+
+  /** === NUOVO: consumabili +/- quantità === */
+  const bumpConsumableQuantity = (index: number, delta: number) => {
+    if (!characterData) return;
+    const items = characterData.equipment.items ?? [];
+    const it = items[index];
+    if (!it || it.type !== "consumable") return;
+    const q = Math.max(0, (it.quantity ?? 0) + delta);
+    const nextItems = items.map((x, i) => (i === index ? { ...x, quantity: q } : x));
+    const patch = { equipment: { items: nextItems } };
+    setCharacterData((prev) => (prev ? { ...prev, equipment: { ...prev.equipment, items: nextItems } } : prev));
+    if (character) updateCharacter(character, patch);
+  };
+
+  /** === NUOVO: rimozione item strutturato (object/consumable) === */
+  const removeStructuredItem = (index: number) => {
+    if (!characterData) return;
+    const items = characterData.equipment.items ?? [];
+    const nextItems = items.filter((_, i) => i !== index);
+    const patch = { equipment: { items: nextItems } };
+    setCharacterData((prev) => (prev ? { ...prev, equipment: { ...prev.equipment, items: nextItems } } : prev));
+    if (character) updateCharacter(character, patch);
+  };
+
+  /** === NUOVO: toggle checkbox “usata” per una skill categorizzata su ATTACCO === */
   const toggleAttackSkillUsed = (attackIndex: number, type: SkillType, skillIndex: number) => {
     if (!characterData) return;
     const prevAttack = characterData.equipment.attacks[attackIndex];
@@ -334,6 +414,25 @@ const CharacterSheet = () => {
     const patch = { equipment: { attacks: nextAttacks } };
 
     setCharacterData((p) => (p ? { ...p, equipment: { ...p.equipment, attacks: nextAttacks } } : p));
+    if (character) updateCharacter(character, patch);
+  };
+
+  /** === NEW: toggle checkbox “usata” per una skill categorizzata su OGGETTO === */
+  const toggleItemSkillUsed = (itemIndex: number, type: SkillType, skillIndex: number) => {
+    if (!characterData) return;
+    const items = characterData.equipment.items ?? [];
+    const it = items[itemIndex];
+    if (!it || it.type !== "object" || !it.skillsByType) return;
+
+    const list = [...(it.skillsByType[type] ?? [])];
+    if (!list[skillIndex]) return;
+    list[skillIndex] = { ...list[skillIndex], used: !list[skillIndex].used };
+
+    const nextItems = items.map((x, i) =>
+      i === itemIndex ? { ...x, skillsByType: { ...(x.skillsByType ?? {}), [type]: list } } : x
+    );
+    const patch = { equipment: { items: nextItems } };
+    setCharacterData((p) => (p ? { ...p, equipment: { ...p.equipment, items: nextItems } } : p));
     if (character) updateCharacter(character, patch);
   };
 
@@ -353,9 +452,26 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
-  const handleInventorySubmit = () => {
+  /** === NUOVO: submit inventario parametrico === */
+  const handleInventorySubmit = (payload?: {
+    kind?: "weapon" | "object" | "consumable";
+    // weapon
+    weaponCategory?: "melee" | "ranged";
+    weaponHands?: "1" | "2" | "versatile";
+    weaponRange?: string;
+    damageKind?: "tagliente" | "perforante" | "contundente";
+    // object
+    description?: string;
+    equippable?: boolean;
+    // consumable
+    consumableSubtype?: "generic" | "potion";
+    quantity?: number;
+    potionDice?: string;
+  }) => {
     if (!characterData) return;
     setInvError("");
+
+    // === Monete
     if (mode === "coins") {
       const qty = parseInt(coinQty, 10);
       if (isNaN(qty) || qty <= 0) {
@@ -364,11 +480,7 @@ const CharacterSheet = () => {
       }
       const stdKey = COIN_KEYS[coinType] as keyof Coins;
       let nextAmount = coins[stdKey];
-      if (coinFlow === "add") {
-        nextAmount = coins[stdKey] + qty;
-      } else {
-        nextAmount = Math.max(0, coins[stdKey] - qty);
-      }
+      nextAmount = coinFlow === "add" ? coins[stdKey] + qty : Math.max(0, coins[stdKey] - qty);
       const nextCoins: Coins = { ...coins, [stdKey]: nextAmount };
       const nextEquip = { ...characterData.equipment, coins: nextCoins };
       setCharacterData((prev) => (prev ? { ...prev, equipment: nextEquip } : prev));
@@ -377,49 +489,93 @@ const CharacterSheet = () => {
       resetInvForm();
       return;
     }
-    if (!itemName.trim()) {
-      setInvError("Il nome dell'oggetto è obbligatorio.");
-      return;
-    }
-    const attackFieldsFilled = itemAtkBonus.trim() !== "" || itemDmgType.trim() !== "";
-    if (attackFieldsFilled && (itemAtkBonus.trim() === "" || itemDmgType.trim() === "")) {
-      setInvError("Se compili uno tra Bonus attacco o Tipo di danno, devi compilare anche l'altro.");
-      return;
-    }
-    const prevEq = characterData.equipment;
 
-    // calcolo se abbiamo almeno una skill categorizzata
+    // === Validazioni di base
+    if (!itemName.trim()) {
+      setInvError("Il nome è obbligatorio.");
+      return;
+    }
+
+    // calcolo skills categorizzate usate nella modale
     const hasAnyCategorized = SKILL_TYPES.some((t) => (itemSkillsByType[t]?.length ?? 0) > 0);
-    // pruno gli array vuoti per il payload
     const prunedSkillsByType = SKILL_TYPES.reduce((acc, t) => {
       const arr = itemSkillsByType[t] ?? [];
       if (arr.length) acc[t] = arr;
       return acc;
     }, {} as Partial<SkillsByType>);
 
-    if (attackFieldsFilled) {
+    const prevEq = characterData.equipment;
+    const itemsArray: StructuredItem[] = Array.isArray(prevEq.items) ? prevEq.items : [];
+
+    // === Weapon
+    if ((payload?.kind ?? itemKind) === "weapon") {
+      const attackFieldsFilled =
+        itemAtkBonus.trim() !== "" && itemDmgType.trim() !== "" && payload?.damageKind && payload?.weaponCategory;
+      if (!attackFieldsFilled) {
+        setInvError("Compila Bonus attacco, Dado del danno, Tipo di danno e Categoria (mischia/distanza).");
+        return;
+      }
+
       const attack = {
         name: itemName.trim(),
         attackBonus: Number(itemAtkBonus),
-        damageType: itemDmgType.trim(),
+        damageDice: itemDmgType.trim(),
+        damageType: payload!.damageKind, // nuovo
+        category: payload!.weaponCategory,
+        hands: payload!.weaponCategory === "melee" ? payload?.weaponHands : undefined,
+        range: payload!.weaponCategory === "ranged" ? payload?.weaponRange : undefined,
         equipped: false,
         ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
-        // fallback legacy se non hai usato il nuovo input ancora
         ...(!hasAnyCategorized && itemSkill.trim() ? { skill: itemSkill.trim() } : {}),
       };
+
       const nextAttacks = [...prevEq.attacks, attack];
-      const alsoList = prevEq.equipment.includes(itemName.trim()) ? prevEq.equipment : [...prevEq.equipment, itemName.trim()];
-      const next = { ...prevEq, attacks: nextAttacks, equipment: alsoList, coins };
+      const next = { ...prevEq, attacks: nextAttacks, items: itemsArray, coins }; // non aggiorno più equipment legacy
       setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
       if (character) updateCharacter(character, { equipment: next });
-    } else {
-      const nextList = [...prevEq.equipment, itemName.trim()];
-      const next = { ...prevEq, equipment: nextList, coins };
-      setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
-      if (character) updateCharacter(character, { equipment: next });
+      setInvOpen(false);
+      resetInvForm();
+      return;
     }
-    setInvOpen(false);
-    resetInvForm();
+
+    // === Object
+    if ((payload?.kind ?? itemKind) === "object") {
+      const newObj: StructuredObjectItem = {
+        type: "object",
+        name: itemName.trim(),
+        description: payload?.description || undefined,
+        equippable: !!payload?.equippable,
+        equipped: false,
+        ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
+      };
+      const nextItems = [...itemsArray, newObj];
+      const next = { ...prevEq, items: nextItems, coins }; // non tocco lista legacy
+      setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
+      if (character) updateCharacter(character, { equipment: next });
+      setInvOpen(false);
+      resetInvForm();
+      return;
+    }
+
+    // === Consumable
+    if ((payload?.kind ?? itemKind) === "consumable") {
+      const qty = Number.isFinite(payload?.quantity) ? Math.max(0, Number(payload!.quantity)) : 0;
+      const newCons: StructuredConsumableItem = {
+        type: "consumable",
+        name: itemName.trim(),
+        quantity: qty,
+        subtype: payload?.consumableSubtype ?? "generic",
+        dice: payload?.potionDice || undefined,
+        ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
+      };
+      const nextItems = [...itemsArray, newCons];
+      const next = { ...prevEq, items: nextItems, coins }; // non tocco lista legacy
+      setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
+      if (character) updateCharacter(character, { equipment: next });
+      setInvOpen(false);
+      resetInvForm();
+      return;
+    }
   };
 
   useEffect(() => {
@@ -446,8 +602,10 @@ const CharacterSheet = () => {
   }, [character]);
 
   useEffect(() => {
-    setSelectedClass(characterData?.basicInfo.class.toLowerCase());
-  }, [characterData?.basicInfo.class]);
+    if (characterData?.basicInfo?.class) {
+      setSelectedClass(characterData.basicInfo.class.toLowerCase());
+    }
+  }, [characterData?.basicInfo?.class]);
 
   useEffect(() => {
     const loadCharacter = async () => {
@@ -530,7 +688,9 @@ const CharacterSheet = () => {
             <AttacksAndSpells
               characterData={characterData}
               toggleEquipAttack={toggleEquipAttack}
-              toggleAttackSkillUsed={toggleAttackSkillUsed} // << nuova prop
+              toggleAttackSkillUsed={toggleAttackSkillUsed}
+              toggleEquipItem={toggleEquipItem}
+              toggleItemSkillUsed={toggleItemSkillUsed}
             />
           </div>
           <div className="space-y-6">
@@ -556,7 +716,7 @@ const CharacterSheet = () => {
               coinQty={coinQty}
               setCoinQty={setCoinQty}
               coinFlow={coinFlow}
-              handleInventorySubmit={handleInventorySubmit}
+              handleInventorySubmit={handleInventorySubmit} // payload-aware
               resetInvForm={resetInvForm}
               itemName={itemName}
               setItemName={setItemName}
@@ -564,10 +724,10 @@ const CharacterSheet = () => {
               setItemAtkBonus={setItemAtkBonus}
               itemDmgType={itemDmgType}
               setItemDmgType={setItemDmgType}
-              /** legacy singolo campo (resta finché aggiorniamo Inventory) */
+              /** legacy singolo campo */
               itemSkill={itemSkill}
               setItemSkill={setItemSkill}
-              /** nuove props per skills categorizzate (useremo nel prossimo file) */
+              /** nuove props per skills categorizzate */
               itemSkillType={itemSkillType}
               setItemSkillType={setItemSkillType}
               itemSkillInput={itemSkillInput}
@@ -578,6 +738,23 @@ const CharacterSheet = () => {
               removeAttack={removeAttack}
               removeItem={removeItem}
               toggleEquipAttack={toggleEquipAttack}
+              /** oggetti/consumabili */
+              itemDescription={itemDescription}
+              setItemDescription={setItemDescription}
+              itemQuantity={itemQuantity}
+              setItemQuantity={setItemQuantity}
+              itemConsumableSubtype={itemConsumableSubtype}
+              setItemConsumableSubtype={setItemConsumableSubtype}
+              itemKind={itemKind}
+              setItemKind={setItemKind}
+              potionDice={potionDice}
+              setPotionDice={setPotionDice}
+              itemEquippable={itemEquippable}
+              setItemEquippable={setItemEquippable}
+              /** handlers elenco strutturato */
+              removeStructuredItem={removeStructuredItem}
+              bumpConsumableQuantity={bumpConsumableQuantity}
+              toggleEquipItem={toggleEquipItem}
             />
             <Languages characterData={characterData} />
           </div>
