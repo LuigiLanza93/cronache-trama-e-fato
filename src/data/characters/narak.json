@@ -263,8 +263,8 @@
         "type": "consumable",
         "name": "Dardi avvelenati",
         "quantity": 5,
-        "subtype": "generic",
-        "description": "Gittata 6/18 m. Danno 1d4 perforante. Veleno base: TS COS CD 10 o +1d4 veleno (0 al successo)."
+        "subtype": "potion",
+        "dice": "Gittata 6/18 m. Danno 1d4 perforante. Veleno base: TS COS CD 10 o +1d4 veleno (0 al successo)."
       },
       {
         "type": "object",

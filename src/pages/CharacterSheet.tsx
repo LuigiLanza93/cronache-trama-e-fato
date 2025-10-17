@@ -68,7 +68,6 @@ type StructuredConsumableItem = {
   quantity: number;
   subtype?: "generic" | "potion";
   dice?: string; // per pozioni (es. "2d4+2")
-  description?: string; // NEW: testo libero per danni/effects
   skillsByType?: Partial<SkillsByType>;
 };
 type StructuredItem = StructuredObjectItem | StructuredConsumableItem;
@@ -96,6 +95,7 @@ interface Character {
     currentHitPoints: number;
     temporaryHitPoints: number;
     hitDice: string;
+    // opzionale: struttura slot, usata anche per manovre
     spellSlots?: Record<number, Array<{ active: boolean }>>;
   };
   proficiencies: {
@@ -108,15 +108,18 @@ interface Character {
     attacks: Array<{
       name: string;
       attackBonus: number;
-      damageDice?: string;
-      damageType?: "tagliente" | "perforante" | "contundente";
+      /** nuovo */
+      damageDice?: string; // es. "1d8+3"
+      damageType?: "tagliente" | "perforante" | "contundente"; // nuovo significato (solo tipo)
       category?: "melee" | "ranged";
       hands?: "1" | "2" | "versatile";
       range?: string;
+      /** legacy: manteniamo compatibilità */
       equipped?: boolean;
-      skill?: string; // legacy
-      skills?: string[]; // legacy
+      skill?: string;
+      skills?: string[];
       skillsByType?: Partial<SkillsByType>;
+      /** legacy totale: alcuni vecchi record hanno damageType="1d8+3 tagliente" */
     }>;
     equipment: string[]; // legacy lista piatta (non aggiorniamo più)
     items?: StructuredItem[]; // nuovo inventario strutturato
@@ -160,29 +163,29 @@ const CharacterSheet = () => {
   const [editMode, setEditMode] = useState(false);
   const [editDiceMode, setEditDiceMode] = useState(false);
 
-  // death saves
+  // death saves state (local only)
   const [deathSaves, setDeathSaves] = useState<{ success: boolean[]; fail: boolean[] }>({
     success: [false, false, false],
     fail: [false, false, false],
   });
 
-  // ======= INVENTORY modal state =======
+  // ======= INVENTORY state (modal) =======
   const [invOpen, setInvOpen] = useState(false);
   const [mode, setMode] = useState<"coins" | "item">("coins");
   const [coinType, setCoinType] = useState<CoinAbbr>("mo");
   const [coinQty, setCoinQty] = useState<string>("");
   const [coinFlow, setCoinFlow] = useState<"add" | "remove">("add");
 
-  // common legacy fields
+  // campi comuni item/weapon legacy
   const [itemName, setItemName] = useState("");
   const [itemAtkBonus, setItemAtkBonus] = useState<string>("");
   const [itemDmgType, setItemDmgType] = useState<string>("");
   const [invError, setInvError] = useState<string>("");
 
-  // legacy single skill
+  /** legacy singola skill (manteniamo fino all’update di Inventory) */
   const [itemSkill, setItemSkill] = useState<string>("");
 
-  // NEW categorized skills
+  /** === NUOVO: gestione per categoria nel form === */
   const [itemSkillType, setItemSkillType] = useState<SkillType>("volonta");
   const [itemSkillInput, setItemSkillInput] = useState<string>("");
   const [itemSkillsByType, setItemSkillsByType] = useState<SkillsByType>({
@@ -192,7 +195,7 @@ const CharacterSheet = () => {
     riposoLungo: [],
   });
 
-  // object/consumable fields
+  // campi per oggetto/consumabile nella modale
   const [itemDescription, setItemDescription] = useState<string>("");
   const [itemQuantity, setItemQuantity] = useState<string>("");
   const [itemConsumableSubtype, setItemConsumableSubtype] = useState<"generic" | "potion">("generic");
@@ -200,12 +203,12 @@ const CharacterSheet = () => {
   const [potionDice, setPotionDice] = useState<string>("");
   const [itemEquippable, setItemEquippable] = useState<boolean>(false);
 
-  // ======= Add Spell dialog =======
+  // ======= ADD SPELL dialog (CTA) =======
   const [addSpellOpen, setAddSpellOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<string>(characterData?.basicInfo.class?.toLowerCase?.());
   const [spellQuery, setSpellQuery] = useState("");
 
-  // ======= Spell details modal =======
+  // ======= SPELL DETAILS modal (click su riga) =======
   const [spellModalOpen, setSpellModalOpen] = useState(false);
   const [modalSpell, setModalSpell] = useState<Spell | null>(null);
   const [modalTitle, setModalTitle] = useState<string>("");
@@ -322,9 +325,11 @@ const CharacterSheet = () => {
     setItemAtkBonus("");
     setItemDmgType("");
     setItemSkill(""); // legacy
+    // nuovi stati categorizzati
     setItemSkillType("volonta");
     setItemSkillInput("");
     setItemSkillsByType({ volonta: [], incontro: [], riposoBreve: [], riposoLungo: [] });
+    // oggetti/consumabili
     setItemDescription("");
     setItemQuantity("");
     setItemConsumableSubtype("generic");
@@ -357,6 +362,7 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
+  /** === NUOVO: toggle per oggetti equipaggiabili === */
   const toggleEquipItem = (index: number) => {
     if (!characterData) return;
     const items = characterData.equipment.items ?? [];
@@ -370,6 +376,7 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
+  /** === NUOVO: consumabili +/- quantità === */
   const bumpConsumableQuantity = (index: number, delta: number) => {
     if (!characterData) return;
     const items = characterData.equipment.items ?? [];
@@ -382,6 +389,7 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
+  /** === NUOVO: rimozione item strutturato (object/consumable) === */
   const removeStructuredItem = (index: number) => {
     if (!characterData) return;
     const items = characterData.equipment.items ?? [];
@@ -391,6 +399,7 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
+  /** === NUOVO: toggle checkbox “usata” per una skill categorizzata su ATTACCO === */
   const toggleAttackSkillUsed = (attackIndex: number, type: SkillType, skillIndex: number) => {
     if (!characterData) return;
     const prevAttack = characterData.equipment.attacks[attackIndex];
@@ -408,6 +417,7 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
+  /** === NEW: toggle checkbox “usata” per una skill categorizzata su OGGETTO === */
   const toggleItemSkillUsed = (itemIndex: number, type: SkillType, skillIndex: number) => {
     if (!characterData) return;
     const items = characterData.equipment.items ?? [];
@@ -442,15 +452,18 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
-  /** Submit inventario (payload-aware) */
+  /** === NUOVO: submit inventario parametrico === */
   const handleInventorySubmit = (payload?: {
     kind?: "weapon" | "object" | "consumable";
+    // weapon
     weaponCategory?: "melee" | "ranged";
     weaponHands?: "1" | "2" | "versatile";
     weaponRange?: string;
     damageKind?: "tagliente" | "perforante" | "contundente";
-    description?: string; // NEW (per object/consumable)
+    // object
+    description?: string;
     equippable?: boolean;
+    // consumable
     consumableSubtype?: "generic" | "potion";
     quantity?: number;
     potionDice?: string;
@@ -458,7 +471,7 @@ const CharacterSheet = () => {
     if (!characterData) return;
     setInvError("");
 
-    // Monete
+    // === Monete
     if (mode === "coins") {
       const qty = parseInt(coinQty, 10);
       if (isNaN(qty) || qty <= 0) {
@@ -466,7 +479,8 @@ const CharacterSheet = () => {
         return;
       }
       const stdKey = COIN_KEYS[coinType] as keyof Coins;
-      const nextAmount = coinFlow === "add" ? (coins[stdKey] + qty) : Math.max(0, coins[stdKey] - qty);
+      let nextAmount = coins[stdKey];
+      nextAmount = coinFlow === "add" ? coins[stdKey] + qty : Math.max(0, coins[stdKey] - qty);
       const nextCoins: Coins = { ...coins, [stdKey]: nextAmount };
       const nextEquip = { ...characterData.equipment, coins: nextCoins };
       setCharacterData((prev) => (prev ? { ...prev, equipment: nextEquip } : prev));
@@ -476,15 +490,15 @@ const CharacterSheet = () => {
       return;
     }
 
-    // Validazione base
+    // === Validazioni di base
     if (!itemName.trim()) {
       setInvError("Il nome è obbligatorio.");
       return;
     }
 
-    const SKS = SKILL_TYPES;
-    const hasAnyCategorized = SKS.some((t) => (itemSkillsByType[t]?.length ?? 0) > 0);
-    const prunedSkillsByType = SKS.reduce((acc, t) => {
+    // calcolo skills categorizzate usate nella modale
+    const hasAnyCategorized = SKILL_TYPES.some((t) => (itemSkillsByType[t]?.length ?? 0) > 0);
+    const prunedSkillsByType = SKILL_TYPES.reduce((acc, t) => {
       const arr = itemSkillsByType[t] ?? [];
       if (arr.length) acc[t] = arr;
       return acc;
@@ -493,18 +507,20 @@ const CharacterSheet = () => {
     const prevEq = characterData.equipment;
     const itemsArray: StructuredItem[] = Array.isArray(prevEq.items) ? prevEq.items : [];
 
-    // Weapon
-    if ((payload?.kind ?? (itemKind as any)) === "weapon") {
-      const ok = itemAtkBonus.trim() !== "" && itemDmgType.trim() !== "" && payload?.damageKind && payload?.weaponCategory;
-      if (!ok) {
-        setInvError("Compila Bonus attacco, Dado danno, Tipo danno e Categoria (mischia/distanza).");
+    // === Weapon
+    if ((payload?.kind ?? itemKind) === "weapon") {
+      const attackFieldsFilled =
+        itemAtkBonus.trim() !== "" && itemDmgType.trim() !== "" && payload?.damageKind && payload?.weaponCategory;
+      if (!attackFieldsFilled) {
+        setInvError("Compila Bonus attacco, Dado del danno, Tipo di danno e Categoria (mischia/distanza).");
         return;
       }
+
       const attack = {
         name: itemName.trim(),
         attackBonus: Number(itemAtkBonus),
         damageDice: itemDmgType.trim(),
-        damageType: payload!.damageKind,
+        damageType: payload!.damageKind, // nuovo
         category: payload!.weaponCategory,
         hands: payload!.weaponCategory === "melee" ? payload?.weaponHands : undefined,
         range: payload!.weaponCategory === "ranged" ? payload?.weaponRange : undefined,
@@ -512,8 +528,9 @@ const CharacterSheet = () => {
         ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
         ...(!hasAnyCategorized && itemSkill.trim() ? { skill: itemSkill.trim() } : {}),
       };
+
       const nextAttacks = [...prevEq.attacks, attack];
-      const next = { ...prevEq, attacks: nextAttacks, items: itemsArray, coins };
+      const next = { ...prevEq, attacks: nextAttacks, items: itemsArray, coins }; // non aggiorno più equipment legacy
       setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
       if (character) updateCharacter(character, { equipment: next });
       setInvOpen(false);
@@ -521,8 +538,8 @@ const CharacterSheet = () => {
       return;
     }
 
-    // Object
-    if ((payload?.kind ?? (itemKind as any)) === "object") {
+    // === Object
+    if ((payload?.kind ?? itemKind) === "object") {
       const newObj: StructuredObjectItem = {
         type: "object",
         name: itemName.trim(),
@@ -532,7 +549,7 @@ const CharacterSheet = () => {
         ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
       };
       const nextItems = [...itemsArray, newObj];
-      const next = { ...prevEq, items: nextItems, coins };
+      const next = { ...prevEq, items: nextItems, coins }; // non tocco lista legacy
       setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
       if (character) updateCharacter(character, { equipment: next });
       setInvOpen(false);
@@ -540,8 +557,8 @@ const CharacterSheet = () => {
       return;
     }
 
-    // Consumable (NEW: description support)
-    if ((payload?.kind ?? (itemKind as any)) === "consumable") {
+    // === Consumable
+    if ((payload?.kind ?? itemKind) === "consumable") {
       const qty = Number.isFinite(payload?.quantity) ? Math.max(0, Number(payload!.quantity)) : 0;
       const newCons: StructuredConsumableItem = {
         type: "consumable",
@@ -549,11 +566,10 @@ const CharacterSheet = () => {
         quantity: qty,
         subtype: payload?.consumableSubtype ?? "generic",
         dice: payload?.potionDice || undefined,
-        description: payload?.description || (itemDescription?.trim() || undefined),
         ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
       };
       const nextItems = [...itemsArray, newCons];
-      const next = { ...prevEq, items: nextItems, coins };
+      const next = { ...prevEq, items: nextItems, coins }; // non tocco lista legacy
       setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
       if (character) updateCharacter(character, { equipment: next });
       setInvOpen(false);
@@ -654,7 +670,6 @@ const CharacterSheet = () => {
               setDeathSaves={setDeathSaves}
               calculateSkillValues={calculateSkillValues}
             />
-            <Languages characterData={characterData} />
           </div>
           <div className="space-y-6">
             <CombatStats
@@ -701,7 +716,7 @@ const CharacterSheet = () => {
               coinQty={coinQty}
               setCoinQty={setCoinQty}
               coinFlow={coinFlow}
-              handleInventorySubmit={handleInventorySubmit}
+              handleInventorySubmit={handleInventorySubmit} // payload-aware
               resetInvForm={resetInvForm}
               itemName={itemName}
               setItemName={setItemName}
@@ -709,8 +724,10 @@ const CharacterSheet = () => {
               setItemAtkBonus={setItemAtkBonus}
               itemDmgType={itemDmgType}
               setItemDmgType={setItemDmgType}
+              /** legacy singolo campo */
               itemSkill={itemSkill}
               setItemSkill={setItemSkill}
+              /** nuove props per skills categorizzate */
               itemSkillType={itemSkillType}
               setItemSkillType={setItemSkillType}
               itemSkillInput={itemSkillInput}
@@ -721,6 +738,7 @@ const CharacterSheet = () => {
               removeAttack={removeAttack}
               removeItem={removeItem}
               toggleEquipAttack={toggleEquipAttack}
+              /** oggetti/consumabili */
               itemDescription={itemDescription}
               setItemDescription={setItemDescription}
               itemQuantity={itemQuantity}
@@ -733,15 +751,17 @@ const CharacterSheet = () => {
               setPotionDice={setPotionDice}
               itemEquippable={itemEquippable}
               setItemEquippable={setItemEquippable}
+              /** handlers elenco strutturato */
               removeStructuredItem={removeStructuredItem}
               bumpConsumableQuantity={bumpConsumableQuantity}
               toggleEquipItem={toggleEquipItem}
-            />            
+            />
+            <Languages characterData={characterData} />
           </div>
         </div>
       </div>
 
-      {/* Dialog Aggiungi incantesimo */}
+      {/* ===== Dialog: Aggiungi incantesimo ===== */}
       <Dialog open={addSpellOpen} onOpenChange={setAddSpellOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -808,7 +828,7 @@ const CharacterSheet = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Dettagli incantesimo */}
+      {/* ===== Dialog: Dettagli incantesimo/feature ===== */}
       <Dialog open={spellModalOpen} onOpenChange={setSpellModalOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

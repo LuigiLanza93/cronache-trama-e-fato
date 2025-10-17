@@ -198,8 +198,8 @@
         "name": "Dotazione da Esploratore",
         "description": "Zaino - Giaciglio - Gavetta - Acciarino - Pietra Focaia - 10 Torce - Otre - 15m di corda",
         "equippable": true,
-        "equipped": true
-      },      
+        "equipped": false
+      },
       {
         "type": "object",
         "name": "Anello della Vita Sepolcrale",
