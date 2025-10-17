@@ -670,6 +670,7 @@ const CharacterSheet = () => {
               setDeathSaves={setDeathSaves}
               calculateSkillValues={calculateSkillValues}
             />
+            <Languages characterData={characterData} />
           </div>
           <div className="space-y-6">
             <CombatStats
@@ -756,7 +757,6 @@ const CharacterSheet = () => {
               bumpConsumableQuantity={bumpConsumableQuantity}
               toggleEquipItem={toggleEquipItem}
             />
-            <Languages characterData={characterData} />
           </div>
         </div>
       </div>
