@@ -24,7 +24,7 @@
     "speed": 9,
     "hitPointMaximum": 27,
     "currentHitPoints": 27,
-    "temporaryHitPoints": 7,
+    "temporaryHitPoints": 5,
     "hitDice": "1d8",
     "deathSaves": {
       "successes": 0,
@@ -261,7 +261,7 @@
       {
         "type": "consumable",
         "name": "Componenti Arcani",
-        "quantity": 2,
+        "quantity": 3,
         "subtype": "generic"
       },
       {

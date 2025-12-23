@@ -23,7 +23,7 @@
     "initiative": 5,
     "speed": 9,
     "hitPointMaximum": 30,
-    "currentHitPoints": 6,
+    "currentHitPoints": 30,
     "temporaryHitPoints": 0,
     "hitDice": "1d8",
     "deathSaves": {
@@ -38,15 +38,15 @@
         },
         {
           "id": 2,
-          "active": true
+          "active": false
         },
         {
           "id": 3,
-          "active": true
+          "active": false
         },
         {
           "id": 4,
-          "active": true
+          "active": false
         }
       ],
       "2": [
@@ -287,7 +287,7 @@
             },
             {
               "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
-              "used": true
+              "used": false
             }
           ]
         }
@@ -340,6 +340,31 @@
         "description": "- Guanto con ragno ricamato sopra\n- Anello di “maestro” del ragno",
         "equippable": true,
         "equipped": true
+      },
+      {
+        "type": "consumable",
+        "name": "Oggetti incantesimo per bardo",
+        "quantity": 2,
+        "subtype": "generic"
+      },
+      {
+        "type": "object",
+        "name": "Anello di Resistenza all’Acqua ",
+        "description":"Un semplice anello di bronzo con una goccia di turchese incastonata; emana un fresco costante al tatto.",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            {
+              "name": "Vantaggio alle prove di Forza (Atletica) per nuotare e resistenza a condizioni ambientali acquatiche (correnti forti, tempeste in mare, ecc.).",
+              "used": false
+            },
+            {
+              "name": "Resistenza ai danni da freddo (mezzi danni da attacchi/incantesimi freddo).",
+              "used": false
+            }
+          ]
+        }
       }
     ]
   },
