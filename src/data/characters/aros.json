@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Aros",
     "class": "Guerriero",
-    "level": 3,
+    "level": 4,
     "background": "Soldato",
     "playerName": "Luigi",
     "race": "Umano",
@@ -11,7 +11,7 @@
     "experiencePoints": 0
   },
   "abilityScores": {
-    "strength": 16,
+    "strength": 18,
     "dexterity": 14,
     "constitution": 16,
     "intelligence": 11,
@@ -19,11 +19,11 @@
     "charisma": 9
   },
   "combatStats": {
-    "armorClass": 18,
+    "armorClass": 21,
     "initiative": 2,
     "speed": 9,
-    "hitPointMaximum": 39,
-    "currentHitPoints": 39,
+    "hitPointMaximum": 52,
+    "currentHitPoints": 33,
     "temporaryHitPoints": 0,
     "hitDice": "1d10",
     "deathSaves": {
@@ -41,11 +41,11 @@
       "8": [
         {
           "id": 1,
-          "active": false
+          "active": true
         },
         {
           "id": 2,
-          "active": false
+          "active": true
         },
         {
           "id": 3,
@@ -207,9 +207,9 @@
     ],
     "coins": {
       "cp": 0,
-      "sp": 0,
+      "sp": 50,
       "ep": 0,
-      "gp": 69,
+      "gp": 58,
       "pp": 0
     },
     "items": [
@@ -270,7 +270,49 @@
         "name": "Cotta di maglia",
         "description": "CA: 16",
         "equippable": true,
+        "equipped": false
+      },
+      {
+        "type": "object",
+        "name": "Armatura completa",
+        "description": "CA: 18, svantaggio prove di destrezza",
+        "equippable": true,
         "equipped": true
+      },
+      {
+        "type": "object",
+        "name": "Azione Impetuosa",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "riposoBreve": [
+            {
+              "name": "nel tuo turno puoi fare un’azione aggiuntiva oltre all’azione normale e all’eventuale azione bonus.",
+              "used": true
+            }
+          ]
+        }
+      },
+      {
+        "type": "object",
+        "name": "Recupero Energie",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "riposoBreve": [
+            {
+              "name": "Recupera punti ferita 1d10 + Livello",
+              "used": false
+            }
+          ]
+        }
+      },
+      {
+        "type": "object",
+        "name": "1di8 (gear grinder)",
+        "description": "Comprendo che ha un funzionamento s8mike al d20 ma in qualche modo è più potente. Non si applica a consumabili, ma a armi e armature, ha durata 24 ore, lo si utilizza su un solo oggetto.",
+        "equippable": false,
+        "equipped": false
       }
     ]
   },

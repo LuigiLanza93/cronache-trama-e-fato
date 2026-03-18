@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Valthor",
     "class": "Warlock",
-    "level": 3,
+    "level": 4,
     "background": "Nobile Decaduto",
     "playerName": "Luigi",
     "race": "Tiefling",
@@ -16,15 +16,15 @@
     "constitution": 12,
     "intelligence": 16,
     "wisdom": 10,
-    "charisma": 16
+    "charisma": 18
   },
   "combatStats": {
     "armorClass": 11,
     "initiative": 0,
     "speed": 9,
-    "hitPointMaximum": 27,
-    "currentHitPoints": 27,
-    "temporaryHitPoints": 5,
+    "hitPointMaximum": 36,
+    "currentHitPoints": 8,
+    "temporaryHitPoints": 0,
     "hitDice": "1d8",
     "deathSaves": {
       "successes": 0,
@@ -35,11 +35,11 @@
       "2": [
         {
           "id": 1,
-          "active": false
+          "active": true
         },
         {
           "id": 2,
-          "active": false
+          "active": true
         }
       ],
       "3": [],
@@ -180,9 +180,9 @@
     ],
     "coins": {
       "cp": 0,
-      "sp": 0,
+      "sp": 30,
       "ep": 0,
-      "gp": 75,
+      "gp": 59,
       "pp": 0
     },
     "items": [
@@ -261,7 +261,7 @@
       {
         "type": "consumable",
         "name": "Componenti Arcani",
-        "quantity": 3,
+        "quantity": 2,
         "subtype": "generic"
       },
       {
@@ -270,14 +270,25 @@
         "description": "Pietra Misteriosa a 20 facce che può modificare dei consumabili in modo casuale",
         "equippable": false,
         "equipped": false
+      },
+      {
+        "type": "object",
+        "name": "Amuleto di Piume",
+        "description": "Amuleto di legno a forma di penna di gufo, legato con un cordino di cuoio.",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "riposoLungo": [
+            {
+              "name": "Riduce a 0 i danni da caduta.",
+              "used": false
+            }
+          ]
+        }
       }
     ]
   },
   "features": [
-    {
-      "name": "Armatura di Agathys (warlock, Lv 1)",
-      "description": "Livello 1 · Abiurazione\nTempo di lancio: 1 azione\nGittata: Sé\nComponenti: V, S, M (una coppa d’acqua)\nDurata: 1 ora\n\nUno scudo gelido ti riveste: ottieni PF temporanei. Finché durano, ogni creatura che ti colpisce con un attacco in mischia subisce danni da freddo.\n\nUso: Ottimo pre-buff per warlock da mischia o quando prevedi di subire colpi ravvicinati."
-    },
     {
       "name": "Deflagrazione Occulta (warlock, Lv 0)",
       "description": "Livello 0 · null · Concentrazione\nTempo di lancio: 1 azione\nGittata: 36\nComponenti: V, S\nDurata: Istantanea\n\nUn raggio di energia crepitante sfreccia verso una creatura entro gittata. L'incantatore effettua un attacco a distanza con questo incantesimo contro il bersaglio. Se lo colpisce, il bersaglio subisce ldlO danni da forza. Quando l'incantatore arriva ai livelli superiori, l'incantesimo crea più raggi: due raggi al 5° livello, tre raggi all'll' livello e quattro raggi al 17. livello. Vincantatore può indirizzare i raggi contro lo stesso bersaglio o contro bersagli diversi, effettuando un tiro per colpire separato per ogni raggio.\n"
@@ -301,6 +312,18 @@
     {
       "name": "Nube di Pugnali (warlock, Lv 2)",
       "description": "Livello 2 · Evocazione · Concentrazione\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (una scheggia di vetro)\nDurata: Fino a 1 minuto\n\nCrei una nube di pugnali che riempie un cubo di 1,5 metri di lato, centrato su un punto a gittata che puoi vedere. Una creatura subisce 4d4 danni taglienti quando entra per la prima volta in un turno nell’area dell’incantesimo o quando inizia il suo turno lì.\n"
+    },
+    {
+      "name": "Sortilegio (warlock, Lv 1)",
+      "description": "Livello 1 · Ammaliamento · Concentrazione · Rituale\nTempo di lancio: 1 azione bonus\nGittata: 27 metri\nComponenti: V, S, M (l'occhio pietrificato di un girino)\nDurata: 1 ora\n\nL'incantatore scaglia una maledizione su una creatura entro gittata e che egli sia in grado di vedere. Finché l'incantesimo non termina, l'incantatore infligge ld6 danni necrotici extra al bersaglio ogni volta che lo colpisce con un attacco. Inoltre, quando l'incantatore lancia l'incantesimo, sceglie una caratteristica. Il bersaglio subisce svantaggio alle prove di caratteristica effettuate con la caratteristica scelta. Se il bersaglio scende a O punti ferita prima che questo incantesimo termini, l'incantatore può usare un'azione bonus in un suo turno successivo per maledire una nuova creatura. Un incantesimo rimuovi maledizione lanciato sul bersaglio termina questo incantesimo prematuramente. Al Livelll Superiori. Quando l'incantatore lancia questo incantesimo usando uno slot incantesimo di 3a o 4 livello. può mantenere la concentrazione sull'incantesimo fino a un massimo di 8 ore. Quando usa uno slot incantesimo di s􀁍 livello o superiore, può mantenere la concentrazione sull'incantesimo fino a un massimo di 24 ore.\n"
+    },
+    {
+      "name": "Blocca Persone (warlock, Lv 2)",
+      "description": "Livello 2 · Ammaliamento · Concentrazione\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (un piccolo pezzo dritto di ferro)\nDurata: Concentrazione, massimo 1 minuto\n\nScegli un umanoide a gittata e che puoi vedere. Il bersaglio deve superare un tiro salvezza su Saggezza o restare paralizzato per la durata. Al termine di ciascun suo turno, il bersaglio può effettuare un altro tiro salvezza su Saggezza. Se lo supera, per quel bersaglio l’incantesimo ha termine.\n"
+    },
+    {
+      "name": "Mano Magica (warlock, Lv 0)",
+      "description": "Livello 0 · Evocazione\nTempo di lancio: 1 azione\nGittata: 9 metri\nComponenti: V, S\nDurata: 1 minuto\n\nUna mano spettrale fluttuante compare in un punto a gittata, scelto da te. La mano resta per la durata dell’incantesimo o finché non viene interrotta con un’azione. La mano svanisce se si dovesse trovare a più di 9 metri da te o se lanci nuovamente l’incantesimo. Puoi usare la tua azione per controllare la mano. Puoi usare la mano per manipolare un oggetto, aprire una porta o un contenitore non chiusi a chiave, inserire o recuperare un oggetto da un contenitore aperto, o versare fuori i contenuti di una fiala. Puoi muovere la mano di 9 metri ogni volta che la usi. La mano non può attaccare, attivare oggetti magici o trasportare più di 5 chili.\n"
     }
   ],
   "spells": [],

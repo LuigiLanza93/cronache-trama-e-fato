@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Narak",
     "class": "Bardo",
-    "level": 3,
+    "level": 4,
     "background": "Ciarlatano",
     "playerName": "Roberto",
     "race": "Mezzelfo",
@@ -11,19 +11,19 @@
     "experiencePoints": 0
   },
   "abilityScores": {
-    "strength": 11,
+    "strength": 12,
     "dexterity": 14,
     "constitution": 14,
     "intelligence": 11,
     "wisdom": 10,
-    "charisma": 17
+    "charisma": 18
   },
   "combatStats": {
     "armorClass": 13,
     "initiative": 5,
     "speed": 9,
-    "hitPointMaximum": 30,
-    "currentHitPoints": 30,
+    "hitPointMaximum": 40,
+    "currentHitPoints": 15,
     "temporaryHitPoints": 0,
     "hitDice": "1d8",
     "deathSaves": {
@@ -38,25 +38,29 @@
         },
         {
           "id": 2,
-          "active": false
+          "active": true
         },
         {
           "id": 3,
-          "active": false
+          "active": true
         },
         {
           "id": 4,
-          "active": false
+          "active": true
         }
       ],
       "2": [
         {
           "id": 1,
-          "active": false
+          "active": true
         },
         {
           "id": 2,
-          "active": false
+          "active": true
+        },
+        {
+          "id": 3,
+          "active": true
         }
       ],
       "3": [],
@@ -65,7 +69,10 @@
       "6": [],
       "7": [],
       "8": [],
-      "9": []
+      "9": [],
+      "10": [],
+      "11": [],
+      "12": []
     }
   },
   "proficiencies": {
@@ -246,9 +253,9 @@
     ],
     "coins": {
       "cp": 0,
-      "sp": 0,
+      "sp": 50,
       "ep": 0,
-      "gp": 51,
+      "gp": 25,
       "pp": 0
     },
     "items": [
@@ -283,11 +290,11 @@
           "riposoLungo": [
             {
               "name": "Una volta per lungo riposo, quando usi Ispirazione Bardica, il beneficiario ottiene anche PF temporanei pari al dado di ispirazione.",
-              "used": false
+              "used": true
             },
             {
               "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
-              "used": false
+              "used": true
             }
           ]
         }
@@ -344,13 +351,13 @@
       {
         "type": "consumable",
         "name": "Oggetti incantesimo per bardo",
-        "quantity": 2,
+        "quantity": 10,
         "subtype": "generic"
       },
       {
         "type": "object",
         "name": "Anello di Resistenza all’Acqua ",
-        "description":"Un semplice anello di bronzo con una goccia di turchese incastonata; emana un fresco costante al tatto.",
+        "description": "Un semplice anello di bronzo con una goccia di turchese incastonata; emana un fresco costante al tatto.",
         "equippable": true,
         "equipped": true,
         "skillsByType": {
@@ -398,8 +405,16 @@
       "description": "Livello 0 · Illusione\nTempo di lancio: 1 azione\nGittata: 9 metri\nComponenti: S, M (un pezzo di vello)\nDurata: 1 minuto\n\nCrei l’immagine di un oggetto o un suono a gittata per la durata dell’incantesimo. L’illusione ha termine se la interrompi con un’azione o lanci di nuovo questo incantesimo.\nSe crei un suono, il suo volume può variare da quello di un bisbiglio a un urlo. Può essere la tua voce, la voce di qualcun altro, il ruggito di un leone, un battito di tamburi, o qualsiasi altro suono tu scelga. Il suono continua incessante per tutta la durata, oppure puoi produrre suoni diversi in momenti diversi prima del termine dell’incantesimo.\nSe crei l’immagine di un oggetto (come una sedia, un’impronta fangosa o un piccolo forziere) non può essere più grande di un cubo di 1,5 metri di spigolo. L’immagine non può produrre suoni, luci, odori o qualsiasi altro effetto sensoriale. L’interazione fisica con l’oggetto lo rivela come illusione, perché le cose lo possono attraversare.\nUna creatura che usa la sua azione per esaminare il suono o l’immagine può determinare che si tratta di un’illusione con una prova riuscita di Intelligenza (Indagare) contro la CD del tiro salvezza del tuo incantesimo. Se una creatura riconosce l’illusione per quello che è, per lei l’illusione sbiadisce.\n"
     },
     {
-      "name": "Trama Ipnotica (bardo, Lv 3)",
-      "description": "Livello 3 · Illusione · Concentrazione\nTempo di lancio: 1 azione\nGittata: 36 metri\nComponenti: S, M (un bastoncino luminoso di incenso o una fiala di cristallo piena di materiale fosforescente)\nDurata: Concentrazione, massimo 1 minuto\n\nCrei a gittata una trama contorta di colori che si muove nell’aria all’interno di un cubo di 9 metri di spigolo. La trama appare per un momento e poi svanisce. Ogni creatura nell’area che veda la trama deve effettuare un tiro salvezza su Saggezza. Se fallisce il tiro salvezza, una creatura rimane affascinata per la durata. Mentre è affascinata da questo incantesimo, la creatura è inabile e ha velocità 0.\nL’incantesimo termina per la creatura soggetta, qualora questa subisca danni o se qualcuno usa un’azione per scuoterla dal suo stato confusionale.\n"
+      "name": "Individuazione dei Pensieri (bardo, Lv 2)",
+      "description": "Livello 2 · Divinazione · Concentrazione\nTempo di lancio: 1 azione\nGittata: Incantatore\nComponenti: V, S, M (un pezzo di rame)\nDurata: Concentrazione, massimo 1 minuto\n\nPer la durata, puoi leggere i pensieri di certe creature. Quando lanci questo incantesimo e come tua azione in ciascun turno successivo sino al termine dell’incantesimo, puoi concentrare la tua mente su qualsiasi creatura che tu possa vedere e si trovi entro 9 metri da te. Se la creatura che hai scelto ha un punteggio di Intelligenza 3 o meno o non parla nessun linguaggio, la creatura ignora l’effetto. Inizialmente, apprendi solo i pensieri di superficie della creatura: quelli più ricorrenti. Con un’azione, puoi o spostare la tua attenzione sui pensieri di un’altra creatura o tentare di sondare più a fondo la mente della stessa creatura. Se sondi più a fondo, il bersaglio deve effettuare un tiro salvezza su Saggezza. Se lo fallisce, ottieni una percezione dei suoi ragionamenti (se ve ne sono), del suo stato emotivo, e di ogni cosa abbia prevalenza nei suoi pensieri (come una preoccupazione, l’amore, o l’odio). Se supera il tiro salvezza, l’incantesimo termina. A ogni modo, il bersaglio sa che stai sondando la sua mente e, a meno che non sposti la tua attenzione verso la mente di un’altra creatura, nel suo turno la creatura può usare la propria azione per effettuare una prova di Intelligenza contesa dalla tua prova di Intelligenza; se la vince, l’incantesimo termina. Le domande poste verbalmente alla creatura bersaglio, ovviamente, modellano il corso dei suoi pensieri, cosicché questo incantesimo risulta particolarmente efficace negli interrogatori. Puoi anche usare questo incantesimo per individuare la presenza di creature pensanti che non puoi vedere. Quando lanci questo incantesimo o come tua azione nella sua durata, puoi cercare pensieri entro 9 metri da te. L’incantesimo può penetrare le barriere, ma è bloccato da 60 centimetri di pietra, 5 centimetri di metallo che non sia il piombo, o un sottile foglio di piombo. Non puoi individuare una creatura con Intelligenza 3 o meno, o una creatura che non parla alcun linguaggio. Una volta individuata in questo modo la presenza di una creatura, puoi leggerne i pensieri per la durata dell’incantesimo finché resta nella gittata, come descritto sopra, anche se non puoi vederla.\n"
+    },
+    {
+      "name": "Beffa Crudele (bardo, Lv 0)",
+      "description": "Livello 0 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V\nDurata: Istantanea\n\nScateni una serie di insulti avvolti da una subdola malia contro una creatura a gittata e che puoi vedere. Se il bersaglio ti può udire (sebbene non sia necessario che ti comprenda), deve superare un tiro salvezza su Saggezza o subire 1d4 danni psichici e avere svantaggio al prossimo tiro per colpire che effettuerà prima del termine del suo prossimo turno. Il danno dell’incantesimo aumenta di 1d4 quando raggiungi il 5° livello (2d4), 11° livello (3d4) e 17° livello (4d4).\n"
+    },
+    {
+      "name": "Riscaldare il Metallo (bardo, Lv 2)",
+      "description": "Livello 2 · Trasmutazione · Concentrazione\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (un pezzo di ferro e una fiamma)\nDurata: Concentrazione, massimo 1 minuto\n\nScegli un manufatto di metallo, come un’arma di metallo o un’armatura di metallo media o pesante, a gittata e che puoi vedere. Fai sì che l’oggetto risplenda di rosso per il calore. Qualsiasi creatura in contatto fisico con l’oggetto subisce 2d8 danni da fuoco quando lanci questo incantesimo. Fino al termine dell’incantesimo, puoi usare un’azione bonus per infliggere di nuovo questo danno nei tuoi turni successivi. Se una creatura sta impugnando o indossando l’oggetto e subisce danno da esso, la creatura deve superare un tiro salvezza su Costituzione o gettare l’oggetto se ne è in grado. Se non getta l’oggetto, ha svantaggio ai tiri per colpire e le prove di caratteristica fino all’inizio del suo prossimo turno.\n"
     }
   ],
   "spells": [],
