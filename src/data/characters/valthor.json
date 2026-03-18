@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Valthor",
     "class": "Warlock",
-    "level": 4,
+    "level": 5,
     "background": "Nobile Decaduto",
     "playerName": "Luigi",
     "race": "Tiefling",
@@ -22,8 +22,8 @@
     "armorClass": 11,
     "initiative": 0,
     "speed": 9,
-    "hitPointMaximum": 36,
-    "currentHitPoints": 8,
+    "hitPointMaximum": 45,
+    "currentHitPoints": 45,
     "temporaryHitPoints": 0,
     "hitDice": "1d8",
     "deathSaves": {
@@ -32,23 +32,26 @@
     },
     "spellSlots": {
       "1": [],
-      "2": [
+      "2": [],
+      "3": [
         {
           "id": 1,
-          "active": true
+          "active": false
         },
         {
           "id": 2,
-          "active": true
+          "active": false
         }
       ],
-      "3": [],
       "4": [],
       "5": [],
       "6": [],
       "7": [],
       "8": [],
-      "9": []
+      "9": [],
+      "10": [],
+      "11": [],
+      "12": []
     }
   },
   "proficiencies": {

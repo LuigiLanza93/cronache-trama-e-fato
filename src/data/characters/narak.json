@@ -3,7 +3,7 @@
   "basicInfo": {
     "characterName": "Narak",
     "class": "Bardo",
-    "level": 4,
+    "level": 5,
     "background": "Ciarlatano",
     "playerName": "Roberto",
     "race": "Mezzelfo",
@@ -22,8 +22,8 @@
     "armorClass": 13,
     "initiative": 5,
     "speed": 9,
-    "hitPointMaximum": 40,
-    "currentHitPoints": 15,
+    "hitPointMaximum": 50,
+    "currentHitPoints": 50,
     "temporaryHitPoints": 0,
     "hitDice": "1d8",
     "deathSaves": {
@@ -34,36 +34,45 @@
       "1": [
         {
           "id": 1,
-          "active": true
+          "active": false
         },
         {
           "id": 2,
-          "active": true
+          "active": false
         },
         {
           "id": 3,
-          "active": true
+          "active": false
         },
         {
           "id": 4,
-          "active": true
+          "active": false
         }
       ],
       "2": [
         {
           "id": 1,
-          "active": true
+          "active": false
         },
         {
           "id": 2,
-          "active": true
+          "active": false
         },
         {
           "id": 3,
-          "active": true
+          "active": false
         }
       ],
-      "3": [],
+      "3": [
+        {
+          "id": 1,
+          "active": false
+        },
+        {
+          "id": 2,
+          "active": false
+        }
+      ],
       "4": [],
       "5": [],
       "6": [],
@@ -290,11 +299,11 @@
           "riposoLungo": [
             {
               "name": "Una volta per lungo riposo, quando usi Ispirazione Bardica, il beneficiario ottiene anche PF temporanei pari al dado di ispirazione.",
-              "used": true
+              "used": false
             },
             {
               "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
-              "used": true
+              "used": false
             }
           ]
         }
