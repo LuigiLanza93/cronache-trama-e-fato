@@ -154,6 +154,114 @@ const COIN_KEYS = {
 } as const;
 type CoinAbbr = keyof typeof COIN_KEYS;
 
+const COIN_VALUES_CP: Record<keyof Coins, number> = {
+  cp: 1,
+  sp: 10,
+  ep: 50,
+  gp: 100,
+  pp: 1000,
+};
+
+const COIN_ORDER: Array<keyof Coins> = ["cp", "sp", "ep", "gp", "pp"];
+const COIN_EXCHANGE_UP: Partial<Record<keyof Coins, number>> = {
+  cp: 10, // 10 cp = 1 sp
+  sp: 5,  // 5 sp = 1 ep
+  ep: 2,  // 2 ep = 1 gp
+  gp: 10, // 10 gp = 1 pp
+};
+
+function coinsToCopper(coins: Partial<Coins> | undefined): number {
+  if (!coins) return 0;
+
+  return (
+    (coins.cp ?? 0) * COIN_VALUES_CP.cp +
+    (coins.sp ?? 0) * COIN_VALUES_CP.sp +
+    (coins.ep ?? 0) * COIN_VALUES_CP.ep +
+    (coins.gp ?? 0) * COIN_VALUES_CP.gp +
+    (coins.pp ?? 0) * COIN_VALUES_CP.pp
+  );
+}
+
+function normalizeCoinsShape(coins: Partial<Coins> | undefined): Coins {
+  return {
+    cp: coins?.cp ?? 0,
+    sp: coins?.sp ?? 0,
+    ep: coins?.ep ?? 0,
+    gp: coins?.gp ?? 0,
+    pp: coins?.pp ?? 0,
+  };
+}
+
+function makeChangeStep(coins: Coins, fromKey: keyof Coins): boolean {
+  const fromIndex = COIN_ORDER.indexOf(fromKey);
+  if (fromIndex <= 0 || coins[fromKey] <= 0) return false;
+
+  const lowerKey = COIN_ORDER[fromIndex - 1];
+  const factor = COIN_EXCHANGE_UP[lowerKey];
+  if (!factor) return false;
+
+  coins[fromKey] -= 1;
+  coins[lowerKey] += factor;
+  return true;
+}
+
+function removeCoinsWithChange(baseCoins: Partial<Coins> | undefined, coinKey: keyof Coins, qty: number): Coins | null {
+  const nextCoins = normalizeCoinsShape(baseCoins);
+
+  for (let i = 0; i < qty; i++) {
+    if (nextCoins[coinKey] > 0) {
+      nextCoins[coinKey] -= 1;
+      continue;
+    }
+
+    let borrowed = false;
+    for (let higherIndex = COIN_ORDER.indexOf(coinKey) + 1; higherIndex < COIN_ORDER.length; higherIndex++) {
+      const higherKey = COIN_ORDER[higherIndex];
+      if (nextCoins[higherKey] <= 0) continue;
+
+      for (let step = higherIndex; step > COIN_ORDER.indexOf(coinKey); step--) {
+        const currentKey = COIN_ORDER[step];
+        if (!makeChangeStep(nextCoins, currentKey)) {
+          return null;
+        }
+      }
+
+      borrowed = true;
+      break;
+    }
+
+    if (!borrowed || nextCoins[coinKey] <= 0) {
+      return null;
+    }
+
+    nextCoins[coinKey] -= 1;
+  }
+
+  return nextCoins;
+}
+
+function compactCoinsAtTier(baseCoins: Partial<Coins> | undefined, coinKey: keyof Coins): Coins {
+  const nextCoins = normalizeCoinsShape(baseCoins);
+  const coinIndex = COIN_ORDER.indexOf(coinKey);
+
+  if (coinIndex < 0 || coinIndex >= COIN_ORDER.length - 1) {
+    return nextCoins;
+  }
+
+  const nextKey = COIN_ORDER[coinIndex + 1];
+  const factor = COIN_EXCHANGE_UP[coinKey];
+
+  if (!factor) return nextCoins;
+
+  const promoted = Math.floor(nextCoins[coinKey] / factor);
+  if (promoted <= 0) return nextCoins;
+
+  nextCoins[coinKey] = nextCoins[coinKey] % factor;
+  nextCoins[nextKey] += promoted;
+
+  return nextCoins;
+}
+
 const SKILL_TYPES: SkillType[] = ["volonta", "incontro", "riposoBreve", "riposoLungo"];
 
 const CharacterSheet = () => {
@@ -175,6 +283,7 @@ const CharacterSheet = () => {
   const [coinType, setCoinType] = useState<CoinAbbr>("mo");
   const [coinQty, setCoinQty] = useState<string>("");
   const [coinFlow, setCoinFlow] = useState<"add" | "remove">("add");
+  const [compactCoinsOnAdd, setCompactCoinsOnAdd] = useState(false);
 
   // campi comuni item/weapon legacy
   const [itemName, setItemName] = useState("");
@@ -321,6 +430,7 @@ const CharacterSheet = () => {
     setMode("coins");
     setCoinType("mo");
     setCoinQty("");
+    setCompactCoinsOnAdd(false);
     setItemName("");
     setItemAtkBonus("");
     setItemDmgType("");
@@ -479,9 +589,26 @@ const CharacterSheet = () => {
         return;
       }
       const stdKey = COIN_KEYS[coinType] as keyof Coins;
-      let nextAmount = coins[stdKey];
-      nextAmount = coinFlow === "add" ? coins[stdKey] + qty : Math.max(0, coins[stdKey] - qty);
-      const nextCoins: Coins = { ...coins, [stdKey]: nextAmount };
+      const deltaCp = qty * COIN_VALUES_CP[stdKey];
+      const currentTotalCp = coinsToCopper(coins);
+
+      if (coinFlow === "remove" && currentTotalCp < deltaCp) {
+        setInvError("Monete insufficienti per questa operazione.");
+        return;
+      }
+
+      const nextCoins =
+        coinFlow === "add"
+          ? compactCoinsOnAdd
+            ? compactCoinsAtTier({ ...coins, [stdKey]: coins[stdKey] + qty }, stdKey)
+            : { ...coins, [stdKey]: coins[stdKey] + qty }
+          : removeCoinsWithChange(coins, stdKey, qty);
+
+      if (!nextCoins) {
+        setInvError("Monete insufficienti per questa operazione.");
+        return;
+      }
+
       const nextEquip = { ...characterData.equipment, coins: nextCoins };
       setCharacterData((prev) => (prev ? { ...prev, equipment: nextEquip } : prev));
       if (character) updateCharacter(character, { equipment: { coins: nextCoins } });
@@ -608,6 +735,11 @@ const CharacterSheet = () => {
   }, [characterData?.basicInfo?.class]);
 
   useEffect(() => {
+    const characterName = characterData?.basicInfo?.characterName?.trim();
+    document.title = characterName || "Scheda personaggio";
+  }, [characterData?.basicInfo?.characterName]);
+
+  useEffect(() => {
     const loadCharacter = async () => {
       try {
         const data = await import(`@/data/characters/${character}.json`);
@@ -717,6 +849,8 @@ const CharacterSheet = () => {
               coinQty={coinQty}
               setCoinQty={setCoinQty}
               coinFlow={coinFlow}
+              compactCoinsOnAdd={compactCoinsOnAdd}
+              setCompactCoinsOnAdd={setCompactCoinsOnAdd}
               handleInventorySubmit={handleInventorySubmit} // payload-aware
               resetInvForm={resetInvForm}
               itemName={itemName}

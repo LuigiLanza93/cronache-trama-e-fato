@@ -87,6 +87,10 @@ export default function DMDashboard({ campaign, monsters }: DMDashboardProps) {
   // Notes locali (mantengo la tua UI intatta)
   const [sessionNotes, setSessionNotes] = useState("");
 
+  useEffect(() => {
+    document.title = "DM Dashboard | D&D Character Manager";
+  }, []);
+
   // Presence
   useEffect(() => {
     const unsubscribe = subscribePresence((list) => {

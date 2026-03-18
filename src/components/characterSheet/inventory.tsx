@@ -6,7 +6,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 
 /** Select minimale, senza dipendenze extra */
@@ -57,6 +57,8 @@ const Inventory = ({
   coinQty,
   setCoinQty,
   coinFlow,
+  compactCoinsOnAdd,
+  setCompactCoinsOnAdd,
   handleInventorySubmit,
   resetInvForm,
   itemName,
@@ -109,6 +111,59 @@ const Inventory = ({
     mp: "pp",
   } as const;
   type CoinAbbr = keyof typeof COIN_KEYS;
+  const COIN_META: Record<
+    CoinAbbr,
+    {
+      label: string;
+      shortLabel: string;
+      key: keyof typeof coins;
+      swatchClass: string;
+      ringClass: string;
+      textClass: string;
+    }
+  > = {
+    mr: {
+      label: "Rame",
+      shortLabel: "MR",
+      key: "cp",
+      swatchClass: "bg-gradient-to-br from-amber-500 to-amber-800",
+      ringClass: "ring-amber-900/30",
+      textClass: "text-amber-900",
+    },
+    ma: {
+      label: "Argento",
+      shortLabel: "MA",
+      key: "sp",
+      swatchClass: "bg-gradient-to-br from-slate-100 to-slate-400",
+      ringClass: "ring-slate-500/30",
+      textClass: "text-slate-700",
+    },
+    me: {
+      label: "Electrum",
+      shortLabel: "ME",
+      key: "ep",
+      swatchClass: "bg-gradient-to-br from-emerald-200 to-teal-500",
+      ringClass: "ring-teal-600/30",
+      textClass: "text-teal-700",
+    },
+    mo: {
+      label: "Oro",
+      shortLabel: "MO",
+      key: "gp",
+      swatchClass: "bg-gradient-to-br from-yellow-200 to-yellow-500",
+      ringClass: "ring-yellow-600/30",
+      textClass: "text-yellow-700",
+    },
+    mp: {
+      label: "Platino",
+      shortLabel: "MP",
+      key: "pp",
+      swatchClass: "bg-gradient-to-br from-cyan-50 to-cyan-200",
+      ringClass: "ring-cyan-400/30",
+      textClass: "text-cyan-700",
+    },
+  };
+  const COIN_ORDER: CoinAbbr[] = ["mp", "mo", "me", "ma", "mr"];
 
   // === mapping categorie ===
   const SKILL_TYPES = ["volonta", "incontro", "riposoBreve", "riposoLungo"] as const;
@@ -153,6 +208,7 @@ const Inventory = ({
   const [fallbackEquippable, setFallbackEquippable] = useState<boolean>(false);
   const equippableVal: boolean = (typeof itemEquippable === "boolean" ? itemEquippable : fallbackEquippable);
   const setEquippable = (setItemEquippable ?? setFallbackEquippable);
+  const lastOpenTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   // === helpers per skills ===
   const addSkillToCurrentType = (raw: string) => {
@@ -231,26 +287,41 @@ const Inventory = ({
 
       {/* Monete */}
       <div className="mb-4 text-sm">
-        <div className="font-semibold text-primary mb-2">Monete</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {([
-            ["MR", "cp"],
-            ["MA", "sp"],
-            ["ME", "ep"],
-            ["MO", "gp"],
-            ["MP", "pp"],
-          ]).map(([label, key]) => (
-            <div key={key} className="flex items-center justify-between">
-              <span>
-                {label}: {coins[key]}
-              </span>
-            </div>
-          ))}
+        <div className="font-semibold text-primary mb-1.5">Monete</div>
+        <div className="space-y-1.5">
+          {COIN_ORDER.map((abbr) => {
+            const meta = COIN_META[abbr];
+            return (
+              <div
+                key={abbr}
+                className="flex items-center justify-between rounded-md bg-card/40 px-2 py-1"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full ring-1 ${meta.ringClass} ${meta.swatchClass} shadow-inner`}
+                    aria-hidden="true"
+                  >
+                    <span className={`text-[8px] font-bold ${meta.textClass}`}>{meta.shortLabel}</span>
+                  </span>
+                  <div className="font-medium leading-none">{meta.label}</div>
+                </div>
+                <span className="font-semibold tabular-nums text-sm">{coins[meta.key]}</span>
+              </div>
+            );
+          })}
         </div>
-        <div className="flex mt-3 gap-3">
+        <div className="mt-1.5 text-[11px] text-muted-foreground">
+          I cambi tra i vari tagli vengono calcolati automaticamente.
+        </div>
+        <div className="mt-2 flex gap-2">
           <Button
             size="sm"
+            ref={(el) => {
+              if (coinFlow === "add") lastOpenTriggerRef.current = el;
+            }}
+            className="h-8 px-3"
             onClick={() => {
+              lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
               setMode("coins");
               setCoinFlow("add");
               setInvOpen(true);
@@ -260,7 +331,12 @@ const Inventory = ({
           </Button>
           <Button
             size="sm"
+            ref={(el) => {
+              if (coinFlow === "remove") lastOpenTriggerRef.current = el;
+            }}
+            className="h-8 px-3"
             onClick={() => {
+              lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
               setMode("coins");
               setCoinFlow("remove");
               setInvOpen(true);
@@ -435,11 +511,24 @@ const Inventory = ({
         }}
       >
         <DialogTrigger asChild>
-          <Button size="sm" onClick={() => { setMode("item"); setCoinFlow(null); }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+              setMode("item");
+              setCoinFlow(null);
+            }}
+          >
             Aggiungi
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            lastOpenTriggerRef.current?.focus();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {mode === "coins"
@@ -491,18 +580,34 @@ const Inventory = ({
 
             {mode === "coins" ? (
               <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-3 text-xs text-muted-foreground">
+                  Il cambio viene gestito automaticamente secondo la valuta di D&D.
+                </div>
                 <div className="col-span-3">
                   <Label className="mb-1 block">Taglio</Label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {(["mr", "ma", "me", "mo", "mp"] as CoinAbbr[]).map((abbr) => (
+                  <div className="space-y-1.5">
+                    {COIN_ORDER.map((abbr) => (
                       <Button
                         key={abbr}
                         type="button"
                         variant={coinType === abbr ? "default" : "outline"}
                         size="sm"
                         onClick={() => setCoinType(abbr)}
+                        className="h-auto w-full justify-between px-2.5 py-1.5"
                       >
-                        {abbr.toUpperCase()}
+                        <span className="flex items-center gap-3">
+                          <span
+                            className={`inline-flex h-5 w-5 items-center justify-center rounded-full ring-1 ${COIN_META[abbr].ringClass} ${COIN_META[abbr].swatchClass} shadow-inner`}
+                            aria-hidden="true"
+                          >
+                            <span className={`text-[8px] font-bold ${COIN_META[abbr].textClass}`}>
+                              {COIN_META[abbr].shortLabel}
+                            </span>
+                          </span>
+                          <span className="text-left">
+                            <span className="block text-sm leading-none">{COIN_META[abbr].label}</span>
+                          </span>
+                        </span>
                       </Button>
                     ))}
                   </div>
@@ -518,6 +623,20 @@ const Inventory = ({
                     placeholder="Es. 10"
                   />
                 </div>
+                {coinFlow === "add" && (
+                  <div className="col-span-3 flex items-center gap-2 rounded-md bg-muted/30 px-2.5 py-1.5">
+                    <input
+                      id="compact-coins-on-add"
+                      type="checkbox"
+                      checked={!!compactCoinsOnAdd}
+                      onChange={(e) => setCompactCoinsOnAdd(e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="compact-coins-on-add" className="mb-0 cursor-pointer text-sm leading-tight">
+                      Compatta automaticamente le monete dopo l'aggiunta
+                    </Label>
+                  </div>
+                )}
               </div>
             ) : (
               <>

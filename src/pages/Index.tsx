@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -5,6 +6,10 @@ import { Separator } from "@/components/ui/separator";
 import { Shield, Users, Scroll, Sword, Dice6 } from "lucide-react";
 
 const Index = () => {
+  useEffect(() => {
+    document.title = "D&D Character Manager";
+  }, []);
+
   const availableCharacters = [
     { name: "Gigi Thunderstrike", slug: "gigi", class: "Barbarian", level: 3 }
   ];
