@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import DMDashboard from "./pages/DMDashboard";
+import InitiativeTracker from "./pages/InitiativeTracker";
 import CharacterSheet from "./pages/CharacterSheet";
 import NotFound from "./pages/NotFound";
 
@@ -19,6 +20,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/dm" element={<DMDashboard />} />
+          <Route path="/dm/initiative" element={<InitiativeTracker />} />
           <Route path="/:character" element={<CharacterSheet />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

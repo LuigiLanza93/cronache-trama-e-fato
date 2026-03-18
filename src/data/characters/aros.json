@@ -27,8 +27,8 @@
     "temporaryHitPoints": 0,
     "hitDice": "1d10",
     "deathSaves": {
-      "successes": 0,
-      "failures": 0
+      "successes": 1,
+      "failures": 2
     },
     "spellSlots": {
       "1": [],

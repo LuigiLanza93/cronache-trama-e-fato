@@ -269,7 +269,6 @@ const CharacterSheet = () => {
   const [characterData, setCharacterData] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
-  const [editDiceMode, setEditDiceMode] = useState(false);
 
   // death saves state (local only)
   const [deathSaves, setDeathSaves] = useState<{ success: boolean[]; fail: boolean[] }>({
@@ -798,6 +797,7 @@ const CharacterSheet = () => {
             <Proficiencies
               characterData={characterData}
               proficiencyBonus={proficiencyBonus}
+              abilityModifier={abilityModifier}
               deathSaves={deathSaves}
               setDeathSaves={setDeathSaves}
               calculateSkillValues={calculateSkillValues}
@@ -813,9 +813,6 @@ const CharacterSheet = () => {
             <HitPoints
               characterData={characterData}
               setCharacterData={setCharacterData}
-              editDiceMode={editDiceMode}
-              setEditDiceMode={setEditDiceMode}
-              makeChangeHandler={makeChangeHandler}
               abilityModifier={abilityModifier}
             />
             <AttacksAndSpells

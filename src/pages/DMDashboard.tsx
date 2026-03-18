@@ -76,6 +76,18 @@ function hpPercent(hp?: { current?: number; max?: number, temp?: number }): numb
   return Math.min(100, Math.round((cur / (max + temp)) * 100));
 }
 
+function hpSegments(hp?: { current?: number; max?: number; temp?: number }) {
+  const current = Math.max(0, hp?.current ?? 0);
+  const max = Math.max(1, hp?.max ?? 1);
+  const temp = Math.max(0, hp?.temp ?? 0);
+  const total = max + temp;
+
+  return {
+    currentPct: Math.min(100, (current / total) * 100),
+    tempPct: Math.min(100, (temp / total) * 100),
+  };
+}
+
 // ---------- Component ----------
 export default function DMDashboard({ campaign, monsters }: DMDashboardProps) {
   // --- Realtime: presence + dati giocatori (solo Players tab) ---
@@ -224,9 +236,11 @@ export default function DMDashboard({ campaign, monsters }: DMDashboardProps) {
               <Card className="character-section">
                 <div className="character-section-title">Quick Actions</div>
                 <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button variant="outline" className="w-full justify-start" asChild>
+                    <a href="/dm/initiative">
                     <Dice6 className="w-4 h-4 mr-2" />
-                    Roll Initiative
+                    Tracker Iniziativa
+                    </a>
                   </Button>
                   <Button variant="outline" className="w-full justify-start">
                     <Sword className="w-4 h-4 mr-2" />
@@ -263,6 +277,7 @@ export default function DMDashboard({ campaign, monsters }: DMDashboardProps) {
                   const pct = hpPercent(p.hp);
                   const barColor =
                     pct >= 66 ? "bg-emerald-500" : pct >= 33 ? "bg-amber-500" : "bg-rose-500";
+                  const { currentPct, tempPct } = hpSegments(p.hp);
 
                   return (
                     <Card key={p.slug} className="character-section">
@@ -307,10 +322,18 @@ export default function DMDashboard({ campaign, monsters }: DMDashboardProps) {
                             </span>
                           </div>
                           <div className="mt-1 h-2 w-full overflow-hidden rounded bg-border">
-                            <div
-                              className={`h-full ${barColor} transition-[width] duration-300`}
-                              style={{ width: `${pct}%` }}
-                            />
+                            <div className="flex h-full w-full">
+                              <div
+                                className={`${barColor} h-full transition-[width] duration-300`}
+                                style={{ width: `${currentPct}%` }}
+                              />
+                              {tempPct > 0 && (
+                                <div
+                                  className="h-full bg-sky-400 transition-[width] duration-300"
+                                  style={{ width: `${tempPct}%` }}
+                                />
+                              )}
+                            </div>
                           </div>
                         </div>
 

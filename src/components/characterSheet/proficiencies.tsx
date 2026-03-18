@@ -10,6 +10,7 @@ import { Eye } from "lucide-react";
 const Proficiencies = ({
     characterData,
     proficiencyBonus,
+    abilityModifier,
     deathSaves,
     setDeathSaves,
     calculateSkillValues,
@@ -68,6 +69,30 @@ const Proficiencies = ({
 
     const profBonus = proficiencyBonus(characterData.basicInfo.level);
     const skillsCalc = calculateSkillValues(characterData) || [];
+    const normalizedClass = (characterData?.basicInfo?.class ?? "").trim().toLowerCase();
+
+    const spellcastingAbilityByClass: Record<string, string> = {
+        bardo: "charisma",
+        bard: "charisma",
+        chierico: "wisdom",
+        cleric: "wisdom",
+        druido: "wisdom",
+        druid: "wisdom",
+        mago: "intelligence",
+        wizard: "intelligence",
+        stregone: "charisma",
+        sorcerer: "charisma",
+        warlock: "charisma",
+        paladino: "charisma",
+        paladin: "charisma",
+        ranger: "wisdom",
+    };
+
+    const spellcastingAbility = spellcastingAbilityByClass[normalizedClass];
+    const spellSaveDc =
+        spellcastingAbility
+            ? 8 + profBonus + abilityModifier(characterData?.abilityScores?.[spellcastingAbility] ?? 10)
+            : null;
 
     // ===== Percezione passiva =====
     // Trova l'oggetto skill "Percezione" (fallback: "Perception")
@@ -85,10 +110,18 @@ const Proficiencies = ({
         <Card className="character-section">
             <div className="character-section-title">Competenze & Abilità</div>
             <div className="space-y-3">
-                <div>
-                    <Label className="text-xs text-muted-foreground">Bonus competenze</Label>
-                    <div className="text-lg font-bold text-primary">
-                        +{profBonus}
+                <div className="flex items-end justify-between gap-4">
+                    <div>
+                        <Label className="text-xs text-muted-foreground">Bonus competenze</Label>
+                        <div className="text-lg font-bold text-primary">
+                            +{profBonus}
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <Label className="text-xs text-muted-foreground">CD Incantesimi</Label>
+                        <div className="text-lg font-bold text-primary">
+                            {spellSaveDc ?? "—"}
+                        </div>
                     </div>
                 </div>
 
