@@ -24,7 +24,7 @@
     "speed": 9,
     "hitPointMaximum": 45,
     "currentHitPoints": 45,
-    "temporaryHitPoints": 7,
+    "temporaryHitPoints": 0,
     "hitDice": "1d8",
     "deathSaves": {
       "successes": 0,
