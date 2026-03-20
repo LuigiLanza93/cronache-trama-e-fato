@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+﻿import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +6,17 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { updateCharacter } from "@/realtime";
 import { Check, Eye, Settings2, X } from "lucide-react";
+
+const SAVING_THROW_ORDER = [
+    { key: "strength", short: "For", matches: ["strength", "forza", "for"] },
+    { key: "dexterity", short: "Des", matches: ["dexterity", "destrezza", "des"] },
+    { key: "constitution", short: "Cos", matches: ["constitution", "costituzione", "cos"] },
+    { key: "intelligence", short: "Int", matches: ["intelligence", "intelligenza", "int"] },
+    { key: "wisdom", short: "Sag", matches: ["wisdom", "saggezza", "sag"] },
+    { key: "charisma", short: "Car", matches: ["charisma", "carisma", "car"] },
+] as const;
+
+const SECTION_LABEL_CLASS = "text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90";
 
 const Proficiencies = ({
     characterData,
@@ -15,7 +26,7 @@ const Proficiencies = ({
     setDeathSaves,
     calculateSkillValues,
 }: any) => {
-    // ===== Edit mode per le ABILITÀ =====
+    // ===== Edit mode per le ABILITÃ€ =====
     const [editingSkills, setEditingSkills] = useState(false);
 
     // Mappa persistita: { nomeSkill -> proficient:boolean }
@@ -105,26 +116,41 @@ const Proficiencies = ({
     // Usa la mappa persistita (non il draft) per il calcolo ufficiale
     const isPerceptionProficient = !!persistedProfsMap[perceptionSkill?.name ?? "Percezione"];
     const passivePerception = 10 + wisMod + (isPerceptionProficient ? profBonus : 0);
+    const savingThrowProficiencies = (characterData?.proficiencies?.savingThrows ?? []).map((save: string) =>
+        typeof save === "string" ? save.trim().toLowerCase() : ""
+    );
+    const savingThrows = SAVING_THROW_ORDER.map(({ key, short, matches }) => {
+        const modifier = abilityModifier(characterData?.abilityScores?.[key] ?? 10);
+        const proficient = matches.some((match) => savingThrowProficiencies.includes(match));
+        const total = modifier + (proficient ? profBonus : 0);
+
+        return {
+            key,
+            short,
+            proficient,
+            total,
+        };
+    });
 
     return (
         <Card className="character-section">
-            <div className="character-section-title">Competenze & Abilità</div>
+            <div className="character-section-title">Competenze & AbilitÃ </div>
             <div className="space-y-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="flex min-h-[3.5rem] flex-col justify-between">
-                        <Label className="text-xs text-muted-foreground">Bonus competenze</Label>
+                        <Label className={SECTION_LABEL_CLASS}>Bonus competenze</Label>
                         <div className="text-lg font-bold text-primary">
                             +{profBonus}
                         </div>
                     </div>
                     <div className="flex min-h-[3.5rem] flex-col justify-between">
-                        <Label className="text-xs text-muted-foreground">CD Incantesimi</Label>
+                        <Label className={SECTION_LABEL_CLASS}>CD Incantesimi</Label>
                         <div className="text-lg font-bold text-primary">
-                            {spellSaveDc ?? "—"}
+                            {spellSaveDc ?? "â€”"}
                         </div>
                     </div>
                     <div className="flex min-h-[3.5rem] flex-col justify-between">
-                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Label className={`${SECTION_LABEL_CLASS} flex items-center gap-1`}>
                             <Eye className="h-4 w-4" aria-hidden="true" />
                             Perc. passiva
                         </Label>
@@ -140,12 +166,30 @@ const Proficiencies = ({
                 <Separator />
 
                 <div>
-                    <Label className="text-xs text-muted-foreground">Tiri salvezza</Label>
-                    <div className="space-y-1">
-                        {characterData.proficiencies.savingThrows.map((save: string) => (
-                            <Badge key={save} variant="secondary" className="mr-1">
-                                {save}
-                            </Badge>
+                    <Label className={SECTION_LABEL_CLASS}>Tiri salvezza</Label>
+                    <div className="mt-2 grid grid-cols-6 gap-2">
+                        {savingThrows.map((save) => (
+                            <div
+                                key={save.key}
+                                className={`ability-score flex min-w-0 flex-col items-center px-1 py-2 ${
+                                    save.proficient ? "border-primary/40 bg-primary/5" : ""
+                                }`}
+                            >
+                                <div
+                                    className={`text-xs text-center font-medium uppercase ${
+                                        save.proficient ? "text-primary" : "text-muted-foreground"
+                                    }`}
+                                >
+                                    {save.short}
+                                </div>
+                                <div
+                                    className={`mt-1 text-lg font-bold ${
+                                        save.proficient ? "text-primary" : "text-foreground"
+                                    }`}
+                                >
+                                    {save.total >= 0 ? `+${save.total}` : save.total}
+                                </div>
+                            </div>
                         ))}
                     </div>
 
@@ -154,7 +198,7 @@ const Proficiencies = ({
                     </div>
                     <div className="flex flex-col gap-3 mt-2">
                         <div>
-                            <Label className="text-xs text-muted-foreground mb-1">Riuscita</Label>
+                            <Label className={`${SECTION_LABEL_CLASS} mb-1`}>Riuscita</Label>
                             <div className="flex gap-3">
                                 {deathSaves.success.map((checked: boolean, i: number) => (
                                     <label
@@ -194,7 +238,7 @@ const Proficiencies = ({
                             </div>
                         </div>
                         <div>
-                            <Label className="text-xs text-muted-foreground mb-1">Fallimento</Label>
+                            <Label className={`${SECTION_LABEL_CLASS} mb-1`}>Fallimento</Label>
                             <div className="flex gap-3">
                                 {deathSaves.fail.map((checked: boolean, i: number) => (
                                     <label
@@ -240,7 +284,7 @@ const Proficiencies = ({
 
                 <div className="!mt-6">
                     <div className="flex items-center justify-between">
-                        <Label className="text-xs text-muted-foreground">Abilità</Label>
+                        <Label className={SECTION_LABEL_CLASS}>Abilità</Label>
                         {!editingSkills ? (
                             <Button
                                 type="button"
@@ -248,8 +292,8 @@ const Proficiencies = ({
                                 size="icon"
                                 className="h-8 w-8 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
                                 onClick={() => setEditingSkills(true)}
-                                aria-label="Modifica abilità"
-                                title="Modifica abilità"
+                                aria-label="Modifica abilitÃ "
+                                title="Modifica abilitÃ "
                             >
                                 <Settings2 className="h-4 w-4 text-primary" />
                             </Button>
@@ -261,8 +305,8 @@ const Proficiencies = ({
                                     size="icon"
                                     className="h-8 w-8 rounded-full border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90"
                                     onClick={handleSaveSkills}
-                                    aria-label="Salva abilità"
-                                    title="Salva abilità"
+                                    aria-label="Salva abilitÃ "
+                                    title="Salva abilitÃ "
                                 >
                                     <Check className="h-4 w-4" />
                                 </Button>
@@ -272,8 +316,8 @@ const Proficiencies = ({
                                     size="icon"
                                     className="h-8 w-8 rounded-full"
                                     onClick={handleCancelSkills}
-                                    aria-label="Annulla modifiche abilità"
-                                    title="Annulla modifiche abilità"
+                                    aria-label="Annulla modifiche abilitÃ "
+                                    title="Annulla modifiche abilitÃ "
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
@@ -336,3 +380,4 @@ const Proficiencies = ({
 };
 
 export default Proficiencies;
+
