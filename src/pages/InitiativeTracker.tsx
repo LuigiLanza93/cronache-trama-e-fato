@@ -1,11 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { fetchCharacter } from "@/realtime";
-import { Check, ChevronRight, Copy, FlaskConical, Heart, Plus, Skull, Sword, Swords, Trash2, Users, X } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  Copy,
+  ExternalLink,
+  FlaskConical,
+  Heart,
+  Play,
+  Plus,
+  Skull,
+  Sword,
+  Swords,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
 
 type CharacterState = Record<string, any>;
 
@@ -16,6 +31,9 @@ type CharacterCatalogEntry = {
   level: number;
   initiativeBonus: number;
   armorClass: number;
+  passivePerception: number;
+  spellSaveDc: number | null;
+  abilityBonuses: Array<{ label: string; value: number }>;
   hp: { current: number; max: number; temp: number };
   deathSaves: { successes: number; failures: number };
   resourceSummary: { label: string; entries: Array<{ label: string; remaining: number }> };
@@ -64,6 +82,9 @@ type PlayerCombatant = {
   level: number;
   initiativeBonus: number;
   armorClass: number;
+  passivePerception: number;
+  spellSaveDc: number | null;
+  abilityBonuses: Array<{ label: string; value: number }>;
   hp: { current: number; max: number; temp: number };
   deathSaves: { successes: number; failures: number };
   resourceSummary: { label: string; entries: Array<{ label: string; remaining: number }> };
@@ -108,6 +129,68 @@ const characterModules = import.meta.glob("../data/characters/*.json", { eager: 
   { default: CharacterState }
 >;
 
+const SPELLCASTING_ABILITY_BY_CLASS: Record<string, string> = {
+  bardo: "charisma",
+  bard: "charisma",
+  chierico: "wisdom",
+  cleric: "wisdom",
+  druido: "wisdom",
+  druid: "wisdom",
+  mago: "intelligence",
+  wizard: "intelligence",
+  stregone: "charisma",
+  sorcerer: "charisma",
+  warlock: "charisma",
+  paladino: "charisma",
+  paladin: "charisma",
+  ranger: "wisdom",
+};
+
+const ABILITY_ORDER = [
+  { key: "strength", label: "For" },
+  { key: "dexterity", label: "Des" },
+  { key: "constitution", label: "Cos" },
+  { key: "intelligence", label: "Int" },
+  { key: "wisdom", label: "Sag" },
+  { key: "charisma", label: "Car" },
+] as const;
+
+function abilityModifier(score: number | undefined) {
+  const safeScore = typeof score === "number" ? score : 10;
+  return Math.floor((safeScore - 10) / 2);
+}
+
+function proficiencyBonus(level: number | undefined) {
+  const safeLevel = Math.max(1, typeof level === "number" ? level : 1);
+  return Math.ceil(safeLevel / 4) + 1;
+}
+
+function getPassivePerception(state: CharacterState) {
+  const wisdomModifier = abilityModifier(state?.abilityScores?.wisdom);
+  const perceptionSkill = (state?.proficiencies?.skills ?? []).find(
+    (skill: any) =>
+      typeof skill?.name === "string" &&
+      ["percezione", "perception"].includes(skill.name.toLowerCase())
+  );
+  const isProficient = !!perceptionSkill?.proficient;
+  return 10 + wisdomModifier + (isProficient ? proficiencyBonus(state?.basicInfo?.level) : 0);
+}
+
+function getSpellSaveDc(state: CharacterState) {
+  const normalizedClass = (state?.basicInfo?.class ?? "").trim().toLowerCase();
+  const spellcastingAbility = SPELLCASTING_ABILITY_BY_CLASS[normalizedClass];
+  if (!spellcastingAbility) return null;
+
+  return 8 + proficiencyBonus(state?.basicInfo?.level) + abilityModifier(state?.abilityScores?.[spellcastingAbility]);
+}
+
+function getAbilityBonuses(state: CharacterState) {
+  return ABILITY_ORDER.map(({ key, label }) => ({
+    label,
+    value: abilityModifier(state?.abilityScores?.[key]),
+  }));
+}
+
 function summarizeResourceSlots(
   className: string | undefined,
   spellSlots: Record<string, Array<{ active?: boolean }>> | undefined
@@ -139,7 +222,7 @@ function summarizeResourceSlots(
   return {
     label: "Slot",
     entries: entries.map(({ level, remaining }) => ({
-      label: `${level}°`,
+      label: `${level}`,
       remaining,
     })),
   };
@@ -156,6 +239,9 @@ function toCharacterCatalogEntry(state: CharacterState): CharacterCatalogEntry |
     level: state?.basicInfo?.level ?? 0,
     initiativeBonus: state?.combatStats?.initiative ?? 0,
     armorClass: state?.combatStats?.armorClass ?? 0,
+    passivePerception: getPassivePerception(state),
+    spellSaveDc: getSpellSaveDc(state),
+    abilityBonuses: getAbilityBonuses(state),
     hp: {
       current: state?.combatStats?.currentHitPoints ?? 0,
       max: state?.combatStats?.hitPointMaximum ?? 0,
@@ -256,6 +342,9 @@ function buildCombatants(
         level: source.level,
         initiativeBonus: source.initiativeBonus,
         armorClass: source.armorClass,
+        passivePerception: source.passivePerception,
+        spellSaveDc: source.spellSaveDc,
+        abilityBonuses: source.abilityBonuses,
         hp: source.hp,
         deathSaves: source.deathSaves,
         resourceSummary: source.resourceSummary,
@@ -355,13 +444,51 @@ export default function InitiativeTracker() {
   const [playerRolls, setPlayerRolls] = useState<Record<string, string>>({});
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
   const [monsterHpAdjustments, setMonsterHpAdjustments] = useState<Record<string, string>>({});
+  const [expandedAbilityBonuses, setExpandedAbilityBonuses] = useState<Record<string, boolean>>({});
   const [setupSectionsOpen, setSetupSectionsOpen] = useState(true);
+  const playerRollInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const monsterNameInputRef = useRef<HTMLInputElement | null>(null);
   const [monsterForm, setMonsterForm] = useState({
     name: "",
     initiative: "",
     armorClass: "",
     hitPoints: "",
   });
+
+  const handlePlayerRollKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    slug: string,
+    selected: boolean,
+    parsedRoll: number | null
+  ) => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+    if (selected || parsedRoll === null) return;
+    const added = addPlayer(slug);
+    if (!added) return;
+
+    const nextSlug = catalogList.find(
+      (entry) => entry.slug !== slug && !selectedSlugs.includes(entry.slug)
+    )?.slug;
+
+    if (!nextSlug) return;
+
+    window.requestAnimationFrame(() => {
+      playerRollInputRefs.current[nextSlug]?.focus();
+      playerRollInputRefs.current[nextSlug]?.select();
+    });
+  };
+
+  const handleMonsterFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const added = addMonster();
+    if (!added) return;
+
+    window.requestAnimationFrame(() => {
+      monsterNameInputRef.current?.focus();
+    });
+  };
 
   const catalogList = useMemo(
     () =>
@@ -451,11 +578,11 @@ export default function InitiativeTracker() {
   const currentTurn = combatants.find((combatant) => combatant.id === encounter.currentTurnId) ?? null;
 
   const addPlayer = (slug: string) => {
-    if (encounter.players.some((entry) => entry.slug === slug)) return;
+    if (encounter.players.some((entry) => entry.slug === slug)) return false;
 
     const source = catalogBySlug[slug];
     const roll = Number.isFinite(parseInt(playerRolls[slug], 10)) ? parseInt(playerRolls[slug], 10) : NaN;
-    if (!Number.isFinite(roll)) return;
+    if (!Number.isFinite(roll)) return false;
     const totalInitiative = roll + (source?.initiativeBonus ?? 0);
 
     setEncounter((prev) => ({
@@ -476,6 +603,7 @@ export default function InitiativeTracker() {
     }));
 
     setPlayerRolls((prev) => ({ ...prev, [slug]: "" }));
+    return true;
   };
 
   const removePlayer = (slug: string) => {
@@ -488,7 +616,7 @@ export default function InitiativeTracker() {
 
   const addMonster = () => {
     const name = monsterForm.name.trim();
-    if (!name) return;
+    if (!name) return false;
 
     const initiative = Number.isFinite(parseInt(monsterForm.initiative, 10))
       ? parseInt(monsterForm.initiative, 10)
@@ -525,6 +653,8 @@ export default function InitiativeTracker() {
       armorClass: "",
       hitPoints: "",
     });
+
+    return true;
   };
 
   const removeMonster = (id: string) => {
@@ -670,6 +800,13 @@ export default function InitiativeTracker() {
     }));
   };
 
+  const toggleAbilityBonuses = (combatantId: string) => {
+    setExpandedAbilityBonuses((prev) => ({
+      ...prev,
+      [combatantId]: !prev[combatantId],
+    }));
+  };
+
   return (
     <div className="min-h-screen parchment p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -722,18 +859,22 @@ export default function InitiativeTracker() {
                       <div className="min-w-0">
                         <div className="truncate font-medium text-primary">{source?.name}</div>
                       </div>
-                      <div className="truncate text-xs text-foreground">{source?.className || "—"}</div>
-                      <div className="text-xs text-foreground">{source?.level || "—"}</div>
+                      <div className="truncate text-xs text-foreground">{source?.className || "â€”"}</div>
+                      <div className="text-xs text-foreground">{source?.level || "â€”"}</div>
                       <div className="text-xs text-foreground">
                         {source?.initiativeBonus !== undefined
                           ? `${source.initiativeBonus >= 0 ? "+" : ""}${source.initiativeBonus}`
-                          : "—"}
+                          : "â€”"}
                       </div>
                       <Input
+                        ref={(element) => {
+                          playerRollInputRefs.current[entry.slug] = element;
+                        }}
                         value={initiativeRoll}
                         onChange={(e) =>
                           setPlayerRolls((prev) => ({ ...prev, [entry.slug]: e.target.value }))
                         }
+                        onKeyDown={(e) => handlePlayerRollKeyDown(e, entry.slug, selected, parsedRoll)}
                         inputMode="numeric"
                         placeholder="Tiro init"
                         className="h-7 text-center text-xs"
@@ -742,18 +883,26 @@ export default function InitiativeTracker() {
                       />
                       <div className="flex justify-end">
                         {selected ? (
-                          <Button size="sm" variant="outline" onClick={() => removePlayer(entry.slug)} className="h-7 px-2.5 text-xs">
-                            Rimuovi
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            onClick={() => removePlayer(entry.slug)}
+                            className="h-7 w-7"
+                            title="Rimuovi dal tracker"
+                            aria-label="Rimuovi dal tracker"
+                          >
+                            <X className="h-3.5 w-3.5" />
                           </Button>
                         ) : (
                           <Button
-                            size="sm"
-                            className="h-7 px-2.5 text-xs"
+                            size="icon"
+                            className="h-7 w-7"
                             onClick={() => addPlayer(entry.slug)}
                             disabled={parsedRoll === null}
                             title={totalInitiative !== null ? `Totale iniziativa ${totalInitiative}` : undefined}
+                            aria-label="Aggiungi al tracker"
                           >
-                            Aggiungi
+                            <Plus className="h-3.5 w-3.5" />
                           </Button>
                         )}
                       </div>
@@ -786,9 +935,13 @@ export default function InitiativeTracker() {
                   <span>PF</span>
                   <span className="text-right">Azione</span>
                 </div>
-                <div className="grid grid-cols-[minmax(0,1.6fr)_90px_80px_90px_110px] items-end gap-2 px-3 py-1.5">
+                <form
+                  onSubmit={handleMonsterFormSubmit}
+                  className="grid grid-cols-[minmax(0,1.6fr)_90px_80px_90px_110px] items-end gap-2 px-3 py-1.5"
+                >
                   <div>
                     <Input
+                      ref={monsterNameInputRef}
                       value={monsterForm.name}
                       onChange={(e) => setMonsterForm((prev) => ({ ...prev, name: e.target.value }))}
                       placeholder="Es. Goblin 1"
@@ -820,12 +973,17 @@ export default function InitiativeTracker() {
                     />
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={addMonster} className="h-7 px-2.5 text-xs">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Aggiungi
+                    <Button
+                      type="submit"
+                      size="icon"
+                      className="h-7 w-7"
+                      title="Aggiungi mostro"
+                      aria-label="Aggiungi mostro"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                </div>
+                </form>
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -837,21 +995,48 @@ export default function InitiativeTracker() {
             <span>Combattimento</span>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">Round {encounter.round}</Badge>
-              <Button variant="outline" size="sm" onClick={clearEncounter}>
-                Svuota incontro
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={clearEncounter}
+                title="Svuota incontro"
+                aria-label="Svuota incontro"
+              >
+                <Trash2 className="h-4 w-4" />
               </Button>
               {encounter.started ? (
-                <Button variant="outline" size="sm" onClick={resetEncounter}>
-                  Termina
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={resetEncounter}
+                  title="Termina combattimento"
+                  aria-label="Termina combattimento"
+                >
+                  <X className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button size="sm" onClick={startEncounter} disabled={combatants.filter(isEligibleForTurn).length === 0}>
-                  Avvia
+                <Button
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={startEncounter}
+                  disabled={combatants.filter(isEligibleForTurn).length === 0}
+                  title="Avvia combattimento"
+                  aria-label="Avvia combattimento"
+                >
+                  <Play className="h-4 w-4" />
                 </Button>
               )}
-              <Button size="sm" onClick={nextTurn} disabled={!encounter.started || combatants.length === 0}>
-                Prossimo
-                <ChevronRight className="ml-1 h-4 w-4" />
+              <Button
+                size="icon"
+                className="h-8 w-8"
+                onClick={nextTurn}
+                disabled={!encounter.started || combatants.length === 0}
+                title="Prossimo turno"
+                aria-label="Prossimo turno"
+              >
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -874,6 +1059,7 @@ export default function InitiativeTracker() {
               <div className="space-y-3">
                 {combatants.map((combatant, index) => {
                   const active = combatant.id === encounter.currentTurnId;
+                  const abilitiesExpanded = !!expandedAbilityBonuses[combatant.id];
                   const { currentPct, tempPct } = hpSegments(combatant.hp);
                   const barColor = hpBarColor(combatant.hp);
                   const monsterAdjustment = monsterHpAdjustments[combatant.id] ?? "";
@@ -903,17 +1089,65 @@ export default function InitiativeTracker() {
                               <Badge variant="outline">Mostro</Badge>
                             )}
                           </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                            <span>CA {combatant.armorClass}</span>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                            <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
+                              <span className="text-muted-foreground">CA</span>{" "}
+                              <span>{combatant.armorClass}</span>
+                            </div>
                             {combatant.type === "player" && combatant.resourceSummary.entries.length > 0 && (
-                              <span className="truncate">
-                                {combatant.resourceSummary.label}{" "}
-                                {combatant.resourceSummary.entries
-                                  .map((entry) => `${entry.label}: ${entry.remaining}`)
-                                  .join(" · ")}
-                              </span>
+                              <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
+                                <span className="text-muted-foreground">{combatant.resourceSummary.label}</span>{" "}
+                                <span>
+                                  {combatant.resourceSummary.entries
+                                    .map((entry) => `${entry.label}:${entry.remaining}`)
+                                    .join(" · ")}
+                                </span>
+                              </div>
+                            )}
+                            {combatant.type === "player" && (
+                              <>
+                                <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
+                                  <span className="text-muted-foreground">Perc</span>{" "}
+                                  <span>{combatant.passivePerception}</span>
+                                </div>
+                                {combatant.spellSaveDc !== null && (
+                                  <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
+                                    <span className="text-muted-foreground">CD</span>{" "}
+                                    <span>{combatant.spellSaveDc}</span>
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => toggleAbilityBonuses(combatant.id)}
+                                  className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90 transition-colors hover:bg-accent"
+                                  aria-expanded={abilitiesExpanded}
+                                  aria-label="Mostra bonus caratteristiche"
+                                  title="Mostra bonus caratteristiche"
+                                >
+                                  <span className="text-muted-foreground">Caratt.</span>
+                                  <ChevronRight className={`h-3.5 w-3.5 transition-transform ${abilitiesExpanded ? "rotate-90" : ""}`} />
+                                </button>
+                              </>
                             )}
                           </div>
+                          {combatant.type === "player" && (
+                            <div
+                              className={`grid transition-all ${abilitiesExpanded ? "mt-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                            >
+                              <div className="overflow-hidden">
+                                <div className="flex flex-wrap gap-1.5 rounded-xl border border-border/50 bg-background/30 px-2 py-2">
+                                  {combatant.abilityBonuses.map((ability) => (
+                                    <div
+                                      key={`${combatant.id}-${ability.label}`}
+                                      className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/90"
+                                    >
+                                      {ability.label} {ability.value >= 0 ? `+${ability.value}` : ability.value}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -932,8 +1166,19 @@ export default function InitiativeTracker() {
 
                         {combatant.type === "player" ? (
                           <div className="flex justify-end">
-                            <Button variant="outline" size="sm" asChild className="h-8 px-3">
-                              <a href={`/${combatant.slug}`}>Apri scheda</a>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              asChild
+                              className="h-8 w-8"
+                            >
+                              <a
+                                href={`/${combatant.slug}`}
+                                title="Apri scheda"
+                                aria-label="Apri scheda"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
                             </Button>
                           </div>
                         ) : (
@@ -990,7 +1235,7 @@ export default function InitiativeTracker() {
                       )}
 
 
-                      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-h-7 flex flex-wrap gap-2">
                           {combatant.statuses.length > 0 &&
                             combatant.statuses.map((status) => (
@@ -1001,7 +1246,9 @@ export default function InitiativeTracker() {
                                 className="inline-flex"
                                 title="Rimuovi status"
                               >
-                                <Badge variant="secondary">{status} ×</Badge>
+                                <Badge variant="secondary" className="rounded-full border border-border/50 bg-muted/80 px-2.5 py-1">
+                                  {status} x
+                                </Badge>
                               </button>
                             ))}
                         </div>
@@ -1035,3 +1282,4 @@ export default function InitiativeTracker() {
     </div>
   );
 }
+

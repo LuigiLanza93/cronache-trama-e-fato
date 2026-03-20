@@ -404,8 +404,8 @@
       "usage": {
         "resetOn": "shortRest",
         "used": [
-          false,
-          false,
+          true,
+          true,
           false,
           false
         ]
