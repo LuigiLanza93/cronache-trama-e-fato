@@ -468,7 +468,7 @@ export default function Capabilities({
                     {detailCapability.usage.used.map((used, useIndex) => (
                       <label
                         key={`detail-cap-${detailIndex}-use-${useIndex}`}
-                        className="inline-flex items-center gap-2 rounded border border-border px-2 py-1"
+                        className="inline-flex items-center rounded border border-border px-2 py-1"
                       >
                         <input
                           type="checkbox"
@@ -478,7 +478,6 @@ export default function Capabilities({
                           }}
                           className="h-4 w-4"
                         />
-                        <span>Uso {useIndex + 1}</span>
                       </label>
                     ))}
                   </div>
