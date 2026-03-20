@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Plus, RotateCcw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,61 +85,134 @@ const Features = ({
         }
     }, [characterData.slug, characterData.basicInfo.class, characterData.basicInfo.level]);
 
+    const orderedFeatures = [...characterData.features]
+        .map((feature: any, index: number) => {
+            const baseName = stripName(feature.name);
+            const cls = parseClassFromFeatureTitle(feature.name);
+            const lvl = parseLevelFromFeatureTitle(feature.name);
+            const match = findSpell(baseName, cls, lvl);
+
+            return { feature, index, baseName, match };
+        })
+        .sort((a, b) => {
+            if (a.match && b.match) {
+                if (a.match.level !== b.match.level) return a.match.level - b.match.level;
+                return a.baseName.localeCompare(b.baseName, "it");
+            }
+            if (a.match && !b.match) return -1;
+            if (!a.match && b.match) return 1;
+            return a.index - b.index;
+        });
+
+    const spellLevelLabel = (level: number) => {
+        if (level === 0) {
+            return characterData.basicInfo.class === "Guerriero" ? "Manovre" : "Trucchetti";
+        }
+        return `Livello ${level}`;
+    };
+
+    const nonSpellFeatures = orderedFeatures.filter(({ match }) => !match);
+    const spellFeatures = orderedFeatures.filter(({ match }) => !!match);
+    const spellGroups = spellFeatures.reduce((acc, entry) => {
+        const level = entry.match.level;
+        if (!acc[level]) acc[level] = [];
+        acc[level].push(entry);
+        return acc;
+    }, {} as Record<number, typeof spellFeatures>);
+    const spellLevels = Object.keys(spellGroups).map(Number).sort((a, b) => a - b);
+
     return (
         <Card className="character-section">
             <div className="character-section-title flex items-center justify-between">
                 <span>Tratti e Abilità</span>
+                <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+                    aria-label="Aggiungi incantesimo"
+                    title="Aggiungi incantesimo"
+                    onClick={() => setAddSpellOpen(true)}
+                >
+                    <Plus className="h-4 w-4" />
+                </Button>
             </div>
             <div className="space-y-3">
-                {characterData.features.map((feature: any, index: number) => {
-                    const baseName = stripName(feature.name);
-                    const cls = parseClassFromFeatureTitle(feature.name);
-                    const lvl = parseLevelFromFeatureTitle(feature.name);
-                    const match = findSpell(baseName, cls, lvl);
-
-                    return (
-                        <div key={index} className="dnd-frame rounded p-3">
-                            <button
-                                type="button"
-                                onClick={() => openFeatureModal(feature, index)}
-                                className="w-full min-w-0 rounded-sm text-left hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0">
-                                        <div className="truncate font-semibold text-primary">{baseName}</div>
-                                        {match ? (
-                                            <div className="text-xs text-muted-foreground">
-                                                Lv {match.level} · {match.school}
-                                                {match.concentration ? " · Concentrazione" : ""}
-                                                {match.ritual ? " · Rituale" : ""}
-                                            </div>
-                                        ) : (
-                                            <div className="line-clamp-1 text-xs text-muted-foreground">
-                                                {feature.description}
-                                            </div>
-                                        )}
+                {nonSpellFeatures.map(({ feature, index, baseName }) => (
+                    <div key={index} className="dnd-frame rounded p-3">
+                        <button
+                            type="button"
+                            onClick={() => openFeatureModal(feature, index)}
+                            className="w-full min-w-0 rounded-sm text-left hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        >
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                    <div className="truncate font-semibold text-primary">{baseName}</div>
+                                    <div className="line-clamp-1 text-xs text-muted-foreground">
+                                        {feature.description}
                                     </div>
-                                    {feature.uses && (
-                                        <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">
-                                            {feature.uses}
-                                        </Badge>
-                                    )}
                                 </div>
-                            </button>
-                        </div>
-                    );
-                })}
-            </div>
+                                {feature.uses && (
+                                    <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">
+                                        {feature.uses}
+                                    </Badge>
+                                )}
+                            </div>
+                        </button>
+                    </div>
+                ))}
 
-            <Button size="sm" className="mt-4" onClick={() => setAddSpellOpen(true)}>
-                Aggiungi incantesimo
-            </Button>
+                {spellLevels.map((level) => (
+                    <div key={level} className="space-y-2">
+                        <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                            {spellLevelLabel(level)}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {spellGroups[level].map(({ feature, index, baseName, match }) => (
+                                <div key={index} className="dnd-frame rounded p-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => openFeatureModal(feature, index)}
+                                        className="w-full min-w-0 rounded-sm text-left hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                    >
+                                        <div className="flex items-start justify-between gap-1.5">
+                                            <div className="min-w-0">
+                                                <div className="line-clamp-2 pr-1 text-sm font-semibold leading-snug text-primary">
+                                                    {baseName}
+                                                </div>
+                                                <div className="mt-1 text-[11px] leading-tight text-muted-foreground">
+                                                    {match.school}
+                                                    {match.concentration ? " · Concentrazione" : ""}
+                                                    {match.ritual ? " · Rituale" : ""}
+                                                </div>
+                                            </div>
+                                            {feature.uses && (
+                                                <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">
+                                                    {feature.uses}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
 
             <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between">
                     <span className="font-semibold">Slot Incantesimi</span>
-                    <Button size="sm" variant="outline" onClick={resetSlots}>
-                        Reset
+                    <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+                        aria-label="Resetta slot incantesimi"
+                        title="Resetta slot incantesimi"
+                        onClick={resetSlots}
+                    >
+                        <RotateCcw className="h-4 w-4" />
                     </Button>
                 </div>
                 <div className="space-y-1">

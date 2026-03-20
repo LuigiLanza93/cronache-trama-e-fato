@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { Sword } from "lucide-react";
+import { ShieldOff, Sword } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type SkillType = "volonta" | "incontro" | "riposoBreve" | "riposoLungo";
@@ -167,8 +167,15 @@ const AttacksAndSpells = ({
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => toggleEquipAttack(originalIndex)}>
-                      Disequipaggia
+                    <Button
+                      size="icon"
+                      variant="default"
+                      className="h-8 w-8"
+                      onClick={() => toggleEquipAttack(originalIndex)}
+                      aria-label="Disequipaggia arma"
+                      title="Disequipaggia"
+                    >
+                      <ShieldOff className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -258,8 +265,15 @@ const AttacksAndSpells = ({
 
                   {!!toggleEquipItem && (
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => toggleEquipItem(i)}>
-                        Disequipaggia
+                      <Button
+                        size="icon"
+                        variant="default"
+                        className="h-8 w-8"
+                        onClick={() => toggleEquipItem(i)}
+                        aria-label="Disequipaggia oggetto"
+                        title="Disequipaggia"
+                      >
+                        <ShieldOff className="h-4 w-4" />
                       </Button>
                     </div>
                   )}

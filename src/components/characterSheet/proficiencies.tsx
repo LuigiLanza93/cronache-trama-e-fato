@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { updateCharacter } from "@/realtime";
-import { Eye } from "lucide-react";
+import { Check, Eye, Settings2, X } from "lucide-react";
 
 const Proficiencies = ({
     characterData,
@@ -242,16 +242,40 @@ const Proficiencies = ({
                     <div className="flex items-center justify-between">
                         <Label className="text-xs text-muted-foreground">Abilità</Label>
                         {!editingSkills ? (
-                            <Button size="sm" variant="outline" onClick={() => setEditingSkills(true)}>
-                                Modifica
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
+                                onClick={() => setEditingSkills(true)}
+                                aria-label="Modifica abilità"
+                                title="Modifica abilità"
+                            >
+                                <Settings2 className="h-4 w-4 text-primary" />
                             </Button>
                         ) : (
-                            <div className="flex gap-2">
-                                <Button size="sm" variant="ghost" onClick={handleCancelSkills}>
-                                    Annulla
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-full border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90"
+                                    onClick={handleSaveSkills}
+                                    aria-label="Salva abilità"
+                                    title="Salva abilità"
+                                >
+                                    <Check className="h-4 w-4" />
                                 </Button>
-                                <Button size="sm" onClick={handleSaveSkills}>
-                                    Salva
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-full"
+                                    onClick={handleCancelSkills}
+                                    aria-label="Annulla modifiche abilità"
+                                    title="Annulla modifiche abilità"
+                                >
+                                    <X className="h-4 w-4" />
                                 </Button>
                             </div>
                         )}
@@ -292,7 +316,7 @@ const Proficiencies = ({
                                     </label>
 
                                     <div className="text-right">
-                                        <div className="text-black font-medium">
+                                        <div className="font-medium text-foreground">
                                             {totalStr}
                                             {isProficient && (
                                                 <span className="ml-1 text-xs text-muted-foreground">
