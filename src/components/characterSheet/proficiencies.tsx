@@ -146,7 +146,7 @@ const Proficiencies = ({
                     <div className="flex min-h-[3.5rem] flex-col justify-between">
                         <Label className={SECTION_LABEL_CLASS}>CD Incantesimi</Label>
                         <div className="text-lg font-bold text-primary">
-                            {spellSaveDc ?? "â€”"}
+                            {spellSaveDc ?? "-"}
                         </div>
                     </div>
                     <div className="flex min-h-[3.5rem] flex-col justify-between">
