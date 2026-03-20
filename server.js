@@ -17,10 +17,31 @@ const PORT = process.env.PORT || 3000;
 
 // ---- Disk paths ----
 const CHAR_DIR = path.resolve(__dirname, "src/data/characters");
+const PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
 
 // ---- Utilities ----
 function ensureDir(p) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+}
+
+function sanitizeSlug(value = "") {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9-_]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "character";
+}
+
+function extensionFromType(contentType = "", fileName = "") {
+  const normalizedType = String(contentType).toLowerCase();
+  if (normalizedType === "image/png") return "png";
+  if (normalizedType === "image/jpeg") return "jpg";
+  if (normalizedType === "image/webp") return "webp";
+
+  const ext = path.extname(fileName).toLowerCase().replace(".", "");
+  if (["png", "jpg", "jpeg", "webp"].includes(ext)) {
+    return ext === "jpeg" ? "jpg" : ext;
+  }
+  return null;
 }
 
 function readCharacter(slug) {
@@ -80,7 +101,9 @@ function scheduleWrite(slug, state) {
 // ---- App ----
 async function start() {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "10mb" }));
+  ensureDir(PORTRAIT_DIR);
+  app.use("/portraits", express.static(PORTRAIT_DIR));
 
   // REST: fetch current state from disk
   app.get("/api/characters/:slug", (req, res) => {
@@ -88,6 +111,43 @@ async function start() {
     const state = readCharacter(slug);
     if (!state) return res.status(404).json({ error: "Character not found" });
     res.json(state);
+  });
+
+  app.post("/api/uploads/avatar", (req, res) => {
+    const { slug, fileName, contentType, data } = req.body ?? {};
+    const ext = extensionFromType(contentType, fileName);
+
+    if (!slug || !data || !ext) {
+      return res.status(400).json({ error: "Invalid upload payload" });
+    }
+
+    const safeSlug = sanitizeSlug(slug);
+
+    let buffer;
+    try {
+      buffer = Buffer.from(String(data), "base64");
+    } catch {
+      return res.status(400).json({ error: "Invalid image encoding" });
+    }
+
+    if (!buffer?.length) {
+      return res.status(400).json({ error: "Empty image payload" });
+    }
+
+    if (buffer.length > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: "Image too large" });
+    }
+
+    const fileBase = `${safeSlug}-${Date.now()}.${ext}`;
+    const filePath = path.join(PORTRAIT_DIR, fileBase);
+
+    try {
+      fs.writeFileSync(filePath, buffer);
+      return res.json({ url: `/portraits/${fileBase}` });
+    } catch (error) {
+      console.error("[server] avatar upload failed:", error);
+      return res.status(500).json({ error: "Upload failed" });
+    }
   });
 
   const httpServer = createServer(app);

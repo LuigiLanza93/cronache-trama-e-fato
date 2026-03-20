@@ -110,17 +110,29 @@ const Proficiencies = ({
         <Card className="character-section">
             <div className="character-section-title">Competenze & Abilità</div>
             <div className="space-y-3">
-                <div className="flex items-end justify-between gap-4">
-                    <div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="flex min-h-[3.5rem] flex-col justify-between">
                         <Label className="text-xs text-muted-foreground">Bonus competenze</Label>
                         <div className="text-lg font-bold text-primary">
                             +{profBonus}
                         </div>
                     </div>
-                    <div className="text-right">
+                    <div className="flex min-h-[3.5rem] flex-col justify-between">
                         <Label className="text-xs text-muted-foreground">CD Incantesimi</Label>
                         <div className="text-lg font-bold text-primary">
                             {spellSaveDc ?? "—"}
+                        </div>
+                    </div>
+                    <div className="flex min-h-[3.5rem] flex-col justify-between">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Eye className="h-4 w-4" aria-hidden="true" />
+                            Perc. passiva
+                        </Label>
+                        <div
+                            className="text-lg font-bold text-primary"
+                            aria-label={`Percezione passiva: ${passivePerception}`}
+                        >
+                            {passivePerception}
                         </div>
                     </div>
                 </div>
@@ -223,22 +235,6 @@ const Proficiencies = ({
                         </div>
                     </div>
                 </div>
-
-                {/* ===== Percezione passiva (blocco singolo con icona) ===== */}
-                <Separator />
-                <div>
-                    <Label className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                        Percezione passiva
-                    </Label>
-                    <div
-                        className="text-lg font-bold text-primary"
-                        aria-label={`Percezione passiva: ${passivePerception}`}
-                    >
-                        {passivePerception}
-                    </div>
-                </div>
-                {/* ===== Fine Percezione passiva ===== */}
 
                 <Separator />
 
