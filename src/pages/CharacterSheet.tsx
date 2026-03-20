@@ -83,6 +83,7 @@ interface Character {
     race: string;
     alignment: string;
     experiencePoints: number;
+    portraitUrl?: string;
   };
   abilityScores: {
     [key: string]: number;

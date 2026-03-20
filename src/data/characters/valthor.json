@@ -8,7 +8,8 @@
     "playerName": "Luigi",
     "race": "Tiefling",
     "alignment": "Neutrale buono",
-    "experiencePoints": 0
+    "experiencePoints": 0,
+    "portraitUrl": "public/portraits/valthor.png"
   },
   "abilityScores": {
     "strength": 10,

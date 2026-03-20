@@ -8,7 +8,8 @@
     "playerName": "Roberto",
     "race": "Mezzelfo",
     "alignment": "Caotico neutrale",
-    "experiencePoints": 0
+    "experiencePoints": 0,
+    "portraitUrl": "public/portraits/narak.png"
   },
   "abilityScores": {
     "strength": 12,
