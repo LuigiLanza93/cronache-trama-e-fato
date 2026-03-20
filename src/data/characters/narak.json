@@ -311,48 +311,6 @@
       },
       {
         "type": "object",
-        "name": "Collegio bardico del valore",
-        "description": "Indicazioni di sottoclasse:",
-        "equippable": true,
-        "equipped": true,
-        "skillsByType": {
-          "volonta": [
-            {
-              "name": "Competenza in armature medie negli scudi e nelle armi da guerra",
-              "used": false
-            },
-            {
-              "name": "Posso ispirare gli altri",
-              "used": false
-            },
-            {
-              "name": "Al livello 6 posso attaccare 2 volte",
-              "used": false
-            }
-          ]
-        }
-      },
-      {
-        "type": "object",
-        "name": "Maestria",
-        "description": "Caratteristica di classe del Bardo:",
-        "equippable": true,
-        "equipped": true,
-        "skillsByType": {
-          "volonta": [
-            {
-              "name": "Al 3 livello un bardo sceglie due tra le sue competenze nelle abilità. Il suo bonus di competenza raddoppia in ogni prova di caratteristica effettuata usando una delle competenze scelte.",
-              "used": false
-            },
-            {
-              "name": "Al 10 livello un bardo può scegliere altre due competenze nelle abilità per ottenere questo beneficio.",
-              "used": false
-            }
-          ]
-        }
-      },
-      {
-        "type": "object",
         "name": "Oggetti del ragno",
         "description": "- Guanto con ragno ricamato sopra\n- Anello di “maestro” del ragno",
         "equippable": true,
@@ -436,5 +394,40 @@
   "ideals": "Protezione: 'La mia spada vale qualcosa solo se difende chi non può brandirne una.' Crescita: 'Ogni sfida, ogni ferita, ogni duello è un passo per diventare più forte di ieri.'",
   "bonds": "Porta con sé la vecchia spada scheggiata che usò nel suo primo vero combattimento: simbolo del momento in cui ha scelto la sua strada.",
   "flaws": "Non riesce a resistere al richiamo di una sfida: il rischio di superare se stesso lo spinge anche quando dovrebbe fermarsi.",
-  "backstory": ""
+  "backstory": "",
+  "capabilities": [
+    {
+      "name": "Ispirazione Bardica",
+      "kind": "active",
+      "shortDescription": "Concede un dado bonus (d8) a un alleato entro 18 metri, usabile entro 10 minuti.",
+      "description": "Un bardo può ispirare gli altri tramite il lirismo delle sue parole o della sua musica. Per farlo usa un'azione bonus nel suo turno per scegliere una creatura diversa da se stesso, situata entro 18 metri da lui e in grado di sentirlo. Quella creatura ottiene un dado di Ispirazione Bardica, un d6.\nUna volta entro i 10 minuti successivi, quella creatura può tirare il dado e aggiungere il risultato ottenuto a una prova di caratteristica, un tiro per colpire o un tiro salvezza da essa effettuato. La creatura può aspettare di avere tirato il d20 prima di decidere se utilizzare il dado di Ispirazione Bardica, ma deve decidere se utilizzarlo prima che il GM dichiari se il tiro ha avuto successo o meno. Una volta tirato il dado di Ispirazione Bardica, quel dado è perduto. Una creatura può possedere un solo dado di Ispirazione Bardica alla volta.\nIl bardo può utilizzare questo privilegio un numero di volte pari al suo modificatore di Carisma (minimo di una volta). Recupera tutti gli utilizzi spesi quando completa un riposo lungo.\nIl dado di Ispirazione Bardica cambia quando vengono raggiunti determinati livelli in questa classe. Il dado diventa un d8 al 5° livello, un d10 al 10° livello e un d12 al 15° livello.",
+      "usage": {
+        "resetOn": "shortRest",
+        "used": [
+          false,
+          false,
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "name": "Factotum",
+      "kind": "passive",
+      "shortDescription": "Aggiungi metà del bonus di competenza su prove in cui non sei competente.",
+      "description": "A partire dal 2° livello, un bardo può aggiungere metà del suo bonus di competenza, arrotondato per difetto, a ogni prova di caratteristica da lui effettuata che non includa già il suo bonus di competenza."
+    },
+    {
+      "name": "Collegio Bardico del Valore",
+      "kind": "passive",
+      "shortDescription": "- Competenza in armature medie negli scudi e nelle armi da guerra\n- Posso ispirare gli altri\n- Al livello 6 posso attaccare 2 volte",
+      "category": "Sottoclasse"
+    },
+    {
+      "name": "Maestria",
+      "kind": "passive",
+      "shortDescription": "- Al 3 livello un bardo sceglie due tra le sue competenze nelle abilità. Il suo bonus di competenza raddoppia in ogni prova di caratteristica effettuata usando una delle competenze scelte.\n- Al 10 livello un bardo può scegliere altre due competenze nelle abilità per ottenere questo beneficio.",
+      "category": "Bardo"
+    }
+  ]
 }

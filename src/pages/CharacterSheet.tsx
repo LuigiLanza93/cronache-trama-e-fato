@@ -45,6 +45,7 @@ import AbilityScores from "@/components/characterSheet/ability-scores";
 import Proficiencies from "@/components/characterSheet/proficiencies";
 import CombatStats from "@/components/characterSheet/combat-stats";
 import HitPoints from "@/components/characterSheet/hit-points";
+import Capabilities from "@/components/characterSheet/capabilities";
 import AttacksAndSpells from "@/components/characterSheet/attacks-and-spells";
 import Features from "@/components/characterSheet/features";
 import Inventory from "@/components/characterSheet/inventory";
@@ -81,6 +82,25 @@ type StructuredConsumableItem = {
   skillsByType?: Partial<SkillsByType>;
 };
 type StructuredItem = StructuredObjectItem | StructuredConsumableItem;
+type InventoryEditTarget =
+  | { kind: "weapon"; index: number }
+  | { kind: "object"; index: number }
+  | { kind: "consumable"; index: number }
+  | { kind: "legacyObject"; index: number };
+type CapabilityKind = "passive" | "active";
+type CapabilityReset = "atWill" | "encounter" | "shortRest" | "longRest" | "custom";
+type CapabilityEntry = {
+  name: string;
+  category?: string;
+  kind: CapabilityKind;
+  shortDescription: string;
+  description?: string;
+  usage?: {
+    resetOn: CapabilityReset;
+    customLabel?: string;
+    used: boolean[];
+  };
+};
 
 interface Character {
   slug: string;
@@ -137,6 +157,7 @@ interface Character {
     coins?: Partial<Coins>;
   };
   features: Array<{ name: string; description: string; uses?: string }>;
+  capabilities?: CapabilityEntry[];
 }
 
 type Spell = {
@@ -435,6 +456,51 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, { features: nextFeatures });
   };
 
+  const addCapability = (entry: CapabilityEntry) => {
+    if (!characterData) return;
+    const nextCapabilities = [...(characterData.capabilities ?? []), entry];
+    setCharacterData((prev) => (prev ? { ...prev, capabilities: nextCapabilities } : prev));
+    if (character) updateCharacter(character, { capabilities: nextCapabilities });
+  };
+
+  const updateCapability = (capabilityIndex: number, entry: CapabilityEntry) => {
+    if (!characterData) return;
+    const nextCapabilities = (characterData.capabilities ?? []).map((capability, index) =>
+      index === capabilityIndex ? entry : capability
+    );
+    setCharacterData((prev) => (prev ? { ...prev, capabilities: nextCapabilities } : prev));
+    if (character) updateCharacter(character, { capabilities: nextCapabilities });
+  };
+
+  const removeCapability = (capabilityIndex: number) => {
+    if (!characterData) return;
+    const nextCapabilities = (characterData.capabilities ?? []).filter((_, index) => index !== capabilityIndex);
+    setCharacterData((prev) => (prev ? { ...prev, capabilities: nextCapabilities } : prev));
+    if (character) updateCharacter(character, { capabilities: nextCapabilities });
+  };
+
+  const toggleCapabilityUse = (capabilityIndex: number, useIndex: number) => {
+    if (!characterData) return;
+    const currentCapabilities = characterData.capabilities ?? [];
+    const capability = currentCapabilities[capabilityIndex];
+    if (!capability?.usage?.used?.[useIndex] && capability?.usage?.used?.[useIndex] !== false) return;
+
+    const nextCapabilities = currentCapabilities.map((entry, index) => {
+      if (index !== capabilityIndex || !entry.usage) return entry;
+      const nextUsed = entry.usage.used.map((used, idx) => (idx === useIndex ? !used : used));
+      return {
+        ...entry,
+        usage: {
+          ...entry.usage,
+          used: nextUsed,
+        },
+      };
+    });
+
+    setCharacterData((prev) => (prev ? { ...prev, capabilities: nextCapabilities } : prev));
+    if (character) updateCharacter(character, { capabilities: nextCapabilities });
+  };
+
   const confirmRemoveFeature = () => {
     if (modalFeatureIndex === null) return;
     removeFeature(modalFeatureIndex);
@@ -590,8 +656,17 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
+  const updateLegacyItem = (index: number, name: string) => {
+    if (!characterData) return;
+    const nextItems = characterData.equipment.equipment.map((item, i) => (i === index ? name : item));
+    const patch = { equipment: { equipment: nextItems } };
+    setCharacterData((prev) => (prev ? { ...prev, equipment: { ...prev.equipment, equipment: nextItems } } : prev));
+    if (character) updateCharacter(character, patch);
+  };
+
   /** === NUOVO: submit inventario parametrico === */
   const handleInventorySubmit = (payload?: {
+    editTarget?: InventoryEditTarget;
     kind?: "weapon" | "object" | "consumable";
     // weapon
     weaponCategory?: "melee" | "ranged";
@@ -661,6 +736,7 @@ const CharacterSheet = () => {
 
     const prevEq = characterData.equipment;
     const itemsArray: StructuredItem[] = Array.isArray(prevEq.items) ? prevEq.items : [];
+    const editTarget = payload?.editTarget;
 
     // === Weapon
     if ((payload?.kind ?? itemKind) === "weapon") {
@@ -679,12 +755,15 @@ const CharacterSheet = () => {
         category: payload!.weaponCategory,
         hands: payload!.weaponCategory === "melee" ? payload?.weaponHands : undefined,
         range: payload!.weaponCategory === "ranged" ? payload?.weaponRange : undefined,
-        equipped: false,
+        equipped: editTarget?.kind === "weapon" ? !!prevEq.attacks[editTarget.index]?.equipped : false,
         ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
         ...(!hasAnyCategorized && itemSkill.trim() ? { skill: itemSkill.trim() } : {}),
       };
 
-      const nextAttacks = [...prevEq.attacks, attack];
+      const nextAttacks =
+        editTarget?.kind === "weapon"
+          ? prevEq.attacks.map((existing, index) => (index === editTarget.index ? attack : existing))
+          : [...prevEq.attacks, attack];
       const next = { ...prevEq, attacks: nextAttacks, items: itemsArray, coins }; // non aggiorno più equipment legacy
       setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
       if (character) updateCharacter(character, { equipment: next });
@@ -695,15 +774,30 @@ const CharacterSheet = () => {
 
     // === Object
     if ((payload?.kind ?? itemKind) === "object") {
+      if (editTarget?.kind === "legacyObject") {
+        const nextLegacyItems = prevEq.equipment.map((item, index) =>
+          index === editTarget.index ? itemName.trim() : item
+        );
+        const next = { ...prevEq, equipment: nextLegacyItems, items: itemsArray, coins };
+        setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
+        if (character) updateCharacter(character, { equipment: next });
+        setInvOpen(false);
+        resetInvForm();
+        return;
+      }
+
       const newObj: StructuredObjectItem = {
         type: "object",
         name: itemName.trim(),
         description: payload?.description || undefined,
         equippable: !!payload?.equippable,
-        equipped: false,
+        equipped: editTarget?.kind === "object" ? !!(itemsArray[editTarget.index] as StructuredObjectItem | undefined)?.equipped : false,
         ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
       };
-      const nextItems = [...itemsArray, newObj];
+      const nextItems =
+        editTarget?.kind === "object"
+          ? itemsArray.map((item, index) => (index === editTarget.index ? newObj : item))
+          : [...itemsArray, newObj];
       const next = { ...prevEq, items: nextItems, coins }; // non tocco lista legacy
       setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
       if (character) updateCharacter(character, { equipment: next });
@@ -723,7 +817,10 @@ const CharacterSheet = () => {
         dice: payload?.potionDice || undefined,
         ...(hasAnyCategorized ? { skillsByType: prunedSkillsByType } : {}),
       };
-      const nextItems = [...itemsArray, newCons];
+      const nextItems =
+        editTarget?.kind === "consumable"
+          ? itemsArray.map((item, index) => (index === editTarget.index ? newCons : item))
+          : [...itemsArray, newCons];
       const next = { ...prevEq, items: nextItems, coins }; // non tocco lista legacy
       setCharacterData((prev) => (prev ? { ...prev, equipment: next } : prev));
       if (character) updateCharacter(character, { equipment: next });
@@ -844,6 +941,13 @@ const CharacterSheet = () => {
               setCharacterData={setCharacterData}
               abilityModifier={abilityModifier}
             />
+            <Capabilities
+              characterData={characterData}
+              addCapability={addCapability}
+              updateCapability={updateCapability}
+              removeCapability={removeCapability}
+              toggleCapabilityUse={toggleCapabilityUse}
+            />
             <AttacksAndSpells
               characterData={characterData}
               toggleEquipAttack={toggleEquipAttack}
@@ -898,6 +1002,7 @@ const CharacterSheet = () => {
               invError={invError}
               removeAttack={removeAttack}
               removeItem={removeItem}
+              updateLegacyItem={updateLegacyItem}
               toggleEquipAttack={toggleEquipAttack}
               /** oggetti/consumabili */
               itemDescription={itemDescription}

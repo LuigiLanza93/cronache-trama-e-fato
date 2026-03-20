@@ -226,36 +226,6 @@
         }
       },
       {
-        "type": "object",
-        "name": "Deflagrazione Agonizzante",
-        "description": "Prerequisito: trucchetto Deflagrazione Occulta.\nEffetto: quando lanci Deflagrazione Occulta, aggiungi il tuo modificatore di Carisma ai danni di ogni raggio che colpisce.",
-        "equippable": true,
-        "equipped": true,
-        "skillsByType": {
-          "volonta": [
-            {
-              "name": "Mod. CAR ai danni di Deflagrazione Occulta",
-              "used": false
-            }
-          ]
-        }
-      },
-      {
-        "type": "object",
-        "name": "Vigore immondo",
-        "description": "Puoi lanciare Vita Falsata su te stesso a volontà come incantesimo di 1° livello, senza spendere slot incantesimo né componenti materiali.",
-        "equippable": true,
-        "equipped": true,
-        "skillsByType": {
-          "volonta": [
-            {
-              "name": "Vita Falsata (1°) a volontà",
-              "used": false
-            }
-          ]
-        }
-      },
-      {
         "type": "consumable",
         "name": "Pozione di Cura",
         "quantity": 1,
@@ -335,5 +305,29 @@
   "ideals": "Protezione: 'La mia spada vale qualcosa solo se difende chi non può brandirne una.' Crescita: 'Ogni sfida, ogni ferita, ogni duello è un passo per diventare più forte di ieri.'",
   "bonds": "Porta con sé la vecchia spada scheggiata che usò nel suo primo vero combattimento: simbolo del momento in cui ha scelto la sua strada.",
   "flaws": "Non riesce a resistere al richiamo di una sfida: il rischio di superare se stesso lo spinge anche quando dovrebbe fermarsi.",
-  "backstory": ""
+  "backstory": "",
+  "capabilities": [
+    {
+      "name": "Deflagrazione Agonizzante",
+      "kind": "active",
+      "shortDescription": "Mod. CAR ai danni di Deflagrazione Occulta",
+      "category": "Supplica occulta",
+      "description": "Prerequisito: trucchetto Deflagrazione Occulta.\nEffetto: quando lanci Deflagrazione Occulta, aggiungi il tuo modificatore di Carisma ai danni di ogni raggio che colpisce.",
+      "usage": {
+        "resetOn": "atWill",
+        "used": []
+      }
+    },
+    {
+      "name": "Vigore immondo",
+      "kind": "active",
+      "shortDescription": "Vita Falsata (1°) a volontà",
+      "category": "Supplica Occulta",
+      "description": "Puoi lanciare Vita Falsata su te stesso a volontà come incantesimo di 1° livello, senza spendere slot incantesimo né componenti materiali.",
+      "usage": {
+        "resetOn": "atWill",
+        "used": []
+      }
+    }
+  ]
 }

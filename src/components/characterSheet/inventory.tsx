@@ -1,8 +1,25 @@
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import {
+  Pencil,
+  Plus,
+  Shield,
+  ShieldOff,
+  Trash2,
+  X,
+} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +61,12 @@ function parseLegacyDamage(s: string | undefined): { dice?: string; type?: strin
   return { dice: src };
 }
 
+type InventoryTarget =
+  | { kind: "weapon"; index: number }
+  | { kind: "object"; index: number }
+  | { kind: "consumable"; index: number }
+  | { kind: "legacyObject"; index: number };
+
 const Inventory = ({
   coins,
   characterData,
@@ -80,6 +103,7 @@ const Inventory = ({
   invError,
   removeAttack,
   removeItem,
+  updateLegacyItem,
   toggleEquipAttack,
 
   // opzionali per i nuovi tipi (oggetti/consumabili già gestiti)
@@ -209,6 +233,10 @@ const Inventory = ({
   const equippableVal: boolean = (typeof itemEquippable === "boolean" ? itemEquippable : fallbackEquippable);
   const setEquippable = (setItemEquippable ?? setFallbackEquippable);
   const lastOpenTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [detailTarget, setDetailTarget] = useState<InventoryTarget | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [editingTarget, setEditingTarget] = useState<InventoryTarget | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // === helpers per skills ===
   const addSkillToCurrentType = (raw: string) => {
@@ -254,6 +282,12 @@ const Inventory = ({
   };
 
   const formType = mode === "coins" ? "coins" : `item-${kind}`;
+  const emptySkillsByType = {
+    volonta: [],
+    incontro: [],
+    riposoBreve: [],
+    riposoLungo: [],
+  };
 
   // items strutturati (se presenti) — per oggetti/consumabili
   const structuredItems = characterData?.equipment?.items as
@@ -287,7 +321,43 @@ const Inventory = ({
 
       {/* Monete */}
       <div className="mb-4 text-sm">
-        <div className="font-semibold text-primary mb-1.5">Monete</div>
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <div className="font-semibold text-primary">Monete</div>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+              aria-label="Aggiungi monete"
+              title="Aggiungi monete"
+              onClick={() => {
+                lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+                setMode("coins");
+                setCoinFlow("add");
+                setInvOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+              aria-label="Rimuovi monete"
+              title="Rimuovi monete"
+              onClick={() => {
+                lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+                setMode("coins");
+                setCoinFlow("remove");
+                setInvOpen(true);
+              }}
+            >
+              <span className="text-base leading-none">-</span>
+            </Button>
+          </div>
+        </div>
         <div className="space-y-1.5">
           {COIN_ORDER.map((abbr) => {
             const meta = COIN_META[abbr];
@@ -313,80 +383,86 @@ const Inventory = ({
         <div className="mt-1.5 text-[11px] text-muted-foreground">
           I cambi tra i vari tagli vengono calcolati automaticamente.
         </div>
-        <div className="mt-2 flex gap-2">
-          <Button
-            size="sm"
-            ref={(el) => {
-              if (coinFlow === "add") lastOpenTriggerRef.current = el;
-            }}
-            className="h-8 px-3"
-            onClick={() => {
-              lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
-              setMode("coins");
-              setCoinFlow("add");
-              setInvOpen(true);
-            }}
-          >
-            Aggiungi
-          </Button>
-          <Button
-            size="sm"
-            ref={(el) => {
-              if (coinFlow === "remove") lastOpenTriggerRef.current = el;
-            }}
-            className="h-8 px-3"
-            onClick={() => {
-              lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
-              setMode("coins");
-              setCoinFlow("remove");
-              setInvOpen(true);
-            }}
-          >
-            Rimuovi
-          </Button>
-        </div>
       </div>
 
       <Separator className="my-3" />
 
       {/* Armi */}
-      {characterData.equipment.attacks?.length > 0 && (
-        <div className="space-y-2 mb-4">
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center justify-between gap-2">
           <div className="font-semibold text-primary">Armi</div>
-          {characterData.equipment.attacks.map((atk: any, i: number) => (
-            <div key={`${atk.name}-${i}`} className="flex items-center justify-between text-sm dnd-frame p-2">
-              <div className="flex-1">
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+            aria-label="Aggiungi arma"
+            title="Aggiungi arma"
+            onClick={() => {
+              lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+              openAddDialog("weapon");
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {characterData.equipment.attacks?.length > 0 ? (
+          characterData.equipment.attacks.map((atk: any, i: number) => (
+            <div key={`${atk.name}-${i}`} className="flex items-center justify-between gap-3 text-sm dnd-frame p-2">
+              <button
+                type="button"
+                onClick={() => openDetail({ kind: "weapon", index: i })}
+                className="min-w-0 flex-1 rounded-sm text-left transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
                 <div className="font-medium">
                   {atk.name} {atk.equipped ? "(equipaggiata)" : ""}
                 </div>
                 <div className="text-muted-foreground">
                   {buildAttackDetail(atk)}
                 </div>
-              </div>
+              </button>
               <div className="flex items-center gap-2">
                 {atk.name && (atk.damageDice || atk.damageType) && (
                   <Button
-                    size="sm"
-                    variant={atk.equipped ? "outline" : "default"}
+                    size="icon"
+                    variant={atk.equipped ? "default" : "outline"}
+                    className="h-8 w-8"
                     onClick={() => toggleEquipAttack(i)}
+                    aria-label={atk.equipped ? "Disequipaggia arma" : "Equipaggia arma"}
+                    title={atk.equipped ? "Disequipaggia" : "Equipaggia"}
                   >
-                    {atk.equipped ? "Disequipaggia" : "Equipaggia"}
+                    {atk.equipped ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                   </Button>
                 )}
-                <Button size="icon" variant="ghost" aria-label="Rimuovi arma" onClick={() => removeAttack(i)}>
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        ) : (
+          <div className="text-sm text-muted-foreground">Nessuna arma in inventario.</div>
+        )}
+      </div>
 
       {/* Consumabili */}
-      {hasStructuredConsumables && (
-        <div className="space-y-2 mb-4">
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center justify-between gap-2">
           <div className="font-semibold text-primary">Consumabili</div>
-          {structuredItems!.map((it, idx) => {
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+            aria-label="Aggiungi consumabile"
+            title="Aggiungi consumabile"
+            onClick={() => {
+              lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+              openAddDialog("consumable");
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {hasStructuredConsumables ? (
+          structuredItems!.map((it, idx) => {
             if (it?.type !== "consumable") return null;
             const qty = typeof it.quantity === "number" ? it.quantity : 0;
             const isPotion = (it.subtype ?? "generic") === "potion";
@@ -394,13 +470,17 @@ const Inventory = ({
             return (
               <div key={`cons-${idx}`} className="text-sm dnd-frame p-2">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
+                  <button
+                    type="button"
+                    onClick={() => openDetail({ kind: "consumable", index: idx })}
+                    className="min-w-0 flex-1 rounded-sm text-left transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
                     <div className="font-medium">{it.name}</div>
                     {isPotion && it.dice && (
                       <div className="text-muted-foreground text-sm mt-1">{it.dice}</div>
                     )}
                     {renderSkillsChips(it.skillsByType as any)}
-                  </div>
+                  </button>
 
                   {!!bumpConsumableQuantity && (
                     <div className="flex items-center gap-2">
@@ -429,25 +509,37 @@ const Inventory = ({
                           +
                         </Button>
                       </div>
-
-                      {!!removeStructuredItem && (
-                        <Button size="icon" variant="ghost" aria-label="Rimuovi consumabile" onClick={() => removeStructuredItem(idx)}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
                   )}
                 </div>
               </div>
             );
-          })}
-        </div>
-      )}
+          })
+        ) : (
+          <div className="text-sm text-muted-foreground">Nessun consumabile in inventario.</div>
+        )}
+      </div>
 
       {/* Oggetti (strutturati) */}
       {hasStructuredObjects && (
         <div className="space-y-2 mb-4">
-          <div className="font-semibold text-primary">Oggetti</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-semibold text-primary">Oggetti</div>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+              aria-label="Aggiungi oggetto"
+              title="Aggiungi oggetto"
+              onClick={() => {
+                lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+                openAddDialog("object");
+              }}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
           {structuredItems!.map((it, idx) => {
             if (it?.type !== "object") return null;
             const equippable = !!it.equippable;
@@ -455,7 +547,11 @@ const Inventory = ({
             return (
               <div key={`obj-${idx}`} className="text-sm dnd-frame p-2">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
+                  <button
+                    type="button"
+                    onClick={() => openDetail({ kind: "object", index: idx })}
+                    className="min-w-0 flex-1 rounded-sm text-left transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
                     <div className="font-medium">
                       {it.name} {equippable && equipped ? "(equipaggiato)" : ""}
                     </div>
@@ -463,20 +559,18 @@ const Inventory = ({
                       <div className="text-muted-foreground whitespace-pre-wrap">{it.description}</div>
                     )}
                     {renderSkillsChips(it.skillsByType as any)}
-                  </div>
+                  </button>
                   <div className="flex items-center gap-2">
                     {equippable && !!toggleEquipItem && (
                       <Button
-                        size="sm"
-                        variant={equipped ? "outline" : "default"}
+                        size="icon"
+                        variant={equipped ? "default" : "outline"}
+                        className="h-8 w-8"
                         onClick={() => toggleEquipItem(idx)}
+                        aria-label={equipped ? "Disequipaggia oggetto" : "Equipaggia oggetto"}
+                        title={equipped ? "Disequipaggia" : "Equipaggia"}
                       >
-                        {equipped ? "Disequipaggia" : "Equipaggia"}
-                      </Button>
-                    )}
-                    {!!removeStructuredItem && (
-                      <Button size="icon" variant="ghost" aria-label="Rimuovi oggetto" onClick={() => removeStructuredItem(idx)}>
-                        <X className="h-4 w-4" />
+                        {equipped ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                       </Button>
                     )}
                   </div>
@@ -490,14 +584,33 @@ const Inventory = ({
       {/* Oggetti (legacy) – solo se NON ci sono oggetti strutturati */}
       {!hasStructuredObjects && (
         <div>
-          <div className="font-semibold text-primary">Oggetti</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-semibold text-primary">Oggetti</div>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+              aria-label="Aggiungi oggetto"
+              title="Aggiungi oggetto"
+              onClick={() => {
+                lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+                openAddDialog("object");
+              }}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
           {characterData.equipment.equipment.map((item: string, index: number) => (
-            <div key={index} className="flex items-center justify-between text-sm">
+            <button
+              key={index}
+              type="button"
+              onClick={() => openDetail({ kind: "legacyObject", index })}
+              className="flex w-full items-center justify-between rounded-sm py-1 text-left text-sm transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
               <span>• {item}</span>
-              <Button size="icon" variant="ghost" aria-label="Rimuovi oggetto" onClick={() => removeItem(index)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+            </button>
           ))}
         </div>
       )}
@@ -507,21 +620,12 @@ const Inventory = ({
         open={invOpen}
         onOpenChange={(v) => {
           setInvOpen(v);
-          if (!v) resetInvForm();
+          if (!v) {
+            resetInvForm();
+            setEditingTarget(null);
+          }
         }}
       >
-        <DialogTrigger asChild>
-          <Button
-            size="sm"
-            onClick={() => {
-              lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
-              setMode("item");
-              setCoinFlow(null);
-            }}
-          >
-            Aggiungi
-          </Button>
-        </DialogTrigger>
         <DialogContent
           className="sm:max-w-md"
           onCloseAutoFocus={(e) => {
@@ -535,47 +639,59 @@ const Inventory = ({
                 ? coinFlow === "add"
                   ? "Aggiungi monete"
                   : "Rimuovi monete"
-                : kind === "weapon"
-                  ? "Aggiungi arma"
-                  : kind === "object"
-                    ? "Aggiungi oggetto"
-                    : "Aggiungi consumabile"}
+                : editingTarget
+                  ? kind === "weapon"
+                    ? "Modifica arma"
+                    : kind === "object"
+                      ? "Modifica oggetto"
+                      : "Modifica consumabile"
+                  : kind === "weapon"
+                    ? "Aggiungi arma"
+                    : kind === "object"
+                      ? "Aggiungi oggetto"
+                      : "Aggiungi consumabile"}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
               <Label className="mb-2 block">Tipo</Label>
-              <RadioGroup
-                value={formType}
-                onValueChange={(v) => {
-                  if (v === "coins") {
-                    setMode("coins");
-                  } else {
-                    setMode("item");
-                    const k = v.replace("item-", "") as "weapon" | "object" | "consumable";
-                    setKind(k);
-                  }
-                }}
-                className="grid grid-cols-2 gap-2"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="coins" id="r-coins" />
-                  <Label htmlFor="r-coins">Monete</Label>
+              {editingTarget ? (
+                <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                  {kind === "weapon" ? "Arma" : kind === "object" ? "Oggetto" : "Consumabile"}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="item-weapon" id="r-weapon" />
-                  <Label htmlFor="r-weapon">Armi</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="item-object" id="r-object" />
-                  <Label htmlFor="r-object">Oggetti</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="item-consumable" id="r-consumable" />
-                  <Label htmlFor="r-consumable">Consumabili</Label>
-                </div>
-              </RadioGroup>
+              ) : (
+                <RadioGroup
+                  value={formType}
+                  onValueChange={(v) => {
+                    if (v === "coins") {
+                      setMode("coins");
+                    } else {
+                      setMode("item");
+                      const k = v.replace("item-", "") as "weapon" | "object" | "consumable";
+                      setKind(k);
+                    }
+                  }}
+                  className="grid grid-cols-2 gap-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="coins" id="r-coins" />
+                    <Label htmlFor="r-coins">Monete</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="item-weapon" id="r-weapon" />
+                    <Label htmlFor="r-weapon">Armi</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="item-object" id="r-object" />
+                    <Label htmlFor="r-object">Oggetti</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="item-consumable" id="r-consumable" />
+                    <Label htmlFor="r-consumable">Consumabili</Label>
+                  </div>
+                </RadioGroup>
+              )}
             </div>
 
             {mode === "coins" ? (
@@ -984,6 +1100,7 @@ const Inventory = ({
             <Button
               onClick={() =>
                 handleInventorySubmit({
+                  editTarget: editingTarget ?? undefined,
                   kind,
                   // nuovi campi arma:
                   weaponCategory,
@@ -999,13 +1116,177 @@ const Inventory = ({
                 })
               }
             >
-              Salva
+              {editingTarget ? "Salva modifiche" : "Salva"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open);
+          if (!open) setDetailTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {detailTarget?.kind === "weapon"
+                ? "Dettaglio arma"
+                : detailTarget?.kind === "consumable"
+                  ? "Dettaglio consumabile"
+                  : "Dettaglio oggetto"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailTarget?.kind === "weapon" && getDetailEntry() && (
+            <div className="space-y-3 text-sm">
+              <div className="font-semibold text-primary">{(getDetailEntry() as any).name}</div>
+              <div className="text-muted-foreground">{buildAttackDetail(getDetailEntry() as any)}</div>
+              {renderSkillsChips((getDetailEntry() as any).skillsByType)}
+            </div>
+          )}
+
+          {detailTarget?.kind === "consumable" && getDetailEntry() && (
+            <div className="space-y-3 text-sm">
+              <div className="font-semibold text-primary">{(getDetailEntry() as any).name}</div>
+              <div className="text-muted-foreground">Quantità: {(getDetailEntry() as any).quantity ?? 0}</div>
+              {(getDetailEntry() as any).dice && <div className="text-muted-foreground">{(getDetailEntry() as any).dice}</div>}
+              {renderSkillsChips((getDetailEntry() as any).skillsByType)}
+            </div>
+          )}
+
+          {(detailTarget?.kind === "object" || detailTarget?.kind === "legacyObject") && getDetailEntry() && (
+            <div className="space-y-3 text-sm">
+              <div className="font-semibold text-primary">
+                {typeof getDetailEntry() === "string" ? getDetailEntry() : (getDetailEntry() as any).name}
+              </div>
+              {typeof getDetailEntry() !== "string" && (getDetailEntry() as any).description && (
+                <div className="whitespace-pre-wrap text-muted-foreground">{(getDetailEntry() as any).description}</div>
+              )}
+              {typeof getDetailEntry() !== "string" && renderSkillsChips((getDetailEntry() as any).skillsByType)}
+            </div>
+          )}
+
+          <DialogFooter className="mt-2">
+            <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Elimina
+            </Button>
+            <Button variant="outline" onClick={startEditing}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Modifica
+            </Button>
+            <DialogClose asChild>
+              <Button variant="outline">Chiudi</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questo elemento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L&apos;elemento verrà rimosso definitivamente dall&apos;inventario.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDelete}
+            >
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
+
+  function getDetailEntry() {
+    if (!detailTarget) return null;
+    if (detailTarget.kind === "weapon") return characterData?.equipment?.attacks?.[detailTarget.index] ?? null;
+    if (detailTarget.kind === "legacyObject") return characterData?.equipment?.equipment?.[detailTarget.index] ?? null;
+    return structuredItems?.[detailTarget.index] ?? null;
+  }
+
+  function openAddDialog(nextKind?: "weapon" | "object" | "consumable") {
+    setEditingTarget(null);
+    resetInvForm();
+    setMode("item");
+    setCoinFlow(null);
+    if (nextKind) setKind(nextKind);
+    setInvOpen(true);
+  }
+
+  function openDetail(target: InventoryTarget) {
+    setDetailTarget(target);
+    setDetailOpen(true);
+  }
+
+  function startEditing() {
+    const detailEntry = getDetailEntry();
+    if (!detailTarget || !detailEntry) return;
+
+    resetInvForm();
+    setEditingTarget(detailTarget);
+    setMode("item");
+
+    if (detailTarget.kind === "weapon") {
+      const atk = detailEntry as any;
+      const legacy = parseLegacyDamage(atk.damageType);
+      setKind("weapon");
+      setItemName(atk.name ?? "");
+      setItemAtkBonus(String(atk.attackBonus ?? ""));
+      setItemDmgType(atk.damageDice ?? legacy.dice ?? "");
+      setWeaponCategory(atk.category ?? "melee");
+      setWeaponHands(atk.hands ?? "1");
+      setWeaponRange(atk.range ?? "");
+      setDamageKind((atk.damageDice ? atk.damageType : legacy.type ?? "tagliente") as any);
+      setItemSkillsByType({ ...emptySkillsByType, ...(atk.skillsByType ?? {}) });
+    } else if (detailTarget.kind === "object") {
+      const obj = detailEntry as any;
+      setKind("object");
+      setItemName(obj.name ?? "");
+      setDescription(obj.description ?? "");
+      setEquippable(!!obj.equippable);
+      setItemSkillsByType({ ...emptySkillsByType, ...(obj.skillsByType ?? {}) });
+    } else if (detailTarget.kind === "consumable") {
+      const cons = detailEntry as any;
+      setKind("consumable");
+      setItemName(cons.name ?? "");
+      setQuantity(String(cons.quantity ?? 0));
+      setConsumableSubtype(cons.subtype ?? "generic");
+      setPotionDiceVal(cons.dice ?? "");
+      setItemSkillsByType({ ...emptySkillsByType, ...(cons.skillsByType ?? {}) });
+    } else {
+      setKind("object");
+      setItemName(String(detailEntry ?? ""));
+    }
+
+    setDetailOpen(false);
+    setInvOpen(true);
+  }
+
+  function handleDelete() {
+    if (!detailTarget) return;
+
+    if (detailTarget.kind === "weapon") {
+      removeAttack(detailTarget.index);
+    } else if (detailTarget.kind === "legacyObject") {
+      removeItem(detailTarget.index);
+    } else {
+      removeStructuredItem?.(detailTarget.index);
+    }
+
+    setConfirmDeleteOpen(false);
+    setDetailOpen(false);
+    setDetailTarget(null);
+  }
 }
 
 export default Inventory;
