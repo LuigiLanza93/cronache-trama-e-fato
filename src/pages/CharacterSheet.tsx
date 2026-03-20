@@ -10,6 +10,16 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import {
   joinCharacterRoom,
@@ -322,6 +332,8 @@ const CharacterSheet = () => {
   const [modalSpell, setModalSpell] = useState<Spell | null>(null);
   const [modalTitle, setModalTitle] = useState<string>("");
   const [modalDescription, setModalDescription] = useState<string>("");
+  const [modalFeatureIndex, setModalFeatureIndex] = useState<number | null>(null);
+  const [confirmRemoveFeatureOpen, setConfirmRemoveFeatureOpen] = useState(false);
 
   const classOptions = useMemo(() => Object.keys(spells).sort(), []);
   const filteredSpells = useMemo(() => {
@@ -397,11 +409,12 @@ const CharacterSheet = () => {
     return null;
   };
 
-  const openFeatureModal = (feature: { name: string; description: string }) => {
+  const openFeatureModal = (feature: { name: string; description: string }, index?: number) => {
     const baseName = stripName(feature.name);
     const cls = parseClassFromFeatureTitle(feature.name);
     const lvl = parseLevelFromFeatureTitle(feature.name);
     const found = findSpell(baseName, cls, lvl);
+    setModalFeatureIndex(typeof index === "number" ? index : null);
 
     if (found) {
       setModalSpell(found);
@@ -413,6 +426,21 @@ const CharacterSheet = () => {
       setModalDescription(feature.description);
     }
     setSpellModalOpen(true);
+  };
+
+  const removeFeature = (index: number) => {
+    if (!characterData) return;
+    const nextFeatures = characterData.features.filter((_, i) => i !== index);
+    setCharacterData((prev) => (prev ? { ...prev, features: nextFeatures } : prev));
+    if (character) updateCharacter(character, { features: nextFeatures });
+  };
+
+  const confirmRemoveFeature = () => {
+    if (modalFeatureIndex === null) return;
+    removeFeature(modalFeatureIndex);
+    setConfirmRemoveFeatureOpen(false);
+    setSpellModalOpen(false);
+    setModalFeatureIndex(null);
   };
 
   const coins: Coins = useMemo(() => {
@@ -990,12 +1018,40 @@ const CharacterSheet = () => {
             <div className="text-sm whitespace-pre-line">{modalDescription}</div>
           )}
           <DialogFooter className="mt-2">
+            {modalFeatureIndex !== null && (
+              <Button
+                variant="destructive"
+                onClick={() => setConfirmRemoveFeatureOpen(true)}
+              >
+                Elimina
+              </Button>
+            )}
             <DialogClose asChild>
               <Button variant="outline">Chiudi</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmRemoveFeatureOpen} onOpenChange={setConfirmRemoveFeatureOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questo incantesimo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Questa azione rimuoverà definitivamente la voce dalla lista dei tratti e incantesimi del personaggio.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmRemoveFeature}
+            >
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

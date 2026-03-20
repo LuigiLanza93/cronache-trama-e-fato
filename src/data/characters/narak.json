@@ -395,10 +395,6 @@
       "description": "Livello 1 · Divinazione (Rituale) · Concentrazione · Rituale\nTempo di lancio: 1 azione (10 minuti se rituale)\nGittata: Sé\nComponenti: V, S\nDurata: Concentrazione, fino a 10 minuti\n\nPercepisci la presenza di magia entro 9 m da te e puoi vedere l’aura e la scuola di magia degli oggetti o effetti.\n\nUso: Scovare trappole magiche, porte segrete mistiche, oggetti incantati."
     },
     {
-      "name": "Charme su Persone (bardo, Lv 1)",
-      "description": "Livello 1 · Ammaliamento\nTempo di lancio: 1 azione\nGittata: 9 m\nComponenti: V, S\nDurata: 1 ora\n\nUn umanoide che fallisce il TS è affascinato da te e ti considera amichevole. Al termine capisce di essere stato incantato.\n\nUso: Trattative delicate, evitare risse, ottenere udienze."
-    },
-    {
       "name": "Frantumare (bardo, Lv 2)",
       "description": "Livello 2 · Invocazione\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (un frammento di metallo)\nDurata: Istantanea\n\nUn forte squillo, molto intenso, erutta da un punto a gittata di tua scelta. Ogni creatura in una sfera di 3 metri di raggio centrata su quel punto deve effettuare un tiro salvezza su Costituzione. Una creatura subisce 3d8 danni da tuono se fallisce il tiro salvezza, o la metà di questi danni se lo supera. Una creatura composta di materiale inorganico, come pietra, cristallo o metallo, ha svantaggio sul tiro salvezza. Un oggetto non magico che non è indossato né trasportato subisce anch’esso danni se si trova nell’area dell’incantesimo.\n"
     },
@@ -425,6 +421,14 @@
     {
       "name": "Riscaldare il Metallo (bardo, Lv 2)",
       "description": "Livello 2 · Trasmutazione · Concentrazione\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (un pezzo di ferro e una fiamma)\nDurata: Concentrazione, massimo 1 minuto\n\nScegli un manufatto di metallo, come un’arma di metallo o un’armatura di metallo media o pesante, a gittata e che puoi vedere. Fai sì che l’oggetto risplenda di rosso per il calore. Qualsiasi creatura in contatto fisico con l’oggetto subisce 2d8 danni da fuoco quando lanci questo incantesimo. Fino al termine dell’incantesimo, puoi usare un’azione bonus per infliggere di nuovo questo danno nei tuoi turni successivi. Se una creatura sta impugnando o indossando l’oggetto e subisce danno da esso, la creatura deve superare un tiro salvezza su Costituzione o gettare l’oggetto se ne è in grado. Se non getta l’oggetto, ha svantaggio ai tiri per colpire e le prove di caratteristica fino all’inizio del suo prossimo turno.\n"
+    },
+    {
+      "name": "Dissolvi Magie (bardo, Lv 3)",
+      "description": "Livello 3 · Abiurazione\nTempo di lancio: 1 azione\nGittata: 36 metri\nComponenti: V, S\nDurata: Istantanea\n\nScegli una creatura, oggetto o effetto magico a gittata. Qualsiasi incantesimo di 3° livello o più basso sul bersaglio ha fine. Per ogni incantesimo di 4° livello o più alto sul bersaglio, effettua una prova di caratteristica usando la tua caratteristica da incantatore. La CD della prova è uguale a 10 + il livello dell’incantesimo da dissolvere. Se superi la prova, l’incantesimo ha termine.\n"
+    },
+    {
+      "name": "Trama Ipnotica (bardo, Lv 3)",
+      "description": "Livello 3 · Illusione · Concentrazione\nTempo di lancio: 1 azione\nGittata: 36 metri\nComponenti: S, M (un bastoncino luminoso di incenso o una fiala di cristallo piena di materiale fosforescente)\nDurata: Concentrazione, massimo 1 minuto\n\nCrei a gittata una trama contorta di colori che si muove nell’aria all’interno di un cubo di 9 metri di spigolo. La trama appare per un momento e poi svanisce. Ogni creatura nell’area che veda la trama deve effettuare un tiro salvezza su Saggezza. Se fallisce il tiro salvezza, una creatura rimane affascinata per la durata. Mentre è affascinata da questo incantesimo, la creatura è inabile e ha velocità 0.\nL’incantesimo termina per la creatura soggetta, qualora questa subisca danni o se qualcuno usa un’azione per scuoterla dal suo stato confusionale.\n"
     }
   ],
   "spells": [],

@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pencil } from "lucide-react";
+import { Check, Pencil, Settings2, X } from "lucide-react";
 import { updateCharacter } from "@/realtime";
 
 function getInitials(name: string | undefined) {
@@ -49,6 +49,12 @@ const CharacterHeader = ({
         setPortraitUrl(characterData.basicInfo.portraitUrl ?? "");
         setUploadError("");
     }, [characterData.basicInfo.portraitUrl, characterData.slug]);
+
+    const handleCancelEdit = () => {
+        setPortraitUrl(characterData.basicInfo.portraitUrl ?? "");
+        setUploadError("");
+        setEditMode(false);
+    };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -122,8 +128,48 @@ const CharacterHeader = ({
     const initials = getInitials(characterData.basicInfo.characterName);
 
     return (
-        <div className="dnd-frame-thick p-6">
+        <div className="dnd-frame-thick relative p-6">
             <form onSubmit={handleSubmit}>
+                <div className="absolute right-4 top-4">
+                    {editMode ? (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                size="icon"
+                                className="h-9 w-9 rounded-full border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90"
+                                aria-label="Salva modifiche"
+                                title="Salva modifiche"
+                            >
+                                <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-9 w-9 rounded-full"
+                                onClick={handleCancelEdit}
+                                aria-label="Annulla modifiche"
+                                title="Annulla modifiche"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
+                            onMouseDown={() => setEditMode(true)}
+                            aria-label="Modifica intestazione"
+                            title="Modifica intestazione"
+                        >
+                            <Settings2 className="h-4 w-4 text-primary" />
+                        </Button>
+                    )}
+                </div>
+
                 <div className="flex flex-col items-center gap-4 md:flex-row md:items-start md:text-left">
                     <div className="relative rounded-[2rem] border-4 border-primary/30 bg-card/80 p-1 shadow-lg">
                         {portraitPreviewUrl && !editMode ? (
@@ -297,30 +343,6 @@ const CharacterHeader = ({
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div className="text-center md:text-left">
-                    {editMode ? (
-                        <Button
-                            type="submit"
-                            variant="outline"
-                            size="sm"
-                            className="mt-4 bg-primary text-white"
-                        // niente onClick, ci pensa il submit
-                        >
-                            Salva
-                        </Button>
-                    ) : (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="mt-4 bg-primary text-white"
-                            onMouseDown={() => setEditMode(true)} // switcha PRIMA del click
-                        >
-                            Modifica
-                        </Button>
-                    )}
                 </div>
 
             </form>

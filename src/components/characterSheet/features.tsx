@@ -1,10 +1,11 @@
-import { Card } from "@/components/ui/card";
+import { useEffect } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { updateCharacter } from "@/realtime";
+import { Card } from "@/components/ui/card";
+import SPELL_SLOT_TABLE from "@/data/spellSlots.json";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
-import SPELL_SLOT_TABLE from "@/data/spellSlots.json"; // <-- il mega JSON
+import { updateCharacter } from "@/realtime";
 
 const MAX_SPELL_LEVEL = 12;
 
@@ -46,7 +47,6 @@ const Features = ({
         updateCharacter(characterData.slug, patch);
     };
 
-    // 🧙‍♂️ Check all'avvio: se gli slot non matchano, aggiorna
     useEffect(() => {
         const charClass = characterData.basicInfo.class.toLowerCase();
         const level = characterData.basicInfo.level;
@@ -62,13 +62,11 @@ const Features = ({
             const currentArr = currentSlots[spellLvl] || [];
             const updated = [...currentArr];
 
-            // Aggiungi slot mancanti
             while (updated.length < expectedCount) {
                 updated.push({ id: updated.length + 1, active: false });
                 needsUpdate = true;
             }
 
-            // Taglia slot extra
             if (updated.length > expectedCount) {
                 updated.length = expectedCount;
                 needsUpdate = true;
@@ -99,31 +97,35 @@ const Features = ({
                     const match = findSpell(baseName, cls, lvl);
 
                     return (
-                        <button
-                            key={index}
-                            onClick={() => openFeatureModal(feature)}
-                            className="w-full text-left dnd-frame p-3 rounded hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        >
-                            <div className="flex justify-between items-start">
-                                <div className="min-w-0">
-                                    <div className="font-semibold text-primary truncate">{baseName}</div>
-                                    {match ? (
-                                        <div className="text-xs text-muted-foreground">
-                                            Lv {match.level} · {match.school}
-                                            {match.concentration ? " · Concentrazione" : ""}
-                                            {match.ritual ? " · Rituale" : ""}
-                                        </div>
-                                    ) : (
-                                        <div className="text-xs text-muted-foreground line-clamp-1">{feature.description}</div>
+                        <div key={index} className="dnd-frame rounded p-3">
+                            <button
+                                type="button"
+                                onClick={() => openFeatureModal(feature, index)}
+                                className="w-full min-w-0 rounded-sm text-left hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <div className="truncate font-semibold text-primary">{baseName}</div>
+                                        {match ? (
+                                            <div className="text-xs text-muted-foreground">
+                                                Lv {match.level} · {match.school}
+                                                {match.concentration ? " · Concentrazione" : ""}
+                                                {match.ritual ? " · Rituale" : ""}
+                                            </div>
+                                        ) : (
+                                            <div className="line-clamp-1 text-xs text-muted-foreground">
+                                                {feature.description}
+                                            </div>
+                                        )}
+                                    </div>
+                                    {feature.uses && (
+                                        <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">
+                                            {feature.uses}
+                                        </Badge>
                                     )}
                                 </div>
-                                {feature.uses && (
-                                    <Badge variant="outline" className="text-[10px] shrink-0 ml-2">
-                                        {feature.uses}
-                                    </Badge>
-                                )}
-                            </div>
-                        </button>
+                            </button>
+                        </div>
                     );
                 })}
             </div>
@@ -132,7 +134,6 @@ const Features = ({
                 Aggiungi incantesimo
             </Button>
 
-            {/* Sezione Slot Incantesimi */}
             <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between">
                     <span className="font-semibold">Slot Incantesimi</span>
@@ -145,25 +146,30 @@ const Features = ({
                         const lvl = lvlIdx + 1;
                         const lvlSlots = characterData.combatStats.spellSlots?.[lvl];
                         if (!lvlSlots || lvlSlots.length === 0) return null;
+
                         return (
                             <div key={lvl}>
-                                <div className="text-xs text-muted-foreground mb-1">
-                                    {characterData.basicInfo.class === 'Guerriero' ? <>Manovre<br/>1d{lvl}</>  : <>Livello {lvl}</>}
+                                <div className="mb-1 text-xs text-muted-foreground">
+                                    {characterData.basicInfo.class === "Guerriero" ? (
+                                        <>
+                                            Manovre
+                                            <br />
+                                            1d{lvl}
+                                        </>
+                                    ) : (
+                                        <>Livello {lvl}</>
+                                    )}
                                 </div>
-                                <div className="flex gap-2 flex-wrap">
+                                <div className="flex flex-wrap gap-2">
                                     {lvlSlots.map((slot: any, i: number) => (
                                         <button
                                             key={i}
                                             onClick={() => toggleSlot(lvl, i)}
                                             className={cn(
-                                                "w-5 h-5 rounded border flex items-center justify-center text-[10px]",
-                                                slot.active
-                                                    ? "bg-primary text-primary-foreground"
-                                                    : "bg-background"
+                                                "flex h-5 w-5 items-center justify-center rounded border text-[10px]",
+                                                slot.active ? "bg-primary text-primary-foreground" : "bg-background"
                                             )}
-                                        >
-                                           
-                                        </button>
+                                        />
                                     ))}
                                 </div>
                             </div>

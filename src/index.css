@@ -84,6 +84,55 @@
 
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  .dark {
+    --background: 24 18% 10%;
+    --foreground: 42 30% 92%;
+
+    --card: 22 16% 13%;
+    --card-foreground: 42 30% 92%;
+
+    --popover: 24 18% 12%;
+    --popover-foreground: 42 30% 92%;
+
+    --primary: 2 72% 58%;
+    --primary-foreground: 20 20% 10%;
+
+    --secondary: 24 14% 18%;
+    --secondary-foreground: 42 22% 88%;
+
+    --muted: 24 14% 16%;
+    --muted-foreground: 42 12% 68%;
+
+    --accent: 8 60% 42%;
+    --accent-foreground: 42 30% 94%;
+
+    --destructive: 0 72% 52%;
+    --destructive-foreground: 42 30% 94%;
+
+    --border: 34 18% 34%;
+    --input: 24 12% 19%;
+    --ring: 2 72% 58%;
+
+    --parchment: 24 18% 10%;
+    --parchment-dark: 24 14% 14%;
+    --gold: 42 78% 65%;
+    --gold-dark: 42 70% 52%;
+    --crimson: 2 72% 58%;
+    --crimson-dark: 2 70% 46%;
+
+    --shadow-parchment: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --shadow-deep: 0 16px 42px rgba(0, 0, 0, 0.55);
+
+    --sidebar-background: 24 16% 12%;
+    --sidebar-foreground: 42 20% 90%;
+    --sidebar-primary: 2 72% 58%;
+    --sidebar-primary-foreground: 24 18% 10%;
+    --sidebar-accent: 24 14% 18%;
+    --sidebar-accent-foreground: 42 20% 90%;
+    --sidebar-border: 24 14% 22%;
+    --sidebar-ring: 2 72% 58%;
+  }
 }
 
 @layer base {
@@ -97,6 +146,12 @@
       radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
       radial-gradient(circle at 80% 20%, rgba(120, 119, 198, 0.1) 0%, transparent 50%);
   }
+
+  .dark body {
+    background-image:
+      radial-gradient(circle at 20% 80%, rgba(190, 84, 64, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(212, 169, 92, 0.08) 0%, transparent 45%);
+  }
 }
 
 @layer components {
@@ -106,6 +161,12 @@
     box-shadow: 
       inset 0 1px 2px rgba(255, 255, 255, 0.5),
       0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .dnd-frame {
+    box-shadow:
+      inset 0 1px 2px rgba(255, 248, 220, 0.04),
+      0 10px 24px rgba(0, 0, 0, 0.28);
   }
   
   .dnd-frame-thick {
@@ -121,6 +182,13 @@
       linear-gradient(0deg, rgba(139, 119, 85, 0.05) 50%, transparent 50%);
   }
 
+  .dark .parchment {
+    background-color: hsl(var(--parchment));
+    background-image:
+      radial-gradient(circle at 100% 50%, transparent 20%, rgba(216, 180, 111, 0.08) 21%, rgba(216, 180, 111, 0.08) 34%, transparent 35%, transparent),
+      linear-gradient(0deg, rgba(160, 78, 60, 0.06) 50%, transparent 50%);
+  }
+
   /* Gold accent */
   .gold-accent {
     color: hsl(var(--gold));
@@ -131,6 +199,10 @@
   .ability-score {
     @apply dnd-frame p-2 text-center min-w-16;
     background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--muted)));
+  }
+
+  .dark .ability-score {
+    background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--secondary)));
   }
 
   .ability-score-value {
