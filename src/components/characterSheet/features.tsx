@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import { Plus, RotateCcw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -110,6 +110,8 @@ const Features = ({
         }
         return `Livello ${level}`;
     };
+    const normalizedClass = (characterData.basicInfo.class ?? "").trim().toLowerCase();
+    const compactSlotRow = ["guerriero", "fighter", "warlock"].includes(normalizedClass);
 
     const nonSpellFeatures = orderedFeatures.filter(({ match }) => !match);
     const spellFeatures = orderedFeatures.filter(({ match }) => !!match);
@@ -164,7 +166,7 @@ const Features = ({
 
                 {spellLevels.map((level) => (
                     <div key={level} className="space-y-2">
-                        <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
                             {spellLevelLabel(level)}
                         </div>
                         <div className="grid grid-cols-2 gap-2">
@@ -202,7 +204,9 @@ const Features = ({
 
             <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between">
-                    <span className="font-semibold">Slot Incantesimi</span>
+                    <span className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
+                        Slot Incantesimi
+                    </span>
                     <Button
                         type="button"
                         size="icon"
@@ -215,15 +219,21 @@ const Features = ({
                         <RotateCcw className="h-4 w-4" />
                     </Button>
                 </div>
-                <div className="space-y-1">
+                <div className={cn("gap-3", compactSlotRow ? "flex flex-wrap" : "grid grid-cols-3")}>
                     {Array.from({ length: MAX_SPELL_LEVEL }).map((_, lvlIdx) => {
                         const lvl = lvlIdx + 1;
                         const lvlSlots = characterData.combatStats.spellSlots?.[lvl];
                         if (!lvlSlots || lvlSlots.length === 0) return null;
 
                         return (
-                            <div key={lvl}>
-                                <div className="mb-1 text-xs text-muted-foreground">
+                            <div
+                                key={lvl}
+                                className={cn(
+                                    "rounded-lg border border-border/50 bg-background/25 p-2",
+                                    compactSlotRow ? "min-w-fit" : ""
+                                )}
+                            >
+                                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
                                     {characterData.basicInfo.class === "Guerriero" ? (
                                         <>
                                             Manovre
@@ -234,13 +244,14 @@ const Features = ({
                                         <>Livello {lvl}</>
                                     )}
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                <div className={cn("gap-2", compactSlotRow ? "flex flex-nowrap gap-1.5" : "grid grid-cols-2")}>
                                     {lvlSlots.map((slot: any, i: number) => (
                                         <button
                                             key={i}
                                             onClick={() => toggleSlot(lvl, i)}
                                             className={cn(
-                                                "flex h-5 w-5 items-center justify-center rounded border text-[10px]",
+                                                "flex items-center justify-center rounded border text-[10px]",
+                                                compactSlotRow ? "h-6 w-6 shrink-0" : "h-7 w-7",
                                                 slot.active ? "bg-primary text-primary-foreground" : "bg-background"
                                             )}
                                         />
@@ -256,3 +267,4 @@ const Features = ({
 };
 
 export default Features;
+
