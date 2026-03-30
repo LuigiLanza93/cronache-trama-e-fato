@@ -3,12 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { fetchMonster, fetchMonsters, type MonsterEntry, type MonsterSummary } from "@/lib/auth";
 import { fetchCharacter, fetchCharacters, notifyInitiativeTurn } from "@/realtime";
 import {
+  BookOpen,
   Check,
   ChevronRight,
   Copy,
+  Dices,
   ExternalLink,
   FlaskConical,
   Heart,
@@ -59,6 +65,8 @@ type MonsterEncounterEntry = {
   maxHitPoints: number;
   statuses: string[];
   sortOrder: number;
+  source: "custom" | "bestiary";
+  sourceMonsterId: string | null;
 };
 
 type EncounterState = {
@@ -96,6 +104,12 @@ type MonsterCombatant = MonsterEncounterEntry & {
 };
 
 type Combatant = PlayerCombatant | MonsterCombatant;
+
+type BestiaryMonsterDraft = {
+  monsterId: string;
+  initiative: string;
+  hitPoints: string;
+};
 
 const STORAGE_KEY = "dm-initiative-tracker-v1";
 const STATUS_OPTIONS = [
@@ -272,6 +286,8 @@ function parseEncounterState(raw: string | null): EncounterState {
               : monster?.status
               ? [monster.status]
               : [],
+            source: monster?.source === "bestiary" ? "bestiary" : "custom",
+            sourceMonsterId: typeof monster?.sourceMonsterId === "string" ? monster.sourceMonsterId : null,
           }))
         : [],
       started: !!parsed?.started,
@@ -387,6 +403,121 @@ function nextMonsterCopyName(name: string, monsters: MonsterEncounterEntry[]) {
   return `${normalizedBase} ${highest + 1}`;
 }
 
+function crLabel(challengeRating?: { display?: string; fraction?: string }) {
+  return challengeRating?.display || challengeRating?.fraction || "-";
+}
+
+function abilityModifierLabel(score: number) {
+  const value = abilityModifier(score);
+  return `${score} (${value >= 0 ? `+${value}` : value})`;
+}
+
+function formatMonsterTagged(items: Array<{ name: string; value?: string }>) {
+  return items.map((item) => (item.value ? `${item.name} ${item.value}` : item.name)).join(", ");
+}
+
+function formatMonsterBonuses(items: Array<{ ability?: string; name?: string; bonus: number }>) {
+  return items.map((item) => `${item.ability ?? item.name ?? ""} ${item.bonus >= 0 ? `+${item.bonus}` : item.bonus}`).join(", ");
+}
+
+function MonsterDetailLine({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+  return (
+    <div className="text-[15px] leading-relaxed text-foreground">
+      <span className="font-semibold text-foreground">{label}</span> {value}
+    </div>
+  );
+}
+
+function MonsterFeatureSection({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ name: string; usage?: string | null; description: string }>;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      <h4 className="font-heading text-xl font-semibold uppercase tracking-wide text-[#7d2c17] dark:text-amber-200">{title}</h4>
+      <div className="space-y-3">
+        {items.map((item, index) => (
+          <p key={`${title}-${item.name}-${index}`} className="text-[15px] leading-7 text-foreground dark:text-amber-50/95">
+            <span className="font-semibold italic text-foreground dark:text-amber-100">
+              {item.name}
+              {item.usage ? ` (${item.usage})` : ""}.
+            </span>{" "}
+            {item.description}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrackerMonsterStatBlock({ monster }: { monster: MonsterEntry }) {
+  const typeLine = [monster.general.size, monster.general.typeLabel || monster.general.creatureType, monster.general.alignment]
+    .filter(Boolean)
+    .join("; ");
+
+  return (
+    <div className="rounded-[28px] border border-primary/25 bg-[linear-gradient(180deg,rgba(247,237,214,0.96),rgba(239,225,193,0.92))] p-6 text-stone-900 shadow-[0_18px_40px_rgba(34,25,16,0.18)] dark:border-amber-200/20 dark:bg-[linear-gradient(180deg,rgba(52,35,24,0.96),rgba(32,21,16,0.96))] dark:text-amber-50 dark:shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+      <div className="space-y-5">
+        <div>
+          <h2 className="font-heading text-4xl font-bold uppercase tracking-wide text-[#7d2c17] dark:text-amber-200">{monster.general.name}</h2>
+          <p className="mt-1 text-lg italic text-stone-700 dark:text-amber-50/75">{typeLine}</p>
+        </div>
+        <div className="h-[3px] rounded-full bg-[#8d3821]/70 dark:bg-amber-300/45" />
+        <div className="space-y-1">
+          <MonsterDetailLine label="Classe Armatura" value={[String(monster.combat.armorClass.value || 0), monster.combat.armorClass.note ? `(${monster.combat.armorClass.note})` : ""].filter(Boolean).join(" ")} />
+          <MonsterDetailLine label="Punti Ferita" value={[String(monster.combat.hitPoints.average || 0), monster.combat.hitPoints.formula ? `(${monster.combat.hitPoints.formula})` : ""].filter(Boolean).join(" ")} />
+          <MonsterDetailLine label="Velocità" value={Object.entries(monster.combat.speed).map(([key, speed]) => `${key} ${speed}`).join(", ")} />
+        </div>
+        <div className="h-[3px] rounded-full bg-[#8d3821]/70 dark:bg-amber-300/45" />
+        <div className="grid grid-cols-3 gap-3 rounded-[24px] border border-[#8d3821]/20 bg-white/45 px-4 py-4 md:grid-cols-6 dark:border-amber-200/15 dark:bg-white/5">
+          {([
+            ["FOR", monster.abilities.strength],
+            ["DES", monster.abilities.dexterity],
+            ["COS", monster.abilities.constitution],
+            ["INT", monster.abilities.intelligence],
+            ["SAG", monster.abilities.wisdom],
+            ["CAR", monster.abilities.charisma],
+          ] as const).map(([label, score]) => (
+            <div key={label} className="text-center">
+              <div className="text-sm font-bold uppercase tracking-[0.22em] text-[#7d2c17] dark:text-amber-200">{label}</div>
+              <div className="mt-1 text-lg font-semibold text-stone-900 dark:text-amber-50">{abilityModifierLabel(score)}</div>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-1">
+          <MonsterDetailLine label="Tiri Salvezza" value={formatMonsterBonuses(monster.details.savingThrows)} />
+          <MonsterDetailLine label="Abilità" value={formatMonsterBonuses(monster.details.skills)} />
+          <MonsterDetailLine label="Vulnerabilità ai Danni" value={monster.details.damageVulnerabilities.join(", ")} />
+          <MonsterDetailLine label="Resistenze ai Danni" value={monster.details.damageResistances.join(", ")} />
+          <MonsterDetailLine label="Immunità ai Danni" value={monster.details.damageImmunities.join(", ")} />
+          <MonsterDetailLine label="Immunità alle Condizioni" value={monster.details.conditionImmunities.join(", ")} />
+          <MonsterDetailLine label="Sensi" value={formatMonsterTagged(monster.details.senses)} />
+          <MonsterDetailLine label="Linguaggi" value={formatMonsterTagged(monster.details.languages)} />
+          <MonsterDetailLine label="Sfida" value={`${crLabel(monster.general.challengeRating)} (${monster.general.challengeRating.xp.toLocaleString("it-IT")} PE)`} />
+        </div>
+        <div className="space-y-8 rounded-[24px] border border-[#8d3821]/20 bg-white/45 px-5 py-5 dark:border-amber-200/15 dark:bg-white/5">
+          <MonsterFeatureSection title="Tratti" items={monster.traits} />
+          <MonsterFeatureSection title="Azioni" items={monster.actions} />
+          <MonsterFeatureSection title="Azioni Bonus" items={monster.bonusActions} />
+          <MonsterFeatureSection title="Reazioni" items={monster.reactions} />
+          {monster.legendaryActions.description || monster.legendaryActions.actions.length > 0 ? (
+            <div className="space-y-3">
+              <h4 className="font-heading text-xl font-semibold uppercase tracking-wide text-[#7d2c17] dark:text-amber-200">Azioni Leggendarie</h4>
+              {monster.legendaryActions.description ? <p className="text-[15px] leading-7 text-foreground dark:text-amber-50/95">{monster.legendaryActions.description}</p> : null}
+              <MonsterFeatureSection title="" items={monster.legendaryActions.actions.map((item) => ({ ...item, usage: item.cost > 1 ? `Costa ${item.cost} azioni` : null }))} />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DeathSaveTrack({
   successes,
   failures,
@@ -436,6 +567,8 @@ export default function InitiativeTracker() {
     parseEncounterState(localStorage.getItem(STORAGE_KEY))
   );
   const [catalogStates, setCatalogStates] = useState<CharacterState[]>([]);
+  const [bestiaryCatalog, setBestiaryCatalog] = useState<MonsterSummary[]>([]);
+  const [bestiaryById, setBestiaryById] = useState<Record<string, MonsterEntry>>({});
   const [liveCharacterStates, setLiveCharacterStates] = useState<Record<string, CharacterState>>({});
   const [playerRolls, setPlayerRolls] = useState<Record<string, string>>({});
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
@@ -450,6 +583,16 @@ export default function InitiativeTracker() {
     armorClass: "",
     hitPoints: "",
   });
+  const [bestiaryMonsterDraft, setBestiaryMonsterDraft] = useState<BestiaryMonsterDraft>({
+    monsterId: "",
+    initiative: "",
+    hitPoints: "",
+  });
+  const [monsterDetailOpen, setMonsterDetailOpen] = useState(false);
+  const [monsterDetailLoading, setMonsterDetailLoading] = useState(false);
+  const [selectedMonsterDetail, setSelectedMonsterDetail] = useState<MonsterEntry | null>(null);
+
+  const rollD20 = () => Math.floor(Math.random() * 20) + 1;
 
   const handlePlayerRollKeyDown = (
     event: React.KeyboardEvent<HTMLInputElement>,
@@ -486,6 +629,11 @@ export default function InitiativeTracker() {
     });
   };
 
+  const handleBestiaryMonsterSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    addBestiaryMonster();
+  };
+
   const catalogList = useMemo(
     () =>
       catalogStates
@@ -505,6 +653,10 @@ export default function InitiativeTracker() {
     () => buildCombatants(encounter, catalogBySlug, liveCharacterStates),
     [encounter, catalogBySlug, liveCharacterStates]
   );
+  const selectedBestiaryMonster = useMemo(
+    () => bestiaryCatalog.find((entry) => entry.id === bestiaryMonsterDraft.monsterId) ?? null,
+    [bestiaryCatalog, bestiaryMonsterDraft.monsterId]
+  );
 
   useEffect(() => {
     document.title = "Iniziativa | D&D Character Manager";
@@ -519,6 +671,14 @@ export default function InitiativeTracker() {
       })
       .catch(() => {
         if (active) setCatalogStates([]);
+      });
+
+    void fetchMonsters()
+      .then((monsters) => {
+        if (active) setBestiaryCatalog(Array.isArray(monsters) ? monsters : []);
+      })
+      .catch(() => {
+        if (active) setBestiaryCatalog([]);
       });
 
     return () => {
@@ -571,6 +731,35 @@ export default function InitiativeTracker() {
       window.clearInterval(interval);
     };
   }, [selectedSlugs]);
+
+  useEffect(() => {
+    if (!bestiaryMonsterDraft.monsterId) return;
+    const cached = bestiaryById[bestiaryMonsterDraft.monsterId];
+    if (cached) {
+      setBestiaryMonsterDraft((prev) => ({
+        ...prev,
+        hitPoints: prev.hitPoints || String(cached.combat.hitPoints.average),
+      }));
+      return;
+    }
+
+    let active = true;
+    void fetchMonster(bestiaryMonsterDraft.monsterId)
+      .then((monster) => {
+        if (!active) return;
+        setBestiaryById((prev) => ({ ...prev, [monster.id]: monster }));
+        setBestiaryMonsterDraft((prev) => (
+          prev.monsterId === monster.id
+            ? { ...prev, hitPoints: prev.hitPoints || String(monster.combat.hitPoints.average) }
+            : prev
+        ));
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [bestiaryMonsterDraft.monsterId, bestiaryById]);
 
   useEffect(() => {
     if (!encounter.started || combatants.length === 0) return;
@@ -659,6 +848,8 @@ export default function InitiativeTracker() {
           maxHitPoints: hitPoints,
           statuses: [],
           sortOrder: prev.nextSortOrder,
+          source: "custom",
+          sourceMonsterId: null,
         },
       ],
       nextSortOrder: prev.nextSortOrder + 1,
@@ -670,6 +861,45 @@ export default function InitiativeTracker() {
       armorClass: "",
       hitPoints: "",
     });
+
+    return true;
+  };
+
+  const addBestiaryMonster = () => {
+    if (!selectedBestiaryMonster) return false;
+    const sourceMonster = bestiaryById[selectedBestiaryMonster.id];
+    if (!sourceMonster) return false;
+
+    const initiative = Number.isFinite(parseInt(bestiaryMonsterDraft.initiative, 10))
+      ? parseInt(bestiaryMonsterDraft.initiative, 10)
+      : NaN;
+    if (!Number.isFinite(initiative)) return false;
+
+    const hitPoints = Number.isFinite(parseInt(bestiaryMonsterDraft.hitPoints, 10))
+      ? Math.max(0, parseInt(bestiaryMonsterDraft.hitPoints, 10))
+      : sourceMonster.combat.hitPoints.average;
+
+    setEncounter((prev) => ({
+      ...prev,
+      monsters: [
+        ...prev.monsters,
+        {
+          id: `monster:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          type: "monster",
+          name: sourceMonster.general.name,
+          initiative,
+          armorClass: sourceMonster.combat.armorClass.value,
+          currentHitPoints: hitPoints,
+          maxHitPoints: hitPoints,
+          statuses: [],
+          sortOrder: prev.nextSortOrder,
+          source: "bestiary",
+          sourceMonsterId: sourceMonster.id,
+        },
+      ],
+      nextSortOrder: prev.nextSortOrder + 1,
+    }));
+    setBestiaryMonsterDraft({ monsterId: "", initiative: "", hitPoints: "" });
 
     return true;
   };
@@ -830,6 +1060,27 @@ export default function InitiativeTracker() {
     }));
   };
 
+  const openMonsterDetail = async (monsterId: string) => {
+    setMonsterDetailOpen(true);
+    setMonsterDetailLoading(true);
+    const cached = bestiaryById[monsterId];
+    if (cached) {
+      setSelectedMonsterDetail(cached);
+      setMonsterDetailLoading(false);
+      return;
+    }
+
+    try {
+      const monster = await fetchMonster(monsterId);
+      setBestiaryById((prev) => ({ ...prev, [monster.id]: monster }));
+      setSelectedMonsterDetail(monster);
+    } catch {
+      setMonsterDetailOpen(false);
+    } finally {
+      setMonsterDetailLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen parchment p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -972,12 +1223,25 @@ export default function InitiativeTracker() {
                     />
                   </div>
                   <div>
-                    <Input
-                      value={monsterForm.initiative}
-                      onChange={(e) => setMonsterForm((prev) => ({ ...prev, initiative: e.target.value }))}
-                      inputMode="numeric"
-                      className="h-7 text-xs"
-                    />
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={monsterForm.initiative}
+                        onChange={(e) => setMonsterForm((prev) => ({ ...prev, initiative: e.target.value }))}
+                        inputMode="numeric"
+                        className="h-7 text-xs"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                        onClick={() => setMonsterForm((prev) => ({ ...prev, initiative: String(rollD20()) }))}
+                        title="Tira iniziativa"
+                        aria-label="Tira iniziativa"
+                      >
+                        <Dices className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                   <div>
                     <Input
@@ -1007,6 +1271,83 @@ export default function InitiativeTracker() {
                     </Button>
                   </div>
                 </form>
+                </div>
+
+                <div className="overflow-hidden rounded-md border border-border/70 bg-background/20">
+                  <div className="grid grid-cols-[minmax(0,1.6fr)_90px_90px_90px_110px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <span>Bestiario</span>
+                    <span>GS</span>
+                    <span>CA</span>
+                    <span>PF</span>
+                    <span className="text-right">Azione</span>
+                  </div>
+                  <form onSubmit={handleBestiaryMonsterSubmit} className="grid grid-cols-[minmax(0,1.6fr)_90px_90px_90px_110px] items-end gap-2 px-3 py-1.5">
+                    <div>
+                      <Select
+                        value={bestiaryMonsterDraft.monsterId || undefined}
+                        onValueChange={(value) => setBestiaryMonsterDraft({ monsterId: value, initiative: "", hitPoints: "" })}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue placeholder="Scegli dal bestiario" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bestiaryCatalog.map((entry) => (
+                            <SelectItem key={entry.id} value={entry.id}>
+                              {entry.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex h-7 items-center text-xs text-muted-foreground">
+                      {selectedBestiaryMonster ? crLabel(selectedBestiaryMonster.challengeRating) : "-"}
+                    </div>
+                    <div className="flex h-7 items-center text-xs text-muted-foreground">
+                      {selectedBestiaryMonster && bestiaryById[selectedBestiaryMonster.id]
+                        ? bestiaryById[selectedBestiaryMonster.id].combat.armorClass.value
+                        : "-"}
+                    </div>
+                    <div>
+                      <Input
+                        value={bestiaryMonsterDraft.hitPoints}
+                        onChange={(e) => setBestiaryMonsterDraft((prev) => ({ ...prev, hitPoints: e.target.value }))}
+                        inputMode="numeric"
+                        className="h-7 text-xs"
+                        placeholder="PF medi"
+                      />
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <Input
+                        value={bestiaryMonsterDraft.initiative}
+                        onChange={(e) => setBestiaryMonsterDraft((prev) => ({ ...prev, initiative: e.target.value }))}
+                        inputMode="numeric"
+                        className="h-7 w-12 text-center text-xs"
+                        placeholder="Init"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                        onClick={() => setBestiaryMonsterDraft((prev) => ({ ...prev, initiative: String(rollD20()) }))}
+                        title="Tira iniziativa"
+                        aria-label="Tira iniziativa"
+                      >
+                        <Dices className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={addBestiaryMonster}
+                        disabled={!bestiaryMonsterDraft.monsterId || !bestiaryMonsterDraft.initiative || !bestiaryById[bestiaryMonsterDraft.monsterId]}
+                        title="Aggiungi dal bestiario"
+                        aria-label="Aggiungi dal bestiario"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </form>
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -1238,6 +1579,11 @@ export default function InitiativeTracker() {
                             >
                               <FlaskConical className="h-4 w-4 text-white" />
                             </Button>
+                            {combatant.source === "bestiary" && combatant.sourceMonsterId ? (
+                              <Button size="icon" variant="ghost" onClick={() => void openMonsterDetail(combatant.sourceMonsterId!)} title="Apri stats mostro" className="h-8 w-8">
+                                <BookOpen className="h-4 w-4" />
+                              </Button>
+                            ) : null}
                             <Button size="icon" variant="ghost" onClick={() => duplicateMonster(combatant)} title="Copia mostro" className="h-8 w-8">
                               <Copy className="h-4 w-4" />
                             </Button>
@@ -1302,6 +1648,37 @@ export default function InitiativeTracker() {
           )}
         </Card>
       </div>
+
+      <Dialog
+        open={monsterDetailOpen}
+        onOpenChange={(open) => {
+          setMonsterDetailOpen(open);
+          if (!open) {
+            setSelectedMonsterDetail(null);
+            setMonsterDetailLoading(false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl border-primary/20 bg-card/95 p-0 [&>button]:hidden">
+          <DialogHeader className="border-b border-border/60 px-6 py-5">
+            <DialogTitle className="font-heading text-3xl text-primary">
+              {selectedMonsterDetail?.general.name || "Dettaglio mostro"}
+            </DialogTitle>
+            <DialogDescription>
+              Scheda rapida dal bestiario per consultazione durante il combattimento.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[78vh]">
+            <div className="px-6 py-6">
+              {monsterDetailLoading || !selectedMonsterDetail ? (
+                <div className="text-sm text-muted-foreground">Carico il dettaglio del mostro...</div>
+              ) : (
+                <TrackerMonsterStatBlock monster={selectedMonsterDetail} />
+              )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
