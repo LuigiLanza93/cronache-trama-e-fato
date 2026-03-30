@@ -25,7 +25,7 @@
     "speed": 9,
     "hitPointMaximum": 45,
     "currentHitPoints": 45,
-    "temporaryHitPoints": 0,
+    "temporaryHitPoints": 4,
     "hitDice": "1d8",
     "deathSaves": {
       "successes": 0,
@@ -186,7 +186,7 @@
       "cp": 0,
       "sp": 30,
       "ep": 0,
-      "gp": 59,
+      "gp": 34,
       "pp": 0
     },
     "items": [
@@ -235,7 +235,7 @@
       {
         "type": "consumable",
         "name": "Componenti Arcani",
-        "quantity": 2,
+        "quantity": 12,
         "subtype": "generic"
       },
       {
@@ -298,6 +298,10 @@
     {
       "name": "Mano Magica (warlock, Lv 0)",
       "description": "Livello 0 · Evocazione\nTempo di lancio: 1 azione\nGittata: 9 metri\nComponenti: V, S\nDurata: 1 minuto\n\nUna mano spettrale fluttuante compare in un punto a gittata, scelto da te. La mano resta per la durata dell’incantesimo o finché non viene interrotta con un’azione. La mano svanisce se si dovesse trovare a più di 9 metri da te o se lanci nuovamente l’incantesimo. Puoi usare la tua azione per controllare la mano. Puoi usare la mano per manipolare un oggetto, aprire una porta o un contenitore non chiusi a chiave, inserire o recuperare un oggetto da un contenitore aperto, o versare fuori i contenuti di una fiala. Puoi muovere la mano di 9 metri ogni volta che la usi. La mano non può attaccare, attivare oggetti magici o trasportare più di 5 chili.\n"
+    },
+    {
+      "name": "Palla di Fuoco (stregone, Lv 3)",
+      "description": "Livello 3 · Invocazione\nTempo di lancio: 1 azione\nGittata: 45 metri\nComponenti: V, S, M (una minuscola palla di guano di pipistrello e zolfo)\nDurata: Istantanea\n\nUn fascio di luce gialla parte dal tuo dito puntato verso un punto a gittata scelto da te, e poi esplode con un boato sommesso e si trasforma in un getto di fiamme. Ogni creatura in una sfera di 6 metri di raggio centrata in quel punto deve effettuare un tiro salvezza su Destrezza. Una creatura subisce 8d6 danni da fuoco se fallisce il tiro salvezza, o la metà di questi danni se lo supera. Il fuoco si propaga intorno agli angoli. Il fuoco incendia gli oggetti infiammabili nell’area che non sono indossati o trasportati.\n"
     }
   ],
   "spells": [],
@@ -328,6 +332,13 @@
         "resetOn": "atWill",
         "used": []
       }
+    },
+    {
+      "name": "Lama Assetata",
+      "kind": "passive",
+      "shortDescription": "Doppio attacco con la lama del patto",
+      "category": "Supplica Occulta",
+      "description": "Prerequisiti: 5° livello, privilegio Patto della Lama\nOgni volta che effettua l'azione Attacco nel suo turno, il warlock può attaccare con la sua arma del patto due volte anziché una."
     }
   ]
 }

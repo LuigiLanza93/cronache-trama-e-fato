@@ -265,7 +265,7 @@
       "cp": 0,
       "sp": 50,
       "ep": 0,
-      "gp": 25,
+      "gp": 10,
       "pp": 0
     },
     "items": [
@@ -340,6 +340,18 @@
             }
           ]
         }
+      },
+      {
+        "type": "consumable",
+        "name": "Grimaldello",
+        "quantity": 15,
+        "subtype": "generic"
+      },
+      {
+        "type": "object",
+        "name": "Occhiali di Rodin",
+        "equippable": false,
+        "equipped": false
       }
     ]
   },

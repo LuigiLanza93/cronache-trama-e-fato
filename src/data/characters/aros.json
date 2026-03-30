@@ -210,7 +210,7 @@
       "cp": 0,
       "sp": 50,
       "ep": 0,
-      "gp": 58,
+      "gp": 53,
       "pp": 0
     },
     "items": [
@@ -286,6 +286,12 @@
         "description": "Comprendo che ha un funzionamento s8mike al d20 ma in qualche modo è più potente. Non si applica a consumabili, ma a armi e armature, ha durata 24 ore, lo si utilizza su un solo oggetto.",
         "equippable": false,
         "equipped": false
+      },
+      {
+        "type": "consumable",
+        "name": "Kit del guaritore",
+        "quantity": 10,
+        "subtype": "potion"
       }
     ]
   },
