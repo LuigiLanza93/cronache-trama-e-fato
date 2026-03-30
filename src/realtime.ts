@@ -7,6 +7,15 @@ type PrivateMessagePayload = {
   message: string;
   sentAt: string;
 };
+export type ChatMessage = {
+  id: string;
+  slug: string;
+  senderUserId: string;
+  senderRole: "dm" | "player";
+  senderName: string;
+  text: string;
+  createdAt: string;
+};
 
 export function getSocket(): Socket {
   if (!socket) {
@@ -39,6 +48,10 @@ export async function fetchCharacter(slug: string) {
 
 export async function fetchCharacters() {
   return fetchJsonOrThrow("/api/characters");
+}
+
+export async function fetchChatMessages(slug: string) {
+  return fetchJsonOrThrow(`/api/chats/${slug}`) as Promise<ChatMessage[]>;
 }
 
 export function joinCharacterRoom(slug: string) {
@@ -120,5 +133,22 @@ export function onPrivateMessage(cb: (payload: PrivateMessagePayload) => void): 
   s.on("dm:private-message", handler);
   return () => {
     s.off("dm:private-message", handler);
+  };
+}
+
+export function joinChatRoom(slug: string) {
+  getSocket().emit("chat:join", slug);
+}
+
+export function sendChatMessage(payload: { slug: string; text: string }) {
+  getSocket().emit("chat:message", payload);
+}
+
+export function onChatMessage(cb: (payload: ChatMessage) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: ChatMessage) => cb(payload);
+  s.on("chat:message", handler);
+  return () => {
+    s.off("chat:message", handler);
   };
 }

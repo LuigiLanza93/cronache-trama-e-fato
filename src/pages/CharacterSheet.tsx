@@ -31,7 +31,6 @@ import {
   applyPatch,
   announceEnter,
   announceLeave,
-  onPrivateMessage,
 } from "@/realtime";
 import {
   coerce,
@@ -53,6 +52,7 @@ import AttacksAndSpells from "@/components/characterSheet/attacks-and-spells";
 import Features from "@/components/characterSheet/features";
 import Inventory from "@/components/characterSheet/inventory";
 import Languages from "@/components/characterSheet/languages";
+import FloatingCharacterChat from "@/components/chat/floating-character-chat";
 
 type InputEl = HTMLInputElement | HTMLTextAreaElement;
 type Coins = { cp: number; sp: number; ep: number; gp: number; pp: number };
@@ -359,12 +359,6 @@ const CharacterSheet = () => {
   const [modalDescription, setModalDescription] = useState<string>("");
   const [modalFeatureIndex, setModalFeatureIndex] = useState<number | null>(null);
   const [confirmRemoveFeatureOpen, setConfirmRemoveFeatureOpen] = useState(false);
-  const [privateMessageOpen, setPrivateMessageOpen] = useState(false);
-  const [privateMessage, setPrivateMessage] = useState<{
-    title?: string;
-    message: string;
-    sentAt: string;
-  } | null>(null);
 
   const classOptions = useMemo(() => Object.keys(spells).sort(), []);
   const filteredSpells = useMemo(() => {
@@ -845,7 +839,6 @@ const CharacterSheet = () => {
     if (!slug) return;
     let unsubState: any = null;
     let unsubPatch: any = null;
-    let unsubPrivateMessage: any = null;
     let active = true;
     (async () => {
       try {
@@ -865,22 +858,12 @@ const CharacterSheet = () => {
       unsubPatch = onCharacterPatch((patch) =>
         setCharacterData((prev) => (prev ? applyPatch(prev, patch) : prev))
       );
-      unsubPrivateMessage = onPrivateMessage((payload) => {
-        if (payload.slug !== slug) return;
-        setPrivateMessage({
-          title: payload.title,
-          message: payload.message,
-          sentAt: payload.sentAt,
-        });
-        setPrivateMessageOpen(true);
-      });
     })();
     announceEnter(character);
     return () => {
       active = false;
       try { unsubState?.(); } catch {}
       try { unsubPatch?.(); } catch {}
-      try { unsubPrivateMessage?.(); } catch {}
       try { announceLeave(); } catch {}
     };
   }, [character]);
@@ -932,6 +915,11 @@ const CharacterSheet = () => {
           editMode={editMode}
           setEditMode={setEditMode}
           makeChangeHandler={makeChangeHandler}
+        />
+        <FloatingCharacterChat
+          slug={characterData.slug}
+          title={characterData.basicInfo.characterName}
+          avatarUrl={characterData.basicInfo.portraitUrl}
         />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="space-y-6">
@@ -1178,26 +1166,6 @@ const CharacterSheet = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={privateMessageOpen} onOpenChange={setPrivateMessageOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{privateMessage?.title?.trim() || "Messaggio dal DM"}</DialogTitle>
-            <DialogDescription>
-              {privateMessage?.sentAt
-                ? new Date(privateMessage.sentAt).toLocaleString("it-IT")
-                : "Nuovo messaggio privato"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-            {privateMessage?.message}
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Chiudi</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

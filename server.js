@@ -21,6 +21,7 @@ const DATA_DIR = path.resolve(__dirname, "src/data");
 const CHAR_DIR = path.resolve(DATA_DIR, "characters");
 const USERS_FILE = path.resolve(DATA_DIR, "users.json");
 const OWNERSHIP_FILE = path.resolve(DATA_DIR, "character-ownership.json");
+const CHATS_FILE = path.resolve(DATA_DIR, "chats.json");
 const PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
 const SESSION_COOKIE = "ctf_session";
 
@@ -73,6 +74,14 @@ function writeUsers(users) {
 
 function writeOwnership(ownership) {
   fs.writeFileSync(OWNERSHIP_FILE, JSON.stringify(ownership, null, 2) + "\n", "utf-8");
+}
+
+function readChats() {
+  return readJsonFile(CHATS_FILE, {});
+}
+
+function writeChats(chats) {
+  fs.writeFileSync(CHATS_FILE, JSON.stringify(chats, null, 2) + "\n", "utf-8");
 }
 
 function listCharacterSlugs() {
@@ -470,6 +479,17 @@ async function start() {
     return res.json({ slug, userId: ownership[slug] ?? null });
   });
 
+  app.get("/api/chats/:slug", requireAuth, (req, res) => {
+    const slug = req.params.slug;
+    const ownership = readOwnership();
+    if (!canAccessCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const chats = readChats();
+    return res.json(Array.isArray(chats[slug]) ? chats[slug] : []);
+  });
+
   // ===== Characters =====
   app.get("/api/characters", requireAuth, (req, res) => {
     const ownership = readOwnership();
@@ -603,6 +623,39 @@ async function start() {
         message: normalizedMessage,
         sentAt: new Date().toISOString(),
       });
+    });
+
+    socket.on("chat:join", (slug) => {
+      const ownership = readOwnership();
+      if (!slug || !canAccessCharacter(socket.data.user, slug, ownership)) return;
+      socket.join(`chat:${slug}`);
+    });
+
+    socket.on("chat:message", ({ slug, text }) => {
+      const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
+      const normalizedText = typeof text === "string" ? text.trim() : "";
+      const ownership = readOwnership();
+
+      if (!normalizedSlug || !normalizedText || !canAccessCharacter(socket.data.user, normalizedSlug, ownership)) {
+        return;
+      }
+
+      const chats = readChats();
+      const nextMessage = {
+        id: crypto.randomUUID(),
+        slug: normalizedSlug,
+        senderUserId: socket.data.user.id,
+        senderRole: socket.data.user.role,
+        senderName: socket.data.user.displayName ?? socket.data.user.username,
+        text: normalizedText,
+        createdAt: new Date().toISOString(),
+      };
+
+      const thread = Array.isArray(chats[normalizedSlug]) ? chats[normalizedSlug] : [];
+      chats[normalizedSlug] = [...thread, nextMessage];
+      writeChats(chats);
+
+      io.to(`chat:${normalizedSlug}`).emit("chat:message", nextMessage);
     });
 
     socket.on("presence:snapshot", () => {

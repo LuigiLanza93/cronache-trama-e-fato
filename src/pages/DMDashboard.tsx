@@ -7,30 +7,26 @@ import {
   Shield,
   Users,
 } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   applyPatch,
+  ChatMessage,
   fetchCharacter,
   fetchCharacters,
+  joinChatRoom,
   joinCharacterRoom,
+  onChatMessage,
   onCharacterPatch,
   onCharacterState,
   requestPresenceSnapshot,
-  sendPrivateMessage,
   subscribePresence,
 } from "@/realtime";
-import { toast } from "@/components/ui/sonner";
+import CharacterChatWindow from "@/components/chat/character-chat-window";
+import { getInitials, normalizePortraitUrl } from "@/lib/character-ui";
 
 type CharacterState = Record<string, any>;
 
@@ -38,6 +34,7 @@ type PlayerCardData = {
   slug: string;
   name: string;
   playerName: string;
+  portraitUrl?: string;
   className: string;
   level: number | null;
   initiativeBonus: number;
@@ -164,6 +161,7 @@ function toPlayerCardData(state: CharacterState): PlayerCardData | null {
     slug,
     name: state?.basicInfo?.characterName ?? slug,
     playerName: state?.basicInfo?.playerName ?? "",
+    portraitUrl: state?.basicInfo?.portraitUrl ?? "",
     className: state?.basicInfo?.class ?? "",
     level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
     initiativeBonus: state?.combatStats?.initiative ?? 0,
@@ -209,15 +207,17 @@ function hpBarColor(hp: PlayerCardData["hp"]) {
 }
 
 export default function DMDashboard() {
+  const { user } = useAuth();
   const [onlineSlugs, setOnlineSlugs] = useState<string[]>([]);
   const [baseCharacterStates, setBaseCharacterStates] = useState<CharacterState[]>([]);
   const [liveStates, setLiveStates] = useState<Record<string, CharacterState>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [expandedAbilityBonuses, setExpandedAbilityBonuses] = useState<Record<string, boolean>>({});
-  const [messageModalOpen, setMessageModalOpen] = useState(false);
-  const [messageTargetSlug, setMessageTargetSlug] = useState<string | null>(null);
-  const [messageBody, setMessageBody] = useState("");
+  const [openChatSlugs, setOpenChatSlugs] = useState<string[]>([]);
+  const [minimizedChatSlugs, setMinimizedChatSlugs] = useState<string[]>([]);
+  const [unreadChatCounts, setUnreadChatCounts] = useState<Record<string, number>>({});
   const joinedRoomsRef = useRef<Set<string>>(new Set());
+  const joinedChatRoomsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     document.title = "DM Dashboard | D&D Character Manager";
@@ -323,39 +323,65 @@ export default function DMDashboard() {
     [baseCharacterStates, liveStates]
   );
 
-  const selectedPlayer = useMemo(
-    () => roster.find((player) => player.slug === messageTargetSlug) ?? null,
-    [messageTargetSlug, roster]
-  );
-
   const onlineCount = onlineSlugs.length;
   const onlineSet = useMemo(() => new Set(onlineSlugs), [onlineSlugs]);
 
-  const openMessageModal = (slug: string) => {
-    setMessageTargetSlug(slug);
-    setMessageBody("");
-    setMessageModalOpen(true);
+  useEffect(() => {
+    roster.forEach((player) => {
+      if (joinedChatRoomsRef.current.has(player.slug)) return;
+      joinedChatRoomsRef.current.add(player.slug);
+      joinChatRoom(player.slug);
+    });
+  }, [roster]);
+
+  useEffect(() => {
+    const offChat = onChatMessage((message: ChatMessage) => {
+      if (message.senderUserId === user?.id) return;
+
+      const player = roster.find((entry) => entry.slug === message.slug);
+      if (!player) return;
+
+      const isVisible = openChatSlugs.includes(message.slug) && !minimizedChatSlugs.includes(message.slug);
+      if (!isVisible) {
+        setUnreadChatCounts((prev) => ({
+          ...prev,
+          [message.slug]: (prev[message.slug] ?? 0) + 1,
+        }));
+      }
+    });
+
+    return () => {
+      try {
+        offChat();
+      } catch {}
+    };
+  }, [minimizedChatSlugs, openChatSlugs, roster, user?.id]);
+
+  const openChatWindow = (slug: string) => {
+    setOpenChatSlugs((prev) => {
+      const next = prev.filter((entry) => entry !== slug);
+      return [...next, slug];
+    });
+    setMinimizedChatSlugs((prev) => prev.filter((entry) => entry !== slug));
+    setUnreadChatCounts((prev) => {
+      if (!prev[slug]) return prev;
+      const next = { ...prev };
+      delete next[slug];
+      return next;
+    });
+  };
+
+  const minimizeChatWindow = (slug: string) => {
+    setMinimizedChatSlugs((prev) => (prev.includes(slug) ? prev : [...prev, slug]));
   };
 
   const toggleAbilityBonuses = (slug: string) => {
     setExpandedAbilityBonuses((prev) => ({ ...prev, [slug]: !prev[slug] }));
   };
 
-  const handleSendMessage = () => {
-    if (!selectedPlayer) return;
-
-    const trimmedMessage = messageBody.trim();
-    if (!trimmedMessage) return;
-
-    sendPrivateMessage({
-      slug: selectedPlayer.slug,
-      title: "Messaggio privato del DM",
-      message: trimmedMessage,
-    });
-
-    toast.success(`Messaggio inviato a ${selectedPlayer.name}`);
-    setMessageBody("");
-    setMessageModalOpen(false);
+  const closeChatWindow = (slug: string) => {
+    setOpenChatSlugs((prev) => prev.filter((entry) => entry !== slug));
+    setMinimizedChatSlugs((prev) => prev.filter((entry) => entry !== slug));
   };
 
   return (
@@ -529,13 +555,17 @@ export default function DMDashboard() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => openMessageModal(player.slug)}
-                      disabled={!isOnline}
-                      className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
-                      title="Messaggio privato"
-                      aria-label="Messaggio privato"
+                      onClick={() => openChatWindow(player.slug)}
+                      className="relative h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
+                      title="Apri chat"
+                      aria-label="Apri chat"
                     >
                       <MessageSquareMore className="h-4 w-4" />
+                      {(unreadChatCounts[player.slug] ?? 0) > 0 ? (
+                        <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
+                          {(unreadChatCounts[player.slug] ?? 0) > 9 ? "9+" : unreadChatCounts[player.slug]}
+                        </span>
+                      ) : null}
                     </Button>
                   </div>
                 </div>
@@ -543,43 +573,56 @@ export default function DMDashboard() {
             );
           })}
         </section>
-
-        <Dialog open={messageModalOpen} onOpenChange={setMessageModalOpen}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>
-                {selectedPlayer ? `Messaggio a ${selectedPlayer.name}` : "Messaggio privato"}
-              </DialogTitle>
-              <DialogDescription>
-                Il messaggio compare come popup sulla scheda del giocatore se il personaggio e' online.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-3">
-              <div className="text-sm text-muted-foreground">
-                {selectedPlayer?.playerName
-                  ? `Giocatore: ${selectedPlayer.playerName}`
-                  : "Giocatore non indicato"}
-              </div>
-              <Textarea
-                value={messageBody}
-                onChange={(event) => setMessageBody(event.target.value)}
-                placeholder="Scrivi qui il messaggio del DM..."
-                className="min-h-36"
-              />
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setMessageModalOpen(false)}>
-                Annulla
-              </Button>
-              <Button onClick={handleSendMessage} disabled={!messageBody.trim()}>
-                Invia popup
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      {openChatSlugs.length > 0 ? (
+        <div className="fixed bottom-5 right-20 z-40 flex max-w-[calc(100vw-7rem)] items-end gap-3 overflow-x-auto pb-2 pr-2">
+          {openChatSlugs.map((slug) => {
+            const player = roster.find((entry) => entry.slug === slug);
+            if (!player) return null;
+            const isMinimized = minimizedChatSlugs.includes(slug);
+            const unreadCount = unreadChatCounts[slug] ?? 0;
+            const normalizedAvatar = normalizePortraitUrl(player.portraitUrl);
+
+            if (isMinimized) {
+              return (
+                <button
+                  key={slug}
+                  type="button"
+                  onClick={() => openChatWindow(slug)}
+                  className="relative flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-card/95 shadow-xl transition-transform hover:-translate-y-0.5"
+                  title={`Apri chat con ${player.name}`}
+                  aria-label={`Apri chat con ${player.name}`}
+                >
+                  <Avatar className="h-12 w-12 border border-border/60">
+                    {normalizedAvatar ? <AvatarImage src={normalizedAvatar} alt={player.name} className="object-cover" /> : null}
+                    <AvatarFallback className="bg-primary/10 font-heading text-sm font-bold text-primary">
+                      {getInitials(player.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {unreadCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            }
+
+            return (
+              <CharacterChatWindow
+                key={slug}
+                slug={slug}
+                title={player.name}
+                subtitle={player.playerName || player.slug}
+                avatarUrl={player.portraitUrl}
+                onMinimize={() => minimizeChatWindow(slug)}
+                onClose={() => closeChatWindow(slug)}
+              />
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
