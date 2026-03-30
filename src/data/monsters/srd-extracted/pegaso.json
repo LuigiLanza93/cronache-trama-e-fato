@@ -1,0 +1,104 @@
+{
+  "slug": "pegaso",
+  "general": {
+    "name": "Pegaso",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "celestiale",
+    "subtype": "",
+    "typeLabel": "celestiale",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 59,
+      "formula": "7d10 + 21"
+    },
+    "speed": {
+      "walk": "18 m",
+      "fly": "27 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 15,
+    "constitution": 16,
+    "intelligence": 10,
+    "wisdom": 15,
+    "charisma": 13
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 4
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 4
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 3
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 16"
+      }
+    ],
+    "languages": [
+      {
+        "name": "comprende Celestiale"
+      },
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Elfico e Silvano ma"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Pegaso\nGrande celestiale, caotico buono\nFORZA 18 (+4)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 15 (+2)\nCARISMA 13 (+1)\nClasse Armatura 12\nPunti Ferita 59 (7d10 + 21)\nVelocità 18 m, volo 27 m\nTiri Salvezza Destrezza +4, Saggezza +4, Carisma +3\nAbilità Percezione +6\nSensi Percezione passiva 16\nLinguaggi comprende Celestiale, Comune, Elfico e Silvano ma\nnon può parlare\nSfida 2 (450 PE)\nAzioni\nZoccoli. Attacco con arma da mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni contundenti."
+  }
+}

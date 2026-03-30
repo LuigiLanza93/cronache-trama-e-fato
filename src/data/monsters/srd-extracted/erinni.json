@@ -1,0 +1,141 @@
+{
+  "slug": "erinni",
+  "general": {
+    "name": "Erinni",
+    "challengeRating": {
+      "fraction": "12",
+      "decimal": 12,
+      "display": "12",
+      "xp": 8400
+    },
+    "size": "Media",
+    "creatureType": "immondo",
+    "subtype": "diavolo",
+    "typeLabel": "immondo (diavolo)",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura di piastre"
+    },
+    "hitPoints": {
+      "average": 153,
+      "formula": "18d8 + 72"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 16,
+    "constitution": 18,
+    "intelligence": 14,
+    "wisdom": 14,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 8
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 6
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo; contundente",
+      "perforante e tagliente"
+    ],
+    "damageImmunities": [
+      "fuoco",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "visione del vero",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 18"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Infernale"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Armi Diaboliche",
+      "usage": null,
+      "description": "Gli attacchi con arma dell'erinni sono magici e infliggono 13 (3d8) danni da veleno aggiuntivi quando colpiscono (già incluso negli attacchi)."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "L'erinni ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'erinni effettua tre attacchi."
+    },
+    {
+      "name": "Spada Lunga",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +8 a colpire, portata 1,5 m, un bersaglio. Colpisce: 8 (1d8 + 4) danni taglienti, o 9 (1d10 + 4) danni taglienti se usata con due mani, più 13 (3d8) danni da veleno."
+    },
+    {
+      "name": "Arco Lungo",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +7 a colpire, gittata 45/180 m, un bersaglio. Colpisce: 7 (1d8 + 4) danni perforanti più 13 (3d8) danni da veleno, e il bersaglio deve riuscire un tiro salvezza di"
+    },
+    {
+      "name": "Costituzione CD 14 o restare avvelenato",
+      "usage": null,
+      "description": "Il veleno rimane finché non viene rimosso da un incantesimo ristorazione inferiore o simile."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [
+    {
+      "name": "Parata",
+      "usage": null,
+      "description": "L'erinni somma 4 alla sua CA contro un attacco da mischia che lo colpirebbe. Per farlo, l'erinni deve poter vedere il suo attaccante e impugnare un'arma da mischia."
+    }
+  ],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Erinni\nMedia immondo (diavolo), legale malvagio\nFORZA 18 (+4)\nDESTREZZA 16 (+3)\nCOSTITUZIONE 18 (+4)\nINTELLIGENZA 14 (+2)\nSAGGEZZA 14 (+2)\nCARISMA 18 (+4)\nClasse Armatura 18 (armatura di piastre)\nPunti Ferita 153 (18d8 + 72)\nVelocità 9 m, volo 18 m\nTiri Salvezza Destrezza +7, Costituzione +8, Saggezza +6,\nCarisma +8\nResistenze al Danno freddo; contundente, perforante e tagliente\ndi attacchi non magici che non siano argentati\nImmunità al Danno fuoco, veleno\nImmunità alle Condizioni avvelenato\nSensi visione del vero 36 m, Percezione passiva 18\nLinguaggi Infernale, telepatia 36 m\nSfida 12 (8.400 PE)\nArmi Diaboliche. Gli attacchi con arma dell'erinni sono magici e\ninfliggono 13 (3d8) danni da veleno aggiuntivi quando\ncolpiscono (già incluso negli attacchi).\nResistenza alla Magia. L'erinni ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nAzioni\nMultiattacco. L'erinni effettua tre attacchi.\nSpada Lunga. Attacco con arma da mischia: +8 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 8 (1d8 + 4) danni taglienti, o 9 (1d10 + 4) danni\ntaglienti se usata con due mani, più 13 (3d8) danni da veleno.\nArco Lungo. Attacco con arma a Distanza: +7 a colpire, gittata\n45/180 m, un bersaglio.\nColpisce: 7 (1d8 + 4) danni perforanti più 13 (3d8) danni da\nveleno, e il bersaglio deve riuscire un tiro salvezza di\nCostituzione CD 14 o restare avvelenato. Il veleno rimane finché\nnon viene rimosso da un incantesimo ristorazione inferiore o\nsimile.\nReazioni\nParata. L'erinni somma 4 alla sua CA contro un attacco da\nmischia che lo colpirebbe. Per farlo, l'erinni deve poter vedere il\nsuo attaccante e impugnare un'arma da mischia."
+  }
+}

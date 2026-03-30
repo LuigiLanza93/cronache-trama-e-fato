@@ -1,0 +1,104 @@
+{
+  "slug": "tigre",
+  "general": {
+    "name": "Tigre",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Grande",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 37,
+      "formula": "5d10 + 10"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 17,
+    "dexterity": 15,
+    "constitution": 14,
+    "intelligence": 3,
+    "wisdom": 12,
+    "charisma": 8
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 6
+      },
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "visione al buio",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Balzo",
+      "usage": null,
+      "description": "Se la tigre si muove di almeno 6 metri diretta verso una creatura e la colpisce con un attacco di artiglio durante lo stesso turno, il bersaglio deve riuscire un tiro salvezza di Forza CD 13 o cadere prono. Se il bersaglio è prono, la tigre può effettuare un attacco di morso contro di esso come azione bonus."
+    },
+    {
+      "name": "Olfatto Affinato",
+      "usage": null,
+      "description": "La tigre ha vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 7 (1d8 + 3) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 8 (1d10 + 3) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Tigre\nGrande bestia, disallineato\nFORZA 17 (+3)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 14 (+2)\nINTELLIGENZA 3 (-4)\nSAGGEZZA 12 (+1)\nCARISMA 8 (-1)\nClasse Armatura 12\nPunti Ferita 37 (5d10 + 10)\nVelocità 12 m\nAbilità Furtività +6, Percezione +3\nSensi visione al buio 18 m, Percezione passiva 13\nLingue -\nSfida 1 (200 PE)\nBalzo. Se la tigre si muove di almeno 6 metri diretta verso una\ncreatura e la colpisce con un attacco di artiglio durante lo stesso\nturno, il bersaglio deve riuscire un tiro salvezza di Forza CD 13 o\ncadere prono. Se il bersaglio è prono, la tigre può effettuare un\nattacco di morso contro di esso come azione bonus.\nOlfatto Affinato. La tigre ha vantaggio alle prove di Saggezza\n(Percezione) basate sull'olfatto.\nAzioni\nArtiglio. Attacco con Arma da Mischia: +5 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 7 (1d8 + 3) danni taglienti.\nMorso. Attacco con Arma da Mischia: +5 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 8 (1d10 + 3) danni perforanti."
+  }
+}

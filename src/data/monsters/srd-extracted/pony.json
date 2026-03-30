@@ -1,0 +1,75 @@
+{
+  "slug": "pony",
+  "general": {
+    "name": "Pony",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Media",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 10,
+    "constitution": 13,
+    "intelligence": 2,
+    "wisdom": 11,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 7 (2d4 + 2) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Pony\nMedia bestia, disallineato\nFORZA 15 (+2)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 11 (+0)\nCARISMA 7 (-2)\nClasse Armatura 10\nPunti Ferita 11 (2d8 + 2)\nVelocità 12 m\nSensi Percezione passiva 10\nLingue -\nSfida 1/8 (25 PE)\nAzioni\nZoccoli. Attacco con Arma da Mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 7 (2d4 + 2) danni contundenti."
+  }
+}

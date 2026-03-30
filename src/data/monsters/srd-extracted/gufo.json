@@ -1,0 +1,105 @@
+{
+  "slug": "gufo",
+  "general": {
+    "name": "Gufo",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 10
+    },
+    "size": "Minuscola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 1,
+      "formula": "1d4 - 1"
+    },
+    "speed": {
+      "walk": "5 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 3,
+    "dexterity": 13,
+    "constitution": 8,
+    "intelligence": 2,
+    "wisdom": 12,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "visione al buio",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Sorvolare",
+      "usage": null,
+      "description": "Il gufo non provoca attacchi di opportunità quando vola via dalla portata di un nemico."
+    },
+    {
+      "name": "Udito e Vista Affinati",
+      "usage": null,
+      "description": "Il gufo ha vantaggio nelle prove di"
+    },
+    {
+      "name": "Saggezza (Percezione) basate su udito o vista",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "actions": [
+    {
+      "name": "Speroni",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 1 danno tagliente."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gufo\nMinuscola bestia, disallineato\nFORZA 3 (-4)\nDESTREZZA 13 (+1)\nCOSTITUZIONE 8 (-1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 12 (+1)\nCARISMA 7 (-2)\nClasse Armatura 11\nPunti Ferita 1 (1d4 - 1)\nVelocità 1,5 m, volo 18 m\nAbilità Furtività +3, Percezione +3\nSensi visione al buio 36 m, Percezione passiva 13\nLingue -\nSfida 0 (10 PE)\nSorvolare. Il gufo non provoca attacchi di opportunità quando\nvola via dalla portata di un nemico.\nUdito e Vista Affinati. Il gufo ha vantaggio nelle prove di\nSaggezza (Percezione) basate su udito o vista.\nAzioni\nSperoni. Attacco con Arma da Mischia: +3 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 1 danno tagliente."
+  }
+}

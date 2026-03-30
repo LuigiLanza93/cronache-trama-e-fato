@@ -1,0 +1,125 @@
+{
+  "slug": "xorn",
+  "general": {
+    "name": "Xorn",
+    "challengeRating": {
+      "fraction": "5",
+      "decimal": 5,
+      "display": "5",
+      "xp": 1800
+    },
+    "size": "Media",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 19,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 73,
+      "formula": "7d8 + 42"
+    },
+    "speed": {
+      "walk": "6 m",
+      "burrow": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 17,
+    "dexterity": 10,
+    "constitution": 22,
+    "intelligence": 11,
+    "wisdom": 10,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "perforante e tagliente di attacchi non"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "senso tellurico",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Terran"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Mimetismo di Pietra",
+      "usage": null,
+      "description": "Lo xorn ha vantaggio alle prove di Destrezza (Furtività) effettuate per nascondersi su terreno roccioso."
+    },
+    {
+      "name": "Scorrere sulla Terra",
+      "usage": null,
+      "description": "Lo xorn può scavare attraversa la terra e la pietra non magiche e non lavorate. Quando lo fa, lo xorn non disturba il materiale che sposta."
+    },
+    {
+      "name": "Senso del Tesoro",
+      "usage": null,
+      "description": "Lo xorn può individuare precisamente, con l'olfatto, la posizione di metalli e pietre preziose, come monete e gemme, entro 18 metri da esso."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Lo xorn effettua tre attacchi di artiglio e un attacco di morso."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 6 (1d6 + 3) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 13 (3d6 + 3) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Xorn\nMedia elementale, neutrale\nFORZA 17 (+3)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 22 (+6)\nINTELLIGENZA 11 (+0)\nSAGGEZZA 10 (+0)\nCARISMA 11 (+0)\nClasse Armatura 19 (armatura naturale)\nPunti Ferita 73 (7d8 + 42)\nVelocità 6 m, scavo 6 m\nAbilità Furtività +3, Percezione +6\nResistenze al Danno perforante e tagliente di attacchi non\nmagici che non siano di adamantio\nSensi scurovisione 18 m, senso tellurico 18 m, Percezione\npassiva 18\nLinguaggi Terran\nSfida 5 (1.800 PE)\nMimetismo di Pietra. Lo xorn ha vantaggio alle prove di\nDestrezza (Furtività) effettuate per nascondersi su terreno\nroccioso.\nScorrere sulla Terra. Lo xorn può scavare attraversa la terra e la\npietra non magiche e non lavorate. Quando lo fa, lo xorn non\ndisturba il materiale che sposta.\nSenso del Tesoro. Lo xorn può individuare precisamente, con\nl'olfatto, la posizione di metalli e pietre preziose, come monete e\ngemme, entro 18 metri da esso.\nAzioni\nMultiattacco. Lo xorn effettua tre attacchi di artiglio e un attacco\ndi morso.\nArtiglio. Attacco con arma da mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 6 (1d6 + 3) danni taglienti.\nMorso. Attacco con arma da mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 13 (3d6 + 3) danni perforanti."
+  }
+}

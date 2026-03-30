@@ -1,0 +1,101 @@
+{
+  "slug": "aarakocra",
+  "general": {
+    "name": "Aarakocra",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "0.25 (1/4)",
+      "xp": 50
+    },
+    "size": "Media",
+    "creatureType": "Umanoide",
+    "subtype": "Aarakocra",
+    "typeLabel": "Umanoide (Aarakocra)",
+    "alignment": "Neutrale Buono",
+    "environments": ["Montagna"]
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 13,
+      "formula": "3d8"
+    },
+    "speed": {
+      "walk": "6 m",
+      "fly": "15 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 14,
+    "constitution": 10,
+    "intelligence": 11,
+    "wisdom": 12,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva",
+        "value": "15"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Aarakocra"
+      },
+      {
+        "name": "Auran"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Attacco in Picchiata",
+      "description": "Se l'Aarakocra è in volo, si tuffa per almeno 9 metri in linea retta verso un bersaglio e lo colpisce con un attacco con arma da mischia, quell'attacco infligge 3 (1d6) danni extra al bersaglio.",
+      "usage": null
+    },
+    {
+      "name": "Evocare Elementali dell'Aria",
+      "description": "Cinque aarakocra entro 9 metri l'uno dall'altro possono evocare magicamente un Elementale dell'Aria. Ognuno dei cinque deve usare la sua azione e il suo movimento in tre turni consecutivi per effettuare una danza aerea e mantenere la concentrazione mentre lo fa (come se si concentrasse su un incantesimo). Quando tutti e cinque hanno terminato il terzo turno di danza, l'elementale appare in uno spazio libero entro 18 metri da loro. L'elementale è amichevole nei loro confronti e obbedisce ai loro comandi pronunciati. Rimane per 1 ora, finché lui o tutti i suoi evocatori non sono morti o finché uno dei suoi evocatori non lo congeda con un'azione bonus. Un evocatore non può effettuare di nuovo la danza finché non completa un riposo breve. Quando l'elementale ritorna sul Piano Elementale dell'Aria, ogni aarakocra entro 1,5 metri da lui può farvi ritorno assieme a lui.",
+      "usage": null
+    }
+  ],
+  "actions": [
+    {
+      "name": "Sperone",
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 4 (1d4+2) danni taglienti.",
+      "usage": null
+    },
+    {
+      "name": "Giavellotto",
+      "description": "Attacco con Arma da Mischia o a Distanza: +4 al tiro per colpire, portata 1,5 m o gittata 9/36 m, un bersaglio. Colpito: 5 (1d6+2) danni perforanti.",
+      "usage": null
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": []
+}

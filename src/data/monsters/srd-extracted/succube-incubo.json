@@ -1,0 +1,147 @@
+{
+  "slug": "succube-incubo",
+  "general": {
+    "name": "Succube/Incubo",
+    "challengeRating": {
+      "fraction": "4",
+      "decimal": 4,
+      "display": "4",
+      "xp": 1100
+    },
+    "size": "Media",
+    "creatureType": "immondo",
+    "subtype": "mutaforma",
+    "typeLabel": "immondo (mutaforma)",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 66,
+      "formula": "12d8 + 12"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 8,
+    "dexterity": 17,
+    "constitution": 13,
+    "intelligence": 15,
+    "wisdom": 12,
+    "charisma": 20
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività 5",
+        "bonus": 0
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 5
+      },
+      {
+        "name": "Persuasione",
+        "bonus": 0
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "veleno;"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 15"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Infernale"
+      },
+      {
+        "name": "telepatia",
+        "value": "18 m"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Legame Telepatico",
+      "usage": null,
+      "description": "L'immondo ignora le restrizioni di raggio di azione della sua telepatia quando comunica con una creatura che ha affascinato. I due non sono neppure costretti a trovarsi sullo stesso piano di esistenza."
+    },
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "L'immondo può usare la sua azione per trasformarsi in un umanoide di taglia Piccola o Media, o per tornare alla sua vera forma. Senza le ali, l'immondo perde la velocità di volo. A parte la taglia e la velocità, le sue statistiche sono le stesse in tutte le forme. Qualsiasi equipaggiamento stia indossando o trasportando non viene trasformato. Alla morte ritorna alla sua vera forma."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artiglio",
+      "usage": "Solo Forma Immonda",
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 6 (1d6 + 3) danni taglienti."
+    },
+    {
+      "name": "Affascinare",
+      "usage": null,
+      "description": "Un umanoide visibile all'immondo entro 9 metri da esso deve riuscire un tiro salvezza di Saggezza CD 15 o restare magicamente affascinato per 1 giorno. Il bersaglio affascinato obbedisce ai comandi verbali o telepatici dell'immondo. Se il bersaglio subisce danni o riceve un comando suicida, può ripetere il tiro salvezza, terminando l'effetto se lo riesce. Se il bersaglio riesce il tiro salvezza contro l'effetto, o se l'effetto termina, il bersaglio è immune all'Affascinare dell'immondo per le successive 24 ore."
+    },
+    {
+      "name": "L'immondo può tenere affascinato solo un bersaglio alla volta",
+      "usage": null,
+      "description": "Se ne affascina un altro, l'effetto sul bersaglio precedente termina."
+    },
+    {
+      "name": "Bacio Risucchiante",
+      "usage": null,
+      "description": "L'immondo bacia una creatura affascinata o una creatura consenziente. Il bersaglio deve effettuare un tiro salvezza di Costituzione CD 15 contro questa magia, subendo 32 (5d10 + 5) danni psichici se lo fallisce, o la metà di questi danni se lo riesce. I punti ferita massimi del bersaglio vengono ridotti di un ammontare pari ai danni subiti. Questa riduzione perdura finché il bersaglio non termina un riposo lungo. Il bersaglio muore se questo effetto riduce i suoi punti ferita massimi a 0."
+    },
+    {
+      "name": "Forma Eterea",
+      "usage": null,
+      "description": "L'immondo entra magicamente nel Piano Etereo dal Piano Materiale, e viceversa."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Succube/Incubo\nMedia immondo (mutaforma), neutrale malvagio\nFORZA 8 (-1)\nDESTREZZA 17 (+3)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 15 (+2)\nSAGGEZZA 12 (+1)\nCARISMA 20 (+5)\nClasse Armatura 15 (armatura naturale)\nPunti Ferita 66 (12d8 + 12)\nVelocità 9 m, volo 18 m\nAbilità Furtività 5, Intuizione +5, Percezione +5, Persuasione\n+9, Raggirare +9\nResistenze al Danno freddo, fulmine, fuoco, veleno;\ncontundente, perforante e tagliente di attacchi non magici\nSensi scurovisione 18 m, Percezione passiva 15\nLinguaggi Abissale, Comune, Infernale, telepatia 18 m\nSfida 4 (1.100 PE)\nLegame Telepatico. L'immondo ignora le restrizioni di raggio di\nazione della sua telepatia quando comunica con una creatura che\nha affascinato. I due non sono neppure costretti a trovarsi sullo\nstesso piano di esistenza.\nMutaforma. L'immondo può usare la sua azione per trasformarsi\nin un umanoide di taglia Piccola o Media, o per tornare alla sua\nvera forma. Senza le ali, l'immondo perde la velocità di volo. A\nparte la taglia e la velocità, le sue statistiche sono le stesse in\ntutte le forme. Qualsiasi equipaggiamento stia indossando o\ntrasportando non viene trasformato. Alla morte ritorna alla sua\nvera forma.\nAzioni\nArtiglio (Solo Forma Immonda). Attacco con arma da mischia:\n+5 a colpire, portata 1,5 m, un bersaglio.\nColpisce: 6 (1d6 + 3) danni taglienti.\nAffascinare. Un umanoide visibile all'immondo entro 9 metri da\nesso deve riuscire un tiro salvezza di Saggezza CD 15 o restare\nmagicamente affascinato per 1 giorno. Il bersaglio affascinato\nobbedisce ai comandi verbali o telepatici dell'immondo. Se il\nbersaglio subisce danni o riceve un comando suicida, può\nripetere il tiro salvezza, terminando l'effetto se lo riesce. Se il\nbersaglio riesce il tiro salvezza contro l'effetto, o se l'effetto\ntermina, il bersaglio è immune all'Affascinare dell'immondo per\nle successive 24 ore.\nL'immondo può tenere affascinato solo un bersaglio alla volta.\nSe ne affascina un altro, l'effetto sul bersaglio precedente\ntermina.\nBacio Risucchiante. L'immondo bacia una creatura affascinata o\nuna creatura consenziente. Il bersaglio deve effettuare un tiro\nsalvezza di Costituzione CD 15 contro questa magia, subendo 32\n(5d10 + 5) danni psichici se lo fallisce, o la metà di questi danni\nse lo riesce. I punti ferita massimi del bersaglio vengono ridotti\ndi un ammontare pari ai danni subiti. Questa riduzione perdura\nfinché il bersaglio non termina un riposo lungo. Il bersaglio\nmuore se questo effetto riduce i suoi punti ferita massimi a 0.\nForma Eterea. L'immondo entra magicamente nel Piano Etereo\ndal Piano Materiale, e viceversa."
+  }
+}

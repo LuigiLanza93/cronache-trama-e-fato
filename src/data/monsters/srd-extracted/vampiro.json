@@ -1,0 +1,205 @@
+{
+  "slug": "vampiro",
+  "general": {
+    "name": "Vampiro",
+    "challengeRating": {
+      "fraction": "13",
+      "decimal": 13,
+      "display": "13",
+      "xp": 10000
+    },
+    "size": "Media",
+    "creatureType": "non morto",
+    "subtype": "mutaforma",
+    "typeLabel": "non morto (mutaforma)",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 144,
+      "formula": "17d8 + 68"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 18,
+    "constitution": 18,
+    "intelligence": 17,
+    "wisdom": 15,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 9
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 9
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 9
+      },
+      {
+        "name": "Percezione",
+        "bonus": 17
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "necrotico; contundente",
+      "perforante e"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 17"
+      }
+    ],
+    "languages": [
+      {
+        "name": "le lingue che conosceva in vita"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "Se il vampiro non è sotto la luce del sole o immerso in acqua corrente, può usare la sua azione per trasformarsi in un Minuscolo pipistrello, una nube di foschia Media, o per tornare alla sua vera forma. Mentre è in forma di pipistrello, il vampiro non può parlare, la sua velocità di passeggio è 1,5 metri e ha velocità di volo 9 metri. Le sue statistiche, a parte la taglia e la velocità, sono immutate. Qualsiasi equipaggiamento stia indossando si trasforma con esso, ma quello che stava trasportando viene fatto cadere a terra. Alla morte ritorna alla sua vera forma. Mentre è in forma di foschia, il vampiro non può effettuare azioni, parlare o manipolare oggetti. È privo di peso, ha velocità di volo 6 metri, può fluttuare, e può entrare nello spazio di una creatura ostile e fermarsi lì. Inoltre, se in uno spazio vi passa dell'aria, la foschia può fare altrettanto senza stringersi, ma non può attraversare l'acqua. Ha vantaggio ai tiri salvezza di Forza, Destrezza e Costituzione, ed è immune a tutti i danni non magici, eccetto i danni subiti dalla luce del sole."
+    },
+    {
+      "name": "Debolezze del Vampiro",
+      "usage": null,
+      "description": "Il vampiro ha i seguenti difetti:"
+    },
+    {
+      "name": "Danneggiato dall'Acqua Corrente",
+      "usage": null,
+      "description": "Il vampiro subisce 20 danni da acido se termina il suo turno all'interno dell'acqua corrente."
+    },
+    {
+      "name": "Ipersensibilità alla Luce",
+      "usage": null,
+      "description": "Il vampiro subisce 20 danni radianti quando inizia il suo turno alla luce del sole. Mentre è alla luce del sole, ha svantaggio ai tiri di attacco e le prove di abilità."
+    },
+    {
+      "name": "Paletto nel Cuore",
+      "usage": null,
+      "description": "Se un'arma perforante fatta di legno viene conficcata nel cuore del vampiro mentre il vampiro è inabile nel suo luogo di riposo, il vampiro resta paralizzato finché il paletto non viene rimosso."
+    },
+    {
+      "name": "Proibizione",
+      "usage": null,
+      "description": "Il vampiro non può entrare in un'abitazione senza invito da parte dei suoi occupanti."
+    },
+    {
+      "name": "Fuga nella Foschia",
+      "usage": null,
+      "description": "Quando scende a 0 punti ferita al di fuori del suo luogo di riposo, il vampiro si trasforma in una nube di foschia (come per il tratto Mutaforma) invece di cadere privo di sensi, purché non sia esposto alla luce del sole o all'acqua corrente. Se non può trasformarsi, viene distrutto. Mentre si trova a 0 punti ferita in questa forma, non può tornare alla sua forma di vampiro, e deve raggiungere il suo luogo di riposo entro 2 ore o venire distrutto. Una volta raggiunto il suo luogo di riposo, ritorna alla sua forma di vampiro. Resterà quindi paralizzato finché non avrà recuperato almeno 1 punto ferita. Dopo aver trascorso almeno 1 ora nel suo luogo di riposo a 0 punti ferita, il vampiro recupererà 1 punto ferita."
+    },
+    {
+      "name": "Natura Non Morta",
+      "usage": null,
+      "description": "Il vampiro non ha bisogno di aria."
+    },
+    {
+      "name": "Resistenza Leggendaria",
+      "usage": "3/Giorno",
+      "description": "Se il vampiro fallisce un tiro salvezza, può scegliere invece di riuscire."
+    },
+    {
+      "name": "Rigenerazione",
+      "usage": null,
+      "description": "Il vampiro recupera 20 punti ferita all'inizio del suo turno se possiede almeno 1 punto ferita e non è esposto alla luce del sole o l'acqua corrente. Se il vampiro subisce danno radiante o danno dall'acqua sacra, questo tratto non funziona all'inizio del prossimo turno del vampiro."
+    },
+    {
+      "name": "Scalare come Ragno",
+      "usage": null,
+      "description": "Il vampiro può scalare superfici difficili, compreso lo stare a testa in giù sul soffitto, senza bisogno di effettuare una prova di abilità."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il vampiro può effettuare due attacchi, ma solo uno di essi può essere un attacco con morso."
+    },
+    {
+      "name": "Colpo Disarmato",
+      "usage": "Solo in Forma di Vampiro",
+      "description": "Attacco con arma da mischia: +9 a colpire, portata 1,5 m, una creatura. Colpisce: 8 (1d8 + 4) danni contundenti. Invece di infliggere danno, il vampiro può afferrare il bersaglio (CD per fuggire 18)."
+    },
+    {
+      "name": "Morso",
+      "usage": "Solo in Forma di Pipistrello o Vampiro",
+      "description": "Attacco con arma da mischia: +9 a colpire, portata 1,5 m, una creatura consenziente o una creatura afferrata dal vampiro, inabile o intralciata. Colpisce: 7 (1d6 + 4) danni perforanti più 10 (3d6) danni necrotici. I punti ferita massimi del bersaglio sono ridotti di un ammontare pari al danno necrotico subito, e il vampiro recupera un numero di punti ferita pari a quell'ammontare. Questa riduzione permane finché il bersaglio non termina un riposo lungo. Il bersaglio muore se questo effetto riduce i suoi punti ferita massimi a 0. Un umanoide ucciso in questo modo e poi sepolto nel terreno si rianima la notte seguente come progenie vampirica sotto il controllo del vampiro."
+    },
+    {
+      "name": "Affascinare",
+      "usage": null,
+      "description": "Il vampiro prende a bersaglio un umanoide entro 9 metri che può vedere. Se il bersaglio può vedere il vampiro, deve effettuare un tiro salvezza di Saggezza CD 17 contro questa magia o esserne affascinato. Il bersaglio affascinato considera il vampiro un amico fidato da ascoltare e proteggere. Sebbene il bersaglio non sia sotto il controllo del vampiro, prende le richieste e le azioni del vampiro nel modo più favorevole possibile, ed è un bersaglio consenziente dell'attacco con morso del vampiro. Ogni volta che il vampiro o i compagni del vampiro fanno qualcosa di nocivo al bersaglio, questi può ripetere il tiro salvezza, terminando l'effetto su di sé in caso di successo. Altrimenti, l'effetto persiste 24 ore o finché il vampiro non viene distrutto, si trova su di un piano di esistenza diverso dal bersaglio, o effettua un'azione bonus per terminare l'effetto."
+    },
+    {
+      "name": "Figli della Notte",
+      "usage": "1/Giorno",
+      "description": "Il vampiro richiama magicamente 2d4 sciami di pipistrelli o ratti, purché il sole non sia sorto."
+    },
+    {
+      "name": "Mentre è all'esterno, il vampiro può richiamare invece 3d6 lupi",
+      "usage": null,
+      "description": "Le creature richiamate arrivano in 1d4 round, agendo da alleati del vampiro e obbedendo ai suoi comandi. Le bestie restano per 1 ora, finché il vampiro non muore, o finché non le congeda con un'azione bonus."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "Il vampiro può effettuare 3 azioni leggendarie, scelte tra le opzioni seguenti. Può usare solo un'opzione leggendaria alla volta e solo al termine del turno di un'altra creatura. Il vampiro recupera all'inizio del proprio turno le azioni leggendarie che ha speso.",
+    "actions": [
+      {
+        "name": "Colpo Disarmato",
+        "description": "Il vampiro effettua un colpo disarmato.",
+        "cost": 1
+      },
+      {
+        "name": "Morso",
+        "description": "Il vampiro effettua un attacco con morso.",
+        "cost": 2
+      },
+      {
+        "name": "Muoversi",
+        "description": "Il vampiro si muove della sua velocità senza provocare attacchi di opportunità.",
+        "cost": 1
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Vampiro\nMedia non morto (mutaforma), legale malvagio\nFORZA 18 (+4)\nDESTREZZA 18 (+4)\nCOSTITUZIONE 18 (+4)\nINTELLIGENZA 17 (+3)\nSAGGEZZA 15 (+2)\nCARISMA 18 (+4)\nClasse Armatura 16 (armatura naturale)\nPunti Ferita 144 (17d8 + 68)\nVelocità 9 m\nTiri Salvezza Destrezza +9, Saggezza +7, Carisma +9\nAbilità Furtività +9, Percezione +17\nImmunità al Danno necrotico; contundente, perforante e\ntagliente di attacchi non magici\nSensi scurovisione 36 m, Percezione passiva 17\nLinguaggi le lingue che conosceva in vita\nSfida 13 (10.000 PE)\nMutaforma. Se il vampiro non è sotto la luce del sole o immerso\nin acqua corrente, può usare la sua azione per trasformarsi in un\nMinuscolo pipistrello, una nube di foschia Media, o per tornare\nalla sua vera forma.\nMentre è in forma di pipistrello, il vampiro non può parlare, la\nsua velocità di passeggio è 1,5 metri e ha velocità di volo 9\nmetri. Le sue statistiche, a parte la taglia e la velocità, sono\nimmutate. Qualsiasi equipaggiamento stia indossando si\ntrasforma con esso, ma quello che stava trasportando viene fatto\ncadere a terra. Alla morte ritorna alla sua vera forma.\nMentre è in forma di foschia, il vampiro non può effettuare\nazioni, parlare o manipolare oggetti. È privo di peso, ha velocità\ndi volo 6 metri, può fluttuare, e può entrare nello spazio di una\ncreatura ostile e fermarsi lì. Inoltre, se in uno spazio vi passa\ndell'aria, la foschia può fare altrettanto senza stringersi, ma non\npuò attraversare l'acqua. Ha vantaggio ai tiri salvezza di Forza,\nDestrezza e Costituzione, ed è immune a tutti i danni non magici,\neccetto i danni subiti dalla luce del sole.\nDebolezze del Vampiro. Il vampiro ha i seguenti difetti:\nDanneggiato dall'Acqua Corrente. Il vampiro subisce 20 danni\nda acido se termina il suo turno all'interno dell'acqua corrente.\nIpersensibilità alla Luce. Il vampiro subisce 20 danni radianti\nquando inizia il suo turno alla luce del sole. Mentre è alla luce\ndel sole, ha svantaggio ai tiri di attacco e le prove di abilità.\nPaletto nel Cuore. Se un'arma perforante fatta di legno viene\nconficcata nel cuore del vampiro mentre il vampiro è inabile nel\nsuo luogo di riposo, il vampiro resta paralizzato finché il paletto\nnon viene rimosso.\nProibizione. Il vampiro non può entrare in un'abitazione senza\ninvito da parte dei suoi occupanti.\nFuga nella Foschia. Quando scende a 0 punti ferita al di fuori\ndel suo luogo di riposo, il vampiro si trasforma in una nube di\nfoschia (come per il tratto Mutaforma) invece di cadere privo di\nsensi, purché non sia esposto alla luce del sole o all'acqua\ncorrente. Se non può trasformarsi, viene distrutto.\nMentre si trova a 0 punti ferita in questa forma, non può tornare\nalla sua forma di vampiro, e deve raggiungere il suo luogo di\nriposo entro 2 ore o venire distrutto. Una volta raggiunto il suo\nluogo di riposo, ritorna alla sua forma di vampiro. Resterà quindi\nparalizzato finché non avrà recuperato almeno 1 punto ferita.\nDopo aver trascorso almeno 1 ora nel suo luogo di riposo a 0\npunti ferita, il vampiro recupererà 1 punto ferita.\nNatura Non Morta. Il vampiro non ha bisogno di aria.\nResistenza Leggendaria (3/Giorno). Se il vampiro fallisce un\ntiro salvezza, può scegliere invece di riuscire.\n\n-- 107 of 151 --\n\nSRD Italia 5a Edizione - Compendio dei Mostri\nRigenerazione. Il vampiro recupera 20 punti ferita all'inizio del\nsuo turno se possiede almeno 1 punto ferita e non è esposto alla\nluce del sole o l'acqua corrente. Se il vampiro subisce danno\nradiante o danno dall'acqua sacra, questo tratto non funziona\nall'inizio del prossimo turno del vampiro.\nScalare come Ragno. Il vampiro può scalare superfici difficili,\ncompreso lo stare a testa in giù sul soffitto, senza bisogno di\neffettuare una prova di abilità.\nAzioni\nMultiattacco. Il vampiro può effettuare due attacchi, ma solo uno\ndi essi può essere un attacco con morso.\nColpo Disarmato (Solo in Forma di Vampiro). Attacco con\narma da mischia: +9 a colpire, portata 1,5 m, una creatura.\nColpisce: 8 (1d8 + 4) danni contundenti. Invece di infliggere\ndanno, il vampiro può afferrare il bersaglio (CD per fuggire 18).\nMorso (Solo in Forma di Pipistrello o Vampiro). Attacco con\narma da mischia: +9 a colpire, portata 1,5 m, una creatura\nconsenziente o una creatura afferrata dal vampiro, inabile o\nintralciata.\nColpisce: 7 (1d6 + 4) danni perforanti più 10 (3d6) danni\nnecrotici. I punti ferita massimi del bersaglio sono ridotti di un\nammontare pari al danno necrotico subito, e il vampiro recupera\nun numero di punti ferita pari a quell'ammontare. Questa\nriduzione permane finché il bersaglio non termina un riposo\nlungo. Il bersaglio muore se questo effetto riduce i suoi punti\nferita massimi a 0. Un umanoide ucciso in questo modo e poi\nsepolto nel terreno si rianima la notte seguente come progenie\nvampirica sotto il controllo del vampiro.\nAffascinare. Il vampiro prende a bersaglio un umanoide entro 9\nmetri che può vedere. Se il bersaglio può vedere il vampiro, deve\neffettuare un tiro salvezza di Saggezza CD 17 contro questa\nmagia o esserne affascinato. Il bersaglio affascinato considera il\nvampiro un amico fidato da ascoltare e proteggere. Sebbene il\nbersaglio non sia sotto il controllo del vampiro, prende le\nrichieste e le azioni del vampiro nel modo più favorevole\npossibile, ed è un bersaglio consenziente dell'attacco con morso\ndel vampiro.\nOgni volta che il vampiro o i compagni del vampiro fanno\nqualcosa di nocivo al bersaglio, questi può ripetere il tiro\nsalvezza, terminando l'effetto su di sé in caso di successo.\nAltrimenti, l'effetto persiste 24 ore o finché il vampiro non viene\ndistrutto, si trova su di un piano di esistenza diverso dal\nbersaglio, o effettua un'azione bonus per terminare l'effetto.\nFigli della Notte (1/Giorno). Il vampiro richiama magicamente\n2d4 sciami di pipistrelli o ratti, purché il sole non sia sorto.\nMentre è all'esterno, il vampiro può richiamare invece 3d6 lupi.\nLe creature richiamate arrivano in 1d4 round, agendo da alleati\ndel vampiro e obbedendo ai suoi comandi. Le bestie restano per\n1 ora, finché il vampiro non muore, o finché non le congeda con\nun'azione bonus.\nAzioni Leggendarie\nIl vampiro può effettuare 3 azioni leggendarie, scelte tra le\nopzioni seguenti. Può usare solo un'opzione leggendaria alla\nvolta e solo al termine del turno di un'altra creatura. Il vampiro\nrecupera all'inizio del proprio turno le azioni leggendarie che ha\nspeso.\nColpo Disarmato. Il vampiro effettua un colpo disarmato.\nMorso (Costa 2 Azioni). Il vampiro effettua un attacco con\nmorso.\nMuoversi. Il vampiro si muove della sua velocità senza\nprovocare attacchi di opportunità."
+  }
+}

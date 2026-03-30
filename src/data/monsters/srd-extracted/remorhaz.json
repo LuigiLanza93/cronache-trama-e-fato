@@ -1,0 +1,102 @@
+{
+  "slug": "remorhaz",
+  "general": {
+    "name": "Remorhaz",
+    "challengeRating": {
+      "fraction": "11",
+      "decimal": 11,
+      "display": "11",
+      "xp": 7200
+    },
+    "size": "Enorme",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 195,
+      "formula": "17d12 + 85"
+    },
+    "speed": {
+      "walk": "9 m",
+      "burrow": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 24,
+    "dexterity": 13,
+    "constitution": 21,
+    "intelligence": 4,
+    "wisdom": 10,
+    "charisma": 5
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "freddo",
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "senso tellurico",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Corpo Riscaldato",
+      "usage": null,
+      "description": "Una creatura che entri a contatto con il remorhaz o lo colpisca con un attacco da mischia mentre si trova entro 1,5 metri da esso, subisce 10 (3d6) danni da fuoco."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco in mischia con arma: +11 a colpire, portata 3 m, un bersaglio. Colpisce: 40 (6d10 + 7) danni perforanti più 10 (3d6) danni da fuoco. Se il bersaglio è una creatura, è afferrato (CD 17 per fuggire). Fino al termine dell'afferrare, il bersaglio è intralciato, e il remorhaz non può attaccare con il morso un altro bersaglio."
+    },
+    {
+      "name": "Inghiottire",
+      "usage": null,
+      "description": "Il remorhaz effettua una attacco di morso contro un bersaglio di taglia Media o inferiore che sta afferrando. Se l'attacco colpisce, la creatura subisce il danno da morso ed è inghiottita, e l'afferrare ha termine. Il bersaglio inghiottito è accecato e intralciato, ha copertura totale contro gli attacchi e altri effetti all'esterno del remorhaz, e subisce 21 (6d6) danni da acido all'inizio di ciascun turno del remorhaz. Se il remorhaz subisce 30 o più danni in un singolo turno da una creatura al suo interno, il remorhaz deve riuscire un tiro salvezza di Costituzione CD 15 al termine di quel turno o vomitare tutte le creature inghiottite, che cadono prone in uno spazio entro 3 metri dal remorhaz. Se il remorhaz muore, una creatura inghiottita non è più intralciata da esso e può uscire dal cadavere utilizzando 4,5 metri di movimento, uscendo prona."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Remorhaz\nEnorme mostruosità, disallineato\nFORZA 24 (+7)\nDESTREZZA 13 (+1)\nCOSTITUZIONE 21 (+5)\nINTELLIGENZA 4 (-3)\nSAGGEZZA 10 (+0)\nCARISMA 5 (-3)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 195 (17d12 + 85)\nVelocità 9 m, scavo 6 m\nImmunità ai Danni freddo, fuoco\nSensi scurovisione 18 m, senso tellurico 18 m, Percezione\npassiva 10\nLinguaggi -\nSfida 11 (7.200 PE)\nCorpo Riscaldato. Una creatura che entri a contatto con il\nremorhaz o lo colpisca con un attacco da mischia mentre si trova\nentro 1,5 metri da esso, subisce 10 (3d6) danni da fuoco.\nAzioni\nMorso. Attacco in mischia con arma: +11 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 40 (6d10 + 7) danni perforanti più 10 (3d6) danni da\nfuoco. Se il bersaglio è una creatura, è afferrato (CD 17 per\nfuggire). Fino al termine dell'afferrare, il bersaglio è intralciato,\ne il remorhaz non può attaccare con il morso un altro bersaglio.\nInghiottire. Il remorhaz effettua una attacco di morso contro un\nbersaglio di taglia Media o inferiore che sta afferrando. Se\nl'attacco colpisce, la creatura subisce il danno da morso ed è\ninghiottita, e l'afferrare ha termine. Il bersaglio inghiottito è\naccecato e intralciato, ha copertura totale contro gli attacchi e\naltri effetti all'esterno del remorhaz, e subisce 21 (6d6) danni da\nacido all'inizio di ciascun turno del remorhaz.\nSe il remorhaz subisce 30 o più danni in un singolo turno da una\ncreatura al suo interno, il remorhaz deve riuscire un tiro salvezza\ndi Costituzione CD 15 al termine di quel turno o vomitare tutte le\ncreature inghiottite, che cadono prone in uno spazio entro 3 metri\ndal remorhaz. Se il remorhaz muore, una creatura inghiottita non\nè più intralciata da esso e può uscire dal cadavere utilizzando 4,5\nmetri di movimento, uscendo prona."
+  }
+}

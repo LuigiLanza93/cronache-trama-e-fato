@@ -1,0 +1,104 @@
+{
+  "slug": "fanatico-del-culto",
+  "general": {
+    "name": "Fanatico del Culto",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura di cuoio"
+    },
+    "hitPoints": {
+      "average": 33,
+      "formula": "6d8 + 6"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 14,
+    "constitution": 12,
+    "intelligence": 10,
+    "wisdom": 13,
+    "charisma": 14
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Persuasione",
+        "bonus": 4
+      },
+      {
+        "name": "Raggiro",
+        "bonus": 4
+      },
+      {
+        "name": "Religione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "Il sacerdote è un incantatore di 4° livello. La sua abilità da incantatore è la Saggezza (CD dei tiri salvezza degli incantesimi 11, +3 al colpire con attacchi con incantesimo). Il sacerdote ha preparato i seguenti incantesimi da chierico: Trucchetti (a volontà): fiamma sacra, luce, taumaturgia 1° livello (4 slot): comando, infliggi ferite, scudo della fede 2° livello (3 slot): arma spirituale, blocca persona"
+    },
+    {
+      "name": "Oscura Devozione",
+      "usage": null,
+      "description": "Il cultista ha vantaggio sui tiri salvezza contro l'essere affascinato o spaventato."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il fanatico effettua due attacchi da mischia."
+    },
+    {
+      "name": "Pugnale",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia o a Gittata: +4 a colpire, portata 1,5 m o gittata 6/18 m, una creatura. Colpisce: 4 (1d4 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Fanatico del Culto\nSono i capi di un culto, che usano il proprio carisma e i\npropri dogmi per influenzare i deboli di volontà.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento non\nbuono\nFORZA 11 (+0)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 13 (+1)\nCARISMA 14 (+2)\nClasse Armatura 13 (armatura di cuoio)\nPunti Ferita 33 (6d8 + 6)\nVelocità 9 m\nAbilità Persuasione +4, Raggiro +4, Religione +2\nSensi Percezione passiva 11\nLingue una qualsiasi lingua (di solito il Comune)\nSfida 2 (450 PE)\nIncantesimi. Il sacerdote è un incantatore di 4° livello. La sua\nabilità da incantatore è la Saggezza (CD dei tiri salvezza degli\nincantesimi 11, +3 al colpire con attacchi con incantesimo). Il\nsacerdote ha preparato i seguenti incantesimi da chierico:\nTrucchetti (a volontà): fiamma sacra, luce, taumaturgia\n1° livello (4 slot): comando, infliggi ferite, scudo della fede\n2° livello (3 slot): arma spirituale, blocca persona\nOscura Devozione. Il cultista ha vantaggio sui tiri salvezza\ncontro l'essere affascinato o spaventato.\nAzioni\nMultiattacco. Il fanatico effettua due attacchi da mischia.\nPugnale. Attacco con Arma da Mischia o a Gittata: +4 a colpire,\nportata 1,5 m o gittata 6/18 m, una creatura.\nColpisce: 4 (1d4 + 2) danni perforanti."
+  }
+}

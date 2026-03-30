@@ -1,0 +1,105 @@
+{
+  "slug": "grifone",
+  "general": {
+    "name": "Grifone",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 59,
+      "formula": "7d10 + 21"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 15,
+    "constitution": 16,
+    "intelligence": 2,
+    "wisdom": 13,
+    "charisma": 8
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 15"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Vista Affinata",
+      "usage": null,
+      "description": "Il grifone ha vantaggio nelle prove di Saggezza (Percezione) basate sulla vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il grifone effettua due attacchi: uno con il becco e uno con gli artigli."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni taglienti."
+    },
+    {
+      "name": "Becco",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 8 (1d8 + 4) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Grifone\nGrande mostruosità, disallineato\nFORZA 18 (+4)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 13 (+1)\nCARISMA 8 (-1)\nClasse Armatura 12\nPunti Ferita 59 (7d10 + 21)\nVelocità 9 m, volo 24 m\nAbilità Percezione +5\nSensi scurovisione 18 m, Percezione passiva 15\nLinguaggi -\nSfida 2 (450 PE)\nVista Affinata. Il grifone ha vantaggio nelle prove di Saggezza\n(Percezione) basate sulla vista.\nAzioni\nMultiattacco. Il grifone effettua due attacchi: uno con il becco e\nuno con gli artigli.\nArtigli. Attacco con arma da mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni taglienti.\nBecco. Attacco con arma da mischia: +6 a colpire, portata 1,5 m,\nun bersaglio.\nColpisce: 8 (1d8 + 4) danni perforanti."
+  }
+}

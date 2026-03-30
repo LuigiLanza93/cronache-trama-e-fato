@@ -1,0 +1,111 @@
+{
+  "slug": "megera-marina",
+  "general": {
+    "name": "Megera Marina",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Media",
+    "creatureType": "fatato",
+    "subtype": "",
+    "typeLabel": "fatato",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 52,
+      "formula": "7d8 + 21"
+    },
+    "speed": {
+      "walk": "9 m",
+      "swim": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 13,
+    "constitution": 16,
+    "intelligence": 12,
+    "wisdom": 12,
+    "charisma": 13
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Aquan"
+      },
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Gigante"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "La megera può respirare aria e acqua."
+    },
+    {
+      "name": "Aspetto Orripilante",
+      "usage": null,
+      "description": "Qualsiasi umanoide che inizi il suo turno entro 9 metri dalla megera e ne può vedere la vera forma deve effettuare un tiro salvezza di Saggezza CD 11. Se fallisce il tiro salvezza, la creatura resta spaventata per 1 minuto. Una creatura può ripetere il tiro salvezza al termine di ciascun suo turno, con svantaggio se la megera è in linea di visuale, e terminando l'effetto se riesce il tiro salvezza. Se il tiro salvezza della creatura riesce o l'effetto ha termine su di essa, la creatura è immune all'Aspetto Orripilante per le successive 24 ore. A meno che il bersaglio non sia sorpreso o la rivelazione della vera forma della megera non sia improvvisa, il bersaglio può distogliere lo sguardo e evitare di effettuare il tiro salvezza iniziale. Fino all'inizio del suo prossimo turno, una creatura che distolga lo sguardo ha svantaggio ai tiri di attacco contro la megera."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco in mischia con arma: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 10 (2d6 + 3) danni taglienti."
+    },
+    {
+      "name": "Aspetto Illusorio",
+      "usage": null,
+      "description": "La megera ricopre se stessa e tutto quello che sta indossando o trasportando in un'illusione magica che le dona l'aspetto di una creatura ripugnante all'incirca della stessa taglia e forma umanoide. L'illusione termina se la megera effettua un'azione bonus per terminarla o se muore. I cambiamenti apportati da questo effetto non sono in grado di superare le ispezioni fisiche. Ad esempio, la megera potrebbe apparire come una creatura priva di artigli, ma una persona in contatto con le sue mani li avvertirebbe. Altrimenti, una creatura deve effettuare un'azione per ispezionare visivamente l'illusione e riuscire una prova di Intelligenza (Indagare) CD 16 per comprendere che la megera si è camuffata."
+    },
+    {
+      "name": "Occhiata Mortale",
+      "usage": null,
+      "description": "La megera prende a bersaglio una creatura spaventata visibile entro 9 metri da lei. Se il bersaglio può vedere la megera, deve riuscire un tiro salvezza di Saggezza CD 11 contro questa magia o scendere a 0 punti ferita."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Megera Marina\nMedia fatato, caotico malvagio\nFORZA 16 (+3)\nDESTREZZA 13 (+1)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 12 (+1)\nCARISMA 13 (+1)\nClasse Armatura 14 (armatura naturale)\nPunti Ferita 52 (7d8 + 21)\nVelocità 9 m, nuoto 12 m\nSensi scurovisione 18 m, Percezione passiva 11\nLinguaggi Aquan, Comune, Gigante\nSfida 2 (450 PE)\nAnfibio. La megera può respirare aria e acqua.\nAspetto Orripilante. Qualsiasi umanoide che inizi il suo turno\nentro 9 metri dalla megera e ne può vedere la vera forma deve\neffettuare un tiro salvezza di Saggezza CD 11. Se fallisce il tiro\nsalvezza, la creatura resta spaventata per 1 minuto. Una creatura\npuò ripetere il tiro salvezza al termine di ciascun suo turno, con\nsvantaggio se la megera è in linea di visuale, e terminando\nl'effetto se riesce il tiro salvezza. Se il tiro salvezza della creatura\nriesce o l'effetto ha termine su di essa, la creatura è immune\nall'Aspetto Orripilante per le successive 24 ore.\nA meno che il bersaglio non sia sorpreso o la rivelazione della\nvera forma della megera non sia improvvisa, il bersaglio può\ndistogliere lo sguardo e evitare di effettuare il tiro salvezza\niniziale. Fino all'inizio del suo prossimo turno, una creatura che\ndistolga lo sguardo ha svantaggio ai tiri di attacco contro la\nmegera.\nAzioni\nArtigli. Attacco in mischia con arma: +5 a colpire, portata 1,5 m,\nun bersaglio.\nColpisce: 10 (2d6 + 3) danni taglienti.\nAspetto Illusorio. La megera ricopre se stessa e tutto quello che\nsta indossando o trasportando in un'illusione magica che le dona\nl'aspetto di una creatura ripugnante all'incirca della stessa taglia\ne forma umanoide. L'illusione termina se la megera effettua\nun'azione bonus per terminarla o se muore.\nI cambiamenti apportati da questo effetto non sono in grado di\nsuperare le ispezioni fisiche. Ad esempio, la megera potrebbe\napparire come una creatura priva di artigli, ma una persona in\ncontatto con le sue mani li avvertirebbe. Altrimenti, una creatura\ndeve effettuare un'azione per ispezionare visivamente l'illusione\ne riuscire una prova di Intelligenza (Indagare) CD 16 per\ncomprendere che la megera si è camuffata.\nOcchiata Mortale. La megera prende a bersaglio una creatura\nspaventata visibile entro 9 metri da lei. Se il bersaglio può vedere\nla megera, deve riuscire un tiro salvezza di Saggezza CD 11\ncontro questa magia o scendere a 0 punti ferita."
+  }
+}

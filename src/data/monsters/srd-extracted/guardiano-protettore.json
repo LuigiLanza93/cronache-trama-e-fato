@@ -1,0 +1,125 @@
+{
+  "slug": "guardiano-protettore",
+  "general": {
+    "name": "Guardiano Protettore",
+    "challengeRating": {
+      "fraction": "7",
+      "decimal": 7,
+      "display": "7",
+      "xp": 2900
+    },
+    "size": "Grande",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 142,
+      "formula": "15d10 + 60"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 8,
+    "constitution": 18,
+    "intelligence": 7,
+    "wisdom": 10,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "paralizzato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "comprende i comandi forniti in qualsiasi lingua ma"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Accumulare Incantesimi",
+      "usage": null,
+      "description": "Un incantatore che indossi l'amuleto del guardiano protettore può far sì che il guardiano accumuli un incantesimo di 4° livello o più basso. Per farlo, l'incantatore deve lanciare l'incantesimo sul guardiano. L'incantesimo non ha effetto ma viene accumulato all'interno del guardiano. Quando gli viene comandato di farlo da chi indossa l'amuleto o si presenta una situazione predeterminata dall'incantatore, il guardiano lancia l'incantesimo accumulato con tutti i parametri predisposti dall'incantatore originale, senza bisogno di componenti. Quando l'incantesimo viene lanciato o qualsiasi nuovo incantesimo viene accumulato, tutti gli incantesimi precedentemente accumulati vengono persi."
+    },
+    {
+      "name": "Natura di Costrutto",
+      "usage": null,
+      "description": "Il guardiano non ha bisogno di aria, cibo, bevande o sonno."
+    },
+    {
+      "name": "Rigenerazione",
+      "usage": null,
+      "description": "Il guardiano protettore recupera 10 punti ferita all'inizio del proprio turno se ne possiede ancora almeno 1."
+    },
+    {
+      "name": "Vincolato",
+      "usage": null,
+      "description": "Il guardiano protettore è vincolato magicamente ad un amuleto. Finché il guardiano e l'amuleto sono sullo stesso piano di esistenza, chi indossa l'amuleto può richiamare telepaticamente il guardiano perché lo raggiunga, e il guardiano saprà la distanza e la direzione in cui si trova l'amuleto. Se il guardiano si trova entro 18 metri da chi indossa l'amuleto, metà dei danni subiti da chi lo indossa (arrotondati per difetto) vengono trasferiti al guardiano. Se l'amuleto viene distrutto, il guardiano è inabile finché non viene creato un amuleto di rimpiazzo. L'amuleto del guardiano può essere soggetto ad un attacco diretto qualora non sia indossato o trasportato da nessuno. Ha CA 10, 10 punti ferita e immunità ai danni psichici e da veleno. Costruire un amuleto richiede 1 settimana e costa 10.000 mo in componenti."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il golem effettua due attacchi di pugno."
+    },
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [
+    {
+      "name": "Scudo",
+      "usage": null,
+      "description": "Quando una creatura attacca chi indossa l'amuleto del guardiano, il guardiano conferisce un bonus di +2 alla sua CA, se entro 1,5 metri dal suo controllore."
+    }
+  ],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Guardiano Protettore\nGrande costrutto, disallineato\nFORZA 18 (+4)\nDESTREZZA 8 (-1)\nCOSTITUZIONE 18 (+4)\nINTELLIGENZA 7 (-2)\nSAGGEZZA 10 (+0)\nCARISMA 3 (-4)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 142 (15d10 + 60)\nVelocità 9 m\nImmunità al Danno veleno\nImmunità alle Condizioni affascinato, avvelenato, paralizzato,\nsfinimento, spaventato\nSensi scurovisione 18 m, vista cieca 3 m, Percezione passiva 10\nLinguaggi comprende i comandi forniti in qualsiasi lingua ma\nnon può parlare\nSfida 7 (2.900 PE)\nAccumulare Incantesimi. Un incantatore che indossi l'amuleto del\nguardiano protettore può far sì che il guardiano accumuli un\nincantesimo di 4° livello o più basso. Per farlo, l'incantatore deve\nlanciare l'incantesimo sul guardiano. L'incantesimo non ha effetto\nma viene accumulato all'interno del guardiano. Quando gli viene\ncomandato di farlo da chi indossa l'amuleto o si presenta una\nsituazione predeterminata dall'incantatore, il guardiano lancia\nl'incantesimo accumulato con tutti i parametri predisposti\ndall'incantatore originale, senza bisogno di componenti. Quando\nl'incantesimo viene lanciato o qualsiasi nuovo incantesimo viene\naccumulato, tutti gli incantesimi precedentemente accumulati\nvengono persi.\nNatura di Costrutto. Il guardiano non ha bisogno di aria, cibo,\nbevande o sonno.\nRigenerazione. Il guardiano protettore recupera 10 punti ferita\nall'inizio del proprio turno se ne possiede ancora almeno 1.\nVincolato. Il guardiano protettore è vincolato magicamente ad un\namuleto. Finché il guardiano e l'amuleto sono sullo stesso piano di\nesistenza, chi indossa l'amuleto può richiamare telepaticamente il\nguardiano perché lo raggiunga, e il guardiano saprà la distanza e la\ndirezione in cui si trova l'amuleto. Se il guardiano si trova entro 18\nmetri da chi indossa l'amuleto, metà dei danni subiti da chi lo\nindossa (arrotondati per difetto) vengono trasferiti al guardiano. Se\nl'amuleto viene distrutto, il guardiano è inabile finché non viene\ncreato un amuleto di rimpiazzo. L'amuleto del guardiano può essere\nsoggetto ad un attacco diretto qualora non sia indossato o trasportato\nda nessuno. Ha CA 10, 10 punti ferita e immunità ai danni psichici e\nda veleno. Costruire un amuleto richiede 1 settimana e costa 10.000\nmo in componenti.\nAzioni\nMultiattacco. Il golem effettua due attacchi di pugno.\nPugno. Attacco con arma da mischia: +7 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni contundenti.\nReazioni\nScudo. Quando una creatura attacca chi indossa l'amuleto del\nguardiano, il guardiano conferisce un bonus di +2 alla sua CA, se\nentro 1,5 metri dal suo controllore."
+  }
+}

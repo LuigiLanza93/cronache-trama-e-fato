@@ -1,0 +1,156 @@
+{
+  "slug": "unicorno",
+  "general": {
+    "name": "Unicorno",
+    "challengeRating": {
+      "fraction": "5",
+      "decimal": 5,
+      "display": "5",
+      "xp": 1800
+    },
+    "size": "Grande",
+    "creatureType": "celestiale",
+    "subtype": "",
+    "typeLabel": "celestiale",
+    "alignment": "legale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 67,
+      "formula": "9d10 + 18"
+    },
+    "speed": {
+      "walk": "15 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 14,
+    "constitution": 15,
+    "intelligence": 11,
+    "wisdom": 17,
+    "charisma": 16
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "paralizzato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Celestiale"
+      },
+      {
+        "name": "Elfico"
+      },
+      {
+        "name": "Silvano"
+      },
+      {
+        "name": "telepatia",
+        "value": "18 m"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con armi dell'unicorno sono magici."
+    },
+    {
+      "name": "Carica",
+      "usage": null,
+      "description": "Se l'unicorno si muove di almeno 6 metri in linea retta verso il bersaglio e lo colpisce con un attacco di corno durante lo stesso turno, il bersaglio subisce 9 (2d8) danni perforanti aggiuntivi. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di Forza CD 15 o cadere prono."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore innato dell'unicorno è il Carisma (CD 14 per i tiri salvezza degli incantesimi). L'unicorno può lanciare in maniera innata i seguenti incantesimi, senza bisogno di componenti: A volontà: arte del druido, individuazione del bene e male, passare senza tracce 1/giorno ciascuno: calmare emozioni, dissolvi il bene e il male, intralciare"
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "L'unicorno ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'unicorno effettua due attacchi: uno con gli zoccoli e uno con il corno."
+    },
+    {
+      "name": "Corno",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 8 (1d8 + 4) danni perforanti."
+    },
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni contundenti."
+    },
+    {
+      "name": "Telestraporto",
+      "usage": "1/Giorno",
+      "description": "L'unicorno può teletrasportare magicamente sé stesso e fino a tre altre creature consenzienti visibili entro 1,5 metri da esso, insieme a tutto l'equipaggiamento che stanno indossando o trasportando, in un luogo familiare all'unicorno, che si trova ad un massimo di 1,5 chilometri di distanza."
+    },
+    {
+      "name": "Tocco Guaritore",
+      "usage": "3/Giorno",
+      "description": "L'unicorno entra a contatto tramite il corno con un'altra creatura. Il bersaglio recupera magicamente 11 (2d8 + 2) punti ferita. Inoltre, il contatto rimuove tutte le malattie e neutralizza tutti i veleni che affliggono il bersaglio."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "L'unicorno può effettuare 3 azioni leggendarie, scelte tra le opzioni seguenti. Può usare solo un'opzione leggendaria alla volta e solo al termine del turno di un'altra creatura. L'unicorno recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Autoguarigione",
+        "description": "L'unicorno recupera magicamente 11 (2d8 + 2) punti ferita.",
+        "cost": 3
+      },
+      {
+        "name": "Scudo Scintillante",
+        "description": "L'unicorno crea un campo magico scintillante che circonda lui o un'altra creatura visibile a lui entro 18 metri. Il bersaglio ottiene un bonus di +2 alla CA fino al termine del prossimo turno dell'unicorno.",
+        "cost": 2
+      },
+      {
+        "name": "Zoccoli",
+        "description": "L'unicorno effettua un attacco con gli zoccoli.",
+        "cost": 1
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Unicorno\nGrande celestiale, legale buono\nFORZA 18 (+4)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 15 (+2)\nINTELLIGENZA 11 (+0)\nSAGGEZZA 17 (+3)\nCARISMA 16 (+3)\nClasse Armatura 12\nPunti Ferita 67 (9d10 + 18)\nVelocità 15 m\nImmunità al Danno veleno\nImmunità alle Condizioni affascinato, avvelenato, paralizzato\nSensi scurovisione 18 m, Percezione passiva 13\nLinguaggi Celestiale, Elfico, Silvano, telepatia 18 m\nSfida 5 (1.800 PE)\nArmi Magiche. Gli attacchi con armi dell'unicorno sono magici.\nCarica. Se l'unicorno si muove di almeno 6 metri in linea retta\nverso il bersaglio e lo colpisce con un attacco di corno durante lo\nstesso turno, il bersaglio subisce 9 (2d8) danni perforanti\naggiuntivi. Se il bersaglio è una creatura, deve riuscire un tiro\nsalvezza di Forza CD 15 o cadere prono.\nIncantesimi Innati. La caratteristica da incantatore innato\ndell'unicorno è il Carisma (CD 14 per i tiri salvezza degli\nincantesimi). L'unicorno può lanciare in maniera innata i\nseguenti incantesimi, senza bisogno di componenti:\nA volontà: arte del druido, individuazione del bene e male,\npassare senza tracce\n1/giorno ciascuno: calmare emozioni, dissolvi il bene e il male,\nintralciare\nResistenza alla Magia. L'unicorno ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nAzioni\nMultiattacco. L'unicorno effettua due attacchi: uno con gli\nzoccoli e uno con il corno.\nCorno. Attacco con arma da mischia: +7 a colpire, portata 1,5 m,\nun bersaglio.\nColpisce: 8 (1d8 + 4) danni perforanti.\nZoccoli. Attacco con arma da mischia: +7 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni contundenti.\nTelestraporto (1/Giorno). L'unicorno può teletrasportare\nmagicamente sé stesso e fino a tre altre creature consenzienti\nvisibili entro 1,5 metri da esso, insieme a tutto\nl'equipaggiamento che stanno indossando o trasportando, in un\nluogo familiare all'unicorno, che si trova ad un massimo di 1,5\nchilometri di distanza.\nTocco Guaritore (3/Giorno). L'unicorno entra a contatto tramite\nil corno con un'altra creatura. Il bersaglio recupera magicamente\n11 (2d8 + 2) punti ferita. Inoltre, il contatto rimuove tutte le\nmalattie e neutralizza tutti i veleni che affliggono il bersaglio.\n\n-- 106 of 151 --\n\nAzioni Leggendarie\nL'unicorno può effettuare 3 azioni leggendarie, scelte tra le\nopzioni seguenti. Può usare solo un'opzione leggendaria alla\nvolta e solo al termine del turno di un'altra creatura. L'unicorno\nrecupera le azioni leggendarie spese all'inizio del proprio turno.\nAutoguarigione (Costa 3 Azioni). L'unicorno recupera\nmagicamente 11 (2d8 + 2) punti ferita.\nScudo Scintillante (Costa 2 Azioni). L'unicorno crea un campo\nmagico scintillante che circonda lui o un'altra creatura visibile a lui\nentro 18 metri. Il bersaglio ottiene un bonus di +2 alla CA fino al\ntermine del prossimo turno dell'unicorno.\nZoccoli. L'unicorno effettua un attacco con gli zoccoli."
+  }
+}

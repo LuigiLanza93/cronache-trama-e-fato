@@ -1,0 +1,91 @@
+{
+  "slug": "granchio-gigante",
+  "general": {
+    "name": "Granchio Gigante",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Media",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 13,
+      "formula": "3d8"
+    },
+    "speed": {
+      "walk": "9 m",
+      "swim": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 13,
+    "dexterity": 15,
+    "constitution": 11,
+    "intelligence": 1,
+    "wisdom": 9,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "vista cieca",
+        "value": "9 m"
+      },
+      {
+        "name": "Percezione passiva 9"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il granchio può respirare aria e acqua."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artiglio",
+      "usage": "Chela",
+      "description": "Attacco con Arma da Mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 4 (1d6 + 1) danni contundenti e il bersaglio è afferrato (CD 11 per fuggire). Il granchio ha due chele, ciascuna delle quali può afferrare un solo bersaglio."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Granchio Gigante\nMedia bestia, disallineato\nFORZA 13 (+1)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 11 (+0)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 9 (-1)\nCARISMA 3 (-4)\nClasse Armatura 15 (armatura naturale)\nPunti Ferita 13 (3d8)\nVelocità 9 m, nuoto 9 m\nAbilità Furtività +4\nSensi vista cieca 9 m, Percezione passiva 9\nLingue -\nSfida 1/8 (25 PE)\nAnfibio. Il granchio può respirare aria e acqua.\nAzioni\nArtiglio (Chela). Attacco con Arma da Mischia: +3 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 4 (1d6 + 1) danni contundenti e il bersaglio è afferrato\n(CD 11 per fuggire). Il granchio ha due chele, ciascuna delle\nquali può afferrare un solo bersaglio."
+  }
+}

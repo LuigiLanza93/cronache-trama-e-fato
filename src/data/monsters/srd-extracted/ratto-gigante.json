@@ -1,0 +1,95 @@
+{
+  "slug": "ratto-gigante",
+  "general": {
+    "name": "Ratto Gigante",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Piccola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 7,
+      "formula": "2d6"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 7,
+    "dexterity": 15,
+    "constitution": 11,
+    "intelligence": 2,
+    "wisdom": 10,
+    "charisma": 4
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "visione al buio",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Olfatto Affinato",
+      "usage": null,
+      "description": "Il ratto ha vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto."
+    },
+    {
+      "name": "Tattiche di Branco",
+      "usage": null,
+      "description": "Il ratto ha vantaggio al tiro di attacco contro una creatura se almeno uno degli alleati del ratto si trova entro 1,5 metri dalla creatura e quell'alleato non è inabile."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 4 (1d4 + 2) danni perforanti. VARIANTE: RATTO GIGANTE AMMALATO Alcuni ratti giganti recano una terribile malattia che diffondono tramite il morso. Un ratto gigante ammalato ha grado di sfida 1/8 (25 PE) e la seguente azione invece del suo normale attacco di morso."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 4 (1d4 + 2) danni perforanti. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di Costituzione CD 10 o contrarre una malattia. Fino a che la malattia non viene curata, il bersaglio non può recuperare punti ferita eccetto tramite metodi magici, e i punti ferita massimi del bersaglio diminuiscono di 3 (1d6) ogni 24 ore. Se i punti ferita massimi del bersaglio scendono a 0 come risultato della malattia, il bersaglio muore."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Ratto Gigante\nPiccola bestia, disallineato\nFORZA 7 (-2)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 11 (+0)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 10 (+0)\nCARISMA 4 (-3)\nClasse Armatura 12\nPunti Ferita 7 (2d6)\nVelocità 9 m\nSensi visione al buio 18 m, Percezione passiva 10\nLingue -\nSfida 1/8 (25 PE)\nOlfatto Affinato. Il ratto ha vantaggio alle prove di Saggezza\n(Percezione) basate sull'olfatto.\nTattiche di Branco. Il ratto ha vantaggio al tiro di attacco contro\nuna creatura se almeno uno degli alleati del ratto si trova entro\n1,5 metri dalla creatura e quell'alleato non è inabile.\nAzioni\nMorso. Attacco con Arma da Mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 4 (1d4 + 2) danni perforanti.\nVARIANTE: RATTO GIGANTE AMMALATO\nAlcuni ratti giganti recano una terribile malattia che diffondono\ntramite il morso. Un ratto gigante ammalato ha grado di sfida 1/8\n(25 PE) e la seguente azione invece del suo normale attacco di\nmorso.\nMorso. Attacco con Arma da Mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 4 (1d4 + 2) danni perforanti. Se il bersaglio è una\ncreatura, deve riuscire un tiro salvezza di Costituzione CD 10 o\ncontrarre una malattia. Fino a che la malattia non viene curata, il\nbersaglio non può recuperare punti ferita eccetto tramite metodi\nmagici, e i punti ferita massimi del bersaglio diminuiscono di 3\n(1d6) ogni 24 ore. Se i punti ferita massimi del bersaglio\nscendono a 0 come risultato della malattia, il bersaglio muore."
+  }
+}

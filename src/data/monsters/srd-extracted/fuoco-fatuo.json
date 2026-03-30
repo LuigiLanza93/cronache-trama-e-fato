@@ -1,0 +1,128 @@
+{
+  "slug": "fuoco-fatuo",
+  "general": {
+    "name": "Fuoco Fatuo",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Minuscola",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 19,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 22,
+      "formula": "9d4"
+    },
+    "speed": {
+      "walk": "0 m",
+      "fly": "15 m (fluttua)"
+    }
+  },
+  "abilities": {
+    "strength": 1,
+    "dexterity": 28,
+    "constitution": 10,
+    "intelligence": 13,
+    "wisdom": 14,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "acido",
+      "freddo",
+      "fuoco",
+      "necrotico",
+      "tuono;"
+    ],
+    "damageImmunities": [
+      "fulmine",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "afferrato",
+      "avvelenato",
+      "intralciato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "le lingue che conosceva in vita"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Consumare Vita",
+      "usage": null,
+      "description": "Con un'azione bonus, il fuoco fatuo può prendere a bersaglio una creatura che può vedere entro 1,5 metri da esso e che abbia 0 punti ferita e sia ancora in vita. Il bersaglio deve riuscire un tiro salvezza di Costituzione CD 10 contro questa magia o morire. Se il bersaglio muore, il fuoco fatuo recupera 10 (3d6) punti ferita."
+    },
+    {
+      "name": "Effimero",
+      "usage": null,
+      "description": "Il fuoco fatuo non può indossare né trasportare nulla."
+    },
+    {
+      "name": "Illuminazione Variabile",
+      "usage": null,
+      "description": "Il fuoco fatuo promana luce intensa in un raggio da 1,5 a 6 metri e luce fioca per un numero di metri aggiuntivi pari al raggio scelto. Il fuoco fatuo può modificare questo raggio con un'azione bonus."
+    },
+    {
+      "name": "Movimento Incorporeo",
+      "usage": null,
+      "description": "Il fuoco fatuo può muoversi attraverso altre creature e oggetti come se fossero terreno difficile. Subisce 5 (1d10) danni da forza se termina il suo turno all'interno di un oggetto."
+    },
+    {
+      "name": "Natura Non Morta",
+      "usage": null,
+      "description": "Il fuoco fatuo non ha bisogno di aria, cibo o bevande."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Scossa",
+      "usage": null,
+      "description": "Attacco con incantesimo in mischia: +4 a colpire, portata 1,5 m, una creatura. Colpisce: 9 (2d8) danni da fulmine."
+    },
+    {
+      "name": "Invisibilità",
+      "usage": null,
+      "description": "Il fuoco fatuo e la sua luce diventano magicamente invisibili finché non attacca o usa Consumare Vita, o finché la sua concentrazione non termina (come se si stesse concentrando su di un incantesimo)."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Fuoco Fatuo\nMinuscola non morto, caotico malvagio\nFORZA 1 (-5)\nDESTREZZA 28 (+9)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 13 (+1)\nSAGGEZZA 14 (+2)\nCARISMA 11 (+0)\nClasse Armatura 19\nPunti Ferita 22 (9d4)\nVelocità 0 m, volo 15 m (fluttua)\nImmunità ai Danni fulmine, veleno\nResistenze al Danno acido, freddo, fuoco, necrotico, tuono;\ncontendente, perforante e tagliente di attacchi non magici\nImmunità alle Condizioni afferrato, avvelenato, intralciato,\nparalizzato, privo di sensi, prono, sfinimento\nSensi scurovisione 36 m, Percezione passiva 12\nLinguaggi le lingue che conosceva in vita\nSfida 2 (450 PE)\nConsumare Vita. Con un'azione bonus, il fuoco fatuo può\nprendere a bersaglio una creatura che può vedere entro 1,5 metri\nda esso e che abbia 0 punti ferita e sia ancora in vita. Il bersaglio\ndeve riuscire un tiro salvezza di Costituzione CD 10 contro\nquesta magia o morire. Se il bersaglio muore, il fuoco fatuo\nrecupera 10 (3d6) punti ferita.\nEffimero. Il fuoco fatuo non può indossare né trasportare nulla.\nIlluminazione Variabile. Il fuoco fatuo promana luce intensa in\nun raggio da 1,5 a 6 metri e luce fioca per un numero di metri\naggiuntivi pari al raggio scelto. Il fuoco fatuo può modificare\nquesto raggio con un'azione bonus.\nMovimento Incorporeo. Il fuoco fatuo può muoversi attraverso\naltre creature e oggetti come se fossero terreno difficile. Subisce\n5 (1d10) danni da forza se termina il suo turno all'interno di un\noggetto.\nNatura Non Morta. Il fuoco fatuo non ha bisogno di aria, cibo o\nbevande.\nAzioni\nScossa. Attacco con incantesimo in mischia: +4 a colpire, portata\n1,5 m, una creatura.\nColpisce: 9 (2d8) danni da fulmine.\nInvisibilità. Il fuoco fatuo e la sua luce diventano magicamente\ninvisibili finché non attacca o usa Consumare Vita, o finché la\nsua concentrazione non termina (come se si stesse concentrando\nsu di un incantesimo)."
+  }
+}

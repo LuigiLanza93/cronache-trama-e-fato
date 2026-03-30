@@ -1,0 +1,99 @@
+{
+  "slug": "grande-magio",
+  "general": {
+    "name": "Grande Magio",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": "15 con armatura del magio"
+    },
+    "hitPoints": {
+      "average": 40,
+      "formula": "9d8"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 9,
+    "dexterity": 14,
+    "constitution": 11,
+    "intelligence": 17,
+    "wisdom": 12,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Intelligenza",
+        "bonus": 6
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 4
+      }
+    ],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 6
+      },
+      {
+        "name": "Storia",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "Il magio è un incantatore di 9° livello. La sua abilità da incantatore è l'Intelligenza (CD dei tiri salvezza degli incantesimi 14, +6 al colpire con attacchi con incantesimo). Il magio ha preparato i seguenti incantesimi da mago: Trucchetti (a volontà): dardo infuocato, luce, mano magica, prestidigitazione 1° livello (4 slot): armatura del magio, dardo incantato, individuare magia, scudo 2° livello (3 slot): passo velato, suggestione 3° livello (3 slot): controincantesimo, palla di fuoco, volare 4° livello (3 slot): invisibilità superiore, tempesta di ghiaccio 5° livello (1 slot): cono di freddo"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pugnale",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia o a Gittata: +5 a colpire, portata 1,5 m o gittata 6/18 m, un bersaglio. Colpisce: 4 (1d4 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Grande Magio\nUn magio che ha stabilito una discreta fama nel\nterritorio e che attira intorno a sé studenti da ogni dove.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 9 (-1)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 11 (+0)\nINTELLIGENZA 17 (+3)\nSAGGEZZA 12 (+1)\nCARISMA 11 (+0)\nClasse Armatura 12 (15 con armatura del magio)\nPunti Ferita 40 (9d8)\nVelocità 9 m\nTiri Salvezza Intelligenza +6, Saggezza +4\nAbilità Arcano +6, Storia +6\nSensi Percezione passiva 11\nLingue quattro lingue qualsiasi\nSfida 6 (2.300 PE)\nIncantesimi. Il magio è un incantatore di 9° livello. La sua\nabilità da incantatore è l'Intelligenza (CD dei tiri salvezza degli\nincantesimi 14, +6 al colpire con attacchi con incantesimo). Il\nmagio ha preparato i seguenti incantesimi da mago:\nTrucchetti (a volontà): dardo infuocato, luce, mano magica,\nprestidigitazione\n1° livello (4 slot): armatura del magio, dardo incantato,\nindividuare magia, scudo\n2° livello (3 slot): passo velato, suggestione\n3° livello (3 slot): controincantesimo, palla di fuoco, volare\n4° livello (3 slot): invisibilità superiore, tempesta di ghiaccio\n5° livello (1 slot): cono di freddo\nAzioni\nPugnale. Attacco con Arma da Mischia o a Gittata: +5 a colpire,\nportata 1,5 m o gittata 6/18 m, un bersaglio.\nColpisce: 4 (1d4 + 2) danni perforanti."
+  }
+}

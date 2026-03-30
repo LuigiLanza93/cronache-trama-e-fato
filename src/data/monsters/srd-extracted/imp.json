@@ -1,0 +1,133 @@
+{
+  "slug": "imp",
+  "general": {
+    "name": "Imp",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Minuscola",
+    "creatureType": "immondo (diavolo",
+    "subtype": "",
+    "typeLabel": "immondo (diavolo",
+    "alignment": "mutaforma), legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 10,
+      "formula": "3d4 + 3"
+    },
+    "speed": {
+      "walk": "6 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 6,
+    "dexterity": 17,
+    "constitution": 13,
+    "intelligence": 11,
+    "wisdom": 12,
+    "charisma": 14
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 5
+      },
+      {
+        "name": "Inganno",
+        "bonus": 4
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 3
+      },
+      {
+        "name": "Persuasione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo; contundente",
+      "perforante e tagliente"
+    ],
+    "damageImmunities": [
+      "fuoco",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Infernale"
+      },
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "Il diavolo può usare la sua azione per trasformarsi in una forma bestiale da ratto, corvo o ragno, o per tornare alla sua vera forma. Le sue statistiche sono le stesse in tutte le forme, sebbene gli attacchi possano variare per alcune di esse. Qualsiasi equipaggiamento stia indossando o trasportando non viene trasformato. Alla morte ritorna alla sua vera forma."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il diavolo ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Vista del Diavolo",
+      "usage": null,
+      "description": "La scurovisione del diavolo non è limitata dall'oscurità magica."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pungiglione",
+      "usage": "Morso in Forma di Bestia",
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, una creatura. Colpisce: 5 (1d4 + 3) danni perforanti, e il bersaglio deve effettuare un tiro salvezza di Costituzione CD 11, subendo 10 (3d6) danni da veleno se lo fallisce, o la metà di questi danni se lo riesce."
+    },
+    {
+      "name": "Invisibilità",
+      "usage": null,
+      "description": "Il diavolo resta invisibile finché non attacca o termina la sua concentrazione. Qualsiasi cosa che il diavolo stia trasportando o indossando, resta invisibile finché rimane in contatto con il diavolo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Imp\nMinuscola immondo (diavolo, mutaforma), legale malvagio\nFORZA 6 (-2)\nDESTREZZA 17 (+3)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 11 (+0)\nSAGGEZZA 12 (+1)\nCARISMA 14 (+2)\nClasse Armatura 13\nPunti Ferita 10 (3d4 + 3)\nVelocità 6 m, volo 12 m (6 m in forma di ratto; 6 m, volo 18 m\nin forma di corvo; 6 m, scalata 6 m in forma di ragno)\nAbilità Furtività +5, Inganno +4, Intuizione +3, Persuasione +4\nResistenze al Danno freddo; contundente, perforante e tagliente\ndi attacchi non magici che non siano argentati\nImmunità al Danno fuoco, veleno\nImmunità alle Condizioni avvelenato\nSensi scurovisione 36 m, Percezione passiva 11\nLinguaggi Infernale, Comune\nSfida 1 (200 PE)\nMutaforma. Il diavolo può usare la sua azione per trasformarsi\nin una forma bestiale da ratto, corvo o ragno, o per tornare alla\nsua vera forma. Le sue statistiche sono le stesse in tutte le forme,\nsebbene gli attacchi possano variare per alcune di esse. Qualsiasi\nequipaggiamento stia indossando o trasportando non viene\ntrasformato. Alla morte ritorna alla sua vera forma.\nResistenza alla Magia. Il diavolo ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nVista del Diavolo. La scurovisione del diavolo non è limitata\ndall'oscurità magica.\nAzioni\nPungiglione (Morso in Forma di Bestia). Attacco con arma da\nmischia: +5 a colpire, portata 1,5 m, una creatura.\nColpisce: 5 (1d4 + 3) danni perforanti, e il bersaglio deve\neffettuare un tiro salvezza di Costituzione CD 11, subendo 10\n(3d6) danni da veleno se lo fallisce, o la metà di questi danni se\nlo riesce.\nInvisibilità. Il diavolo resta invisibile finché non attacca o\ntermina la sua concentrazione. Qualsiasi cosa che il diavolo stia\ntrasportando o indossando, resta invisibile finché rimane in\ncontatto con il diavolo."
+  }
+}

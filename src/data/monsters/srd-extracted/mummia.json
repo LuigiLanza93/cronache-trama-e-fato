@@ -1,0 +1,116 @@
+{
+  "slug": "mummia",
+  "general": {
+    "name": "Mummia",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Media",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 58,
+      "formula": "9d8 + 18"
+    },
+    "speed": {
+      "walk": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 8,
+    "constitution": 15,
+    "intelligence": 6,
+    "wisdom": 10,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Saggezza",
+        "bonus": 2
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [
+      "fuoco"
+    ],
+    "damageResistances": [
+      "contundente",
+      "perforante e tagliente di"
+    ],
+    "damageImmunities": [
+      "necrotico",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "paralizzato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "le lingue che conosceva in vita"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Natura Non Morta",
+      "usage": null,
+      "description": "Un mummia non ha bisogno di aria, cibo, bevande o sonno."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "La mummia può usare la sua Occhiata Temibile ed effettuare un attacco con il pugno putrefacente."
+    },
+    {
+      "name": "Pugno Putrefacente",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 10 (2d6 + 3) danni contundenti più 10 (3d6) danni necrotici. Se il bersaglio è una creatura deve riuscire un tiro salvezza di Costituzione CD 12 o venire maledetto dalla putrefazione della mummia. Il bersaglio maledetto non può recuperare punti ferita, e i suoi punti ferita massimi diminuiscono di 10 (3d6) ogni 24 ore di durata della maledizione. Se la maledizione riduce i punti ferita massimi del bersaglio a 0, il bersaglio muore, e il suo corpo si tramuta in polvere. La maledizione dura finché non viene rimossa dall'incantesimo rimuovi maledizione o altra magia."
+    },
+    {
+      "name": "Occhiata Temibile",
+      "usage": null,
+      "description": "La mummia prende a bersaglio una creatura che possa vedere e si trovi entro 18 metri da lei. Se il bersaglio può vedere la mummia, deve riuscire un tiro salvezza di Saggezza CD 11 contro questa magia o restare spaventato fino al termine del prossimo turno della mummia. Se il bersaglio fallisce il tiro salvezza di 5 o più, è anche paralizzato per la stessa durata. Un bersaglio che riesca il tiro salvezza è immune all'Occhiata Terribile di tutte le mummie (ma non delle mummie sovrane) per le successive 24 ore."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Mummia\nMedia non morto, legale malvagio\nFORZA 16 (+3)\nDESTREZZA 8 (-1)\nCOSTITUZIONE 15 (+2)\nINTELLIGENZA 6 (-2)\nSAGGEZZA 10 (+0)\nCARISMA 12 (+1)\nClasse Armatura 11 (armatura naturale)\nPunti Ferita 58 (9d8 + 18)\nVelocità 6 m\nTiri Salvezza Saggezza +2\nVulnerabilità al Danno fuoco\nResistenze al Danno contundente, perforante e tagliente di\nattacchi non magici\nImmunità al Danno necrotico, veleno\nImmunità alle Condizioni affascinato, avvelenato, paralizzato,\nsfinimento, spaventato\nSensi scurovisione 18 m, Percezione passiva 10\nLinguaggi le lingue che conosceva in vita\nSfida 3 (700 PE)\nNatura Non Morta. Un mummia non ha bisogno di aria, cibo,\nbevande o sonno.\nAzioni\nMultiattacco. La mummia può usare la sua Occhiata Temibile ed\neffettuare un attacco con il pugno putrefacente.\nPugno Putrefacente. Attacco con arma da mischia: +5 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 10 (2d6 + 3) danni contundenti più 10 (3d6) danni\nnecrotici. Se il bersaglio è una creatura deve riuscire un tiro\nsalvezza di Costituzione CD 12 o venire maledetto dalla\nputrefazione della mummia. Il bersaglio maledetto non può\nrecuperare punti ferita, e i suoi punti ferita massimi diminuiscono\ndi 10 (3d6) ogni 24 ore di durata della maledizione. Se la\nmaledizione riduce i punti ferita massimi del bersaglio a 0, il\nbersaglio muore, e il suo corpo si tramuta in polvere. La\nmaledizione dura finché non viene rimossa dall'incantesimo\nrimuovi maledizione o altra magia.\nOcchiata Temibile. La mummia prende a bersaglio una creatura\nche possa vedere e si trovi entro 18 metri da lei. Se il bersaglio\npuò vedere la mummia, deve riuscire un tiro salvezza di\nSaggezza CD 11 contro questa magia o restare spaventato fino al\ntermine del prossimo turno della mummia. Se il bersaglio fallisce\nil tiro salvezza di 5 o più, è anche paralizzato per la stessa durata.\nUn bersaglio che riesca il tiro salvezza è immune all'Occhiata\nTerribile di tutte le mummie (ma non delle mummie sovrane) per\nle successive 24 ore."
+  }
+}

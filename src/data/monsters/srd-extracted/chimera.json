@@ -1,0 +1,109 @@
+{
+  "slug": "chimera",
+  "general": {
+    "name": "Chimera",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 114,
+      "formula": "12d10 + 48"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 11,
+    "constitution": 19,
+    "intelligence": 3,
+    "wisdom": 14,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 8
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 18"
+      }
+    ],
+    "languages": [
+      {
+        "name": "comprende il Draconico ma non può parlare"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "La chimera effettua tre attacchi: uno con il morso, uno con le corna e uno con gli artigli. Quando il soffio infuocato è disponibile, può usare il soffio al posto del morso o delle corna."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni taglienti."
+    },
+    {
+      "name": "Corna",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 10 (1d12 + 4) danni contundenti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni perforanti."
+    },
+    {
+      "name": "Soffio Infuocato",
+      "usage": "Ricarica 5-6",
+      "description": "La testa di drago esala fuoco in un cono di 4,5 metri. Ogni creatura in quell'area deve effettuare un tiro salvezza di Destrezza CD 15 e subire 31 (7d8) danni da fuoco se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Chimera\nGrande mostruosità, caotico malvagio\nFORZA 19 (+4)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 19 (+4)\nINTELLIGENZA 3 (-4)\nSAGGEZZA 14 (+2)\nCARISMA 10 (+0)\nClasse Armatura 14 (armatura naturale)\nPunti Ferita 114 (12d10 + 48)\nVelocità 9 m, volo 18 m\nAbilità Percezione +8\nSensi scurovisione 18 m, Percezione passiva 18\nLinguaggi comprende il Draconico ma non può parlare\nSfida 6 (2.300 PE)\nAzioni\nMultiattacco. La chimera effettua tre attacchi: uno con il morso,\nuno con le corna e uno con gli artigli. Quando il soffio infuocato\nè disponibile, può usare il soffio al posto del morso o delle corna.\nArtigli. Attacco con arma da mischia: +7 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni taglienti.\nCorna. Attacco con arma da mischia: +7 a colpire, portata 1,5 m,\nun bersaglio.\nColpisce: 10 (1d12 + 4) danni contundenti.\nMorso. Attacco con arma da mischia: +7 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni perforanti.\nSoffio Infuocato (Ricarica 5-6). La testa di drago esala fuoco in\nun cono di 4,5 metri. Ogni creatura in quell'area deve effettuare\nun tiro salvezza di Destrezza CD 15 e subire 31 (7d8) danni da\nfuoco se fallisce il tiro salvezza, o la metà di questi danni se lo\nriesce."
+  }
+}

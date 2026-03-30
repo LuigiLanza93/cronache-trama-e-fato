@@ -1,0 +1,114 @@
+{
+  "slug": "satiro",
+  "general": {
+    "name": "Satiro",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Media",
+    "creatureType": "fatato",
+    "subtype": "",
+    "typeLabel": "fatato",
+    "alignment": "caotico neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura di cuoio"
+    },
+    "hitPoints": {
+      "average": 31,
+      "formula": "7d8"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 12,
+    "dexterity": 16,
+    "constitution": 11,
+    "intelligence": 12,
+    "wisdom": 10,
+    "charisma": 14
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 5
+      },
+      {
+        "name": "Intrattenere",
+        "bonus": 6
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Elfico"
+      },
+      {
+        "name": "Silvano"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il satiro ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Incornata",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 6 (2d4 + 1) danni contundenti."
+    },
+    {
+      "name": "Spada Corta",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 6 (1d6 + 3) danni perforanti."
+    },
+    {
+      "name": "Arco Corto",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +5 a colpire, gittata 24/96 m, un bersaglio. Colpisce: 6 (1d6 + 3) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Satiro\nMedia fatato, caotico neutrale\nFORZA 12 (+1)\nDESTREZZA 16 (+3)\nCOSTITUZIONE 11 (+0)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 10 (+0)\nCARISMA 14 (+2)\nClasse Armatura 14 (armatura di cuoio)\nPunti Ferita 31 (7d8)\nVelocità 12 m\nAbilità Furtività +5, Intrattenere +6, Percezione +2\nSensi Percezione passiva 12\nLinguaggi Comune, Elfico, Silvano\nSfida 1/2 (100 PE)\nResistenza alla Magia. Il satiro ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nAzioni\nIncornata. Attacco con arma da mischia: +3 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 6 (2d4 + 1) danni contundenti.\nSpada Corta. Attacco con arma da mischia: +5 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 6 (1d6 + 3) danni perforanti.\nArco Corto. Attacco con arma a Distanza: +5 a colpire, gittata\n24/96 m, un bersaglio.\nColpisce: 6 (1d6 + 3) danni perforanti."
+  }
+}

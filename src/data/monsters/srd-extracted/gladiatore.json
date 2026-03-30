@@ -1,0 +1,114 @@
+{
+  "slug": "gladiatore",
+  "general": {
+    "name": "Gladiatore",
+    "challengeRating": {
+      "fraction": "5",
+      "decimal": 5,
+      "display": "5",
+      "xp": 1800
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura di cuoio borchiato, scudo"
+    },
+    "hitPoints": {
+      "average": 112,
+      "formula": "15d8 + 45"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 15,
+    "constitution": 16,
+    "intelligence": 10,
+    "wisdom": 12,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Forza",
+        "bonus": 7
+      },
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 6
+      }
+    ],
+    "skills": [
+      {
+        "name": "Atletica",
+        "bonus": 10
+      },
+      {
+        "name": "Intimidazione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Bruto",
+      "usage": null,
+      "description": "Un'arma da mischia infligge un dado aggiuntivo di danno quando un gladiatore colpisce con essa (già incluso nell'attacco)."
+    },
+    {
+      "name": "Coraggioso",
+      "usage": null,
+      "description": "Il gladiatore ha vantaggio ai tiri salvezza contro l'essere spaventato."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Stocco",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d8 + 1) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [
+    {
+      "name": "Parata",
+      "usage": null,
+      "description": "Il nobile somma 2 alla sua CA contro un attacco da mischia che lo colpirebbe. Per farlo, il nobile deve vedere l'attaccante e impugnare un'arma da mischia."
+    }
+  ],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gladiatore\nAddestrati per intrattenere le folle, sono tra i\ncombattenti più pericolosi in circolazione.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 18 (+4)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 12 (+1)\nCARISMA 15 (+2)\nClasse Armatura 16 (armatura di cuoio borchiato, scudo)\nPunti Ferita 112 (15d8 + 45)\nVelocità 9 m\nTiri Salvezza Forza +7, Destrezza +5, Costituzione +6\nAbilità Atletica +10, Intimidazione +5\nSensi Percezione passiva 11\nLingue una lingua qualsiasi (di solito il Comune)\nSfida 5 (1.800 PE)\nBruto. Un'arma da mischia infligge un dado aggiuntivo di danno\nquando un gladiatore colpisce con essa (già incluso nell'attacco).\nCoraggioso. Il gladiatore ha vantaggio ai tiri salvezza contro\nl'essere spaventato.\nAzioni\nMultiattacco. Il gladiatore effettua tre attacchi da mischia o due\nattacchi a gittata.\nLancia. Attacco con Arma da Mischia o a Gittata: +7 a colpire,\nportata 1,5 m o gittata 6/18 m, un bersaglio.\nColpisce: 11 (2d6 + 4) danni perforanti, o 13 (2d8 + 4) danni\ntaglienti se usata con due mani.\nBotta di Scudo. Attacco con Arma da Mischia: +7 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 9 (2d4 + 4) danni contundenti. Se il bersaglio è una\ncreatura di taglia Media o inferiore, deve riuscire un tiro salvezza\ndi Forza CD 15 o cadere prono.\nReazioni\nParata. Il gladiatore somma 3 alla sua CA contro un attacco da\nmischia che lo colpirebbe. Per farlo, il gladiatore deve vedere\nl'attaccante e impugnare un'arma da mischia.\nCittadini\nIn questa categoria rientrano quegli individui che si\noccupano di mandare avanti il mondo, svolgendo le\nmansioni necessarie affinché i campi vengano coltivati,\nle città amministrate, il cibo coltivato e nuovi territori\nesplorati.\nNobile\nI nobili comandano sulla popolazione, in virtù di un\ndiritto di nascita o per le ricchezze accumulate. Tra\ncostoro si annoverano anche i cortigiani che affollano le\ncorti dei ricchi e dei potenti.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 11 (+0)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 11 (+0)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 14 (+2)\nCARISMA 16 (+3)\nClasse Armatura 15 (pettorale)\nPunti Ferita 9 (2d8)\nVelocità 9 m\nAbilità Intuizione +4, Persuasione +5, Raggiro +5\nSensi Percezione passiva 12\nLingue due lingue qualsiasi\nSfida 1/8 (25 PE)\nAzioni\nStocco. Attacco con Arma da Mischia: +3 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 5 (1d8 + 1) danni perforanti.\nReazioni\nParata. Il nobile somma 2 alla sua CA contro un attacco da\nmischia che lo colpirebbe. Per farlo, il nobile deve vedere\nl'attaccante e impugnare un'arma da mischia."
+  }
+}

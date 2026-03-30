@@ -1,0 +1,113 @@
+{
+  "slug": "gigante-del-fuoco",
+  "general": {
+    "name": "Gigante del Fuoco",
+    "challengeRating": {
+      "fraction": "9",
+      "decimal": 9,
+      "display": "9",
+      "xp": 5000
+    },
+    "size": "Enorme",
+    "creatureType": "gigante",
+    "subtype": "",
+    "typeLabel": "gigante",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura di piastre"
+    },
+    "hitPoints": {
+      "average": 162,
+      "formula": "13d12 + 78"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 25,
+    "dexterity": 9,
+    "constitution": 23,
+    "intelligence": 10,
+    "wisdom": 14,
+    "charisma": 13
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 3
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 10
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 5
+      }
+    ],
+    "skills": [
+      {
+        "name": "Atletica",
+        "bonus": 11
+      },
+      {
+        "name": "Percezione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 16"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gigante"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il gigante effettua due attacchi con lo spadone."
+    },
+    {
+      "name": "Spadone",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +11 a colpire, portata 3 m, un bersaglio. Colpisce: 28 (6d6 + 7) danni taglienti."
+    },
+    {
+      "name": "Sasso",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +11 a colpire, gittata 18/72 m, un bersaglio. Colpisce: 29 (4d10 + 7) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gigante del Fuoco\nEnorme gigante, legale malvagio\nFORZA 25 (+7)\nDESTREZZA 9 (-1)\nCOSTITUZIONE 23 (+6)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 14 (+2)\nCARISMA 13 (+1)\nClasse Armatura 18 (armatura di piastre)\nPunti Ferita 162 (13d12 + 78)\nVelocità 9 m\nTiri Salvezza Destrezza +3, Costituzione +10, Carisma +5\nAbilità Atletica +11, Percezione +6\nImmunità ai Danni fuoco\nSensi Percezione passiva 16\nLinguaggi Gigante\nSfida 9 (5.000 PE)\nAzioni\nMultiattacco. Il gigante effettua due attacchi con lo spadone.\nSpadone. Attacco con arma da mischia: +11 a colpire, portata 3\nm, un bersaglio.\nColpisce: 28 (6d6 + 7) danni taglienti.\nSasso. Attacco con arma a Distanza: +11 a colpire, gittata 18/72\nm, un bersaglio.\nColpisce: 29 (4d10 + 7) danni contundenti."
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "slug": "golem-di-pietra",
+  "general": {
+    "name": "Golem di Pietra",
+    "challengeRating": {
+      "fraction": "10",
+      "decimal": 10,
+      "display": "10",
+      "xp": 5900
+    },
+    "size": "Grande",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 178,
+      "formula": "17d10 + 85"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 22,
+    "dexterity": 9,
+    "constitution": 20,
+    "intelligence": 3,
+    "wisdom": 11,
+    "charisma": 1
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "psichico",
+      "veleno; contundente",
+      "perforante e"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "paralizzato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "comprende le lingue del suo creatore ma non può"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con armi del golem sono magici."
+    },
+    {
+      "name": "Forma Immutabile",
+      "usage": null,
+      "description": "Il golem è immune a qualsiasi incantesimo o effetto che altererebbe la sua forma."
+    },
+    {
+      "name": "Natura di Costrutto",
+      "usage": null,
+      "description": "Un golem non ha bisogno di aria, cibo, bevande o sonno."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il golem ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il golem effettua due attacchi di schianto."
+    },
+    {
+      "name": "Schianto",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 1,5 m, un bersaglio. Colpisce: 19 (3d8 + 6) danni contundenti."
+    },
+    {
+      "name": "Lentezza",
+      "usage": "Ricarica 5-6",
+      "description": "Il golem prende a bersaglio una o più creature entro 3 metri da lui e che possa vedere. Ciascun bersaglio deve effettuare un tiro salvezza di Saggezza CD 17 contro questa magia. Se fallisce il tiro salvezza, il bersaglio non può usare reazioni, ha la velocità dimezzata, e durante il proprio turno non può effettuare più di un attacco. Inoltre, durante il proprio turno il bersaglio può effettuare un'azione o un'azione bonus, ma non entrambe. Questi effetti durano per 1 minuto. Il bersaglio può ripetere il tiro salvezza al termine di ciascun suo turno, terminando l'effetto per sé, in caso di successo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Golem di Pietra\nGrande costrutto, disallineato\nFORZA 22 (+6)\nDESTREZZA 9 (-1)\nCOSTITUZIONE 20 (+5)\nINTELLIGENZA 3 (-4)\nSAGGEZZA 11 (+0)\nCARISMA 1 (-5)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 178 (17d10 + 85)\nVelocità 9 m\nImmunità al Danno psichico, veleno; contundente, perforante e\ntagliente di attacchi non magici che non siano di adamantio\nImmunità alle Condizioni affascinato, avvelenato, paralizzato,\npietrificato, sfinimento, spaventato\nSensi scurovisione 36 m, Percezione passiva 10\nLinguaggi comprende le lingue del suo creatore ma non può\nparlare\nSfida 10 (5.900 PE)\nArmi Magiche. Gli attacchi con armi del golem sono magici.\nForma Immutabile. Il golem è immune a qualsiasi incantesimo o\neffetto che altererebbe la sua forma.\nNatura di Costrutto. Un golem non ha bisogno di aria, cibo,\nbevande o sonno.\nResistenza alla Magia. Il golem ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nAzioni\nMultiattacco. Il golem effettua due attacchi di schianto.\nSchianto. Attacco con arma da mischia: +10 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 19 (3d8 + 6) danni contundenti.\nLentezza (Ricarica 5-6). Il golem prende a bersaglio una o più\ncreature entro 3 metri da lui e che possa vedere. Ciascun\nbersaglio deve effettuare un tiro salvezza di Saggezza CD 17\ncontro questa magia. Se fallisce il tiro salvezza, il bersaglio non\npuò usare reazioni, ha la velocità dimezzata, e durante il proprio\nturno non può effettuare più di un attacco. Inoltre, durante il\nproprio turno il bersaglio può effettuare un'azione o un'azione\nbonus, ma non entrambe. Questi effetti durano per 1 minuto. Il\nbersaglio può ripetere il tiro salvezza al termine di ciascun suo\nturno, terminando l'effetto per sé, in caso di successo."
+  }
+}

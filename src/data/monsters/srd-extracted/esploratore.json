@@ -1,0 +1,208 @@
+{
+  "slug": "esploratore",
+  "general": {
+    "name": "Esploratore",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura di cuoio"
+    },
+    "hitPoints": {
+      "average": 16,
+      "formula": "3d8 + 3"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 14,
+    "constitution": 12,
+    "intelligence": 11,
+    "wisdom": 13,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 6
+      },
+      {
+        "name": "Natura",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 5
+      },
+      {
+        "name": "Sopravvivenza",
+        "bonus": 0
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 15"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Olfatto e Vista Affinati",
+      "usage": null,
+      "description": "L'esploratore ha vantaggio nelle prove di Saggezza (Percezione) basate su olfatto o vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'esploratore effettua due attacchi da mischia o due attacchi a gittata."
+    },
+    {
+      "name": "Spada Corta",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d6 + 2) danni perforanti."
+    },
+    {
+      "name": "Arco Lungo",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, gittata 45/180 m, un bersaglio. Colpisce: 6 (1d8 + 2) danni perforanti."
+    },
+    {
+      "name": "OPEN GAME LICENSE Version 1",
+      "usage": null,
+      "description": "0a The following text is the property of Wizards of the Coast, Inc. and is Copyright 2000 Wizards of the Coast, Inc (\"Wizards\"). All Rights Reserved. 1. Definitions: (a)\"Contributors\" means the copyright and/or trademark owners who have contributed Open Game Content; (b)\"Derivative Material\" means copyrighted material including derivative works and translations (including into other computer languages), potation, modification, correction, addition, extension, upgrade, improvement, compilation, abridgment or other form in which an existing work may be recast, transformed or adapted; (c) \"Distribute\" means to reproduce, license, rent, lease, sell, broadcast, publicly display, transmit or otherwise distribute; (d)\"Open Game Content\" means the game mechanic and includes the methods, procedures, processes and routines to the extent such content does not embody the Product Identity and is an enhancement over the prior art and any additional content clearly identified as Open Game Content by the Contributor, and means any work covered by this License, including translations and derivative works under copyright law, but specifically excludes Product"
+    },
+    {
+      "name": "Identity",
+      "usage": null,
+      "description": "(e) \"Product Identity\" means product and product line names, logos and identifying marks including trade dress; artifacts; creatures characters; stories, storylines, plots, thematic elements, dialogue, incidents, language, artwork, symbols, designs, depictions, likenesses, formats, poses, concepts, themes and graphic, photographic and other visual or audio representations; names and descriptions of characters, spells, enchantments, personalities, teams, personas, likenesses and special abilities; places, locations, environments, creatures, equipment, magical or supernatural abilities or effects, logos, symbols, or graphic designs; and any other trademark or registered trademark clearly identified as Product identity by the owner of the Product Identity, and which specifically excludes the Open Game Content; (f) \"Trademark\" means the logos, names, mark, sign, motto, designs that are used by a Contributor to identify itself or its products or the associated products contributed to the Open Game License by the Contributor (g) \"Use\", \"Used\" or \"Using\" means to use, Distribute, copy, edit, format, modify, translate and otherwise create Derivative"
+    },
+    {
+      "name": "Material of Open Game Content",
+      "usage": null,
+      "description": "(h) \"You\" or \"Your\" means the licensee in terms of this agreement. 2. The License: This License applies to any Open Game Content that contains a notice indicating that the Open Game Content may only be Used under and in terms of this License. You must affix such a notice to any Open Game Content that you Use. No terms may be added to or subtracted from this License except as described by the License itself. No other terms or conditions may be applied to any Open Game Content distributed using this License. 3.Offer and Acceptance: By Using the Open Game Content You indicate Your acceptance of the terms of this License. 4. Grant and Consideration: In consideration for agreeing to use this License, the Contributors grant You a perpetual, worldwide, royalty-free, non-exclusive license with the exact terms of this"
+    },
+    {
+      "name": "License to Use, the Open Game Content",
+      "usage": null,
+      "description": "5.Representation of Authority to Contribute: If You are contributing original material as Open Game Content, You represent that Your Contributions are Your original creation and/or You have sufficient rights to grant the rights conveyed by this License. 6.Notice of License Copyright: You must update the COPYRIGHT NOTICE portion of this License to include the exact text of the COPYRIGHT NOTICE of any Open Game Content You are copying, modifying or distributing, and You must add the title, the copyright date, and the copyright holder's name to the COPYRIGHT NOTICE of any original Open Game Content you Distribute. 7. Use of Product Identity: You agree not to Use any Product Identity, including as an indication as to compatibility, except as expressly licensed in another, independent Agreement with the owner of each element of that Product Identity. You agree not to indicate compatibility or co- adaptability with any Trademark or Registered Trademark in conjunction with a work containing Open Game Content except as expressly licensed in another, independent Agreement with the owner of such Trademark or Registered"
+    },
+    {
+      "name": "Trademark",
+      "usage": null,
+      "description": "The use of any Product Identity in Open Game Content does not constitute a challenge to the ownership of that Product"
+    },
+    {
+      "name": "Identity",
+      "usage": null,
+      "description": "The owner of any Product Identity used in Open Game Content shall retain all rights, title and interest in and to that Product Identity. 8. Identification: If you distribute Open Game Content You must clearly indicate which portions of the work that you are distributing are Open"
+    },
+    {
+      "name": "Game Content",
+      "usage": null,
+      "description": "9. Updating the License: Wizards or its designated Agents may publish updated versions of this"
+    },
+    {
+      "name": "License",
+      "usage": null,
+      "description": "You may use any authorized version of this License to copy, modify and distribute any Open Game Content originally distributed under any version of this License. 10 Copy of this License: You MUST include a copy of this License with every copy of the Open Game"
+    },
+    {
+      "name": "Content You Distribute",
+      "usage": null,
+      "description": "11. Use of Contributor Credits: You may not market or advertise the Open Game Content using the name of any Contributor unless You have written permission from the Contributor to do so. 12 Inability to Comply: If it is impossible for You to comply with any of the terms of this License with respect to some or all of the Open Game Content due to statute, judicial order, or governmental regulation then You may not Use any Open Game Material so affected. 13 Termination: This License will terminate automatically if You fail to comply with all terms herein and fail to cure such breach within 30 days of becoming aware of the breach. All sublicenses shall survive the termination of this License. 14 Reformation: If any provision of this License is held to be unenforceable, such provision shall be reformed only to the extent necessary to make it enforceable. 15 COPYRIGHT NOTICE"
+    },
+    {
+      "name": "Open Game License v 1",
+      "usage": null,
+      "description": "0 Copyright 2000,"
+    },
+    {
+      "name": "Wizards of the Coast, Inc",
+      "usage": null,
+      "description": ""
+    },
+    {
+      "name": "System Reference Document 5",
+      "usage": null,
+      "description": "0 Copyright 2016,"
+    },
+    {
+      "name": "Wizards of the Coast, Inc",
+      "usage": null,
+      "description": "; Authors Mike Mearls, Jeremy Crawford, Chris Perkins, Rodney Thompson,"
+    },
+    {
+      "name": "Peter Lee, James Wyatt, Robert J",
+      "usage": null,
+      "description": "Schwalb, Bruce R. Cordell, Chris Sims, and Steve Townshend, based on original material by E. Gary Gygax And Dave"
+    },
+    {
+      "name": "Arneson",
+      "usage": null,
+      "description": ""
+    },
+    {
+      "name": "Compendio dei Mostri 3",
+      "usage": null,
+      "description": "02 Copyright 2018, Michele Bonelli di Salci, Federico Lorenzo Gavrioli"
+    },
+    {
+      "name": "VERSIONE 2",
+      "usage": null,
+      "description": "1 Aggiornato il glossario alla quinta edizione ufficiale italiana."
+    },
+    {
+      "name": "VERSIONE 3",
+      "usage": null,
+      "description": "0 Aggiornata Appendice A e B"
+    },
+    {
+      "name": "VERSIONE 3",
+      "usage": null,
+      "description": "01 Aggiunta la specifica \"Orca\" alla Balena Assassina"
+    },
+    {
+      "name": "VERSIONE 3",
+      "usage": null,
+      "description": "02 Ulteriori aggiornamenti del glossario alla quinta edizione ufficiale."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Esploratore\nAbili cacciatori e battitori di piste.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 11 (+0)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 11 (+0)\nSAGGEZZA 13 (+1)\nCARISMA 11 (+0)\nClasse Armatura 13 (armatura di cuoio)\nPunti Ferita 16 (3d8 + 3)\nVelocità 9 m\nAbilità Furtività +6, Natura +4, Percezione +5, Sopravvivenza\n+5\nSensi Percezione passiva 15\nLingue una qualsiasi lingua (di solito Comune)\nSfida 1/2 (100 PE)\nOlfatto e Vista Affinati. L'esploratore ha vantaggio nelle prove\ndi Saggezza (Percezione) basate su olfatto o vista.\nAzioni\nMultiattacco. L'esploratore effettua due attacchi da mischia o\ndue attacchi a gittata.\nSpada Corta. Attacco con Arma da Mischia: +4 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 5 (1d6 + 2) danni perforanti.\nArco Lungo. Attacco con Arma da Mischia: +4 a colpire, gittata\n45/180 m, un bersaglio.\nColpisce: 6 (1d8 + 2) danni perforanti.\n\n-- 149 of 151 --\n\nSRD Italia 5a Edizione - Compendio dei Mostri\nOPEN GAME LICENSE Version 1.0a\nThe following text is the property of Wizards of\nthe Coast, Inc. and is Copyright 2000 Wizards of\nthe Coast, Inc (\"Wizards\"). All Rights Reserved.\n1. Definitions: (a)\"Contributors\" means the\ncopyright and/or trademark owners who have\ncontributed Open Game Content; (b)\"Derivative\nMaterial\" means copyrighted material including\nderivative works and translations (including into\nother computer languages), potation,\nmodification, correction, addition, extension,\nupgrade, improvement, compilation, abridgment\nor other form in which an existing work may be\nrecast, transformed or adapted; (c) \"Distribute\"\nmeans to reproduce, license, rent, lease, sell,\nbroadcast, publicly display, transmit or otherwise\ndistribute; (d)\"Open Game Content\" means the\ngame mechanic and includes the methods,\nprocedures, processes and routines to the extent\nsuch content does not embody the Product\nIdentity and is an enhancement over the prior art\nand any additional content clearly identified as\nOpen Game Content by the Contributor, and\nmeans any work covered by this License,\nincluding translations and derivative works under\ncopyright law, but specifically excludes Product\nIdentity. (e) \"Product Identity\" means product\nand product line names, logos and identifying\nmarks including trade dress; artifacts; creatures\ncharacters; stories, storylines, plots, thematic\nelements, dialogue, incidents, language, artwork,\nsymbols, designs, depictions, likenesses, formats,\nposes, concepts, themes and graphic,\nphotographic and other visual or audio\nrepresentations; names and descriptions of\ncharacters, spells, enchantments, personalities,\nteams, personas, likenesses and special abilities;\nplaces, locations, environments, creatures,\nequipment, magical or supernatural abilities or\neffects, logos, symbols, or graphic designs; and\nany other trademark or registered trademark\nclearly identified as Product identity by the\nowner of the Product Identity, and which\nspecifically excludes the Open Game Content; (f)\n\"Trademark\" means the logos, names, mark, sign,\nmotto, designs that are used by a Contributor to\nidentify itself or its products or the associated\nproducts contributed to the Open Game License\nby the Contributor (g) \"Use\", \"Used\" or \"Using\"\nmeans to use, Distribute, copy, edit, format,\nmodify, translate and otherwise create Derivative\nMaterial of Open Game Content. (h) \"You\" or\n\"Your\" means the licensee in terms of this\nagreement.\n2. The License: This License applies to any Open\nGame Content that contains a notice indicating\nthat the Open Game Content may only be Used\nunder and in terms of this License. You must affix\nsuch a notice to any Open Game Content that\nyou Use. No terms may be added to or\nsubtracted from this License except as described\nby the License itself. No other terms or conditions\nmay be applied to any Open Game Content\ndistributed using this License.\n3.Offer and Acceptance: By Using the Open Game\nContent You indicate Your acceptance of the\nterms of this License.\n4. Grant and Consideration: In consideration for\nagreeing to use this License, the Contributors\ngrant You a perpetual, worldwide, royalty-free,\nnon-exclusive license with the exact terms of this\nLicense to Use, the Open Game Content.\n5.Representation of Authority to Contribute: If\nYou are contributing original material as Open\nGame Content, You represent that Your\nContributions are Your original creation and/or\nYou have sufficient rights to grant the rights\nconveyed by this License.\n6.Notice of License Copyright: You must update\nthe COPYRIGHT NOTICE portion of this License to\ninclude the exact text of the COPYRIGHT NOTICE\nof any Open Game Content You are copying,\nmodifying or distributing, and You must add the\ntitle, the copyright date, and the copyright\n\n-- 150 of 151 --\n\nholder's name to the COPYRIGHT NOTICE of any\noriginal Open Game Content you Distribute.\n7. Use of Product Identity: You agree not to Use\nany Product Identity, including as an indication as\nto compatibility, except as expressly licensed in\nanother, independent Agreement with the owner\nof each element of that Product Identity. You\nagree not to indicate compatibility or co-\nadaptability with any Trademark or Registered\nTrademark in conjunction with a work containing\nOpen Game Content except as expressly licensed\nin another, independent Agreement with the\nowner of such Trademark or Registered\nTrademark. The use of any Product Identity in\nOpen Game Content does not constitute a\nchallenge to the ownership of that Product\nIdentity. The owner of any Product Identity used\nin Open Game Content shall retain all rights, title\nand interest in and to that Product Identity.\n8. Identification: If you distribute Open Game\nContent You must clearly indicate which portions\nof the work that you are distributing are Open\nGame Content.\n9. Updating the License: Wizards or its designated\nAgents may publish updated versions of this\nLicense. You may use any authorized version of\nthis License to copy, modify and distribute any\nOpen Game Content originally distributed under\nany version of this License.\n10 Copy of this License: You MUST include a copy\nof this License with every copy of the Open Game\nContent You Distribute.\n11. Use of Contributor Credits: You may not\nmarket or advertise the Open Game Content\nusing the name of any Contributor unless You\nhave written permission from the Contributor to\ndo so.\n12 Inability to Comply: If it is impossible for You\nto comply with any of the terms of this License\nwith respect to some or all of the Open Game\nContent due to statute, judicial order, or\ngovernmental regulation then You may not Use\nany Open Game Material so affected.\n13 Termination: This License will terminate\nautomatically if You fail to comply with all terms\nherein and fail to cure such breach within 30 days\nof becoming aware of the breach. All sublicenses\nshall survive the termination of this License.\n14 Reformation: If any provision of this License is\nheld to be unenforceable, such provision shall be\nreformed only to the extent necessary to make it\nenforceable.\n15 COPYRIGHT NOTICE\nOpen Game License v 1.0 Copyright 2000,\nWizards of the Coast, Inc.\nSystem Reference Document 5.0 Copyright 2016,\nWizards of the Coast, Inc.; Authors Mike Mearls,\nJeremy Crawford, Chris Perkins, Rodney Thompson,\nPeter Lee, James Wyatt, Robert J. Schwalb, Bruce R.\nCordell, Chris Sims, and Steve Townshend, based on\noriginal material by E. Gary Gygax And Dave\nArneson.\nCompendio dei Mostri 3.02 Copyright 2018, Michele\nBonelli di Salci, Federico Lorenzo Gavrioli\nVERSIONE 2.1\nAggiornato il glossario alla quinta edizione ufficiale\nitaliana.\nVERSIONE 3.0\nAggiornata Appendice A e B\nVERSIONE 3.01\nAggiunta la specifica \"Orca\" alla Balena Assassina\nVERSIONE 3.02\nUlteriori aggiornamenti del glossario alla quinta\nedizione ufficiale."
+  }
+}

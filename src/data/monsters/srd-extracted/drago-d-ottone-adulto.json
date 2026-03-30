@@ -1,0 +1,186 @@
+{
+  "slug": "drago-d-ottone-adulto",
+  "general": {
+    "name": "Drago d'Ottone Adulto",
+    "challengeRating": {
+      "fraction": "13",
+      "decimal": 13,
+      "display": "13",
+      "xp": 10000
+    },
+    "size": "Enorme",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 172,
+      "formula": "15d12 + 75"
+    },
+    "speed": {
+      "walk": "12 m",
+      "burrow": "9 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 23,
+    "dexterity": 10,
+    "constitution": 21,
+    "intelligence": 14,
+    "wisdom": 13,
+    "charisma": 17
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 10
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 6
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 11
+      },
+      {
+        "name": "Persuasione",
+        "bonus": 8
+      },
+      {
+        "name": "Storia",
+        "bonus": 7
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 21"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Resistenza Leggendaria",
+      "usage": "3/Giorno",
+      "description": "Se il drago fallisce un tiro salvezza, può scegliere invece di riuscire."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il drago può usare la sua Presenza Spaventosa. Poi effettuare tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +11 a colpire, portata 1,5 m, un bersaglio. Colpisce: 13 (2d6 + 6) danni taglienti."
+    },
+    {
+      "name": "Coda",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +11 a colpire, portata 4,5 m, un bersaglio. Colpisce: 15 (2d8 + 6) danni contundenti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +11 a colpire, portata 3 m, un bersaglio. Colpisce: 17 (2d10 + 6) danni perforanti."
+    },
+    {
+      "name": "Presenza Spaventosa",
+      "usage": null,
+      "description": "Ogni creatura scelta dal drago, che si trovi entro 36 metri da esso e consapevole della sua presenza, deve riuscire un tiro salvezza di Saggezza CD 16 o restare spaventata per 1 minuto. Una creatura può ripetere il tiro salvezza al termine di ciascun suo turno, terminando l'effetto se lo riesce. Se il tiro salvezza della creatura ha successo o l'effetto ha termine per essa, la creatura è immune alla Presenza Spaventosa del drago per le successive 24 ore."
+    },
+    {
+      "name": "Arma a Soffio",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago usa una delle seguenti armi a soffio:"
+    },
+    {
+      "name": "Soffio Infuocato",
+      "usage": null,
+      "description": "Il drago esala fuoco in una linea lunga 18 metri e larga 1,5 metri. Ogni creatura sulla linea deve effettuare un tiro salvezza di Destrezza CD 18, subendo 45 (13d6) danni da fuoco se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    },
+    {
+      "name": "Soffio Soporifero",
+      "usage": null,
+      "description": "Il drago esala del gas soporifero in un cono di 18 metri. Ogni creatura in quell'area deve riuscire un tiro salvezza di"
+    },
+    {
+      "name": "Costituzione CD 18 o cadere svenuta per 10 minuti",
+      "usage": null,
+      "description": "Questo effetto termina se la creatura svenuta subisce danni o qualcuno impiega un'azione per risvegliarla."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "Il drago può effettuare 3 azioni leggendarie, scelte tra le opzioni seguenti. Può usare solo un'opzione leggendaria alla volta e solo al termine del turno di un'altra creatura. Il drago recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Attacco di Ala",
+        "description": "Il drago batte le ali. Ogni creatura entro 3 metri dal drago deve riuscire un tiro salvezza di Destrezza CD 19 o subire 13 (2d6 + 6) danni contundenti e venir gettato prono. Il drago può poi volare fino a metà della sua velocità di volo.",
+        "cost": 2
+      },
+      {
+        "name": "Attacco di Coda",
+        "description": "Il drago effettua un attacco di coda.",
+        "cost": 1
+      },
+      {
+        "name": "Individuare",
+        "description": "Il drago effettua una prova di Saggezza (Percezione).",
+        "cost": 1
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Drago d'Ottone Adulto\nEnorme drago, caotico buono\nFORZA 23 (+6)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 21 (+5)\nINTELLIGENZA 14 (+2)\nSAGGEZZA 13 (+1)\nCARISMA 17 (+3)\nClasse Armatura 18 (armatura naturale)\nPunti Ferita 172 (15d12 + 75)\nVelocità 12 m, scavo 9 m, volo 24 m\nTiri Salvezza Destrezza +5, Costituzione +10, Saggezza +6,\nCarisma +8\nAbilità Furtività +5, Percezione +11, Persuasione +8, Storia +7\nImmunità al Danno fuoco\nSensi scurovisione 36 m, vista cieca 18 m, Percezione passiva 21\nLinguaggi Comune, Draconico\nSfida 13 (10.000 PE)\nResistenza Leggendaria (3/Giorno). Se il drago fallisce un tiro\nsalvezza, può scegliere invece di riuscire.\nAzioni\nMultiattacco. Il drago può usare la sua Presenza Spaventosa. Poi\neffettuare tre attacchi: uno con il morso e due con gli artigli.\nArtiglio. Attacco con arma da mischia: +11 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 13 (2d6 + 6) danni taglienti.\nCoda. Attacco con arma da mischia: +11 a colpire, portata 4,5\nm, un bersaglio.\nColpisce: 15 (2d8 + 6) danni contundenti.\nMorso. Attacco con arma da mischia: +11 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 17 (2d10 + 6) danni perforanti.\nPresenza Spaventosa. Ogni creatura scelta dal drago, che si trovi\nentro 36 metri da esso e consapevole della sua presenza, deve\nriuscire un tiro salvezza di Saggezza CD 16 o restare spaventata per\n1 minuto. Una creatura può ripetere il tiro salvezza al termine di\nciascun suo turno, terminando l'effetto se lo riesce. Se il tiro salvezza\ndella creatura ha successo o l'effetto ha termine per essa, la creatura è\nimmune alla Presenza Spaventosa del drago per le successive 24 ore.\nArma a Soffio (Ricarica 5-6). Il drago usa una delle seguenti armi\na soffio:\nSoffio Infuocato. Il drago esala fuoco in una linea lunga 18 metri e\nlarga 1,5 metri. Ogni creatura sulla linea deve effettuare un tiro\nsalvezza di Destrezza CD 18, subendo 45 (13d6) danni da fuoco se\nfallisce il tiro salvezza, o la metà di questi danni se lo riesce.\nSoffio Soporifero. Il drago esala del gas soporifero in un cono di 18\nmetri. Ogni creatura in quell'area deve riuscire un tiro salvezza di\nCostituzione CD 18 o cadere svenuta per 10 minuti. Questo effetto\ntermina se la creatura svenuta subisce danni o qualcuno impiega\nun'azione per risvegliarla.\nAzioni Leggendarie\nIl drago può effettuare 3 azioni leggendarie, scelte tra le opzioni\nseguenti. Può usare solo un'opzione leggendaria alla volta e solo\nal termine del turno di un'altra creatura. Il drago recupera le\nazioni leggendarie spese all'inizio del proprio turno.\nAttacco di Ala (Costa 2 Azioni). Il drago batte le ali. Ogni\ncreatura entro 3 metri dal drago deve riuscire un tiro salvezza di\nDestrezza CD 19 o subire 13 (2d6 + 6) danni contundenti e venir\ngettato prono. Il drago può poi volare fino a metà della sua\nvelocità di volo.\nAttacco di Coda. Il drago effettua un attacco di coda.\nIndividuare. Il drago effettua una prova di Saggezza\n(Percezione)."
+  }
+}

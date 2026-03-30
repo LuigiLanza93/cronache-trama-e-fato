@@ -1,0 +1,104 @@
+{
+  "slug": "sciame-di-pipistrelli",
+  "general": {
+    "name": "Sciame di Pipistrelli",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Medio",
+    "creatureType": "sciame di Minuscole bestie",
+    "subtype": "",
+    "typeLabel": "sciame di Minuscole bestie",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 22,
+      "formula": "5d8"
+    },
+    "speed": {
+      "walk": "0 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 5,
+    "dexterity": 15,
+    "constitution": 10,
+    "intelligence": 2,
+    "wisdom": 12,
+    "charisma": 4
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente",
+      "perforante",
+      "tagliente"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "affascinato",
+      "afferrato",
+      "intralciato"
+    ],
+    "senses": [
+      {
+        "name": "vista cieca",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Ecolocazione",
+      "usage": null,
+      "description": "Lo sciame non può usare la vista cieca se assordato."
+    },
+    {
+      "name": "Sciame",
+      "usage": null,
+      "description": "Lo sciame può occupare lo spazio di un'altra creatura e viceversa, e lo sciame può muoversi attraverso qualsiasi apertura grande abbastanza per un Minuscolo pipistrello. Lo sciame non può recuperare punti ferita né ottenere punti ferita temporanei."
+    },
+    {
+      "name": "Udito Affinato",
+      "usage": null,
+      "description": "Lo sciame ha vantaggio alle prove di Saggezza (Percezione) basate sull'udito."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morsi",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 0 m, una creatura nello spazio dello sciame. Colpisce: 5 (2d4) danni perforanti, o 2 (1d4) danni perforanti se lo sciame è ha metà o meno dei suoi punti ferita."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Sciame di Pipistrelli\nMedio sciame di Minuscole bestie, disallineato\nFORZA 5 (-3)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 12 (+1)\nCARISMA 4 (-3)\nClasse Armatura 12\nPunti Ferita 22 (5d8)\nVelocità 0 m, volo 9 m\nResistenze al Danno contundente, perforante, tagliente\nImmunità alle Condizioni affascinato, afferrato, intralciato,\nparalizzato, pietrificato, prono, spaventato, stordito\nSensi vista cieca 18 m, Percezione passiva 11\nLingue -\nSfida 1/4 (50 PE)\nEcolocazione. Lo sciame non può usare la vista cieca se\nassordato.\nSciame. Lo sciame può occupare lo spazio di un'altra creatura e\nviceversa, e lo sciame può muoversi attraverso qualsiasi apertura\ngrande abbastanza per un Minuscolo pipistrello. Lo sciame non\npuò recuperare punti ferita né ottenere punti ferita temporanei.\nUdito Affinato. Lo sciame ha vantaggio alle prove di Saggezza\n(Percezione) basate sull'udito.\nAzioni\nMorsi. Attacco con Arma da Mischia: +4 a colpire, portata 0 m,\nuna creatura nello spazio dello sciame.\nColpisce: 5 (2d4) danni perforanti, o 2 (1d4) danni perforanti se\nlo sciame è ha metà o meno dei suoi punti ferita."
+  }
+}

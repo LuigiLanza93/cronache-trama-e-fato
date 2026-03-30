@@ -1,0 +1,107 @@
+{
+  "slug": "fauci-gorgoglianti",
+  "general": {
+    "name": "Fauci Gorgoglianti",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Media",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 9,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 67,
+      "formula": "9d8 + 27"
+    },
+    "speed": {
+      "walk": "3 m",
+      "swim": "3 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 8,
+    "constitution": 16,
+    "intelligence": 3,
+    "wisdom": 10,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "prono"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Gorgoglio",
+      "usage": null,
+      "description": "Finché la fauce è in grado di vedere una creatura e non è inabile, pronuncia frasi incoerenti. Ogni creatura che inizi il suo turno entro 6 metri dalla fauce e può udire il suo gorgoglio deve effettuare un tiro salvezza di Saggezza CD 10. Se lo fallisce, la creatura non può effettuare reazioni fino all'inizio del suo prossimo turno e tira un d8 per determinare cosa farà durante il proprio turno. Da 1 a 4, la creatura non fa nulla. Con 5 o 6, la creatura non svolge nessun'azione o azione bonus e usa tutto il suo movimento per muoversi in una direzione determinata casualmente. Con 7 o 8, la creatura effettua un attacco da mischia contro una creatura determinata a caso entro la sua portata o non fa nulla se non è in grado di effettuare un simile attacco."
+    },
+    {
+      "name": "Terreno Aberrante",
+      "usage": null,
+      "description": "Il terreno in un raggio di 3 metri intorno alla fauce è considerato terreno difficile. Ogni creatura che inizi il suo turno in quell'area deve riuscire un tiro salvezza di Forza CD 10 o vedere la sua velocità ridotta a 0 fino all'inizio del suo turno successivo."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "La fauce gorgogliante effettua un attacco di morso e, se può, uno Sputo Accecante."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +2 a colpire, portata 1,5 m, una creatura. Colpisce: 17 (5d6) danni perforanti. Se il bersaglio è di taglia Media o inferiore, deve riuscire un tiro salvezza di Forza CD 10 o venir gettato prono. Se il bersaglio viene ucciso da questo danno, viene assorbito dalla fauce."
+    },
+    {
+      "name": "Sputo Accecante",
+      "usage": "Ricarica 5-6",
+      "description": "La fauce sputa un globo chimico ad un punto visibile entro 4,5 metri da essa. Il globo esplode all'impatto in un lampo accecante di luce. Ogni creatura entro 1,5 metri dal lampo deve riuscire un tiro salvezza di Destrezza CD 13 o restare accecata fino al termine del prossimo turno della fauce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Fauci Gorgoglianti\nMedia aberrazione, neutrale\nFORZA 10 (+0)\nDESTREZZA 8 (-1)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 3 (-4)\nSAGGEZZA 10 (+0)\nCARISMA 6 (-2)\nClasse Armatura 9\nPunti Ferita 67 (9d8 + 27)\nVelocità 3 m, nuoto 3 m\nImmunità alle Condizioni prono\nSensi scurovisione 18 m, Percezione passiva 10\nLinguaggi -\nSfida 2 (450 PE)\nGorgoglio. Finché la fauce è in grado di vedere una creatura e\nnon è inabile, pronuncia frasi incoerenti. Ogni creatura che inizi\nil suo turno entro 6 metri dalla fauce e può udire il suo gorgoglio\ndeve effettuare un tiro salvezza di Saggezza CD 10. Se lo\nfallisce, la creatura non può effettuare reazioni fino all'inizio del\nsuo prossimo turno e tira un d8 per determinare cosa farà durante\nil proprio turno. Da 1 a 4, la creatura non fa nulla. Con 5 o 6, la\ncreatura non svolge nessun'azione o azione bonus e usa tutto il\nsuo movimento per muoversi in una direzione determinata\ncasualmente. Con 7 o 8, la creatura effettua un attacco da\nmischia contro una creatura determinata a caso entro la sua\nportata o non fa nulla se non è in grado di effettuare un simile\nattacco.\nTerreno Aberrante. Il terreno in un raggio di 3 metri intorno alla\nfauce è considerato terreno difficile. Ogni creatura che inizi il\nsuo turno in quell'area deve riuscire un tiro salvezza di Forza CD\n10 o vedere la sua velocità ridotta a 0 fino all'inizio del suo turno\nsuccessivo.\nAzioni\nMultiattacco. La fauce gorgogliante effettua un attacco di morso\ne, se può, uno Sputo Accecante.\nMorso. Attacco con arma da mischia: +2 a colpire, portata 1,5\nm, una creatura.\nColpisce: 17 (5d6) danni perforanti. Se il bersaglio è di taglia\nMedia o inferiore, deve riuscire un tiro salvezza di Forza CD 10\no venir gettato prono. Se il bersaglio viene ucciso da questo\ndanno, viene assorbito dalla fauce.\nSputo Accecante (Ricarica 5-6). La fauce sputa un globo\nchimico ad un punto visibile entro 4,5 metri da essa. Il globo\nesplode all'impatto in un lampo accecante di luce. Ogni creatura\nentro 1,5 metri dal lampo deve riuscire un tiro salvezza di\nDestrezza CD 13 o restare accecata fino al termine del prossimo\nturno della fauce."
+  }
+}

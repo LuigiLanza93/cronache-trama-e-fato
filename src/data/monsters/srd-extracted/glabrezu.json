@@ -1,0 +1,133 @@
+{
+  "slug": "glabrezu",
+  "general": {
+    "name": "Glabrezu",
+    "challengeRating": {
+      "fraction": "9",
+      "decimal": 9,
+      "display": "9",
+      "xp": 5000
+    },
+    "size": "Grande",
+    "creatureType": "immondo",
+    "subtype": "demone",
+    "typeLabel": "immondo (demone)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 157,
+      "formula": "15d10 + 75"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 20,
+    "dexterity": 15,
+    "constitution": 21,
+    "intelligence": 19,
+    "wisdom": 17,
+    "charisma": 16
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Forza",
+        "bonus": 9
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 9
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 0
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco; contundente"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "visione del vero",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore del demone è l'Intelligenza (CD dei tiri salvezza degli incantesimi 16). Il demone può lanciare questi incantesimi in maniera innata, senza bisogno di componenti materiali: A volontà: dissolvi magie, individuazione del magico, oscurità 1/giorno ciascuno: confusione, parola del potere stordire, volare"
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il demone ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il demone effettua quattro attacchi: due con le chele e due con i pugni. In alternativa, può effettuare due attacchi con le chele e lanciare un incantesimo."
+    },
+    {
+      "name": "Chela",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +9 a colpire, portata 3 m, un bersaglio. Colpisce: 16 (2d10 + 5) danni contundenti. Se il bersaglio è una creatura di taglia Media o inferiore, è afferrato (CD 15 per fuggire). Il glabrezu possiede due chele, ciascuna delle quali può afferrare un bersaglio."
+    },
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco in mischia con arma: +9 a colpire, portata 1,5 m, un bersaglio. Colpisce: 7 (2d4 + 2) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Glabrezu\nGrande immondo (demone), caotico malvagio\nFORZA 20 (+5)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 21 (+5)\nINTELLIGENZA 19 (+4)\nSAGGEZZA 17 (+3)\nCARISMA 16 (+3)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 157 (15d10 + 75)\nVelocità 12 m\nTiri Salvezza Forza +9, Costituzione +9, Saggezza +7, Carisma\n+7\nResistenze al Danno freddo, fulmine, fuoco; contundente,\nperforante e tagliente di attacchi non magici\nImmunità al Danno veleno\nImmunità alle Condizioni avvelenato\nSensi visione del vero 36 m, Percezione passiva 13\nLinguaggi Abissale, telepatia 36 m\nSfida 9 (5.000 PE)\nIncantesimi Innati. La caratteristica da incantatore del demone è\nl'Intelligenza (CD dei tiri salvezza degli incantesimi 16). Il\ndemone può lanciare questi incantesimi in maniera innata, senza\nbisogno di componenti materiali:\nA volontà: dissolvi magie, individuazione del magico, oscurità\n1/giorno ciascuno: confusione, parola del potere stordire, volare\nResistenza alla Magia. Il demone ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nAzioni\nMultiattacco. Il demone effettua quattro attacchi: due con le\nchele e due con i pugni. In alternativa, può effettuare due attacchi\ncon le chele e lanciare un incantesimo.\nChela. Attacco con arma da mischia: +9 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 16 (2d10 + 5) danni contundenti. Se il bersaglio è una\ncreatura di taglia Media o inferiore, è afferrato (CD 15 per\nfuggire). Il glabrezu possiede due chele, ciascuna delle quali può\nafferrare un bersaglio.\nPugno. Attacco in mischia con arma: +9 a colpire, portata 1,5 m,\nun bersaglio.\nColpisce: 7 (2d4 + 2) danni contundenti."
+  }
+}

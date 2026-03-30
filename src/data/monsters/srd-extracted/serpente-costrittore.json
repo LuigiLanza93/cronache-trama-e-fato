@@ -1,0 +1,85 @@
+{
+  "slug": "serpente-costrittore",
+  "general": {
+    "name": "Serpente Costrittore",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Grande",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 13,
+      "formula": "2d10 + 2"
+    },
+    "speed": {
+      "walk": "9 m",
+      "swim": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 14,
+    "constitution": 12,
+    "intelligence": 1,
+    "wisdom": 10,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 1,5 m, una creatura. Colpisce: 5 (1d6 + 2) danni perforanti."
+    },
+    {
+      "name": "Stritolare",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 1,5 m, una creatura. Colpisce: 6 (1d8 + 2) danni contundenti, e il bersaglio è afferrato (CD 14 per fuggire). Fino al termine dell'afferrare, la creatura è intralciata, e il serpente non può stritolare un altro bersaglio."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Serpente Costrittore\nGrande bestia, disallineato\nFORZA 15 (+2)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 10 (+0)\nCARISMA 3 (-4)\nClasse Armatura 12\nPunti Ferita 13 (2d10 + 2)\nVelocità 9 m, nuoto 9 m\nSensi vista cieca 3 m, Percezione passiva 10\nLingue -\nSfida 1/4 (50 PE)\nAzioni\nMorso. Attacco con Arma da Mischia: +4 a colpire, portata 1,5\nm, una creatura.\nColpisce: 5 (1d6 + 2) danni perforanti.\nStritolare. Attacco con Arma da Mischia: +4 a colpire, portata\n1,5 m, una creatura.\nColpisce: 6 (1d8 + 2) danni contundenti, e il bersaglio è afferrato\n(CD 14 per fuggire). Fino al termine dell'afferrare, la creatura è\nintralciata, e il serpente non può stritolare un altro bersaglio."
+  }
+}

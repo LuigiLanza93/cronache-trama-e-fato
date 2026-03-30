@@ -1,0 +1,116 @@
+{
+  "slug": "elfo-drow",
+  "general": {
+    "name": "Elfo, Drow",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "elfo",
+    "typeLabel": "umanoide (elfo)",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "giaco di maglia"
+    },
+    "hitPoints": {
+      "average": 13,
+      "formula": "3d8"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 14,
+    "constitution": 10,
+    "intelligence": 11,
+    "wisdom": 11,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Elfico"
+      },
+      {
+        "name": "Sottocomune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Discendenza Fatata",
+      "usage": null,
+      "description": "Il drow ha vantaggio ai tiri salvezza contro l'essere affascinato, e la magia non può mettere a dormire i drow."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore innato del drow è il Carisma (CD dei tiri salvezza 11). Il drow può lanciare questi incantesimi in maniera innata, senza bisogno di componenti: A volontà: luci danzanti 1/giorno ciascuno: luminescenza, oscurità"
+    },
+    {
+      "name": "Sensibilità alla Luce",
+      "usage": null,
+      "description": "Mentre è alla luce del sole, il drow ha svantaggio ai tiri per colpire, oltre che alle prove di Saggezza (Percezione) basate sulla vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Spada Corta",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d6 + 2) danni perforanti."
+    },
+    {
+      "name": "Balestrino",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +4 a colpire, gittata 9/36 m, un bersaglio. Colpisce: 5 (1d6 + 2) danni perforanti, e il bersaglio deve riuscire un tiro salvezza di Costituzione CD 13 o restare avvelenato per 1 ora. Se il tiro salvezza fallisce di 5 o più, il bersaglio è anche privo di sensi mentre resta avvelenato in questo modo. Il bersaglio si risveglia se subisce danni o un'altra creatura effettua un'azione per risvegliarlo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Elfo, Drow\nMedia umanoide (elfo), neutrale malvagio\nFORZA 10 (+0)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 11 (+0)\nSAGGEZZA 11 (+0)\nCARISMA 12 (+1)\nClasse Armatura 15 (giaco di maglia)\nPunti Ferita 13 (3d8)\nVelocità 9 m\nAbilità Furtività +4, Percezione +2\nSensi scurovisione 36 m, Percezione passiva 12\nLinguaggi Elfico, Sottocomune\nSfida 1/4 (50 PE)\nDiscendenza Fatata. Il drow ha vantaggio ai tiri salvezza contro\nl'essere affascinato, e la magia non può mettere a dormire i\ndrow.\nIncantesimi Innati. La caratteristica da incantatore innato del\ndrow è il Carisma (CD dei tiri salvezza 11). Il drow può lanciare\nquesti incantesimi in maniera innata, senza bisogno di\ncomponenti:\nA volontà: luci danzanti\n1/giorno ciascuno: luminescenza, oscurità\nSensibilità alla Luce. Mentre è alla luce del sole, il drow ha\nsvantaggio ai tiri per colpire, oltre che alle prove di Saggezza\n(Percezione) basate sulla vista.\nAzioni\nSpada Corta. Attacco con arma da mischia: +4 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 5 (1d6 + 2) danni perforanti.\nBalestrino. Attacco con arma a Distanza: +4 a colpire, gittata\n9/36 m, un bersaglio.\nColpisce: 5 (1d6 + 2) danni perforanti, e il bersaglio deve\nriuscire un tiro salvezza di Costituzione CD 13 o restare\navvelenato per 1 ora. Se il tiro salvezza fallisce di 5 o più, il\nbersaglio è anche privo di sensi mentre resta avvelenato in questo\nmodo. Il bersaglio si risveglia se subisce danni o un'altra\ncreatura effettua un'azione per risvegliarlo."
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "slug": "cultista",
+  "general": {
+    "name": "Cultista",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": "armatura di cuoio"
+    },
+    "hitPoints": {
+      "average": 9,
+      "formula": "2d8"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 12,
+    "constitution": 10,
+    "intelligence": 10,
+    "wisdom": 11,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Raggiro",
+        "bonus": 2
+      },
+      {
+        "name": "Religione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Oscura Devozione",
+      "usage": null,
+      "description": "Il cultista ha vantaggio sui tiri salvezza contro l'essere affascinato o spaventato."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Randello",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +2 a colpire, portata 1,5 m, un bersaglio. Colpisce: 2 (1d4) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Cultista\nI cultisti giurano fedeltà ai poteri oscuri, e nelle loro\ncredenze e pratiche mostrano spesso segni di follia.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento non\nbuono\nFORZA 11 (+0)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 11 (+0)\nCARISMA 10 (+0)\nClasse Armatura 12 (armatura di cuoio)\nPunti Ferita 9 (2d8)\nVelocità 9 m\nAbilità Raggiro +2, Religione +2\nSensi Percezione passiva 10\nLingue una qualsiasi lingua (di solito il Comune)\nSfida 1/8 (25 PE)\nOscura Devozione. Il cultista ha vantaggio sui tiri salvezza\ncontro l'essere affascinato o spaventato.\nAzioni\nScimitarra. Attacco con Arma da Mischia: +3 a colpire, portata\n1,5 m, una creatura.\nColpisce: 4 (1d6 + 1) danni taglienti.\nAccolito\nGli accoliti sono membri di grado minore del clero, e di\nsolito rispondono ad un sacerdote di rango superiore.\nSvolgono diverse funzioni in un tempio e gli viene\nconferita dalla loro divinità l'abilità di eseguire\nincantesimi minori.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 10 (+0)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 14 (+2)\nCARISMA 11 (+0)\nClasse Armatura 10\nPunti Ferita 9 (2d8)\nVelocità 9 m\nAbilità Medicina +4, Religione +2\nSensi Percezione passiva 12\nLingue una qualsiasi lingua (di solito il Comune)\nSfida 1/4 (50 PE)\nIncantesimi. L'accolito è un incantatore di 1° livello. La sua\nabilità da incantatore è la Saggezza (CD dei tiri salvezza degli\nincantesimi 12, +4 al colpire con attacchi con incantesimo).\nL'accolito ha preparato i seguenti incantesimi da chierico:\nTrucchetti (a volontà): fiamma sacra, luce, taumaturgia\n1° livello (3 slot): benedizione, cura ferite, santuario\nAzioni\nRandello. Attacco con Arma da Mischia: +2 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 2 (1d4) danni contundenti."
+  }
+}

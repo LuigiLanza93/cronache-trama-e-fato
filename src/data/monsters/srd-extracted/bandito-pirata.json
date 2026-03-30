@@ -1,0 +1,98 @@
+{
+  "slug": "bandito-pirata",
+  "general": {
+    "name": "Bandito/Pirata",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": "armatura di cuoio"
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 12,
+    "constitution": 12,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 4
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 4
+      },
+      {
+        "name": "Investigazione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "La spia effettua due attacchi da mischia."
+    },
+    {
+      "name": "Spada Corta",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d6 + 2) danni perforanti."
+    },
+    {
+      "name": "Balestrino",
+      "usage": null,
+      "description": "Attacco con Arma a Gittata: +4 a colpire, gittata 9/36 m, un bersaglio. Colpisce: 5 (1d6 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Bandito/Pirata\nChe siano uomini di strada o di mare (pirati) costoro\nguadagnano da vivere depredando il prossimo.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento non\nlegale\nFORZA 11 (+0)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 10 (+0)\nCARISMA 10 (+0)\nClasse Armatura 12 (armatura di cuoio)\nPunti Ferita 11 (2d8 + 2)\nVelocità 9 m\nSensi Percezione passiva 10\nLingue una qualsiasi lingua (di solito il Comune)\nSfida 1/8 (25 PE)\nAzioni\nScimitarra. Attacco con Arma da Mischia: +3 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 4 (1d6 + 1) danni taglienti.\nBalestra Leggera. Attacco con Arma a Gittata: +3 a colpire,\ngittata 24/96 metri, un bersaglio.\nColpisce: 5 (1d8 + 1) danni taglienti.\nSpia\nUna spia è un individuo addestramento nel reperire\nsegreti per conto di qualcuno, o a volte per rivenderli al\nmiglior offerente.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 10 (+0)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 14 (+2)\nCARISMA 16 (+3)\nClasse Armatura 12\nPunti Ferita 27 (6d8)\nVelocità 9 m\nAbilità Furtività +4, Intuizione +4, Investigazione +5,\nPercezione +6, Persuasione +5, Raggiro +5, Rapidità di Mano +4\nSensi Percezione passiva 16\nLingue due lingue qualsiasi\nSfida 1 (200 PE)\nAttacco Furtivo (1/Turno). La spia infligge 7 (2d6) danni aggiuntivi\nquando colpisce un bersaglio con un attacco con arma e ha vantaggio\nal tiro di attacco, o quando il bersaglio è entro 1,5 metri da un alleato\ndell'assassino che non è inabile e l'assassino non ha svantaggio al\ntiro di attacco.\nAzione Astuta. Durante ciascun suo turno, la spia può usare un'azione\nbonus per effettuare l'azione Disimpegnarsi, Nascondersi o Scattare.\nAzioni\nMultiattacco. La spia effettua due attacchi da mischia.\nSpada Corta. Attacco con Arma da Mischia: +4 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 5 (1d6 + 2) danni perforanti.\nBalestrino. Attacco con Arma a Gittata: +4 a colpire, gittata 9/36\nm, un bersaglio. Colpisce: 5 (1d6 + 2) danni perforanti."
+  }
+}

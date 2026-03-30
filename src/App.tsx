@@ -15,6 +15,7 @@ import ChangePassword from "./pages/ChangePassword";
 import UserManagement from "./pages/UserManagement";
 import CharacterAssignments from "./pages/CharacterAssignments";
 import NewCharacter from "./pages/NewCharacter";
+import BestiaryManagement from "./pages/BestiaryManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,14 @@ const App = () => (
                 element={
                   <RequireRole role="dm">
                     <CharacterAssignments />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/dm/bestiary"
+                element={
+                  <RequireRole role="dm">
+                    <BestiaryManagement />
                   </RequireRole>
                 }
               />

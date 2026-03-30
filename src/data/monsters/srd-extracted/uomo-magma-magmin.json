@@ -1,0 +1,99 @@
+{
+  "slug": "uomo-magma-magmin",
+  "general": {
+    "name": "Uomo Magma (Magmin)",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 9,
+      "formula": "2d6 + 2"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 7,
+    "dexterity": 15,
+    "constitution": 12,
+    "intelligence": 8,
+    "wisdom": 11,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente",
+      "perforante e tagliente di"
+    ],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Ignan"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Illuminazione Incendiaria",
+      "usage": null,
+      "description": "Come azione bonus, l'uomo magma può accendere o spegnere le sue fiamme. Mentre la fiamma è accesa, l'uomo magma irradia luce intensa in un raggio di 3 metri e luce fioca per ulteriori 3 metri."
+    },
+    {
+      "name": "Scoppio Mortale",
+      "usage": null,
+      "description": "Quando l'uomo magma muore, esplode in uno scoppio di fuoco e magma. Ogni creatura entro 3 metri da esso deve effettuare un tiro salvezza di Destrezza CD 11, subendo 7 (2d6) danni da fuoco se fallisce il tiro salvezza, o la metà di questi danni se lo riesce. Gli oggetti infiammabili che non siano indossati o trasportati e che si trovino nell'area, prendono fuoco."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Tocco",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 7 (2d6) danni da fuoco. Se il bersaglio è una creatura o un oggetto infiammabile, questi prende fuoco. Fino a che una creatura effettua un'azione per estinguere la fiamma, la creatura subisce 3 (1d6) danni da fuoco al termine di ciascun suo turno."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Uomo Magma\n(Magmin)\nPiccola elementale, caotico neutrale\nFORZA 7 (-2)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 8 (-1)\nSAGGEZZA 11 (+0)\nCARISMA 10 (+0)\nClasse Armatura 14 (armatura naturale)\nPunti Ferita 9 (2d6 + 2)\nVelocità 9 m\nResistenze al Danno contundente, perforante e tagliente di\nattacchi non magici\nImmunità ai Danni fuoco\nSensi scurovisione 18 m, Percezione passiva 10\nLinguaggi Ignan\nSfida 1/2 (100 PE)\nIlluminazione Incendiaria. Come azione bonus, l'uomo magma\npuò accendere o spegnere le sue fiamme. Mentre la fiamma è\naccesa, l'uomo magma irradia luce intensa in un raggio di 3\nmetri e luce fioca per ulteriori 3 metri.\nScoppio Mortale. Quando l'uomo magma muore, esplode in uno\nscoppio di fuoco e magma. Ogni creatura entro 3 metri da esso\ndeve effettuare un tiro salvezza di Destrezza CD 11, subendo 7\n(2d6) danni da fuoco se fallisce il tiro salvezza, o la metà di\nquesti danni se lo riesce. Gli oggetti infiammabili che non siano\nindossati o trasportati e che si trovino nell'area, prendono fuoco.\nAzioni\nTocco. Attacco con arma da mischia: +4 a colpire, portata 1,5 m,\nun bersaglio.\nColpisce: 7 (2d6) danni da fuoco. Se il bersaglio è una creatura o\nun oggetto infiammabile, questi prende fuoco. Fino a che una\ncreatura effettua un'azione per estinguere la fiamma, la creatura\nsubisce 3 (1d6) danni da fuoco al termine di ciascun suo turno."
+  }
+}

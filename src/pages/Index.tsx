@@ -9,6 +9,7 @@ import {
   LogOut,
   PlusCircle,
   Scroll,
+  ScrollText,
   Shield,
   Users,
 } from "lucide-react";
@@ -101,6 +102,12 @@ const Index = () => {
         description: "Associa le schede agli utenti e separa i personaggi giocanti dai personaggi non giocanti.",
         href: "/dm/assignments",
         icon: Link2,
+      },
+      {
+        title: "Gestione bestiario",
+        description: "Filtra i mostri censiti, apri il dettaglio da combattimento e crea nuove varianti.",
+        href: "/dm/bestiary",
+        icon: ScrollText,
       },
     ],
     []

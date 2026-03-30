@@ -1,0 +1,125 @@
+{
+  "slug": "gigante-delle-nuvole",
+  "general": {
+    "name": "Gigante delle Nuvole",
+    "challengeRating": {
+      "fraction": "9",
+      "decimal": 9,
+      "display": "9",
+      "xp": 5000
+    },
+    "size": "Enorme",
+    "creatureType": "gigante",
+    "subtype": "",
+    "typeLabel": "gigante",
+    "alignment": "neutrale buono (50%) o neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 200,
+      "formula": "16d12 + 96"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 27,
+    "dexterity": 10,
+    "constitution": 22,
+    "intelligence": 12,
+    "wisdom": 16,
+    "charisma": 16
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 10
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 7
+      }
+    ],
+    "skills": [
+      {
+        "name": "Intuizione",
+        "bonus": 7
+      },
+      {
+        "name": "Percezione",
+        "bonus": 7
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 17"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Gigante"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore del gigante è il Carisma. Il gigante può lanciare questi incantesimi in maniera innata, senza bisogno di componenti materiali: A volontà: individuazione del magico, luce, nube di nebbia 3/giorno ciascuno: caduta morbida, passo nebbioso, telecinesi 1/giorno ciascuno: controllare tempo atmosferico, forma gassosa"
+    },
+    {
+      "name": "Olfatto Affinato",
+      "usage": null,
+      "description": "Il gigante ha vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il gigante effettua due attacchi con la morning star."
+    },
+    {
+      "name": "Morning star",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +12 a colpire, portata 3 m, un bersaglio. Colpisce: 21 (3d8 + 8) danni perforanti."
+    },
+    {
+      "name": "Sasso",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +12 a colpire, gittata 18/72 m, un bersaglio. Colpisce: 30 (4d10 + 8) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gigante delle Nuvole\nEnorme gigante, neutrale buono (50%) o neutrale malvagio\n(50%)\nFORZA 27 (+8)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 22 (+6)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 16 (+3)\nCARISMA 16 (+3)\nClasse Armatura 14 (armatura naturale)\nPunti Ferita 200 (16d12 + 96)\nVelocità 12 m\nTiri Salvezza Costituzione +10, Saggezza +7, Carisma +7\nAbilità Intuizione +7, Percezione +7\nSensi Percezione passiva 17\nLinguaggi Comune, Gigante\nSfida 9 (5.000 PE)\nIncantesimi Innati. La caratteristica da incantatore del gigante è\nil Carisma. Il gigante può lanciare questi incantesimi in maniera\ninnata, senza bisogno di componenti materiali:\nA volontà: individuazione del magico, luce, nube di nebbia\n3/giorno ciascuno: caduta morbida, passo nebbioso, telecinesi\n1/giorno ciascuno: controllare tempo atmosferico, forma gassosa\nOlfatto Affinato. Il gigante ha vantaggio alle prove di Saggezza\n(Percezione) basate sull'olfatto.\nAzioni\nMultiattacco. Il gigante effettua due attacchi con la morning star.\nMorning star. Attacco con arma da mischia: +12 a colpire,\nportata 3 m, un bersaglio.\nColpisce: 21 (3d8 + 8) danni perforanti.\nSasso. Attacco con arma a Distanza: +12 a colpire, gittata 18/72\nm, un bersaglio.\nColpisce: 30 (4d10 + 8) danni contundenti."
+  }
+}

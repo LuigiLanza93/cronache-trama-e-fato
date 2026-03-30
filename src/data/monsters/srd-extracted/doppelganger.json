@@ -1,0 +1,130 @@
+{
+  "slug": "doppelganger",
+  "general": {
+    "name": "Doppelganger",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Media",
+    "creatureType": "mostruosità",
+    "subtype": "mutaforma",
+    "typeLabel": "mostruosità (mutaforma)",
+    "alignment": "neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 52,
+      "formula": "8d8 + 16"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 18,
+    "constitution": 14,
+    "intelligence": 11,
+    "wisdom": 12,
+    "charisma": 14
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Inganno",
+        "bonus": 6
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "affascinato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "Il doppelganger può usare la sua azione per cambiare la propria forma in quella di un umanoide Piccolo o"
+    },
+    {
+      "name": "Medio che abbia visto, o per tornare alla sua vera forma",
+      "usage": null,
+      "description": "Le sue statistiche, a parte la taglia, sono le stesse in tutte le forme. Qualsiasi equipaggiamento stia indossando o trasportando non viene trasformato. Alla morte ritorna alla sua vera forma."
+    },
+    {
+      "name": "Appostato",
+      "usage": null,
+      "description": "Nel primo round di combattimento, il doppelganger ha vantaggio ai tiri di attacco contro qualsiasi creatura abbia preso di sorpresa."
+    },
+    {
+      "name": "Attacco di Sorpresa",
+      "usage": null,
+      "description": "Se il doppelganger sorprende una creatura e la colpisce con un attacco durante il primo round di combattimento, il bersaglio subisce 10 (3d6) danni aggiuntivi dall'attacco."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il doppelganger effettua due attacchi da mischia."
+    },
+    {
+      "name": "Schianto",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 7 (1d6 + 4) danni contundenti."
+    },
+    {
+      "name": "Leggere Pensieri",
+      "usage": null,
+      "description": "Il doppelganger legge magicamente i pensieri di superficie di una creatura entro 18 metri da lui. L'effetto può penetrare le barriere, ma 1 metro di legno o terra, 50 centimetri di pietra, 5 centimetri di metallo, o un sottile foglio di piombo lo blocca. Mentre il bersaglio è a gittata, il doppelganger può continuare a leggerne i pensieri, purché la concentrazione del doppelganger non venga infranta (come la concentrazione di un incantesimo). Mentre legge la mente di un bersaglio, il doppelganger ha vantaggio alle prove di Saggezza (Intuizione) e"
+    },
+    {
+      "name": "Carisma (Inganno, Intimidire e Persuasione) contro il bersaglio",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Doppelganger\nMedia mostruosità (mutaforma), neutrale\nFORZA 11 (+0)\nDESTREZZA 18 (+4)\nCOSTITUZIONE 14 (+2)\nINTELLIGENZA 11 (+0)\nSAGGEZZA 12 (+1)\nCARISMA 14 (+2)\nClasse Armatura 14\nPunti Ferita 52 (8d8 + 16)\nVelocità 9 m\nAbilità Inganno +6, Intuizione +3\nImmunità alle Condizioni affascinato\nSensi scurovisione 18 m, Percezione passiva 11\nLinguaggi Comune\nSfida 3 (700 PE)\nMutaforma. Il doppelganger può usare la sua azione per\ncambiare la propria forma in quella di un umanoide Piccolo o\nMedio che abbia visto, o per tornare alla sua vera forma. Le sue\nstatistiche, a parte la taglia, sono le stesse in tutte le forme.\nQualsiasi equipaggiamento stia indossando o trasportando non\nviene trasformato. Alla morte ritorna alla sua vera forma.\nAppostato. Nel primo round di combattimento, il doppelganger\nha vantaggio ai tiri di attacco contro qualsiasi creatura abbia\npreso di sorpresa.\nAttacco di Sorpresa. Se il doppelganger sorprende una creatura e\nla colpisce con un attacco durante il primo round di\ncombattimento, il bersaglio subisce 10 (3d6) danni aggiuntivi\ndall'attacco.\nAzioni\nMultiattacco. Il doppelganger effettua due attacchi da mischia.\nSchianto. Attacco con arma da mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 7 (1d6 + 4) danni contundenti.\nLeggere Pensieri. Il doppelganger legge magicamente i pensieri\ndi superficie di una creatura entro 18 metri da lui. L'effetto può\npenetrare le barriere, ma 1 metro di legno o terra, 50 centimetri\ndi pietra, 5 centimetri di metallo, o un sottile foglio di piombo lo\nblocca. Mentre il bersaglio è a gittata, il doppelganger può\ncontinuare a leggerne i pensieri, purché la concentrazione del\ndoppelganger non venga infranta (come la concentrazione di un\nincantesimo). Mentre legge la mente di un bersaglio, il\ndoppelganger ha vantaggio alle prove di Saggezza (Intuizione) e\nCarisma (Inganno, Intimidire e Persuasione) contro il bersaglio."
+  }
+}

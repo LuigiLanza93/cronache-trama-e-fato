@@ -1,0 +1,91 @@
+{
+  "slug": "ogre",
+  "general": {
+    "name": "Ogre",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "gigante",
+    "subtype": "",
+    "typeLabel": "gigante",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": "armatura di pelle"
+    },
+    "hitPoints": {
+      "average": 59,
+      "formula": "7d10 + 21"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 8,
+    "constitution": 16,
+    "intelligence": 5,
+    "wisdom": 7,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 8"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Gigante"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Randello Pesante",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 13 (2d8 + 4) danni contundenti."
+    },
+    {
+      "name": "Giavellotto",
+      "usage": null,
+      "description": "Attacco con arma da mischia o a Distanza: +6 a colpire, portata 1,5 m o gittata 9/36 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Ogre\nGrande gigante, caotico malvagio\nFORZA 19 (+4)\nDESTREZZA 8 (-1)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 5 (-3)\nSAGGEZZA 7 (-2)\nCARISMA 7 (-2)\nClasse Armatura 11 (armatura di pelle)\nPunti Ferita 59 (7d10 + 21)\nVelocità 12 m\nSensi scurovisione 18 m, Percezione passiva 8\nLinguaggi Comune, Gigante\nSfida 2 (450 PE)\nAzioni\nRandello Pesante. Attacco con arma da mischia: +6 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 13 (2d8 + 4) danni contundenti.\nGiavellotto. Attacco con arma da mischia o a Distanza: +6 a\ncolpire, portata 1,5 m o gittata 9/36 m, un bersaglio.\nColpisce: 11 (2d6 + 4) danni perforanti."
+  }
+}

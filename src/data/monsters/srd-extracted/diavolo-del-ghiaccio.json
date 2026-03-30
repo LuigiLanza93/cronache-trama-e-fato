@@ -1,0 +1,149 @@
+{
+  "slug": "diavolo-del-ghiaccio",
+  "general": {
+    "name": "Diavolo del Ghiaccio",
+    "challengeRating": {
+      "fraction": "14",
+      "decimal": 14,
+      "display": "14",
+      "xp": 11500
+    },
+    "size": "Grande",
+    "creatureType": "immondo",
+    "subtype": "diavolo",
+    "typeLabel": "immondo (diavolo)",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 180,
+      "formula": "19d10 + 76"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 21,
+    "dexterity": 14,
+    "constitution": 18,
+    "intelligence": 18,
+    "wisdom": 15,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 9
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente",
+      "perforante e tagliente di"
+    ],
+    "damageImmunities": [
+      "freddo",
+      "fuoco",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "vista cieca",
+        "value": "18 m"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Infernale"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il diavolo ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Vista del Diavolo",
+      "usage": null,
+      "description": "La scurovisione del diavolo non è limitata dall'oscurità magica."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il diavolo effettua tre attacchi: uno con il morso, uno con gli artigli e uno con la coda. In alternativa effettua due attacchi: uno con la coda e uno con lancia."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 1,5 m, un bersaglio. Colpisce: 10 (2d4 + 5) danni taglienti più 10 (3d6) danni da freddo."
+    },
+    {
+      "name": "Coda",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 3 m, un bersaglio. Colpisce: 12 (2d6 + 5) danni contundenti più 10 (3d6) danni da freddo."
+    },
+    {
+      "name": "Lancia di Ghiaccio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 3 m, un bersaglio. Colpisce: 14 (2d8 + 5) danni perforanti più 10 (3d6) danni da freddo. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di Costituzione CD 15, o avere per 1 minuto la velocità ridotta di 3 metri; durante ciascun suo turno può effettuare solo un'azione o un'azione bonus, ma non entrambe; non può effettuare reazioni. Il bersaglio può ripetere il tiro salvezza al termine di ciascun suo turno, terminando l'effetto su di sé in caso di successo."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 1,5 m, un bersaglio. Colpisce: 12 (2d6 + 5) danni perforanti più 10 (3d6) danni da freddo."
+    },
+    {
+      "name": "Muro di Ghiaccio",
+      "usage": "Ricarica 6",
+      "description": "Il diavolo forma magicamente un muro di ghiaccio opaco su di una superficie solida che possa vedere entro 18 metri da lui. Il muro è spesso 30 centimetri e largo fino a 9 metri per un massimo di 3 metri di altezza, oppure è una cupola semisferica di massimo 6 metri di diametro. Quando la parete appare, ogni creatura nel suo spazio viene spinta fuori da esso tramite la via più breve. La creatura sceglie su quale lato del muro finire, a meno che la creatura non sia inabile. La creatura poi effettua un tiro salvezza di Destrezza CD 17, subendo 35 (10d6) danni da freddo se lo fallisce, o la metà di questi danni se lo riesce. Il muro rimane per 1 minuto o finché il diavolo non è reso inabile o muore. Il muro può essere danneggiato e bucato; ogni sezione di 3 metri ha CA 5, 30 punti ferita, vulnerabilità al danno da fuoco, e immunità al danno da acido, freddo, necrotico, psichico e da veleno. Se una sezione viene distrutta, lascia una patina di aria gelida nello spazio che occupava prima il muro. Ogni volta che una creatura finisce per muoversi attraverso quest'aria gelida durante un turno, consenziente o meno, deve effettuare un tiro salvezza di Costituzione CD 17, subendo 17 (5d6) danni da freddo se lo fallisce, o la metà di questi danni se lo riesce. L'aria gelida si dissipa quando il resto del muro svanisce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Diavolo del Ghiaccio\nGrande immondo (diavolo), legale malvagio\nFORZA 21 (+5)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 18 (+4)\nINTELLIGENZA 18 (+4)\nSAGGEZZA 15 (+2)\nCARISMA 18 (+4)\nClasse Armatura 18 (armatura naturale)\nPunti Ferita 180 (19d10 + 76)\nVelocità 12 m\nTiri Salvezza Destrezza +7, Costituzione +9, Saggezza +7,\nCarisma +9\nResistenze al Danno contundente, perforante e tagliente di\nattacchi non magici che non siano argentate\nImmunità al Danno freddo, fuoco, veleno\nImmunità alle Condizioni avvelenato\nSensi vista cieca 18 m, scurovisione 36 m, Percezione passiva 12\nLinguaggi Infernale, telepatia 36 m\nSfida 14 (11.500 PE)\nResistenza alla Magia. Il diavolo ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nVista del Diavolo. La scurovisione del diavolo non è limitata\ndall'oscurità magica.\nAzioni\nMultiattacco. Il diavolo effettua tre attacchi: uno con il morso,\nuno con gli artigli e uno con la coda. In alternativa effettua due\nattacchi: uno con la coda e uno con lancia.\nArtigli. Attacco con arma da mischia: +10 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 10 (2d4 + 5) danni taglienti più 10 (3d6) danni da\nfreddo.\nCoda. Attacco con arma da mischia: +10 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 12 (2d6 + 5) danni contundenti più 10 (3d6) danni da\nfreddo.\nLancia di Ghiaccio. Attacco con arma da mischia: +10 a colpire,\nportata 3 m, un bersaglio.\nColpisce: 14 (2d8 + 5) danni perforanti più 10 (3d6) danni da\nfreddo. Se il bersaglio è una creatura, deve riuscire un tiro\nsalvezza di Costituzione CD 15, o avere per 1 minuto la velocità\nridotta di 3 metri; durante ciascun suo turno può effettuare solo\nun'azione o un'azione bonus, ma non entrambe; non può\neffettuare reazioni. Il bersaglio può ripetere il tiro salvezza al\ntermine di ciascun suo turno, terminando l'effetto su di sé in caso\ndi successo.\nMorso. Attacco con arma da mischia: +10 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 12 (2d6 + 5) danni perforanti più 10 (3d6) danni da\nfreddo.\n\n-- 23 of 151 --\n\nSRD Italia 5a Edizione - Compendio dei Mostri\nMuro di Ghiaccio (Ricarica 6). Il diavolo forma magicamente\nun muro di ghiaccio opaco su di una superficie solida che possa\nvedere entro 18 metri da lui. Il muro è spesso 30 centimetri e\nlargo fino a 9 metri per un massimo di 3 metri di altezza, oppure\nè una cupola semisferica di massimo 6 metri di diametro.\nQuando la parete appare, ogni creatura nel suo spazio viene\nspinta fuori da esso tramite la via più breve. La creatura sceglie\nsu quale lato del muro finire, a meno che la creatura non sia\ninabile. La creatura poi effettua un tiro salvezza di Destrezza CD\n17, subendo 35 (10d6) danni da freddo se lo fallisce, o la metà di\nquesti danni se lo riesce.\nIl muro rimane per 1 minuto o finché il diavolo non è reso\ninabile o muore. Il muro può essere danneggiato e bucato; ogni\nsezione di 3 metri ha CA 5, 30 punti ferita, vulnerabilità al danno\nda fuoco, e immunità al danno da acido, freddo, necrotico,\npsichico e da veleno. Se una sezione viene distrutta, lascia una\npatina di aria gelida nello spazio che occupava prima il muro.\nOgni volta che una creatura finisce per muoversi attraverso\nquest'aria gelida durante un turno, consenziente o meno, deve\neffettuare un tiro salvezza di Costituzione CD 17, subendo 17\n(5d6) danni da freddo se lo fallisce, o la metà di questi danni se\nlo riesce. L'aria gelida si dissipa quando il resto del muro\nsvanisce."
+  }
+}

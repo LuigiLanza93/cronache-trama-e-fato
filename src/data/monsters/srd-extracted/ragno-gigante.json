@@ -1,0 +1,105 @@
+{
+  "slug": "ragno-gigante",
+  "general": {
+    "name": "Ragno Gigante",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Grande",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 26,
+      "formula": "4d10 + 4"
+    },
+    "speed": {
+      "walk": "9 m",
+      "climb": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 14,
+    "dexterity": 16,
+    "constitution": 12,
+    "intelligence": 2,
+    "wisdom": 11,
+    "charisma": 4
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 7
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "visione al buio",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Camminare sulla Tela",
+      "usage": null,
+      "description": "Il ragno ignora le restrizioni al movimento provocate dalle ragnatele."
+    },
+    {
+      "name": "Scalare come Ragno",
+      "usage": null,
+      "description": "Il ragno può scalare superfici difficili, compreso lo stare a testa in giù sul soffitto, senza bisogno di effettuare una prova di abilità."
+    },
+    {
+      "name": "Senso della Tela",
+      "usage": null,
+      "description": "Mentre è in contatto con una ragnatela, il ragno sa l'esatta posizione di qualsiasi altra creatura in contatto con la stessa ragnatela."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 a colpire, portata 1,5 m, una creatura. Colpisce: 4 (1d6 + 1) danni perforanti e il bersaglio deve effettuare un tiro salvezza di Costituzione CD 11, e subire 7 (2d6) danni da veleno se fallisce il tiro salvezza, o la metà di questi danni se lo riesce. Se il danno da veleno riduce il bersaglio a 0 punti ferita, il bersaglio è stabile ma avvelenato per 1 ora, anche dopo aver recuperato i punti ferita, e mentre è avvelenato in questo modo resta paralizzato."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Ragno Gigante\nGrande bestia, disallineato\nFORZA 14 (+2)\nDESTREZZA 16 (+3)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 11 (+0)\nCARISMA 4 (-3)\nClasse Armatura 14 (armatura naturale)\nPunti Ferita 26 (4d10 + 4)\nVelocità 9 m, scalata 9 m\nAbilità Furtività +7\nSensi vista cieca 3 m, visione al buio 18 m, Percezione passiva\n10\nLingue -\nSfida 1 (200 PE)\nCamminare sulla Tela. Il ragno ignora le restrizioni al\nmovimento provocate dalle ragnatele.\nScalare come Ragno. Il ragno può scalare superfici difficili,\ncompreso lo stare a testa in giù sul soffitto, senza bisogno di\neffettuare una prova di abilità.\nSenso della Tela. Mentre è in contatto con una ragnatela, il\nragno sa l'esatta posizione di qualsiasi altra creatura in contatto\ncon la stessa ragnatela.\nAzioni\nMorso. Attacco con Arma da Mischia: +5 a colpire, portata 1,5\nm, una creatura.\nColpisce: 7 (1d8 + 3) danni perforanti e il bersaglio deve\neffettuare un tiro salvezza di Costituzione CD 11, e subire 9\n(2d8) danni da veleno se fallisce il tiro salvezza, o la metà di\nquesti danni se lo riesce. Se il danno da veleno riduce il bersaglio\na 0 punti ferita, il bersaglio è stabile ma avvelenato per 1 ora,\nanche dopo aver recuperato i punti ferita, e mentre è avvelenato\nin questo modo resta paralizzato.\nRagnatela (Ricarica 5-6). Attacco con Arma a Gittata: +5 a\ncolpire, gittata 9/18 m, una creatura.\nColpisce: Il bersaglio è intralciato dalla ragnatela. Con\nun'azione, il bersaglio intralciato può effettuare una prova di\nForza CD 12 e, in caso di successo, spezzare la tela. La ragnatela\npuò essere anche attaccata e distrutta (CA 10; pf 5; vulnerabilità\nal danno da fuoco; immunità ai danni contundenti, psichici e da\nveleno).\n\n-- 128 of 151 --\n\nRagno Lupo Gigante\nUn ragno lupo gigante caccia le prede su terreno aperto\no si nasconde in tane o fessure del terreno per tendere\nimboscate.\nMedia bestia, disallineato\nFORZA 12 (+1)\nDESTREZZA 16 (+3)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 3 (-4)\nSAGGEZZA 12 (+1)\nCARISMA 4 (-3)\nClasse Armatura 13\nPunti Ferita 11 (2d8 + 2)\nVelocità 12 m, scalata 12 m\nAbilità Furtività +7, Percezione +3\nSensi vista cieca 3 m, visione al buio 18 m, Percezione passiva\n13\nLingue -\nSfida 1/4 (50 PE)\nCamminare sulla Tela. Il ragno ignora le restrizioni al\nmovimento provocate dalle ragnatele.\nScalare come Ragno. Il ragno può scalare superfici difficili,\ncompreso lo stare a testa in giù sul soffitto, senza bisogno di\neffettuare una prova di abilità.\nSenso della Tela. Mentre è in contatto con una ragnatela, il\nragno sa l'esatta posizione di qualsiasi altra creatura in contatto\ncon la stessa ragnatela.\nAzioni\nMorso. Attacco con Arma da Mischia: +3 a colpire, portata 1,5\nm, una creatura.\nColpisce: 4 (1d6 + 1) danni perforanti e il bersaglio deve\neffettuare un tiro salvezza di Costituzione CD 11, e subire 7\n(2d6) danni da veleno se fallisce il tiro salvezza, o la metà di\nquesti danni se lo riesce. Se il danno da veleno riduce il bersaglio\na 0 punti ferita, il bersaglio è stabile ma avvelenato per 1 ora,\nanche dopo aver recuperato i punti ferita, e mentre è avvelenato\nin questo modo resta paralizzato."
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "slug": "gigante-delle-tempeste",
+  "general": {
+    "name": "Gigante delle Tempeste",
+    "challengeRating": {
+      "fraction": "13",
+      "decimal": 13,
+      "display": "13",
+      "xp": 10000
+    },
+    "size": "Enorme",
+    "creatureType": "gigante",
+    "subtype": "",
+    "typeLabel": "gigante",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura di scaglie"
+    },
+    "hitPoints": {
+      "average": 230,
+      "formula": "20d12 + 100"
+    },
+    "speed": {
+      "walk": "15 m",
+      "swim": "15 m"
+    }
+  },
+  "abilities": {
+    "strength": 29,
+    "dexterity": 14,
+    "constitution": 20,
+    "intelligence": 16,
+    "wisdom": 18,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Forza",
+        "bonus": 14
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 10
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 9
+      }
+    ],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 8
+      },
+      {
+        "name": "Atletica",
+        "bonus": 14
+      },
+      {
+        "name": "Percezione",
+        "bonus": 9
+      },
+      {
+        "name": "Storia",
+        "bonus": 8
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo"
+    ],
+    "damageImmunities": [
+      "fulmine",
+      "tuono"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 19"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Gigante"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il gigante può respirare aria e acqua."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore del gigante è il Carisma (CD dei tiri salvezza degli incantesimi 17). Il gigante può lanciare questi incantesimi in maniera innata, senza bisogno di componenti materiali: A volontà: caduta controllata, individuazione del magico, levitazione, luce 3/giorno ciascuno: controllare tempo atmosferico, respirare sott'acqua"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il gigante effettua due attacchi con lo spadone."
+    },
+    {
+      "name": "Spadone",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +14 a colpire, portata 3 m, un bersaglio. Colpisce: 30 (6d6 + 9) danni taglienti."
+    },
+    {
+      "name": "Sasso",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +14 a colpire, gittata 18/72 m, un bersaglio. Colpisce: 35 (4d12 + 9) danni contundenti."
+    },
+    {
+      "name": "Colpo Fulminante",
+      "usage": "Ricarica 5-6",
+      "description": "Il gigante scaglia una folgore magica ad un punto visibile entro 150 metri da sé. Ogni creatura entro 3 metri da quel punto deve effettuare un tiro salvezza di Destrezza CD 17, subendo 54 (12d8) danni da fulmine se lo fallisce, o la metà se lo supera."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gigante delle Tempeste\nEnorme gigante, caotico buono\nFORZA 29 (+9)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 20 (+5)\nINTELLIGENZA 16 (+3)\nSAGGEZZA 18 (+4)\nCARISMA 18 (+4)\nClasse Armatura 16 (armatura di scaglie)\nPunti Ferita 230 (20d12 + 100)\nVelocità 15 m, nuoto 15 m\nTiri Salvezza Forza +14, Costituzione +10, Saggezza +9,\nCarisma +9\nAbilità Arcano +8, Atletica +14, Percezione +9, Storia +8\nResistenze al Danno freddo\nImmunità al Danno fulmine, tuono\nSensi Percezione passiva 19\nLinguaggi Comune, Gigante\nSfida 13 (10.000 PE)\nAnfibio. Il gigante può respirare aria e acqua.\nIncantesimi Innati. La caratteristica da incantatore del gigante è\nil Carisma (CD dei tiri salvezza degli incantesimi 17). Il gigante\npuò lanciare questi incantesimi in maniera innata, senza bisogno\ndi componenti materiali:\nA volontà: caduta controllata, individuazione del magico,\nlevitazione, luce\n3/giorno ciascuno: controllare tempo atmosferico, respirare\nsott'acqua\nAzioni\nMultiattacco. Il gigante effettua due attacchi con lo spadone.\nSpadone. Attacco con arma da mischia: +14 a colpire, portata 3\nm, un bersaglio.\nColpisce: 30 (6d6 + 9) danni taglienti.\nSasso. Attacco con arma a Distanza: +14 a colpire, gittata 18/72\nm, un bersaglio.\nColpisce: 35 (4d12 + 9) danni contundenti.\nColpo Fulminante (Ricarica 5-6). Il gigante scaglia una folgore\nmagica ad un punto visibile entro 150 metri da sé. Ogni creatura\nentro 3 metri da quel punto deve effettuare un tiro salvezza di\nDestrezza CD 17, subendo 54 (12d8) danni da fulmine se lo\nfallisce, o la metà se lo supera."
+  }
+}

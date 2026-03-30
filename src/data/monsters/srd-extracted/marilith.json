@@ -1,0 +1,144 @@
+{
+  "slug": "marilith",
+  "general": {
+    "name": "Marilith",
+    "challengeRating": {
+      "fraction": "16",
+      "decimal": 16,
+      "display": "16",
+      "xp": 15000
+    },
+    "size": "Grande",
+    "creatureType": "immondo",
+    "subtype": "demone",
+    "typeLabel": "immondo (demone)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 189,
+      "formula": "18d10 + 90"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 20,
+    "constitution": 20,
+    "intelligence": 18,
+    "wisdom": 16,
+    "charisma": 20
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Forza",
+        "bonus": 9
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 10
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 8
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 0
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco; contundente"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "visione del vero",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con armi del demone sono magici."
+    },
+    {
+      "name": "Reattivo",
+      "usage": null,
+      "description": "Il demone può effettuare una reazione durante ciascun turno di combattimento."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il demone ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il demone effettua sette attacchi: sei con le spade lunghe e uno con la coda."
+    },
+    {
+      "name": "Coda",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +9 a colpire, portata 3 m, una creatura. Colpisce: 15 (2d10 + 4) danni contundenti. Se il bersaglio è di taglia Media o inferiore, è afferrato (CD 19 per fuggire). Fino al termine dell'afferrare, il bersaglio è intralciato, e il demone può colpire automaticamente il bersaglio con la coda, ma non può effettuare attacchi di coda contro altri bersagli."
+    },
+    {
+      "name": "Spada Lunga",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +9 a colpire, portata 1,5 m, un bersaglio. Colpisce: 13 (2d8 + 4) danni taglienti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [
+    {
+      "name": "Parata",
+      "usage": null,
+      "description": "Il demone somma 5 alla sua CA contro un attacco da mischia che lo colpirebbe. Per farlo, il demone deve poter vedere il suo attaccante e impugnare un'arma da mischia."
+    }
+  ],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Marilith\nGrande immondo (demone), caotico malvagio\nFORZA 18 (+4)\nDESTREZZA 20 (+5)\nCOSTITUZIONE 20 (+5)\nINTELLIGENZA 18 (+4)\nSAGGEZZA 16 (+3)\nCARISMA 20 (+5)\nClasse Armatura 18 (armatura naturale)\nPunti Ferita 189 (18d10 + 90)\nVelocità 12 m\nTiri Salvezza Forza +9, Costituzione +10, Saggezza +8, Carisma\n+10\nResistenze al Danno freddo, fulmine, fuoco; contundente,\nperforante e tagliente di attacchi non magici\nImmunità al Danno veleno\nImmunità alle Condizioni avvelenato\nSensi visione del vero 36 m, Percezione passiva 13\nLinguaggi Abissale, telepatia 36 m\nSfida 16 (15.000 PE)\nArmi Magiche. Gli attacchi con armi del demone sono magici.\nReattivo. Il demone può effettuare una reazione durante ciascun\nturno di combattimento.\nResistenza alla Magia. Il demone ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nAzioni\nMultiattacco. Il demone effettua sette attacchi: sei con le spade\nlunghe e uno con la coda.\nCoda. Attacco con arma da mischia: +9 a colpire, portata 3 m,\nuna creatura.\nColpisce: 15 (2d10 + 4) danni contundenti. Se il bersaglio è di\ntaglia Media o inferiore, è afferrato (CD 19 per fuggire). Fino al\ntermine dell'afferrare, il bersaglio è intralciato, e il demone può\ncolpire automaticamente il bersaglio con la coda, ma non può\neffettuare attacchi di coda contro altri bersagli.\nSpada Lunga. Attacco con arma da mischia: +9 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 13 (2d8 + 4) danni taglienti.\nReazioni\nParata. Il demone somma 5 alla sua CA contro un attacco da\nmischia che lo colpirebbe. Per farlo, il demone deve poter vedere\nil suo attaccante e impugnare un'arma da mischia."
+  }
+}

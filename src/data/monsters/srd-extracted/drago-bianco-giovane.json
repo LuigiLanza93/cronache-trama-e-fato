@@ -1,0 +1,138 @@
+{
+  "slug": "drago-bianco-giovane",
+  "general": {
+    "name": "Drago Bianco Giovane",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "Grande",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 133,
+      "formula": "14d10 + 56"
+    },
+    "speed": {
+      "walk": "12 m",
+      "swim": "12 m",
+      "burrow": "6 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 10,
+    "constitution": 18,
+    "intelligence": 6,
+    "wisdom": 11,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 3
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 7
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 3
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "freddo"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m"
+      },
+      {
+        "name": "Percezione passiva 16"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Camminare sul Ghiaccio",
+      "usage": null,
+      "description": "Il drago può muoversi e arrampicarsi su superfici ghiacciate senza bisogno di effettuare prove di caratteristica. Inoltre, il terreno difficile composto di ghiaccio o neve non gli costa movimento aggiuntivo."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il drago può usare la sua Presenza Spaventosa. Poi effettuare tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 3 m, un bersaglio. Colpisce: 15 (2d10 + 4) danni perforanti più 4 (1d8) danni da freddo."
+    },
+    {
+      "name": "Soffio Gelido",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago esala un'esplosione di ghiaccio in un cono di 9 metri. Ogni creatura in quell'area deve effettuare un tiro salvezza di Costituzione CD 15 e subire 45 (10d8) danni da freddo se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Drago Bianco Giovane\nGrande drago, caotico malvagio\nFORZA 18 (+4)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 18 (+4)\nINTELLIGENZA 6 (-2)\nSAGGEZZA 11 (+0)\nCARISMA 12 (+1)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 133 (14d10 + 56)\nVelocità 12 m, nuoto 12 m, scavo 6 m, volo 24 m\nTiri Salvezza Destrezza +3, Costituzione +7, Saggezza +3,\nCarisma +4\nAbilità Furtività +3, Percezione +6\nImmunità al Danno freddo\nSensi scurovisione 36 m, vista cieca 9 m, Percezione passiva 16\nLinguaggi Comune, Draconico\nSfida 6 (2.300 PE)\nCamminare sul Ghiaccio. Il drago può muoversi e arrampicarsi su\nsuperfici ghiacciate senza bisogno di effettuare prove di\ncaratteristica. Inoltre, il terreno difficile composto di ghiaccio o neve\nnon gli costa movimento aggiuntivo.\nAzioni\nMultiattacco. Il drago può usare la sua Presenza Spaventosa. Poi\neffettuare tre attacchi: uno con il morso e due con gli artigli.\nArtiglio. Attacco con arma da mischia: +7 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni taglienti.\nMorso. Attacco con arma da mischia: +7 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 15 (2d10 + 4) danni perforanti più 4 (1d8) danni da freddo.\nSoffio Gelido (Ricarica 5-6). Il drago esala un'esplosione di ghiaccio\nin un cono di 9 metri. Ogni creatura in quell'area deve effettuare un tiro\nsalvezza di Costituzione CD 15 e subire 45 (10d8) danni da freddo se\nfallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+  }
+}

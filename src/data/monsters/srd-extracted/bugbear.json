@@ -1,0 +1,111 @@
+{
+  "slug": "bugbear",
+  "general": {
+    "name": "Bugbear",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "goblinoide",
+    "typeLabel": "umanoide (goblinoide)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura di pelle, scudo"
+    },
+    "hitPoints": {
+      "average": 27,
+      "formula": "5d8 + 5"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 14,
+    "constitution": 13,
+    "intelligence": 8,
+    "wisdom": 11,
+    "charisma": 9
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 6
+      },
+      {
+        "name": "Sopravvivenza",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Goblin"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Attacco di Sorpresa",
+      "usage": null,
+      "description": "Se il bugbear sorprende una creatura e la colpisce con un attacco durante il primo round di combattimento, il bersaglio subisce 7 (2d6) danni aggiuntivi dall'attacco."
+    },
+    {
+      "name": "Bruto",
+      "usage": null,
+      "description": "Un'arma da mischia infligge un dado aggiuntivo di danno quando il bugbear colpisce con essa (già incluso nell'attacco)."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Mazza Chiodata",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d8 + 2) danni perforanti."
+    },
+    {
+      "name": "Giavellotto",
+      "usage": null,
+      "description": "Attacco con arma da mischia o a Distanza: +4 a colpire, portata 1,5 m o gittata 9/36 m, un bersaglio. Colpisce: 9 (2d6 + 2) danni perforanti in mischia o 5 (1d6 + 2) danni perforanti a gittata."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Bugbear\nMedia umanoide (goblinoide), caotico malvagio\nFORZA 15 (+2)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 8 (-1)\nSAGGEZZA 11 (+0)\nCARISMA 9 (-1)\nClasse Armatura 16 (armatura di pelle, scudo)\nPunti Ferita 27 (5d8 + 5)\nVelocità 9 m\nAbilità Furtività +6, Sopravvivenza +2\nSensi scurovisione 18 m, Percezione passiva 10\nLinguaggi Comune, Goblin\nSfida 1 (200 PE)\nAttacco di Sorpresa. Se il bugbear sorprende una creatura e la\ncolpisce con un attacco durante il primo round di combattimento,\nil bersaglio subisce 7 (2d6) danni aggiuntivi dall'attacco.\nBruto. Un'arma da mischia infligge un dado aggiuntivo di danno\nquando il bugbear colpisce con essa (già incluso nell'attacco).\nAzioni\nMazza Chiodata. Attacco con arma da mischia: +4 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 11 (2d8 + 2) danni perforanti.\nGiavellotto. Attacco con arma da mischia o a Distanza: +4 a\ncolpire, portata 1,5 m o gittata 9/36 m, un bersaglio.\nColpisce: 9 (2d6 + 2) danni perforanti in mischia o 5 (1d6 + 2)\ndanni perforanti a gittata."
+  }
+}

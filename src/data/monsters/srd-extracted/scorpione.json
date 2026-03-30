@@ -1,0 +1,79 @@
+{
+  "slug": "scorpione",
+  "general": {
+    "name": "Scorpione",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 10
+    },
+    "size": "Minuscola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 1,
+      "formula": "1d4 - 1"
+    },
+    "speed": {
+      "walk": "3 m"
+    }
+  },
+  "abilities": {
+    "strength": 2,
+    "dexterity": 11,
+    "constitution": 8,
+    "intelligence": 1,
+    "wisdom": 8,
+    "charisma": 2
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "Percezione passiva 9"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Pungiglione",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +2 a colpire, portata 1,5 m, una creatura. Colpisce: 1 danno perforante e il bersaglio deve effettuare un tiro salvezza di Costituzione CD 9, e subire 4 (1d8) danni da veleno se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Scorpione\nMinuscola bestia, disallineato\nFORZA 2 (-4)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 8 (-1)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 8 (-1)\nCARISMA 2 (-4)\nClasse Armatura 11 (armatura naturale)\nPunti Ferita 1 (1d4 - 1)\nVelocità 3 m\nSensi vista cieca 3 m, Percezione passiva 9\nLingue -\nSfida 0 (10 PE)\nAzioni\nPungiglione. Attacco con Arma da Mischia: +2 a colpire, portata\n1,5 m, una creatura.\nColpisce: 1 danno perforante e il bersaglio deve effettuare un tiro\nsalvezza di Costituzione CD 9, e subire 4 (1d8) danni da veleno\nse fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+  }
+}

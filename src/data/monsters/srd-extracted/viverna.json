@@ -1,0 +1,104 @@
+{
+  "slug": "viverna",
+  "general": {
+    "name": "Viverna",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "Grande",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 110,
+      "formula": "13d10 + 39"
+    },
+    "speed": {
+      "walk": "6 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 10,
+    "constitution": 16,
+    "intelligence": 5,
+    "wisdom": 12,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 14"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "La viverna può effettuare due attacchi: uno con il morso e uno con il pungiglione. Mentre vola, può usare i suoi artigli al posto di uno degli altri attacchi."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 13 (2d8 + 4) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 3 m, una creatura. Colpisce: 11 (2d6 + 4) danni perforanti."
+    },
+    {
+      "name": "Pungiglione",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 3 m, una creatura. Colpisce: 11 (2d6 + 4) danni perforanti. Il bersaglio deve effettuare un tiro salvezza di Costituzione CD 15, e subire 24 (7d6) danni da veleno se lo fallisce, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Viverna\nGrande drago, disallineato\nFORZA 19 (+4)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 5 (-3)\nSAGGEZZA 12 (+1)\nCARISMA 6 (-2)\nClasse Armatura 13 (armatura naturale)\nPunti Ferita 110 (13d10 + 39)\nVelocità 6 m, volo 24 m\nAbilità Percezione +4\nSensi scurovisione 18 m, Percezione passiva 14\nLinguaggi -\nSfida 6 (2.300 PE)\nAzioni\nMultiattacco. La viverna può effettuare due attacchi: uno con il\nmorso e uno con il pungiglione. Mentre vola, può usare i suoi\nartigli al posto di uno degli altri attacchi.\nArtigli. Attacco con arma da mischia: +7 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 13 (2d8 + 4) danni taglienti.\nMorso. Attacco con arma da mischia: +7 a colpire, portata 3 m,\nuna creatura.\nColpisce: 11 (2d6 + 4) danni perforanti.\nPungiglione. Attacco con arma da mischia: +7 a colpire, portata\n3 m, una creatura.\nColpisce: 11 (2d6 + 4) danni perforanti. Il bersaglio deve\neffettuare un tiro salvezza di Costituzione CD 15, e subire 24\n(7d6) danni da veleno se lo fallisce, o la metà di questi danni se\nlo riesce."
+  }
+}

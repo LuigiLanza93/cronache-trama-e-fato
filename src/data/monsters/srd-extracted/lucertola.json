@@ -1,0 +1,96 @@
+{
+  "slug": "lucertola",
+  "general": {
+    "name": "Lucertola",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 10
+    },
+    "size": "Minuscola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 2,
+      "formula": "1d4"
+    },
+    "speed": {
+      "walk": "6 m",
+      "climb": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 2,
+    "dexterity": 11,
+    "constitution": 10,
+    "intelligence": 1,
+    "wisdom": 8,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "visione al buio",
+        "value": "9 m"
+      },
+      {
+        "name": "Percezione passiva 9"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Scalare come Ragno",
+      "usage": null,
+      "description": "La lucertola può scalare superfici difficili, compreso lo stare a testa in giù sul soffitto, senza bisogno di effettuare una prova di abilità."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 6 (1d8 + 2) danni perforanti. VARIANTE Alcune lucertole giganti possiedono uno o entrambi i seguenti tratti."
+    },
+    {
+      "name": "Scalare come Ragno",
+      "usage": null,
+      "description": "La lucertola può scalare superfici difficili, compreso lo stare a testa in giù sul soffitto, senza bisogno di effettuare una prova di abilità."
+    },
+    {
+      "name": "Trattenere il Fiato",
+      "usage": null,
+      "description": "La lucertola può trattenere il fiato per 15 minuti. (Una lucertola con questo tratto possiede anche velocità di nuoto 9 metri)."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Lucertola\nMinuscola bestia, disallineato\nFORZA 2 (-4)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 8 (-1)\nCARISMA 3 (-4)\nClasse Armatura 10\nPunti Ferita 2 (1d4)\nVelocità 6 m, scalata 6 m\nSensi visione al buio 9 m, Percezione passiva 9\nLingue -\nSfida 0 (10 PE)\nScalare come Ragno. La lucertola può scalare superfici difficili,\ncompreso lo stare a testa in giù sul soffitto, senza bisogno di\neffettuare una prova di abilità.\nAzioni\nMorso. Attacco con Arma da Mischia: +0 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 1 danno perforante.\nLucertola Gigante\nLe lucertole giganti sono temibili predatori e spesso\nvengono impiegate come cavalcature o animali da tiro\nda umanoidi rettiloidi e residenti del sottosuolo.\nGrande bestia, disallineato\nFORZA 15 (+2)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 10 (+0)\nCARISMA 5 (-3)\nClasse Armatura 12 (armatura naturale)\nPunti Ferita 19 (3d10 + 3)\nVelocità 9 m, scalata 9 m\nSensi visione al buio 9 m, Percezione passiva 10\nLingue -\nSfida 1/4 (50 PE)\nAzioni\nMorso. Attacco con Arma da Mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 6 (1d8 + 2) danni perforanti.\nVARIANTE\nAlcune lucertole giganti possiedono uno o entrambi i seguenti\ntratti.\nScalare come Ragno. La lucertola può scalare superfici difficili,\ncompreso lo stare a testa in giù sul soffitto, senza bisogno di\neffettuare una prova di abilità.\nTrattenere il Fiato. La lucertola può trattenere il fiato per 15\nminuti. (Una lucertola con questo tratto possiede anche velocità\ndi nuoto 9 metri)."
+  }
+}

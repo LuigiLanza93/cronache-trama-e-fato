@@ -20,6 +20,8 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.resolve(__dirname, "src/data");
 const CHAR_DIR = path.resolve(DATA_DIR, "characters");
 const ARCHIVED_CHAR_DIR = path.resolve(DATA_DIR, "archived-characters");
+const MONSTERS_DIR = path.resolve(DATA_DIR, "monsters");
+const CUSTOM_MONSTERS_DIR = path.resolve(MONSTERS_DIR, "custom");
 const SKILLS_FILE = path.resolve(DATA_DIR, "skills.json");
 const USERS_FILE = path.resolve(DATA_DIR, "users.json");
 const OWNERSHIP_FILE = path.resolve(DATA_DIR, "character-ownership.json");
@@ -42,8 +44,15 @@ function readJsonFile(filePath, fallback) {
   }
 }
 
+function writeJsonFile(filePath, value) {
+  ensureDir(path.dirname(filePath));
+  fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + "\n", "utf-8");
+}
+
 function sanitizeSlug(value = "") {
   return String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9-_]+/g, "-")
     .replace(/^-+|-+$/g, "") || "character";
@@ -88,6 +97,229 @@ function readSkills() {
 
 function writeChats(chats) {
   fs.writeFileSync(CHATS_FILE, JSON.stringify(chats, null, 2) + "\n", "utf-8");
+}
+
+function encodeMonsterId(relativePath) {
+  return Buffer.from(relativePath, "utf-8").toString("base64url");
+}
+
+function decodeMonsterId(monsterId) {
+  try {
+    const relativePath = Buffer.from(String(monsterId), "base64url").toString("utf-8");
+    if (!relativePath || relativePath.includes("..")) return null;
+    return relativePath.replace(/\\/g, "/");
+  } catch {
+    return null;
+  }
+}
+
+function isBestiaryJsonFile(entryName) {
+  if (!entryName.endsWith(".json")) return false;
+  if (entryName.startsWith("_")) return false;
+  if (entryName.endsWith(".example.json")) return false;
+  return true;
+}
+
+function listMonsterFiles(dirPath = MONSTERS_DIR, prefix = "") {
+  ensureDir(dirPath);
+
+  return fs.readdirSync(dirPath, { withFileTypes: true }).flatMap((entry) => {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const fullPath = path.join(dirPath, entry.name);
+
+    if (entry.isDirectory()) {
+      return listMonsterFiles(fullPath, relativePath);
+    }
+
+    return isBestiaryJsonFile(entry.name) ? [relativePath] : [];
+  });
+}
+
+function normalizeMonsterRecord(data = {}, fileId, relativePath) {
+  const general = data?.general ?? {};
+  const combat = data?.combat ?? {};
+  const details = data?.details ?? {};
+  const abilities = data?.abilities ?? {};
+  const challengeRating = general?.challengeRating ?? {};
+
+  return {
+    id: fileId,
+    filePath: relativePath,
+    slug: typeof data?.slug === "string" ? data.slug : sanitizeSlug(general?.name ?? path.basename(relativePath, ".json")),
+    general: {
+      name: String(general?.name ?? path.basename(relativePath, ".json")),
+      challengeRating: {
+        fraction: String(challengeRating?.fraction ?? challengeRating?.display ?? ""),
+        decimal: typeof challengeRating?.decimal === "number" ? challengeRating.decimal : null,
+        display: String(challengeRating?.display ?? challengeRating?.fraction ?? ""),
+        xp: typeof challengeRating?.xp === "number" ? challengeRating.xp : 0,
+      },
+      size: String(general?.size ?? ""),
+      creatureType: String(general?.creatureType ?? ""),
+      subtype: String(general?.subtype ?? ""),
+      typeLabel: String(general?.typeLabel ?? ""),
+      alignment: String(general?.alignment ?? ""),
+      environments: Array.isArray(general?.environments) ? general.environments.filter(Boolean) : [],
+    },
+    combat: {
+      armorClass: {
+        value: typeof combat?.armorClass?.value === "number" ? combat.armorClass.value : 0,
+        note: String(combat?.armorClass?.note ?? ""),
+      },
+      hitPoints: {
+        average: typeof combat?.hitPoints?.average === "number" ? combat.hitPoints.average : 0,
+        formula: String(combat?.hitPoints?.formula ?? ""),
+      },
+      speed: typeof combat?.speed === "object" && combat?.speed !== null ? combat.speed : {},
+    },
+    abilities: {
+      strength: typeof abilities?.strength === "number" ? abilities.strength : 10,
+      dexterity: typeof abilities?.dexterity === "number" ? abilities.dexterity : 10,
+      constitution: typeof abilities?.constitution === "number" ? abilities.constitution : 10,
+      intelligence: typeof abilities?.intelligence === "number" ? abilities.intelligence : 10,
+      wisdom: typeof abilities?.wisdom === "number" ? abilities.wisdom : 10,
+      charisma: typeof abilities?.charisma === "number" ? abilities.charisma : 10,
+    },
+    details: {
+      savingThrows: Array.isArray(details?.savingThrows) ? details.savingThrows : [],
+      skills: Array.isArray(details?.skills) ? details.skills : [],
+      damageVulnerabilities: Array.isArray(details?.damageVulnerabilities) ? details.damageVulnerabilities : [],
+      damageResistances: Array.isArray(details?.damageResistances) ? details.damageResistances : [],
+      damageImmunities: Array.isArray(details?.damageImmunities) ? details.damageImmunities : [],
+      conditionImmunities: Array.isArray(details?.conditionImmunities) ? details.conditionImmunities : [],
+      senses: Array.isArray(details?.senses) ? details.senses : [],
+      languages: Array.isArray(details?.languages) ? details.languages : [],
+      proficiencyBonus: typeof details?.proficiencyBonus === "number" ? details.proficiencyBonus : 2,
+    },
+    traits: Array.isArray(data?.traits) ? data.traits : [],
+    actions: Array.isArray(data?.actions) ? data.actions : [],
+    bonusActions: Array.isArray(data?.bonusActions) ? data.bonusActions : [],
+    reactions: Array.isArray(data?.reactions) ? data.reactions : [],
+    legendaryActions:
+      typeof data?.legendaryActions === "object" && data?.legendaryActions !== null
+        ? {
+            description: String(data.legendaryActions.description ?? ""),
+            actions: Array.isArray(data.legendaryActions.actions) ? data.legendaryActions.actions : [],
+          }
+        : { description: "", actions: [] },
+    lairActions: Array.isArray(data?.lairActions) ? data.lairActions : [],
+    regionalEffects: Array.isArray(data?.regionalEffects) ? data.regionalEffects : [],
+    notes: Array.isArray(data?.notes) ? data.notes : [],
+    source:
+      typeof data?.source === "object" && data?.source !== null
+        ? data.source
+        : {
+            extractedFrom: "",
+            rawText: "",
+          },
+  };
+}
+
+function readMonsterByRelativePath(relativePath) {
+  const filePath = path.resolve(MONSTERS_DIR, relativePath);
+  if (!filePath.startsWith(MONSTERS_DIR)) return null;
+  if (!fs.existsSync(filePath)) return null;
+  const data = readJsonFile(filePath, null);
+  if (!data || typeof data !== "object" || !data.general?.name) return null;
+  return normalizeMonsterRecord(data, encodeMonsterId(relativePath), relativePath);
+}
+
+function listMonsters() {
+  return listMonsterFiles()
+    .map((relativePath) => readMonsterByRelativePath(relativePath))
+    .filter(Boolean)
+    .sort((a, b) => a.general.name.localeCompare(b.general.name, undefined, { sensitivity: "base" }));
+}
+
+function createEmptyMonster(name) {
+  const safeName = String(name).trim() || "Nuovo Mostro";
+  return normalizeMonsterRecord(
+    {
+      slug: sanitizeSlug(safeName),
+      general: {
+        name: safeName,
+        challengeRating: {
+          fraction: "0",
+          decimal: 0,
+          display: "0",
+          xp: 0,
+        },
+        size: "Media",
+        creatureType: "",
+        subtype: "",
+        typeLabel: "",
+        alignment: "",
+        environments: [],
+      },
+      combat: {
+        armorClass: {
+          value: 10,
+          note: "",
+        },
+        hitPoints: {
+          average: 1,
+          formula: "1d8",
+        },
+        speed: {
+          walk: "9 m",
+        },
+      },
+      abilities: {
+        strength: 10,
+        dexterity: 10,
+        constitution: 10,
+        intelligence: 10,
+        wisdom: 10,
+        charisma: 10,
+      },
+      details: {
+        savingThrows: [],
+        skills: [],
+        damageVulnerabilities: [],
+        damageResistances: [],
+        damageImmunities: [],
+        conditionImmunities: [],
+        senses: [],
+        languages: [],
+        proficiencyBonus: 2,
+      },
+      traits: [],
+      actions: [],
+      bonusActions: [],
+      reactions: [],
+      legendaryActions: {
+        description: "",
+        actions: [],
+      },
+      lairActions: [],
+      regionalEffects: [],
+      notes: [],
+      source: {
+        extractedFrom: "",
+        rawText: "",
+      },
+    },
+    "",
+    ""
+  );
+}
+
+function createUniqueMonsterFileName(baseName) {
+  ensureDir(CUSTOM_MONSTERS_DIR);
+  const baseSlug = sanitizeSlug(baseName || "monster");
+  const existing = new Set(
+    fs.readdirSync(CUSTOM_MONSTERS_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
+      .map((entry) => entry.name.replace(/\.json$/i, ""))
+  );
+
+  if (!existing.has(baseSlug)) return `${baseSlug}.json`;
+
+  let index = 2;
+  while (existing.has(`${baseSlug}-${index}`)) {
+    index += 1;
+  }
+  return `${baseSlug}-${index}.json`;
 }
 
 function listCharacterSlugs() {
@@ -613,6 +845,143 @@ async function start() {
 
     const chats = readChats();
     return res.json(Array.isArray(chats[slug]) ? chats[slug] : []);
+  });
+
+  // ===== Bestiary =====
+  app.get("/api/monsters", requireRole("dm"), (req, res) => {
+    const monsters = listMonsters().map((monster) => ({
+      id: monster.id,
+      slug: monster.slug,
+      name: monster.general.name,
+      challengeRating: monster.general.challengeRating,
+      size: monster.general.size,
+      creatureType: monster.general.creatureType || monster.general.typeLabel,
+      alignment: monster.general.alignment,
+      filePath: monster.filePath,
+    }));
+
+    return res.json(monsters);
+  });
+
+  app.get("/api/monsters/:monsterId", requireRole("dm"), (req, res) => {
+    const relativePath = decodeMonsterId(req.params.monsterId);
+    if (!relativePath) {
+      return res.status(400).json({ error: "Invalid monster id" });
+    }
+
+    const monster = readMonsterByRelativePath(relativePath);
+    if (!monster) {
+      return res.status(404).json({ error: "Monster not found" });
+    }
+
+    return res.json(monster);
+  });
+
+  app.put("/api/monsters/:monsterId", requireRole("dm"), (req, res) => {
+    const relativePath = decodeMonsterId(req.params.monsterId);
+    if (!relativePath) {
+      return res.status(400).json({ error: "Invalid monster id" });
+    }
+
+    const filePath = path.resolve(MONSTERS_DIR, relativePath);
+    if (!filePath.startsWith(MONSTERS_DIR) || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "Monster not found" });
+    }
+
+    const currentMonster = readMonsterByRelativePath(relativePath);
+    if (!currentMonster) {
+      return res.status(404).json({ error: "Monster not found" });
+    }
+
+    const payload = req.body?.monster;
+    if (!payload || typeof payload !== "object") {
+      return res.status(400).json({ error: "Monster payload required" });
+    }
+
+    const nextMonster = normalizeMonsterRecord(payload, currentMonster.id, relativePath);
+    if (!nextMonster.general.name.trim()) {
+      return res.status(400).json({ error: "Monster name required" });
+    }
+
+    writeJsonFile(filePath, {
+      slug: nextMonster.slug || sanitizeSlug(nextMonster.general.name),
+      general: nextMonster.general,
+      combat: nextMonster.combat,
+      abilities: nextMonster.abilities,
+      details: nextMonster.details,
+      traits: nextMonster.traits,
+      actions: nextMonster.actions,
+      bonusActions: nextMonster.bonusActions,
+      reactions: nextMonster.reactions,
+      legendaryActions: nextMonster.legendaryActions,
+      lairActions: nextMonster.lairActions,
+      regionalEffects: nextMonster.regionalEffects,
+      notes: nextMonster.notes,
+      source: nextMonster.source,
+    });
+
+    return res.json(readMonsterByRelativePath(relativePath));
+  });
+
+  app.post("/api/monsters", requireRole("dm"), (req, res) => {
+    const name = String(req.body?.name ?? "").trim();
+    const duplicateFromId = typeof req.body?.duplicateFromId === "string" ? req.body.duplicateFromId : null;
+
+    if (!name) {
+      return res.status(400).json({ error: "Monster name required" });
+    }
+
+    let nextMonster = createEmptyMonster(name);
+    if (duplicateFromId) {
+      const sourceRelativePath = decodeMonsterId(duplicateFromId);
+      if (!sourceRelativePath) {
+        return res.status(400).json({ error: "Invalid source monster id" });
+      }
+
+      const sourceMonster = readMonsterByRelativePath(sourceRelativePath);
+      if (!sourceMonster) {
+        return res.status(404).json({ error: "Source monster not found" });
+      }
+
+      nextMonster = normalizeMonsterRecord(
+        {
+          ...sourceMonster,
+          slug: sanitizeSlug(name),
+          general: {
+            ...sourceMonster.general,
+            name,
+          },
+        },
+        "",
+        ""
+      );
+    } else {
+      nextMonster.general.name = name;
+      nextMonster.slug = sanitizeSlug(name);
+    }
+
+    const fileName = createUniqueMonsterFileName(name);
+    const relativePath = `custom/${fileName}`;
+    const filePath = path.resolve(MONSTERS_DIR, relativePath);
+
+    writeJsonFile(filePath, {
+      slug: nextMonster.slug || sanitizeSlug(name),
+      general: nextMonster.general,
+      combat: nextMonster.combat,
+      abilities: nextMonster.abilities,
+      details: nextMonster.details,
+      traits: nextMonster.traits,
+      actions: nextMonster.actions,
+      bonusActions: nextMonster.bonusActions,
+      reactions: nextMonster.reactions,
+      legendaryActions: nextMonster.legendaryActions,
+      lairActions: nextMonster.lairActions,
+      regionalEffects: nextMonster.regionalEffects,
+      notes: nextMonster.notes,
+      source: nextMonster.source,
+    });
+
+    return res.status(201).json(readMonsterByRelativePath(relativePath));
   });
 
   // ===== Characters =====

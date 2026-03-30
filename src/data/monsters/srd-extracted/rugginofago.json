@@ -1,0 +1,99 @@
+{
+  "slug": "rugginofago",
+  "general": {
+    "name": "Rugginofago",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Media",
+    "creatureType": "Mostruosità",
+    "subtype": "",
+    "typeLabel": "Mostruosità",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 27,
+      "formula": "5d8 + 5"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 13,
+    "dexterity": 12,
+    "constitution": 13,
+    "intelligence": 2,
+    "wisdom": 13,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Fiuto del Ferro",
+      "usage": null,
+      "description": "Il rugginofago può individuare, con l'olfatto, l'esatta posizione di metalli ferrosi entro 9 metri."
+    },
+    {
+      "name": "Arrugginire Metallo",
+      "usage": null,
+      "description": "Qualsiasi arma non magica fatta di metallo che colpisca il rugginofago si corrode. Dopo aver inflitto il danno, l'arma subisce una penalità permanente e cumulativa di - 1 ai tiri di danno. Se la penalità scende fino a -5, l'arma è distrutta. Le munizioni non magiche fatte di metallo e che colpiscono il rugginofago, sono considerate distrutte dopo aver inflitto il danno."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d8 + 1) danni perforanti."
+    },
+    {
+      "name": "Antenne",
+      "usage": null,
+      "description": "Il rugginofago corrode gli oggetti di metallo ferroso non magici che può vedere e si trovano entro 1,5 metri. Se l'oggetto non è indossato o trasportato, il contatto col rugginofago ne distrugge un cubo di 30 centimetri di spigolo. Se l'oggetto è indossato o trasportato da una creatura, la creatura può effettuare un tiro salvezza di Destrezza CD 11 per evitare il contatto con il rugginofago. Se l'oggetto con cui entra in contatto è un'armatura o scudo di metallo indossati o trasportati, questi subiscono una penalità permanente e cumulativa di -1 alla CA che forniscono. Le armature ridotte a CA 10 o gli scudi che scendono ad un bonus di +0 sono distrutti. Se l'oggetto con cui entra in contatto è un'arma di metallo impugnata da qualcuno, la arrugginisce come descritto nel tratto Arrugginire Metallo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Rugginofago\nMedia Mostruosità, disallineato\nFORZA 13 (+1)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 13 (+1)\nCARISMA 6 (-2)\nClasse Armatura 14 (armatura naturale)\nPunti Ferita 27 (5d8 + 5)\nVelocità 12 m\nSensi scurovisione 18 m, Percezione passiva 11\nLinguaggi -\nSfida 1/2 (100 PE)\nFiuto del Ferro. Il rugginofago può individuare, con l'olfatto,\nl'esatta posizione di metalli ferrosi entro 9 metri.\nArrugginire Metallo. Qualsiasi arma non magica fatta di metallo\nche colpisca il rugginofago si corrode. Dopo aver inflitto il\ndanno, l'arma subisce una penalità permanente e cumulativa di -\n1 ai tiri di danno. Se la penalità scende fino a -5, l'arma è\ndistrutta. Le munizioni non magiche fatte di metallo e che\ncolpiscono il rugginofago, sono considerate distrutte dopo aver\ninflitto il danno.\nAzioni\nMorso. Attacco con arma da mischia: +3 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 5 (1d8 + 1) danni perforanti.\nAntenne. Il rugginofago corrode gli oggetti di metallo ferroso\nnon magici che può vedere e si trovano entro 1,5 metri. Se\nl'oggetto non è indossato o trasportato, il contatto col\nrugginofago ne distrugge un cubo di 30 centimetri di spigolo. Se\nl'oggetto è indossato o trasportato da una creatura, la creatura\npuò effettuare un tiro salvezza di Destrezza CD 11 per evitare il\ncontatto con il rugginofago.\nSe l'oggetto con cui entra in contatto è un'armatura o scudo di\nmetallo indossati o trasportati, questi subiscono una penalità\npermanente e cumulativa di -1 alla CA che forniscono. Le\narmature ridotte a CA 10 o gli scudi che scendono ad un bonus di\n+0 sono distrutti. Se l'oggetto con cui entra in contatto è un'arma\ndi metallo impugnata da qualcuno, la arrugginisce come descritto\nnel tratto Arrugginire Metallo."
+  }
+}

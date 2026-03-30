@@ -1,0 +1,115 @@
+{
+  "slug": "naga-spirituale",
+  "general": {
+    "name": "Naga Spirituale",
+    "challengeRating": {
+      "fraction": "8",
+      "decimal": 8,
+      "display": "8",
+      "xp": 3900
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 75,
+      "formula": "10d10 + 20"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 17,
+    "constitution": 14,
+    "intelligence": 16,
+    "wisdom": 15,
+    "charisma": 16
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 6
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 5
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 5
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "Il naga è un incantatore di 10° livello. La sua abilità da incantatore è l'Intelligenza (CD dei tiri salvezza degli incantesimi 14, +6 a colpire con attacchi con incantesimo), e ha bisogno solo delle componenti verbali per eseguire i suoi incantesimi. Il naga prepara i seguenti incantesimi dalla lista degli incantesimi da mago: Trucchetti (a volontà): illusione minore, mano magica, raggio di gelo 1° livello (4 slot): charme su persone, individuazione del magico, sonno 2° livello (3 slot): blocca persone, individuazione dei pensieri 3° livello (3 slot): fulmine, respirare sott'acqua 4° livello (3 slot): inaridire, porta dimensionale 5° livello (2 slot): dominare persone"
+    },
+    {
+      "name": "Rinvigorimento",
+      "usage": null,
+      "description": "Se muore, il naga ritorna in vita in 1d6 giorni e recupera tutti i suoi punti ferita. Solo l'incantesimo desiderio può impedire a questo tratto di funzionare."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 3 m, una creatura. Colpisce: 7 (1d8 + 4) danni perforanti, e il bersaglio deve effettuare un tiro salvezza di Costituzione CD 13, subendo 31 (7d8) danni da veleno se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Naga Spirituale\nGrande mostruosità, caotico malvagio\nFORZA 18 (+4)\nDESTREZZA 17 (+3)\nCOSTITUZIONE 14 (+2)\nINTELLIGENZA 16 (+3)\nSAGGEZZA 15 (+2)\nCARISMA 16 (+3)\nClasse Armatura 15 (armatura naturale)\nPunti Ferita 75 (10d10 + 20)\nVelocità 12 m\nTiri Salvezza Destrezza +6, Costituzione +5, Saggezza +5,\nCarisma +6\nImmunità al Danno veleno\nImmunità alle Condizioni affascinato, avvelenato\nSensi scurovisione 18 m, Percezione passiva 12\nLinguaggi Abissale, Comune\nSfida 8 (3.900 PE)\nIncantesimi. Il naga è un incantatore di 10° livello. La sua abilità\nda incantatore è l'Intelligenza (CD dei tiri salvezza degli\nincantesimi 14, +6 a colpire con attacchi con incantesimo), e ha\nbisogno solo delle componenti verbali per eseguire i suoi\nincantesimi. Il naga prepara i seguenti incantesimi dalla lista\ndegli incantesimi da mago:\nTrucchetti (a volontà): illusione minore, mano magica, raggio di\ngelo\n1° livello (4 slot): charme su persone, individuazione del magico,\nsonno\n2° livello (3 slot): blocca persone, individuazione dei pensieri\n3° livello (3 slot): fulmine, respirare sott'acqua\n4° livello (3 slot): inaridire, porta dimensionale\n5° livello (2 slot): dominare persone\nRinvigorimento. Se muore, il naga ritorna in vita in 1d6 giorni e\nrecupera tutti i suoi punti ferita. Solo l'incantesimo desiderio può\nimpedire a questo tratto di funzionare.\nAzioni\nMorso. Attacco con arma da mischia: +7 a colpire, portata 3 m,\nuna creatura.\nColpisce: 7 (1d8 + 4) danni perforanti, e il bersaglio deve\neffettuare un tiro salvezza di Costituzione CD 13, subendo 31\n(7d8) danni da veleno se fallisce il tiro salvezza, o la metà di\nquesti danni se lo riesce."
+  }
+}

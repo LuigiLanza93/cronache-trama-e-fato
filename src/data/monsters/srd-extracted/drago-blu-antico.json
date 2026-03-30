@@ -1,0 +1,163 @@
+{
+  "slug": "drago-blu-antico",
+  "general": {
+    "name": "Drago Blu Antico",
+    "challengeRating": {
+      "fraction": "23",
+      "decimal": 23,
+      "display": "23",
+      "xp": 50000
+    },
+    "size": "Mastodontica",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 22,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 481,
+      "formula": "26d20 + 208"
+    },
+    "speed": {
+      "walk": "12 m",
+      "burrow": "12 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 29,
+    "dexterity": 10,
+    "constitution": 27,
+    "intelligence": 18,
+    "wisdom": 17,
+    "charisma": 21
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 15
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 10
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 7
+      },
+      {
+        "name": "Percezione",
+        "bonus": 17
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fulmine"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 27"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 7
+  },
+  "traits": [
+    {
+      "name": "Resistenza Leggendaria",
+      "usage": "3/Giorno",
+      "description": "Se il drago fallisce un tiro salvezza, può scegliere invece di riuscire."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il drago può usare la sua Presenza Spaventosa. Poi effettuare tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +16 a colpire, portata 3 m, un bersaglio. Colpisce: 16 (2d6 + 9) danni taglienti."
+    },
+    {
+      "name": "Coda",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +16 a colpire, portata 6 m, un bersaglio. Colpisce: 18 (2d8 + 9) danni contundenti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +16 a colpire, portata 4,5 m, un bersaglio. Colpisce: 20 (2d10 + 9) danni perforanti più 11 (2d10) danni da fulmine."
+    },
+    {
+      "name": "Presenza Spaventosa",
+      "usage": null,
+      "description": "Ogni creatura scelta dal drago, che si trovi entro 36 metri da esso e consapevole della sua presenza, deve riuscire un tiro salvezza di Saggezza CD 20 o restare spaventata per 1 minuto. Una creatura può ripetere il tiro salvezza al termine di ciascun suo turno, terminando l'effetto se lo riesce. Se il tiro salvezza della creatura ha successo o l'effetto ha termine per essa, la creatura è immune alla Presenza Spaventosa del drago per le successive 24 ore."
+    },
+    {
+      "name": "Soffio Fulminante",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago esala fulmini in una linea lunga 36 metri e larga 3 metri. Ogni creatura su quella linea deve effettuare un tiro salvezza di Destrezza CD 23 e subire 88 (16d10) danni da fulmine se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "Il drago può effettuare 3 azioni leggendarie, scelte tra le opzioni seguenti. Può usare solo un'opzione leggendaria alla volta e solo al termine del turno di un'altra creatura. Il drago recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Attacco di Ala",
+        "description": "Il drago batte le ali. Ogni creatura entro 4,5 metri dal drago deve riuscire un tiro salvezza di Destrezza CD 24 o subire 16 (2d6 + 9) danni contundenti e venir gettato prono. Il drago può poi volare fino a metà della sua velocità di volo.",
+        "cost": 2
+      },
+      {
+        "name": "Attacco di Coda",
+        "description": "Il drago effettua un attacco di coda.",
+        "cost": 1
+      },
+      {
+        "name": "Individuare",
+        "description": "Il drago effettua una prova di Saggezza (Percezione).",
+        "cost": 1
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Drago Blu Antico\nMastodontica drago, legale malvagio\nFORZA 29 (+9)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 27 (+8)\nINTELLIGENZA 18 (+4)\nSAGGEZZA 17 (+3)\nCARISMA 21 (+5)\nClasse Armatura 22 (armatura naturale)\nPunti Ferita 481 (26d20 + 208)\nVelocità 12 m, scavo 12 m, volo 24 m\nTiri Salvezza Destrezza +7, Costituzione +15, Saggezza +10,\nCarisma +12\nAbilità Furtività +7, Percezione +17\nImmunità al Danno fulmine\nSensi scurovisione 36 m, vista cieca 18 m, Percezione passiva 27\nLinguaggi Comune, Draconico\nSfida 23 (50.000 PE)\nResistenza Leggendaria (3/Giorno). Se il drago fallisce un tiro\nsalvezza, può scegliere invece di riuscire.\nAzioni\nMultiattacco. Il drago può usare la sua Presenza Spaventosa. Poi\neffettuare tre attacchi: uno con il morso e due con gli artigli.\nArtiglio. Attacco con arma da mischia: +16 a colpire, portata 3\nm, un bersaglio.\nColpisce: 16 (2d6 + 9) danni taglienti.\nCoda. Attacco con arma da mischia: +16 a colpire, portata 6 m,\nun bersaglio.\nColpisce: 18 (2d8 + 9) danni contundenti.\nMorso. Attacco con arma da mischia: +16 a colpire, portata 4,5\nm, un bersaglio.\nColpisce: 20 (2d10 + 9) danni perforanti più 11 (2d10) danni da\nfulmine.\nPresenza Spaventosa. Ogni creatura scelta dal drago, che si trovi\nentro 36 metri da esso e consapevole della sua presenza, deve\nriuscire un tiro salvezza di Saggezza CD 20 o restare spaventata\nper 1 minuto. Una creatura può ripetere il tiro salvezza al termine\ndi ciascun suo turno, terminando l'effetto se lo riesce. Se il tiro\nsalvezza della creatura ha successo o l'effetto ha termine per\nessa, la creatura è immune alla Presenza Spaventosa del drago\nper le successive 24 ore.\nSoffio Fulminante (Ricarica 5-6). Il drago esala fulmini in una\nlinea lunga 36 metri e larga 3 metri. Ogni creatura su quella linea\ndeve effettuare un tiro salvezza di Destrezza CD 23 e subire 88\n(16d10) danni da fulmine se fallisce il tiro salvezza, o la metà di\nquesti danni se lo riesce.\nAzioni Leggendarie\nIl drago può effettuare 3 azioni leggendarie, scelte tra le opzioni\nseguenti. Può usare solo un'opzione leggendaria alla volta e solo\nal termine del turno di un'altra creatura. Il drago recupera le\nazioni leggendarie spese all'inizio del proprio turno.\nAttacco di Ala (Costa 2 Azioni). Il drago batte le ali. Ogni\ncreatura entro 4,5 metri dal drago deve riuscire un tiro salvezza\ndi Destrezza CD 24 o subire 16 (2d6 + 9) danni contundenti e\nvenir gettato prono. Il drago può poi volare fino a metà della sua\nvelocità di volo.\nAttacco di Coda. Il drago effettua un attacco di coda.\nIndividuare. Il drago effettua una prova di Saggezza\n(Percezione)."
+  }
+}

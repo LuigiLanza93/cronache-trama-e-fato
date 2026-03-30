@@ -1,0 +1,108 @@
+{
+  "slug": "ettin",
+  "general": {
+    "name": "Ettin",
+    "challengeRating": {
+      "fraction": "4",
+      "decimal": 4,
+      "display": "4",
+      "xp": 1100
+    },
+    "size": "Grande",
+    "creatureType": "gigante",
+    "subtype": "",
+    "typeLabel": "gigante",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 85,
+      "formula": "10d10 + 30"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 21,
+    "dexterity": 8,
+    "constitution": 17,
+    "intelligence": 6,
+    "wisdom": 10,
+    "charisma": 8
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 14"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gigante"
+      },
+      {
+        "name": "Orco"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Due Teste",
+      "usage": null,
+      "description": "L'ettin ha vantaggio alle prove di Saggezza (Percezione) e sui tiri salvezza contro le condizioni accecato, affascinato, assordato, privo di sensi, spaventato e stordito."
+    },
+    {
+      "name": "Veglia",
+      "usage": null,
+      "description": "Quando una delle due teste dell'ettin è addormentata, l'altra è sveglia."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'ettin effettua due attacchi: uno con l'ascia da battaglia e uno con la mazza chiodata."
+    },
+    {
+      "name": "Ascia da Battaglia",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 14 (2d8 + 5) danni taglienti."
+    },
+    {
+      "name": "Mazza Chiodata",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 14 (2d8 + 5) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Ettin\nGrande gigante, caotico malvagio\nFORZA 21 (+5)\nDESTREZZA 8 (-1)\nCOSTITUZIONE 17 (+3)\nINTELLIGENZA 6 (-2)\nSAGGEZZA 10 (+0)\nCARISMA 8 (-1)\nClasse Armatura 12 (armatura naturale)\nPunti Ferita 85 (10d10 + 30)\nVelocità 12 m\nAbilità Percezione +4\nSensi Percezione passiva 14\nLinguaggi Gigante, Orco\nSfida 4 (1.100 PE)\nDue Teste. L'ettin ha vantaggio alle prove di Saggezza\n(Percezione) e sui tiri salvezza contro le condizioni accecato,\naffascinato, assordato, privo di sensi, spaventato e stordito.\nVeglia. Quando una delle due teste dell'ettin è addormentata,\nl'altra è sveglia.\nAzioni\nMultiattacco. L'ettin effettua due attacchi: uno con l'ascia da\nbattaglia e uno con la mazza chiodata.\nAscia da Battaglia. Attacco con arma da mischia: +7 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 14 (2d8 + 5) danni taglienti.\nMazza Chiodata. Attacco con arma da mischia: +7 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 14 (2d8 + 5) danni perforanti."
+  }
+}
