@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import { fetchCharacter } from "@/realtime";
+import { fetchCharacter, fetchCharacters } from "@/realtime";
 import {
   Check,
   ChevronRight,
@@ -123,11 +123,6 @@ const emptyEncounterState = (): EncounterState => ({
   currentTurnId: null,
   nextSortOrder: 1,
 });
-
-const characterModules = import.meta.glob("../data/characters/*.json", { eager: true }) as Record<
-  string,
-  { default: CharacterState }
->;
 
 const SPELLCASTING_ABILITY_BY_CLASS: Record<string, string> = {
   bardo: "charisma",
@@ -440,6 +435,7 @@ export default function InitiativeTracker() {
   const [encounter, setEncounter] = useState<EncounterState>(() =>
     parseEncounterState(localStorage.getItem(STORAGE_KEY))
   );
+  const [catalogStates, setCatalogStates] = useState<CharacterState[]>([]);
   const [liveCharacterStates, setLiveCharacterStates] = useState<Record<string, CharacterState>>({});
   const [playerRolls, setPlayerRolls] = useState<Record<string, string>>({});
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
@@ -492,11 +488,11 @@ export default function InitiativeTracker() {
 
   const catalogList = useMemo(
     () =>
-      Object.values(characterModules)
-        .map((mod) => toCharacterCatalogEntry(mod.default))
+      catalogStates
+        .map((state) => toCharacterCatalogEntry(state))
         .filter(Boolean)
         .sort((a, b) => a!.name.localeCompare(b!.name, undefined, { sensitivity: "base" })) as CharacterCatalogEntry[],
-    []
+    [catalogStates]
   );
 
   const catalogBySlug = useMemo(
@@ -512,6 +508,22 @@ export default function InitiativeTracker() {
 
   useEffect(() => {
     document.title = "Iniziativa | D&D Character Manager";
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetchCharacters()
+      .then((characters) => {
+        if (active) setCatalogStates(Array.isArray(characters) ? characters : []);
+      })
+      .catch(() => {
+        if (active) setCatalogStates([]);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {

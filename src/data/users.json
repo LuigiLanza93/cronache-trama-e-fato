@@ -1,0 +1,36 @@
+[
+  {
+    "id": "user_dm_gaetano",
+    "username": "gaetano",
+    "displayName": "Gaetano",
+    "role": "dm",
+    "passwordSalt": "72a828522b4a5241f83274c81bcc2343",
+    "passwordHash": "1d865800e5ce182a599ac8b2085f4713e5eb41376c3a2f6daa4cdec4f55d828de4f7a03c49563c7821c21b1e9cd178be70d599c3f485026ae2bf7832f8ec5159"
+  },
+  {
+    "id": "user_player_roberto",
+    "username": "roberto",
+    "displayName": "Roberto",
+    "role": "player",
+    "passwordSalt": "81c243a7138d70bfc520e04d6d55e0e1",
+    "passwordHash": "0671f48e1903383810a078a21321cb50087698f5ef87897e38f62cf64a800a6d6a828689715cb946fd2d8fe9add99a08b7cbb7763b3a1b549f4e37ea46a0a9d3",
+    "mustChangePassword": false,
+    "updatedAt": "2026-03-30T12:58:12.446Z"
+  },
+  {
+    "id": "user_player_luigi_l",
+    "username": "luigi_l",
+    "displayName": "Luigi",
+    "role": "player",
+    "passwordSalt": "65fd35a11047336bd38b0118c3f86c03",
+    "passwordHash": "c4f7716fe5c7eb41abbab1a8621f7d69e8683a62e06990e52039c30eaf45503da3c939aebd64131bb7460223fdf0bbf4d652672a5321f0394abef26d0939b010"
+  },
+  {
+    "id": "user_player_luigi_f",
+    "username": "luigi_f",
+    "displayName": "Luigi",
+    "role": "player",
+    "passwordSalt": "5669353114417ddaee6c3d2f8b6b5809",
+    "passwordHash": "407d26c2cea7898b140aa8266392b51620cabd1285ebb2d8bb0cc8416951f39640a21ba9e8770e7991f97aca294b171603729544eb31fd7c56f982bc046d5398"
+  }
+]

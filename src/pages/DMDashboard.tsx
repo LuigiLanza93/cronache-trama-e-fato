@@ -1,85 +1,198 @@
-// src/pages/DMDashboard.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Map, Users, Sword, Scroll, Dice6 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronRight,
+  Circle,
+  ExternalLink,
+  MessageSquareMore,
+  Shield,
+  Users,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-
 import {
-  subscribePresence,   // (cb: (list: { slug: string; count: number }[]) => void) => () => void
-  joinCharacterRoom,   // (slug: string) => void
-  fetchCharacter,      // (slug: string) => Promise<CharacterState>
-  onCharacterState,    // (cb: (payload: { slug: string; state: CharacterState }) => void) => () => void
-  onCharacterPatch,    // (cb: (payload: { slug: string; patch: any }) => void) => () => void
-  applyPatch,          // (prev: CharacterState, patch: any) => CharacterState (nuova reference!)
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  applyPatch,
+  fetchCharacter,
+  fetchCharacters,
+  joinCharacterRoom,
+  onCharacterPatch,
+  onCharacterState,
+  requestPresenceSnapshot,
+  sendPrivateMessage,
+  subscribePresence,
 } from "@/realtime";
+import { toast } from "@/components/ui/sonner";
 
-// ---------- Tipi di base (adatta ai tuoi modelli) ----------
 type CharacterState = Record<string, any>;
-type LiveSummary = {
+
+type PlayerCardData = {
   slug: string;
   name: string;
-  class?: string;
-  level?: number;
-  hp?: { current?: number; max?: number; temp?: number };
-  ac?: number;
-  status?: string;
-  player?: string; 
-  deathSavesFailures?: number;
-};
-
-type DMDashboardProps = {
-  campaign: {
-    campaignInfo: {
-      name: string;
-      session: string | number;
-      location: string;
-      date: string;
-    };
-    notes: string[];
+  playerName: string;
+  className: string;
+  level: number | null;
+  initiativeBonus: number;
+  armorClass: number | null;
+  passivePerception: number | null;
+  spellSaveDc: number | null;
+  abilityBonuses: Array<{ label: string; value: number }>;
+  resourceSummary: { label: string; entries: Array<{ label: string; remaining: number }> };
+  hp: {
+    current: number;
+    max: number;
+    temp: number;
   };
-  monsters: Array<{
-    name: string;
-    size: string;
-    type: string;
-    challengeRating: string | number;
-    armorClass: number;
-    hitPoints: number;
-  }>;
+  deathSaves: {
+    successes: number;
+    failures: number;
+  };
 };
 
-// ---------- Helper ----------
-function toSummary(slug: string, s: CharacterState): LiveSummary {
+const SPELLCASTING_ABILITY_BY_CLASS: Record<string, string> = {
+  bardo: "charisma",
+  bard: "charisma",
+  chierico: "wisdom",
+  cleric: "wisdom",
+  druido: "wisdom",
+  druid: "wisdom",
+  mago: "intelligence",
+  wizard: "intelligence",
+  stregone: "charisma",
+  sorcerer: "charisma",
+  warlock: "charisma",
+  paladino: "charisma",
+  paladin: "charisma",
+  ranger: "wisdom",
+};
+
+const ABILITY_ORDER = [
+  { key: "strength", label: "For" },
+  { key: "dexterity", label: "Des" },
+  { key: "constitution", label: "Cos" },
+  { key: "intelligence", label: "Int" },
+  { key: "wisdom", label: "Sag" },
+  { key: "charisma", label: "Car" },
+] as const;
+
+function abilityModifier(score: number | undefined) {
+  const safeScore = typeof score === "number" ? score : 10;
+  return Math.floor((safeScore - 10) / 2);
+}
+
+function proficiencyBonus(level: number | undefined) {
+  const safeLevel = Math.max(1, typeof level === "number" ? level : 1);
+  return Math.ceil(safeLevel / 4) + 1;
+}
+
+function getPassivePerception(state: CharacterState) {
+  const wisdomModifier = abilityModifier(state?.abilityScores?.wisdom);
+  const perceptionSkill = (state?.proficiencies?.skills ?? []).find(
+    (skill: any) =>
+      typeof skill?.name === "string" &&
+      ["percezione", "perception"].includes(skill.name.toLowerCase())
+  );
+  const isProficient = !!perceptionSkill?.proficient;
+  return 10 + wisdomModifier + (isProficient ? proficiencyBonus(state?.basicInfo?.level) : 0);
+}
+
+function getSpellSaveDc(state: CharacterState) {
+  const normalizedClass = (state?.basicInfo?.class ?? "").trim().toLowerCase();
+  const spellcastingAbility = SPELLCASTING_ABILITY_BY_CLASS[normalizedClass];
+  if (!spellcastingAbility) return null;
+
+  return 8 + proficiencyBonus(state?.basicInfo?.level) + abilityModifier(state?.abilityScores?.[spellcastingAbility]);
+}
+
+function getAbilityBonuses(state: CharacterState) {
+  return ABILITY_ORDER.map(({ key, label }) => ({
+    label,
+    value: abilityModifier(state?.abilityScores?.[key]),
+  }));
+}
+
+function summarizeResourceSlots(
+  className: string | undefined,
+  spellSlots: Record<string, Array<{ active?: boolean }>> | undefined
+) {
+  const normalizedClass = (className ?? "").trim().toLowerCase();
+  const entries = Object.entries(spellSlots ?? {})
+    .map(([level, slots]) => ({
+      level: parseInt(level, 10),
+      remaining: Array.isArray(slots) ? slots.filter((slot) => !slot?.active).length : 0,
+      total: Array.isArray(slots) ? slots.length : 0,
+    }))
+    .filter((entry) => Number.isFinite(entry.level) && entry.level > 0 && entry.total > 0)
+    .sort((a, b) => a.level - b.level);
+
+  if (entries.length === 0) {
+    return { label: "", entries: [] as Array<{ label: string; remaining: number }> };
+  }
+
+  if (normalizedClass === "guerriero" || normalizedClass === "fighter") {
+    return {
+      label: "Manovre",
+      entries: entries.map(({ level, remaining }) => ({
+        label: `d${level}`,
+        remaining,
+      })),
+    };
+  }
+
+  return {
+    label: "Slot",
+    entries: entries.map(({ level, remaining }) => ({
+      label: `${level}`,
+      remaining,
+    })),
+  };
+}
+
+function toPlayerCardData(state: CharacterState): PlayerCardData | null {
+  const slug = typeof state?.slug === "string" ? state.slug : "";
+  if (!slug) return null;
+
   return {
     slug,
-    name: s?.basicInfo?.name ?? s?.name ?? slug,
-    class: s?.basicInfo?.class ?? s?.class ?? "",
-    level: s?.basicInfo?.level ?? s?.level,
+    name: state?.basicInfo?.characterName ?? slug,
+    playerName: state?.basicInfo?.playerName ?? "",
+    className: state?.basicInfo?.class ?? "",
+    level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
+    initiativeBonus: state?.combatStats?.initiative ?? 0,
+    armorClass: typeof state?.combatStats?.armorClass === "number" ? state.combatStats.armorClass : null,
+    passivePerception: getPassivePerception(state),
+    spellSaveDc: getSpellSaveDc(state),
+    abilityBonuses: getAbilityBonuses(state),
+    resourceSummary: summarizeResourceSlots(state?.basicInfo?.class, state?.combatStats?.spellSlots),
     hp: {
-      current: s?.combatStats?.currentHitPoints ?? s?.hp?.current,
-      max: s?.combatStats?.hitPointMaximum ?? s?.hp?.max,
-      temp: s?.combatStats?.temporaryHitPoints ?? s?.hp?.temp,
+      current: Math.max(0, state?.combatStats?.currentHitPoints ?? 0),
+      max: Math.max(0, state?.combatStats?.hitPointMaximum ?? 0),
+      temp: Math.max(0, state?.combatStats?.temporaryHitPoints ?? 0),
     },
-    ac: s?.combatStats?.armorClass ?? s?.ac,
-    status: s?.status ?? s?.conditions?.join?.(", "),
-    player: s?.player ?? s?.owner,
-    deathSavesFailures: s?.combatStats?.deathSaves?.failures ?? 0,
+    deathSaves: {
+      successes: Math.max(0, Math.min(3, state?.combatStats?.deathSaves?.successes ?? 0)),
+      failures: Math.max(0, Math.min(3, state?.combatStats?.deathSaves?.failures ?? 0)),
+    },
   };
 }
 
-function hpPercent(hp?: { current?: number; max?: number, temp?: number }): number {
-  const cur = Math.max(0, hp?.current ?? 0);
-  const max = Math.max(1, hp?.max ?? 1);
-  const temp = Math.max(0, hp?.temp ?? 0);
-  return Math.min(100, Math.round((cur / (max + temp)) * 100));
+function hpPercent(hp: PlayerCardData["hp"]) {
+  const max = Math.max(1, hp.max);
+  return Math.min(100, Math.round((Math.max(0, hp.current) / max) * 100));
 }
 
-function hpSegments(hp?: { current?: number; max?: number; temp?: number }) {
-  const current = Math.max(0, hp?.current ?? 0);
-  const max = Math.max(1, hp?.max ?? 1);
-  const temp = Math.max(0, hp?.temp ?? 0);
+function hpSegments(hp: PlayerCardData["hp"]) {
+  const current = Math.max(0, hp.current);
+  const max = Math.max(1, hp.max);
+  const temp = Math.max(0, hp.temp);
   const total = max + temp;
 
   return {
@@ -88,320 +201,384 @@ function hpSegments(hp?: { current?: number; max?: number; temp?: number }) {
   };
 }
 
-// ---------- Component ----------
-export default function DMDashboard({ campaign, monsters }: DMDashboardProps) {
-  // --- Realtime: presence + dati giocatori (solo Players tab) ---
-  const [online, setOnline] = useState<string[]>([]);
-  const [summaries, setSummaries] = useState<Record<string, LiveSummary>>({});
-  const fullStatesRef = useRef<Record<string, CharacterState>>({});
-  const [errors, setErrors] = useState<string | null>(null);
+function hpBarColor(hp: PlayerCardData["hp"]) {
+  const percent = hpPercent(hp);
+  if (percent >= 66) return "bg-emerald-500";
+  if (percent >= 33) return "bg-amber-500";
+  return "bg-rose-500";
+}
 
-  // Notes locali (mantengo la tua UI intatta)
-  const [sessionNotes, setSessionNotes] = useState("");
+export default function DMDashboard() {
+  const [onlineSlugs, setOnlineSlugs] = useState<string[]>([]);
+  const [baseCharacterStates, setBaseCharacterStates] = useState<CharacterState[]>([]);
+  const [liveStates, setLiveStates] = useState<Record<string, CharacterState>>({});
+  const [errors, setErrors] = useState<string[]>([]);
+  const [expandedAbilityBonuses, setExpandedAbilityBonuses] = useState<Record<string, boolean>>({});
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [messageTargetSlug, setMessageTargetSlug] = useState<string | null>(null);
+  const [messageBody, setMessageBody] = useState("");
+  const joinedRoomsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     document.title = "DM Dashboard | D&D Character Manager";
   }, []);
 
-  // Presence
   useEffect(() => {
-    const unsubscribe = subscribePresence((list) => {
-      const next = list.filter((x) => x.count > 0)?.map((x) => x.slug);
-      setOnline(next);
-    });
+    let active = true;
+
+    void fetchCharacters()
+      .then((characters) => {
+        if (active) setBaseCharacterStates(Array.isArray(characters) ? characters : []);
+      })
+      .catch(() => {
+        if (active) setErrors((prev) => [...prev, "Impossibile caricare il roster iniziale."]);
+      });
+
     return () => {
-      try { unsubscribe?.(); } catch { /* noop */ }
+      active = false;
     };
   }, []);
 
-  // Join room + fetch iniziale per i personaggi online
   useEffect(() => {
-    online.forEach((slug) => {
-      try { joinCharacterRoom(slug); } catch (e: any) {
-        setErrors((prev) => `[join ${slug}] ${String(e?.message ?? e)}${prev ? `\n${prev}` : ""}`);
+    const unsubscribe = subscribePresence((list) => {
+      setOnlineSlugs(list.filter((entry) => entry.count > 0).map((entry) => entry.slug));
+    });
+    requestPresenceSnapshot();
+
+    return () => {
+      try {
+        unsubscribe();
+      } catch {}
+    };
+  }, []);
+
+  useEffect(() => {
+    onlineSlugs.forEach((slug) => {
+      if (joinedRoomsRef.current.has(slug)) return;
+      joinedRoomsRef.current.add(slug);
+
+      try {
+        joinCharacterRoom(slug);
+      } catch (error: any) {
+        setErrors((prev) => [...prev, `[join ${slug}] ${String(error?.message ?? error)}`]);
       }
-
-      fetchCharacter(slug)
-        .then((state) => {
-          fullStatesRef.current[slug] = state;
-          setSummaries((prev) => ({ ...prev, [slug]: toSummary(slug, state) }));
-        })
-        .catch((e) => {
-          setErrors((prev) => `[fetch ${slug}] ${String(e?.message ?? e)}${prev ? `\n${prev}` : ""}`);
-        });
     });
 
-    // Prune chi è offline
-    setSummaries((prev) => {
-      const next: typeof prev = {};
-      for (const slug of online) if (prev[slug]) next[slug] = prev[slug];
-      return next;
-    });
-    Object.keys(fullStatesRef.current).forEach((slug) => {
-      if (!online.includes(slug)) delete fullStatesRef.current[slug];
-    });
-  }, [online]);
+    void Promise.all(
+      onlineSlugs.map(async (slug) => {
+        try {
+          const state = await fetchCharacter(slug);
+          return [slug, state] as const;
+        } catch (error: any) {
+          setErrors((prev) => [...prev, `[fetch ${slug}] ${String(error?.message ?? error)}`]);
+          return null;
+        }
+      })
+    ).then((results) => {
+      const nextEntries = results.filter(Boolean) as Array<readonly [string, CharacterState]>;
+      if (nextEntries.length === 0) return;
 
-  // Listener GLOBALI: snapshot completi e patch incrementali
+      setLiveStates((prev) => ({
+        ...prev,
+        ...Object.fromEntries(nextEntries),
+      }));
+    });
+  }, [onlineSlugs]);
+
   useEffect(() => {
-    const offState = onCharacterState(({ slug, state }: { slug: string; state: CharacterState }) => {
-
-      fullStatesRef.current[slug] = state;
-      setSummaries((prev) => ({ ...prev, [slug]: toSummary(slug, state) }));
+    const offState = onCharacterState((state: CharacterState) => {
+      const slug = state?.slug;
+      if (!slug) return;
+      setLiveStates((prev) => ({ ...prev, [slug]: state }));
     });
 
     const offPatch = onCharacterPatch(({ slug, patch }: { slug: string; patch: any }) => {
-      try {
-        const prev = fullStatesRef.current[slug] ?? {};
-        const next = applyPatch(prev, patch); // deve ritornare NUOVA reference
-        fullStatesRef.current[slug] = next;
-        setSummaries((prev) => ({ ...prev, [slug]: toSummary(slug, next) }));
-      } catch (e: any) {
-        setErrors((prev) => `[patch ${slug}] ${String(e?.message ?? e)}${prev ? `\n${prev}` : ""}`);
-      }
+      setLiveStates((prev) => {
+        const current = prev[slug];
+        if (!current) return prev;
+        return { ...prev, [slug]: applyPatch(current, patch) };
+      });
     });
 
     return () => {
-      try { offState(); } catch { }
-      try { offPatch(); } catch { }
+      try {
+        offState();
+      } catch {}
+      try {
+        offPatch();
+      } catch {}
     };
   }, []);
 
-  // Per la UI Players
-  const playerCards = useMemo(() => {
-    const list = Object.values(summaries);
+  const roster = useMemo(
+    () =>
+      baseCharacterStates
+        .map((state) => toPlayerCardData(state))
+        .filter((player): player is PlayerCardData => !!player)
+        .map((basePlayer) => {
+          const livePlayer = toPlayerCardData(liveStates[basePlayer.slug]);
+          return livePlayer ?? basePlayer;
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+    [baseCharacterStates, liveStates]
+  );
 
-    return list.sort((a, b) =>
-      (a.name || a.slug)?.localeCompare(b.name || b.slug, undefined, { sensitivity: "base" })
-    );
-  }, [summaries]);
+  const selectedPlayer = useMemo(
+    () => roster.find((player) => player.slug === messageTargetSlug) ?? null,
+    [messageTargetSlug, roster]
+  );
 
-  // ----------- UI ORIGINALE + logica Players inserita -----------
+  const onlineCount = onlineSlugs.length;
+  const onlineSet = useMemo(() => new Set(onlineSlugs), [onlineSlugs]);
+
+  const openMessageModal = (slug: string) => {
+    setMessageTargetSlug(slug);
+    setMessageBody("");
+    setMessageModalOpen(true);
+  };
+
+  const toggleAbilityBonuses = (slug: string) => {
+    setExpandedAbilityBonuses((prev) => ({ ...prev, [slug]: !prev[slug] }));
+  };
+
+  const handleSendMessage = () => {
+    if (!selectedPlayer) return;
+
+    const trimmedMessage = messageBody.trim();
+    if (!trimmedMessage) return;
+
+    sendPrivateMessage({
+      slug: selectedPlayer.slug,
+      title: "Messaggio privato del DM",
+      message: trimmedMessage,
+    });
+
+    toast.success(`Messaggio inviato a ${selectedPlayer.name}`);
+    setMessageBody("");
+    setMessageModalOpen(false);
+  };
+
   return (
     <div className="min-h-screen parchment p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-heading font-bold text-primary">
-            Dungeon Master's Screen
-          </h1>
-          <div className="dnd-frame p-4">
-            <h2 className="text-2xl font-heading text-crimson">{campaign?.campaignInfo?.name}</h2>
-            <div className="flex justify-center items-center gap-6 mt-2 text-sm text-muted-foreground">
-              <span>Session {campaign?.campaignInfo?.session}</span>
-              <span>•</span>
-              <span>{campaign?.campaignInfo?.location}</span>
-              <span>•</span>
-              <span>{campaign?.campaignInfo?.date}</span>
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="dnd-frame p-5">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-2">
+              <Badge variant="outline" className="w-fit border-primary/30 bg-background/70">
+                Pagina DM
+              </Badge>
+              <div>
+                <h1 className="font-heading text-4xl font-bold text-primary">Roster giocatori</h1>
+                <p className="max-w-2xl text-sm text-muted-foreground">
+                  Vista rapida del party sempre disponibile, con stato live e gli stessi riferimenti tattici del tracker.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <Card className="min-w-36 border-primary/15 bg-background/80 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Users className="h-4 w-4 text-primary" />
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Giocatori</div>
+                    <div className="text-lg font-semibold text-foreground">{roster.length}</div>
+                  </div>
+                </div>
+              </Card>
+              <Card className="min-w-36 border-emerald-500/20 bg-background/80 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Shield className="h-4 w-4 text-emerald-600" />
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Online</div>
+                    <div className="text-lg font-semibold text-foreground">{onlineCount}</div>
+                  </div>
+                </div>
+              </Card>
+              <Button variant="outline" className="bg-background/80" asChild>
+                <a href="/dm/initiative">Apri tracker iniziativa</a>
+              </Button>
             </div>
           </div>
-        </div>
+        </section>
 
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 dnd-frame">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Map className="w-4 h-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="bestiary" className="flex items-center gap-2">
-              <Sword className="w-4 h-4" />
-              Bestiary
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="flex items-center gap-2">
-              <Scroll className="w-4 h-4" />
-              Session Notes
-            </TabsTrigger>
-          </TabsList>
+        {errors.length > 0 && (
+          <Card className="border-amber-500/30 bg-amber-50/70 p-4 text-sm text-amber-950">
+            Alcuni aggiornamenti live non sono andati a buon fine. Il roster resta comunque disponibile.
+          </Card>
+        )}
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card className="character-section">
-                <div className="character-section-title">Campaign Status</div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span>Active Players:</span>
-                    <Badge variant="secondary">{online.length}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Current Location:</span>
-                    <span className="text-primary font-semibold">{campaign?.campaignInfo?.location}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Session:</span>
-                    <span className="text-primary font-semibold">#{campaign?.campaignInfo?.session}</span>
-                  </div>
-                </div>
-              </Card>
+        <section className="grid gap-4">
+          {roster.map((player) => {
+            const isOnline = onlineSet.has(player.slug);
+            const abilitiesExpanded = !!expandedAbilityBonuses[player.slug];
+            const hpColor = hpBarColor(player.hp);
+            const { currentPct, tempPct } = hpSegments(player.hp);
+            const showDeathSaves = player.hp.current === 0;
 
-              <Card className="character-section">
-                <div className="character-section-title">Quick Actions</div>
-                <div className="space-y-2">
-                  <Button variant="outline" className="w-full justify-start" asChild>
-                    <a href="/dm/initiative">
-                    <Dice6 className="w-4 h-4 mr-2" />
-                    Tracker Iniziativa
-                    </a>
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Sword className="w-4 h-4 mr-2" />
-                    Start Encounter
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Scroll className="w-4 h-4 mr-2" />
-                    Add Note
-                  </Button>
-                </div>
-              </Card>
-
-              <Card className="character-section">
-                <div className="character-section-title">Recent Notes</div>
-                <div className="space-y-1 text-sm">
-                  {campaign?.notes.slice(-3).map((note, index) => (
-                    <div key={index} className="text-muted-foreground">
-                      • {note}
+            return (
+              <Card key={player.slug} className="character-section">
+                <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(240px,0.8fr)_minmax(0,1.7fr)_110px] lg:items-start">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Circle
+                        className={`h-3 w-3 ${isOnline ? "fill-emerald-500 text-emerald-500" : "fill-muted text-muted"}`}
+                      />
+                      <div className="font-heading text-2xl font-semibold text-primary">{player.name}</div>
+                      <Badge variant="outline">
+                        {player.className || "Classe?"} {player.level ? `Lv ${player.level}` : ""}
+                      </Badge>
                     </div>
-                  ))}
-                </div>
-              </Card>
-            </div>
-
-            <div className="grid gap-4">
-              {playerCards.length === 0 ? (
-                <Card className="character-section">
-                  <div className="text-sm text-muted-foreground">
-                    Nessun giocatore online al momento.
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <span>{player.playerName || "Giocatore non indicato"}</span>
+                    </div>
                   </div>
-                </Card>
-              ) : (
-                playerCards?.map((p) => {
-                  const pct = hpPercent(p.hp);
-                  const barColor =
-                    pct >= 66 ? "bg-emerald-500" : pct >= 33 ? "bg-amber-500" : "bg-rose-500";
-                  const { currentPct, tempPct } = hpSegments(p.hp);
 
-                  return (
-                    <Card key={p.slug} className="character-section">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                          <h3 className="font-heading text-lg font-semibold text-primary">
-                            {p.name} {p.deathSavesFailures > 0 && (
-                              <div className="inline-block text-2xl text-red-600 mb-2">
-                                {Array.from({ length: p.deathSavesFailures }).map((_, i) => (
-                                  <span key={i}>💀</span>
-                                ))}
-                              </div>
-                            )}
-                          </h3>
-                          <div className="text-sm text-muted-foreground">
-                            {p.class ? `${p.class}` : "Adventurer"}
-                            {typeof p.level === "number" ? ` • Level ${p.level}` : ""}
-                            {p.player ? ` • Played by ${p.player}` : ""}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {p.status ? (
-                            <Badge variant="default">{p.status}</Badge>
-                          ) : (
-                            <Badge variant="secondary">active</Badge>
-                          )}
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={`/${p.slug}`}>View Sheet</a>
-                          </Button>
-                        </div>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
+                        <span className="text-muted-foreground">Init</span>{" "}
+                        <span>{player.initiativeBonus >= 0 ? `+${player.initiativeBonus}` : player.initiativeBonus}</span>
                       </div>
+                      <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
+                        <span className="text-muted-foreground">CA</span>{" "}
+                        <span>{player.armorClass ?? "-"}</span>
+                      </div>
+                      {player.resourceSummary.entries.length > 0 && (
+                        <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
+                          <span className="text-muted-foreground">{player.resourceSummary.label}</span>{" "}
+                          <span>
+                            {player.resourceSummary.entries.map((entry) => `${entry.label}:${entry.remaining}`).join(" · ")}
+                          </span>
+                        </div>
+                      )}
+                      <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
+                        <span className="text-muted-foreground">Perc</span>{" "}
+                        <span>{player.passivePerception ?? "-"}</span>
+                      </div>
+                      {player.spellSaveDc !== null && (
+                        <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
+                          <span className="text-muted-foreground">CD</span>{" "}
+                          <span>{player.spellSaveDc}</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => toggleAbilityBonuses(player.slug)}
+                        className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90 transition-colors hover:bg-accent"
+                        aria-expanded={abilitiesExpanded}
+                        aria-label="Mostra bonus caratteristiche"
+                        title="Mostra bonus caratteristiche"
+                      >
+                        <span className="text-muted-foreground">Caratt.</span>
+                        <ChevronRight className={`h-3.5 w-3.5 transition-transform ${abilitiesExpanded ? "rotate-90" : ""}`} />
+                      </button>
+                    </div>
 
-                      {/* HP + AC */}
-                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                        <div className="sm:col-span-2">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>HP</span>
-                            <span className="tabular-nums">
-                              {(p.hp?.current ?? 0)}/{p.hp?.max ?? 0}
-                              {p.hp?.temp ? ` (+${p.hp.temp})` : ""}
-                            </span>
-                          </div>
-                          <div className="mt-1 h-2 w-full overflow-hidden rounded bg-border">
-                            <div className="flex h-full w-full">
-                              <div
-                                className={`${barColor} h-full transition-[width] duration-300`}
-                                style={{ width: `${currentPct}%` }}
-                              />
-                              {tempPct > 0 && (
-                                <div
-                                  className="h-full bg-sky-400 transition-[width] duration-300"
-                                  style={{ width: `${tempPct}%` }}
-                                />
-                              )}
+                    <div
+                      className={`grid transition-all ${abilitiesExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="flex flex-wrap gap-1.5 rounded-xl border border-border/50 bg-background/30 px-2 py-2">
+                          {player.abilityBonuses.map((ability) => (
+                            <div
+                              key={`${player.slug}-${ability.label}`}
+                              className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/90"
+                            >
+                              {ability.label} {ability.value >= 0 ? `+${ability.value}` : ability.value}
                             </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between sm:justify-end gap-3">
-                          <div className="text-sm">
-                            <span className="text-muted-foreground mr-1">AC</span>
-                            <span className="font-semibold">{typeof p.ac === "number" ? p.ac : "-"}</span>
-                          </div>
-                          <div className="text-sm">
-                            <span className="text-muted-foreground mr-1">Slug</span>
-                            <span className="font-mono text-xs">{p.slug}</span>
-                          </div>
+                          ))}
                         </div>
                       </div>
-                    </Card>
-                  );
-                })
-              )}
-            </div>
-          </TabsContent>
+                    </div>
 
-          <TabsContent value="bestiary" className="space-y-4">
-            <div className="grid gap-4">
-              {monsters?.map((monster, index) => (
-                <Card key={index} className="character-section">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-heading text-lg font-semibold text-primary">
-                        {monster.name}
-                      </h3>
-                      <div className="text-sm text-muted-foreground">
-                        {monster.size} {monster.type} • CR {monster.challengeRating}
+                    <div className="space-y-2 rounded-xl border border-border/60 bg-background/35 p-3">
+                      <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+                        <span>Punti ferita</span>
+                        <span className="tabular-nums">
+                          {player.hp.current}/{player.hp.max}
+                          {player.hp.temp ? ` (+${player.hp.temp})` : ""}
+                        </span>
                       </div>
-                    </div>
-                    <div className="text-right text-sm">
-                      <div>AC {monster.armorClass}</div>
-                      <div>{monster.hitPoints} HP</div>
+                      <div className="h-2 overflow-hidden rounded-full bg-border">
+                        <div className="flex h-full w-full">
+                          <div className={`${hpColor} h-full`} style={{ width: `${currentPct}%` }} />
+                          {tempPct > 0 && <div className="h-full bg-sky-400" style={{ width: `${tempPct}%` }} />}
+                        </div>
+                      </div>
+                      {showDeathSaves && (
+                        <div className="text-xs text-muted-foreground">
+                          TS morte: {player.deathSaves.successes}/3 successi, {player.deathSaves.failures}/3 fallimenti
+                        </div>
+                      )}
                     </div>
                   </div>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
 
-          <TabsContent value="notes" className="space-y-4">
-            <Card className="character-section">
-              <div className="character-section-title">Session Notes</div>
-              <Textarea
-                placeholder="Record important events, player decisions, and story developments..."
-                value={sessionNotes}
-                onChange={(e) => setSessionNotes(e.target.value)}
-                className="min-h-48"
-              />
-              <Button className="mt-2">Save Notes</Button>
-            </Card>
-
-            <Card className="character-section">
-              <div className="character-section-title">Previous Notes</div>
-              <div className="space-y-2">
-                {campaign?.notes.map((note, index) => (
-                  <div key={index} className="text-sm border-l-2 border-primary pl-3 py-1">
-                    {note}
+                  <div className="flex items-center justify-end gap-1 lg:pt-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      asChild
+                      className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
+                      title="Apri scheda"
+                      aria-label="Apri scheda"
+                    >
+                      <a href={`/${player.slug}`}>
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openMessageModal(player.slug)}
+                      disabled={!isOnline}
+                      className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
+                      title="Messaggio privato"
+                      aria-label="Messaggio privato"
+                    >
+                      <MessageSquareMore className="h-4 w-4" />
+                    </Button>
                   </div>
-                ))}
+                </div>
+              </Card>
+            );
+          })}
+        </section>
+
+        <Dialog open={messageModalOpen} onOpenChange={setMessageModalOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedPlayer ? `Messaggio a ${selectedPlayer.name}` : "Messaggio privato"}
+              </DialogTitle>
+              <DialogDescription>
+                Il messaggio compare come popup sulla scheda del giocatore se il personaggio e' online.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              <div className="text-sm text-muted-foreground">
+                {selectedPlayer?.playerName
+                  ? `Giocatore: ${selectedPlayer.playerName}`
+                  : "Giocatore non indicato"}
               </div>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              <Textarea
+                value={messageBody}
+                onChange={(event) => setMessageBody(event.target.value)}
+                placeholder="Scrivi qui il messaggio del DM..."
+                className="min-h-36"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMessageModalOpen(false)}>
+                Annulla
+              </Button>
+              <Button onClick={handleSendMessage} disabled={!messageBody.trim()}>
+                Invia popup
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

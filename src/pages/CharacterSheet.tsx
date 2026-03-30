@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -29,6 +30,8 @@ import {
   updateCharacter,
   applyPatch,
   announceEnter,
+  announceLeave,
+  onPrivateMessage,
 } from "@/realtime";
 import {
   coerce,
@@ -300,6 +303,7 @@ const CharacterSheet = () => {
   const { character } = useParams();
   const [characterData, setCharacterData] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
 
   // death saves state (local only)
@@ -355,6 +359,12 @@ const CharacterSheet = () => {
   const [modalDescription, setModalDescription] = useState<string>("");
   const [modalFeatureIndex, setModalFeatureIndex] = useState<number | null>(null);
   const [confirmRemoveFeatureOpen, setConfirmRemoveFeatureOpen] = useState(false);
+  const [privateMessageOpen, setPrivateMessageOpen] = useState(false);
+  const [privateMessage, setPrivateMessage] = useState<{
+    title?: string;
+    message: string;
+    sentAt: string;
+  } | null>(null);
 
   const classOptions = useMemo(() => Object.keys(spells).sort(), []);
   const filteredSpells = useMemo(() => {
@@ -835,22 +845,44 @@ const CharacterSheet = () => {
     if (!slug) return;
     let unsubState: any = null;
     let unsubPatch: any = null;
+    let unsubPrivateMessage: any = null;
+    let active = true;
     (async () => {
       try {
         const data = await fetchCharacter(slug);
-        setCharacterData(data);
-      } catch {
+        if (active) setCharacterData(data);
+        if (active) setLoadError(null);
+      } catch (error: any) {
+        if (active) {
+          setCharacterData(null);
+          setLoadError(error?.status === 403 ? "Non hai accesso a questa scheda." : null);
+        }
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
       joinCharacterRoom(slug);
       unsubState = onCharacterState((state) => setCharacterData(state));
       unsubPatch = onCharacterPatch((patch) =>
         setCharacterData((prev) => (prev ? applyPatch(prev, patch) : prev))
       );
+      unsubPrivateMessage = onPrivateMessage((payload) => {
+        if (payload.slug !== slug) return;
+        setPrivateMessage({
+          title: payload.title,
+          message: payload.message,
+          sentAt: payload.sentAt,
+        });
+        setPrivateMessageOpen(true);
+      });
     })();
-    if (!character) return;
     announceEnter(character);
+    return () => {
+      active = false;
+      try { unsubState?.(); } catch {}
+      try { unsubPatch?.(); } catch {}
+      try { unsubPrivateMessage?.(); } catch {}
+      try { announceLeave(); } catch {}
+    };
   }, [character]);
 
   useEffect(() => {
@@ -863,22 +895,6 @@ const CharacterSheet = () => {
     const characterName = characterData?.basicInfo?.characterName?.trim();
     document.title = characterName || "Scheda personaggio";
   }, [characterData?.basicInfo?.characterName]);
-
-  useEffect(() => {
-    const loadCharacter = async () => {
-      try {
-        const data = await import(`@/data/characters/${character}.json`);
-        setCharacterData(data.default);
-      } catch (error) {
-        console.error("Character not found:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (character) {
-      loadCharacter();
-    }
-  }, [character]);
 
   if (loading) {
     return (
@@ -894,8 +910,12 @@ const CharacterSheet = () => {
     return (
       <div className="min-h-screen flex items-center justify-center parchment">
         <div className="text-center">
-          <h2 className="text-2xl font-heading text-primary">Il personaggio non esiste</h2>
-          <p className="text-muted-foreground mt-2">"{character}"non esiste.</p>
+          <h2 className="text-2xl font-heading text-primary">
+            {loadError ? "Accesso negato" : "Il personaggio non esiste"}
+          </h2>
+          <p className="text-muted-foreground mt-2">
+            {loadError ?? `"${character}" non esiste.`}
+          </p>
           <Button asChild className="mt-4">
             <a href="/">Torna alla Home</a>
           </Button>
@@ -1157,6 +1177,27 @@ const CharacterSheet = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={privateMessageOpen} onOpenChange={setPrivateMessageOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{privateMessage?.title?.trim() || "Messaggio dal DM"}</DialogTitle>
+            <DialogDescription>
+              {privateMessage?.sentAt
+                ? new Date(privateMessage.sentAt).toLocaleString("it-IT")
+                : "Nuovo messaggio privato"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            {privateMessage?.message}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Chiudi</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

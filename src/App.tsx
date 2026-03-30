@@ -5,10 +5,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import ThemeToggle from "@/components/theme-toggle";
+import { AuthProvider, RequireAuth, RequireRole } from "@/components/auth-provider";
 import Index from "./pages/Index";
 import DMDashboard from "./pages/DMDashboard";
 import InitiativeTracker from "./pages/InitiativeTracker";
 import CharacterSheet from "./pages/CharacterSheet";
+import Login from "./pages/Login";
+import ChangePassword from "./pages/ChangePassword";
+import UserManagement from "./pages/UserManagement";
+import CharacterAssignments from "./pages/CharacterAssignments";
+import NewCharacter from "./pages/NewCharacter";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,14 +26,70 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/dm" element={<DMDashboard />} />
-            <Route path="/dm/initiative" element={<InitiativeTracker />} />
-            <Route path="/:character" element={<CharacterSheet />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/change-password"
+                element={
+                  <RequireAuth>
+                    <ChangePassword />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/dm"
+                element={
+                  <RequireRole role="dm">
+                    <DMDashboard />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/dm/initiative"
+                element={
+                  <RequireRole role="dm">
+                    <InitiativeTracker />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/dm/users"
+                element={
+                  <RequireRole role="dm">
+                    <UserManagement />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/dm/assignments"
+                element={
+                  <RequireRole role="dm">
+                    <CharacterAssignments />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/characters/new"
+                element={
+                  <RequireRole role="player">
+                    <NewCharacter />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/:character"
+                element={
+                  <RequireAuth>
+                    <CharacterSheet />
+                  </RequireAuth>
+                }
+              />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
         <ThemeToggle />
       </TooltipProvider>

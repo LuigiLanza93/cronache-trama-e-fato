@@ -1,6 +1,12 @@
 import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
+type PrivateMessagePayload = {
+  slug: string;
+  title?: string;
+  message: string;
+  sentAt: string;
+};
 
 export function getSocket(): Socket {
   if (!socket) {
@@ -9,10 +15,30 @@ export function getSocket(): Socket {
   return socket;
 }
 
-export async function fetchCharacter(slug: string) {
-  const res = await fetch(`/api/characters/${slug}`);
-  if (!res.ok) throw new Error("Not found");
+async function fetchJsonOrThrow(url: string, init?: RequestInit) {
+  const res = await fetch(url, {
+    ...init,
+    credentials: "same-origin",
+  });
+
+  if (!res.ok) {
+    const error = new Error(res.status === 404 ? "Not found" : "Request failed") as Error & {
+      status?: number;
+    };
+    error.status = res.status;
+    throw error;
+  }
+
+  if (res.status === 204) return null;
   return res.json();
+}
+
+export async function fetchCharacter(slug: string) {
+  return fetchJsonOrThrow(`/api/characters/${slug}`);
+}
+
+export async function fetchCharacters() {
+  return fetchJsonOrThrow("/api/characters");
 }
 
 export function joinCharacterRoom(slug: string) {
@@ -81,5 +107,18 @@ export function subscribePresence(
   // ⬇️ cleanup che NON ritorna Socket
   return () => {
     s.off("presence:update", handler);
+  };
+}
+
+export function sendPrivateMessage(payload: { slug: string; title?: string; message: string }) {
+  getSocket().emit("dm:private-message", payload);
+}
+
+export function onPrivateMessage(cb: (payload: PrivateMessagePayload) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: PrivateMessagePayload) => cb(payload);
+  s.on("dm:private-message", handler);
+  return () => {
+    s.off("dm:private-message", handler);
   };
 }
