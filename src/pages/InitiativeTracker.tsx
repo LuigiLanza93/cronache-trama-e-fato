@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import { fetchCharacter, fetchCharacters } from "@/realtime";
+import { fetchCharacter, fetchCharacters, notifyInitiativeTurn } from "@/realtime";
 import {
   Check,
   ChevronRight,
@@ -589,6 +589,11 @@ export default function InitiativeTracker() {
 
   const currentTurn = combatants.find((combatant) => combatant.id === encounter.currentTurnId) ?? null;
 
+  const triggerTurnNotification = (combatant: Combatant | null | undefined) => {
+    if (!combatant || combatant.type !== "player") return;
+    notifyInitiativeTurn(combatant.slug);
+  };
+
   const addPlayer = (slug: string) => {
     if (encounter.players.some((entry) => entry.slug === slug)) return false;
 
@@ -727,6 +732,7 @@ export default function InitiativeTracker() {
   const startEncounter = () => {
     const eligibleCombatants = combatants.filter(isEligibleForTurn);
     if (eligibleCombatants.length === 0) return;
+    const nextCombatant = eligibleCombatants[0] ?? null;
 
     setSetupSectionsOpen(false);
     setEncounter((prev) => ({
@@ -735,6 +741,7 @@ export default function InitiativeTracker() {
       round: prev.round > 0 ? prev.round : 1,
       currentTurnId: buildCombatants(prev, catalogBySlug, liveCharacterStates).filter(isEligibleForTurn)[0]?.id ?? null,
     }));
+    triggerTurnNotification(nextCombatant);
   };
 
   const nextTurn = () => {
@@ -745,21 +752,25 @@ export default function InitiativeTracker() {
 
     const currentIndex = eligibleCombatants.findIndex((combatant) => combatant.id === encounter.currentTurnId);
     if (currentIndex < 0) {
+      const nextCombatant = eligibleCombatants[0] ?? null;
       setEncounter((prev) => ({
         ...prev,
         currentTurnId: eligibleCombatants[0]?.id ?? null,
       }));
+      triggerTurnNotification(nextCombatant);
       return;
     }
 
     const nextIndex = (currentIndex + 1) % eligibleCombatants.length;
     const wrapped = nextIndex === 0;
+    const nextCombatant = eligibleCombatants[nextIndex] ?? null;
 
     setEncounter((prev) => ({
       ...prev,
       currentTurnId: eligibleCombatants[nextIndex].id,
       round: wrapped ? prev.round + 1 : prev.round,
     }));
+    triggerTurnNotification(nextCombatant);
   };
 
   const resetEncounter = () => {

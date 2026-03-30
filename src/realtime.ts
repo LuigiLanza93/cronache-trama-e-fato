@@ -16,6 +16,10 @@ export type ChatMessage = {
   text: string;
   createdAt: string;
 };
+export type InitiativeTurnPayload = {
+  slug: string;
+  startedAt: string;
+};
 
 export function getSocket(): Socket {
   if (!socket) {
@@ -150,5 +154,18 @@ export function onChatMessage(cb: (payload: ChatMessage) => void): () => void {
   s.on("chat:message", handler);
   return () => {
     s.off("chat:message", handler);
+  };
+}
+
+export function notifyInitiativeTurn(slug: string) {
+  getSocket().emit("initiative:turn-start", { slug });
+}
+
+export function onInitiativeTurnStart(cb: (payload: InitiativeTurnPayload) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: InitiativeTurnPayload) => cb(payload);
+  s.on("initiative:turn-start", handler);
+  return () => {
+    s.off("initiative:turn-start", handler);
   };
 }

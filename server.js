@@ -19,6 +19,8 @@ const PORT = process.env.PORT || 3000;
 // ---- Disk paths ----
 const DATA_DIR = path.resolve(__dirname, "src/data");
 const CHAR_DIR = path.resolve(DATA_DIR, "characters");
+const ARCHIVED_CHAR_DIR = path.resolve(DATA_DIR, "archived-characters");
+const SKILLS_FILE = path.resolve(DATA_DIR, "skills.json");
 const USERS_FILE = path.resolve(DATA_DIR, "users.json");
 const OWNERSHIP_FILE = path.resolve(DATA_DIR, "character-ownership.json");
 const CHATS_FILE = path.resolve(DATA_DIR, "chats.json");
@@ -80,6 +82,10 @@ function readChats() {
   return readJsonFile(CHATS_FILE, {});
 }
 
+function readSkills() {
+  return readJsonFile(SKILLS_FILE, { skills: [] });
+}
+
 function writeChats(chats) {
   fs.writeFileSync(CHATS_FILE, JSON.stringify(chats, null, 2) + "\n", "utf-8");
 }
@@ -117,6 +123,19 @@ function writeCharacter(slug, data) {
   const json = JSON.stringify(data, null, 2) + "\n";
   fs.writeFileSync(tmpPath, json, "utf-8");
   fs.renameSync(tmpPath, filePath);
+}
+
+function archiveCharacter(slug) {
+  ensureDir(CHAR_DIR);
+  ensureDir(ARCHIVED_CHAR_DIR);
+
+  const sourcePath = path.join(CHAR_DIR, `${slug}.json`);
+  if (!fs.existsSync(sourcePath)) return null;
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const destinationPath = path.join(ARCHIVED_CHAR_DIR, `${slug}--archived-${timestamp}.json`);
+  fs.renameSync(sourcePath, destinationPath);
+  return destinationPath;
 }
 
 function hashPassword(password, salt) {
@@ -222,6 +241,112 @@ function sanitizeUserForAdmin(user, ownership) {
 
 function createUserId(username) {
   return `user_${sanitizeSlug(username)}_${crypto.randomBytes(4).toString("hex")}`;
+}
+
+function createUniqueCharacterSlug(baseSlug) {
+  const existing = new Set(listCharacterSlugs());
+  if (!existing.has(baseSlug)) return baseSlug;
+
+  let index = 2;
+  while (existing.has(`${baseSlug}-${index}`)) {
+    index += 1;
+  }
+  return `${baseSlug}-${index}`;
+}
+
+function createEmptyCharacter({
+  slug,
+  name,
+  characterType,
+  className,
+  race,
+  alignment,
+  background,
+  creator,
+  ownerUser,
+}) {
+  const skills = readSkills().skills ?? [];
+
+  return {
+    slug,
+    characterType,
+    basicInfo: {
+      characterName: name,
+      class: className,
+      level: 1,
+      background,
+      playerName: creator.displayName ?? creator.username,
+      race,
+      alignment,
+      experiencePoints: 0,
+      portraitUrl: "",
+    },
+    abilityScores: {
+      strength: 10,
+      dexterity: 10,
+      constitution: 10,
+      intelligence: 10,
+      wisdom: 10,
+      charisma: 10,
+    },
+    combatStats: {
+      armorClass: 10,
+      initiative: 0,
+      speed: 9,
+      hitPointMaximum: 1,
+      currentHitPoints: 1,
+      temporaryHitPoints: 0,
+      hitDice: "",
+      deathSaves: {
+        successes: 0,
+        failures: 0,
+      },
+      spellSlots: {
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+        6: [],
+        7: [],
+        8: [],
+        9: [],
+        10: [],
+        11: [],
+        12: [],
+      },
+    },
+    proficiencies: {
+      proficiencyBonus: 2,
+      savingThrows: [],
+      skills: skills.map((skill) => ({
+        name: skill.name,
+        ability: skill.ability,
+        proficient: false,
+      })),
+      languages: [],
+    },
+    equipment: {
+      attacks: [],
+      equipment: [],
+      items: [],
+      coins: {
+        cp: 0,
+        sp: 0,
+        ep: 0,
+        gp: 0,
+        pp: 0,
+      },
+    },
+    features: [],
+    capabilities: [],
+    createdBy: {
+      userId: creator.id,
+      role: creator.role,
+      username: creator.username,
+      createdAt: new Date().toISOString(),
+    },
+  };
 }
 
 /** Deep merge (objects merged, arrays replaced, scalars overwritten) */
@@ -513,6 +638,89 @@ async function start() {
     return res.json(state);
   });
 
+  app.post("/api/characters", requireAuth, (req, res) => {
+    const name = String(req.body?.name ?? "").trim();
+    const requestedType = req.body?.characterType === "png" ? "png" : "pg";
+    const className = String(req.body?.className ?? "").trim();
+    const race = String(req.body?.race ?? "").trim();
+    const alignment = String(req.body?.alignment ?? "").trim();
+    const background = String(req.body?.background ?? "").trim();
+
+    if (!name) {
+      return res.status(400).json({ error: "Name required" });
+    }
+
+    if (!className || !race || !alignment || !background) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const characterType = req.user.role === "dm" ? requestedType : "pg";
+    const baseSlug = sanitizeSlug(name);
+    const slug = createUniqueCharacterSlug(baseSlug);
+
+    let ownerUserId = null;
+    if (req.user.role === "dm") {
+      if (characterType === "png") ownerUserId = req.user.id;
+    } else {
+      ownerUserId = req.user.id;
+    }
+
+    const ownerUser = ownerUserId ? getUserById(ownerUserId) : null;
+    const character = createEmptyCharacter({
+      slug,
+      name,
+      characterType,
+      className,
+      race,
+      alignment,
+      background,
+      creator: req.user,
+      ownerUser,
+    });
+
+    writeCharacter(slug, character);
+
+    if (ownerUserId) {
+      const ownership = readOwnership();
+      ownership[slug] = ownerUserId;
+      writeOwnership(ownership);
+    }
+
+    return res.status(201).json({
+      slug,
+      characterType,
+      ownerUserId,
+      character,
+    });
+  });
+
+  app.delete("/api/characters/:slug", requireRole("dm"), (req, res) => {
+    const slug = req.params.slug;
+
+    if (!listCharacterSlugs().includes(slug)) {
+      return res.status(404).json({ error: "Character not found" });
+    }
+
+    const archivedPath = archiveCharacter(slug);
+    if (!archivedPath) {
+      return res.status(500).json({ error: "Archive failed" });
+    }
+
+    const ownership = readOwnership();
+    if (slug in ownership) {
+      delete ownership[slug];
+      writeOwnership(ownership);
+    }
+
+    const chats = readChats();
+    if (slug in chats) {
+      delete chats[slug];
+      writeChats(chats);
+    }
+
+    return res.status(204).end();
+  });
+
   app.post("/api/uploads/avatar", requireAuth, (req, res) => {
     const { slug, fileName, contentType, data } = req.body ?? {};
     const ext = extensionFromType(contentType, fileName);
@@ -656,6 +864,21 @@ async function start() {
       writeChats(chats);
 
       io.to(`chat:${normalizedSlug}`).emit("chat:message", nextMessage);
+    });
+
+    socket.on("initiative:turn-start", ({ slug }) => {
+      const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
+      const ownership = readOwnership();
+
+      if (socket.data.user?.role !== "dm" || !normalizedSlug) return;
+
+      const ownerUserId = ownership[normalizedSlug];
+      if (!ownerUserId) return;
+
+      io.to(`user:${ownerUserId}`).emit("initiative:turn-start", {
+        slug: normalizedSlug,
+        startedAt: new Date().toISOString(),
+      });
     });
 
     socket.on("presence:snapshot", () => {

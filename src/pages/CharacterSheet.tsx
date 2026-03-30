@@ -27,6 +27,7 @@ import {
   fetchCharacter,
   onCharacterState,
   onCharacterPatch,
+  onInitiativeTurnStart,
   updateCharacter,
   applyPatch,
   announceEnter,
@@ -305,6 +306,7 @@ const CharacterSheet = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [turnAlertActive, setTurnAlertActive] = useState(false);
 
   // death saves state (local only)
   const [deathSaves, setDeathSaves] = useState<{ success: boolean[]; fail: boolean[] }>({
@@ -879,6 +881,34 @@ const CharacterSheet = () => {
     document.title = characterName || "Scheda personaggio";
   }, [characterData?.basicInfo?.characterName]);
 
+  useEffect(() => {
+    if (!characterData || characterData.characterType === "png") return;
+
+    let timeoutId: number | null = null;
+    const offTurnStart = onInitiativeTurnStart((payload) => {
+      if (payload.slug !== characterData.slug) return;
+
+      setTurnAlertActive(true);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try {
+          navigator.vibrate?.([180, 90, 180]);
+        } catch {}
+      }
+
+      if (timeoutId) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        setTurnAlertActive(false);
+      }, 4200);
+    });
+
+    return () => {
+      try {
+        offTurnStart();
+      } catch {}
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [characterData]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center parchment">
@@ -909,18 +939,20 @@ const CharacterSheet = () => {
 
   return (
     <div className="min-h-screen parchment p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className={`max-w-5xl mx-auto space-y-6 rounded-[1.75rem] transition-all ${turnAlertActive ? "turn-highlight-active" : ""}`}>
         <CharacterHeader
           characterData={characterData}
           editMode={editMode}
           setEditMode={setEditMode}
           makeChangeHandler={makeChangeHandler}
         />
-        <FloatingCharacterChat
-          slug={characterData.slug}
-          title={characterData.basicInfo.characterName}
-          avatarUrl={characterData.basicInfo.portraitUrl}
-        />
+        {characterData.characterType !== "png" ? (
+          <FloatingCharacterChat
+            slug={characterData.slug}
+            title={characterData.basicInfo.characterName}
+            avatarUrl={characterData.basicInfo.portraitUrl}
+          />
+        ) : null}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="space-y-6">
             <AbilityScores

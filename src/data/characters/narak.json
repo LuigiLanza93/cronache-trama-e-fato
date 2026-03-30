@@ -1,5 +1,6 @@
 {
   "slug": "narak",
+  "characterType": "pg",
   "basicInfo": {
     "characterName": "Narak",
     "class": "Bardo",

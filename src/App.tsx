@@ -73,9 +73,9 @@ const App = () => (
               <Route
                 path="/characters/new"
                 element={
-                  <RequireRole role="player">
+                  <RequireAuth>
                     <NewCharacter />
-                  </RequireRole>
+                  </RequireAuth>
                 }
               />
               <Route

@@ -289,7 +289,7 @@ const CharacterHeader = ({
                                 )}
                             </div>
                             <div>
-                                <Label className="text-xs text-muted-foreground">Nome giocatore</Label>
+                                <Label className="text-xs text-muted-foreground">Creato da</Label>
                                 {editMode ? (
                                     <Input
                                         name="playerName"

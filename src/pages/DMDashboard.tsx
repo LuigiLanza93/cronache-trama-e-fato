@@ -33,6 +33,7 @@ type CharacterState = Record<string, any>;
 type PlayerCardData = {
   slug: string;
   name: string;
+  characterType: "pg" | "png";
   playerName: string;
   portraitUrl?: string;
   className: string;
@@ -160,6 +161,7 @@ function toPlayerCardData(state: CharacterState): PlayerCardData | null {
   return {
     slug,
     name: state?.basicInfo?.characterName ?? slug,
+    characterType: state?.characterType === "png" ? "png" : "pg",
     playerName: state?.basicInfo?.playerName ?? "",
     portraitUrl: state?.basicInfo?.portraitUrl ?? "",
     className: state?.basicInfo?.class ?? "",
@@ -315,9 +317,10 @@ export default function DMDashboard() {
       baseCharacterStates
         .map((state) => toPlayerCardData(state))
         .filter((player): player is PlayerCardData => !!player)
+        .filter((player) => player.characterType === "pg")
         .map((basePlayer) => {
           const livePlayer = toPlayerCardData(liveStates[basePlayer.slug]);
-          return livePlayer ?? basePlayer;
+          return (livePlayer?.characterType === "pg" ? livePlayer : null) ?? basePlayer;
         })
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
     [baseCharacterStates, liveStates]

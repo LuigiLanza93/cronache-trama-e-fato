@@ -1,5 +1,6 @@
 {
   "slug": "aros",
+  "characterType": "pg",
   "basicInfo": {
     "characterName": "Aros",
     "class": "Guerriero",

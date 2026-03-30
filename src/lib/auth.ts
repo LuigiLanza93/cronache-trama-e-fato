@@ -96,3 +96,27 @@ export function updateCharacterOwnership(slug: string, userId: string | null) {
     body: JSON.stringify({ userId }),
   });
 }
+
+export function archiveCharacterRequest(slug: string) {
+  return authFetch<null>(`/api/characters/${slug}`, {
+    method: "DELETE",
+  });
+}
+
+export function createCharacterRequest(payload: {
+  name: string;
+  characterType: "pg" | "png";
+  className: string;
+  race: string;
+  alignment: string;
+  background: string;
+}) {
+  return authFetch<{
+    slug: string;
+    characterType: "pg" | "png";
+    ownerUserId: string | null;
+  }>("/api/characters", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

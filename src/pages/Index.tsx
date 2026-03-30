@@ -97,8 +97,8 @@ const Index = () => {
         icon: KeyRound,
       },
       {
-        title: "Associazione PG",
-        description: "Collega i personaggi agli account dei giocatori.",
+        title: "Gestione Schede",
+        description: "Associa le schede agli utenti e separa i personaggi giocanti dai personaggi non giocanti.",
         href: "/dm/assignments",
         icon: Link2,
       },
@@ -242,15 +242,15 @@ const Index = () => {
           <section className="space-y-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="font-heading text-3xl font-bold text-primary">I tuoi personaggi</h2>
+                <h2 className="font-heading text-3xl font-bold text-primary">Le tue schede</h2>
                 <p className="text-muted-foreground">
-                  Elenco dei personaggi attualmente associati al tuo account.
+                  Elenco delle schede attualmente associate al tuo account.
                 </p>
               </div>
               <Button asChild>
                 <Link to="/characters/new">
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  Crea nuovo personaggio
+                  Crea nuova scheda
                 </Link>
               </Button>
             </div>

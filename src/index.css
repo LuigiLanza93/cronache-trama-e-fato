@@ -223,4 +223,23 @@
     @apply text-lg font-semibold text-primary border-b border-border pb-1;
     font-family: var(--font-heading);
   }
+
+  .turn-highlight-active {
+    animation: turn-highlight-pulse 1.05s ease-in-out 4;
+  }
+}
+
+@keyframes turn-highlight-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(214, 74, 61, 0), 0 0 0 0 rgba(214, 74, 61, 0);
+  }
+  25% {
+    box-shadow: 0 0 0 3px rgba(214, 74, 61, 0.95), 0 0 22px 8px rgba(214, 74, 61, 0.28);
+  }
+  55% {
+    box-shadow: 0 0 0 10px rgba(214, 74, 61, 0.18), 0 0 30px 14px rgba(214, 74, 61, 0.14);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(214, 74, 61, 0), 0 0 0 0 rgba(214, 74, 61, 0);
+  }
 }
