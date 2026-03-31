@@ -12,6 +12,8 @@ const CHAR_DIR = path.resolve(DATA_DIR, "characters");
 const ARCHIVED_CHAR_DIR = path.resolve(DATA_DIR, "archived-characters");
 const MONSTERS_DIR = path.resolve(DATA_DIR, "monsters");
 const SPELLS_FILE = path.resolve(DATA_DIR, "spells.json");
+const SKILLS_FILE = path.resolve(DATA_DIR, "skills.json");
+const SPELL_SLOTS_FILE = path.resolve(DATA_DIR, "spellSlots.json");
 const USERS_FILE = path.resolve(DATA_DIR, "users.json");
 const OWNERSHIP_FILE = path.resolve(DATA_DIR, "character-ownership.json");
 const CHATS_FILE = path.resolve(DATA_DIR, "chats.json");
@@ -260,6 +262,55 @@ function collectSpells() {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
+function collectSkills() {
+  const data = readJson(SKILLS_FILE, { skills: [] });
+  const skills = Array.isArray(data?.skills) ? data.skills : [];
+  const now = new Date().toISOString();
+
+  return skills
+    .filter((skill) => skill?.name && skill?.ability)
+    .map((skill) => ({
+      id: sanitizeSlug(String(skill.name)),
+      slug: sanitizeSlug(String(skill.name)),
+      name: String(skill.name),
+      ability: String(skill.ability),
+      sourceType: "SRD",
+      createdAt: now,
+      updatedAt: now,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+function collectSpellSlotProgressions() {
+  const data = readJson(SPELL_SLOTS_FILE, {});
+  const now = new Date().toISOString();
+  const rows = [];
+
+  for (const [className, levels] of Object.entries(data)) {
+    const classSlug = sanitizeSlug(className);
+    if (!levels || typeof levels !== "object") continue;
+
+    for (const [characterLevel, slots] of Object.entries(levels)) {
+      rows.push({
+        id: `${classSlug}:${characterLevel}`,
+        classSlug,
+        className: String(className),
+        characterLevel: Number(characterLevel),
+        slots: JSON.stringify(slots ?? {}),
+        sourceType: "SRD",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+  }
+
+  return rows.sort((a, b) => {
+    const classDiff = a.className.localeCompare(b.className, undefined, { sensitivity: "base" });
+    if (classDiff !== 0) return classDiff;
+    return a.characterLevel - b.characterLevel;
+  });
+}
+
 function collectChatMessages() {
   const chats = readJson(CHATS_FILE, {});
   const messages = [];
@@ -329,6 +380,8 @@ function buildImportSql() {
   const characters = collectCharacters();
   const monsters = collectMonsters();
   const spells = collectSpells();
+  const skills = collectSkills();
+  const spellSlotProgressions = collectSpellSlotProgressions();
   const chatMessages = collectChatMessages();
   const { scenarios, entries } = collectScenarios();
 
@@ -338,6 +391,8 @@ function buildImportSql() {
     'DELETE FROM "ChatMessage";',
     'DELETE FROM "EncounterScenarioEntry";',
     'DELETE FROM "EncounterScenario";',
+    'DELETE FROM "SpellSlotProgression";',
+    'DELETE FROM "Skill";',
     'DELETE FROM "Spell";',
     'DELETE FROM "Monster";',
     'DELETE FROM "Character";',
@@ -346,6 +401,8 @@ function buildImportSql() {
     ...characters.map((row) => toSqlInsert("Character", row)),
     ...monsters.map((row) => toSqlInsert("Monster", row)),
     ...spells.map((row) => toSqlInsert("Spell", row)),
+    ...skills.map((row) => toSqlInsert("Skill", row)),
+    ...spellSlotProgressions.map((row) => toSqlInsert("SpellSlotProgression", row)),
     ...scenarios.map((row) => toSqlInsert("EncounterScenario", row)),
     ...entries.map((row) => toSqlInsert("EncounterScenarioEntry", row)),
     ...chatMessages.map((row) => toSqlInsert("ChatMessage", row)),
@@ -361,6 +418,8 @@ function buildImportSql() {
       characters: characters.length,
       monsters: monsters.length,
       spells: spells.length,
+      skills: skills.length,
+      spellSlotProgressions: spellSlotProgressions.length,
       scenarios: scenarios.length,
       scenarioEntries: entries.length,
       chatMessages: chatMessages.length,

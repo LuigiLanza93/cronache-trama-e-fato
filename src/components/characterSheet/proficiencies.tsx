@@ -25,6 +25,7 @@ const Proficiencies = ({
     deathSaves,
     setDeathSaves,
     calculateSkillValues,
+    skillsCatalog,
 }: any) => {
     // ===== Edit mode per le ABILITÃ€ =====
     const [editingSkills, setEditingSkills] = useState(false);
@@ -54,7 +55,7 @@ const Proficiencies = ({
     const handleSaveSkills = () => {
         // Costruisco l'array completo delle skill da salvare
         const calcSkills: Array<{ name: string; ability: string; value: number }> =
-            calculateSkillValues(characterData) || [];
+            calculateSkillValues(characterData, skillsCatalog) || [];
 
         // Persisto solo name, ability, proficient (niente value)
         const nextSkills = calcSkills.map((s) => ({
@@ -79,7 +80,7 @@ const Proficiencies = ({
     };
 
     const profBonus = proficiencyBonus(characterData.basicInfo.level);
-    const skillsCalc = calculateSkillValues(characterData) || [];
+    const skillsCalc = calculateSkillValues(characterData, skillsCatalog) || [];
     const normalizedClass = (characterData?.basicInfo?.class ?? "").trim().toLowerCase();
 
     const spellcastingAbilityByClass: Record<string, string> = {

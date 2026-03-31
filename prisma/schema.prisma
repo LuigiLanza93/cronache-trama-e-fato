@@ -26,6 +26,11 @@ enum SpellSourceType {
   CUSTOM
 }
 
+enum RuleSourceType {
+  SRD
+  CUSTOM
+}
+
 enum ChatSenderRole {
   DM
   PLAYER
@@ -135,6 +140,35 @@ model Spell {
   @@index([name])
   @@index([level])
   @@index([school])
+  @@index([sourceType])
+}
+
+model Skill {
+  id         String         @id
+  slug       String         @unique
+  name       String
+  ability    String
+  sourceType RuleSourceType
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([name])
+  @@index([ability])
+  @@index([sourceType])
+}
+
+model SpellSlotProgression {
+  id             String         @id
+  classSlug      String
+  className      String
+  characterLevel Int
+  slots          String
+  sourceType     RuleSourceType
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([classSlug, characterLevel])
+  @@index([classSlug, characterLevel])
   @@index([sourceType])
 }
 

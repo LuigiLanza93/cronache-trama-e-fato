@@ -72,6 +72,29 @@ CREATE TABLE "Spell" (
 );
 
 -- CreateTable
+CREATE TABLE "Skill" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "slug" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "ability" TEXT NOT NULL,
+    "sourceType" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "SpellSlotProgression" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "classSlug" TEXT NOT NULL,
+    "className" TEXT NOT NULL,
+    "characterLevel" INTEGER NOT NULL,
+    "slots" TEXT NOT NULL,
+    "sourceType" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
 CREATE TABLE "ChatMessage" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "characterId" TEXT NOT NULL,
@@ -158,6 +181,27 @@ CREATE INDEX "Spell_school_idx" ON "Spell"("school");
 
 -- CreateIndex
 CREATE INDEX "Spell_sourceType_idx" ON "Spell"("sourceType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Skill_slug_key" ON "Skill"("slug");
+
+-- CreateIndex
+CREATE INDEX "Skill_name_idx" ON "Skill"("name");
+
+-- CreateIndex
+CREATE INDEX "Skill_ability_idx" ON "Skill"("ability");
+
+-- CreateIndex
+CREATE INDEX "Skill_sourceType_idx" ON "Skill"("sourceType");
+
+-- CreateIndex
+CREATE INDEX "SpellSlotProgression_classSlug_characterLevel_idx" ON "SpellSlotProgression"("classSlug", "characterLevel");
+
+-- CreateIndex
+CREATE INDEX "SpellSlotProgression_sourceType_idx" ON "SpellSlotProgression"("sourceType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "SpellSlotProgression_classSlug_characterLevel_key" ON "SpellSlotProgression"("classSlug", "characterLevel");
 
 -- CreateIndex
 CREATE INDEX "ChatMessage_characterId_createdAt_idx" ON "ChatMessage"("characterId", "createdAt");

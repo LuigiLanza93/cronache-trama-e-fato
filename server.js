@@ -20,7 +20,6 @@ const PORT = process.env.PORT || 3000;
 // ---- Disk paths ----
 const DATA_DIR = path.resolve(__dirname, "src/data");
 const MONSTERS_DIR = path.resolve(DATA_DIR, "monsters");
-const SKILLS_FILE = path.resolve(DATA_DIR, "skills.json");
 const PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
 const SESSION_COOKIE = "ctf_session";
 const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
@@ -30,16 +29,6 @@ sqlite.exec("PRAGMA foreign_keys = ON;");
 // ---- Utilities ----
 function ensureDir(p) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
-}
-
-function readJsonFile(filePath, fallback) {
-  try {
-    if (!fs.existsSync(filePath)) return fallback;
-    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  } catch (error) {
-    console.error(`[server] Failed to read ${filePath}:`, error);
-    return fallback;
-  }
 }
 
 function sanitizeSlug(value = "") {
@@ -239,6 +228,17 @@ function normalizeSpellRow(row) {
   };
 }
 
+function normalizeSkillRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    ability: row.ability,
+    sourceType: String(row.sourceType).toLowerCase(),
+  };
+}
+
 function readUsers() {
   return sqlite
     .prepare('SELECT * FROM "User" ORDER BY username COLLATE NOCASE')
@@ -247,7 +247,12 @@ function readUsers() {
 }
 
 function readSkills() {
-  return readJsonFile(SKILLS_FILE, { skills: [] });
+  const skills = sqlite
+    .prepare('SELECT * FROM "Skill" ORDER BY name COLLATE NOCASE')
+    .all()
+    .map(normalizeSkillRow)
+    .filter(Boolean);
+  return { skills };
 }
 
 function readOwnership() {
@@ -429,6 +434,20 @@ function readSpellsByClass() {
   return Object.fromEntries(
     Object.entries(byClass).sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base" }))
   );
+}
+
+function readSpellSlotProgressions() {
+  const rows = sqlite
+    .prepare('SELECT className, classSlug, characterLevel, slots FROM "SpellSlotProgression" ORDER BY className COLLATE NOCASE, characterLevel ASC')
+    .all();
+
+  const table = {};
+  for (const row of rows) {
+    const className = String(row.className);
+    if (!table[className]) table[className] = {};
+    table[className][String(row.characterLevel)] = parseJsonString(row.slots, {});
+  }
+  return table;
 }
 
 function writeEncounterScenarios(scenarios) {
@@ -1400,6 +1419,14 @@ async function start() {
 
   app.get("/api/spells", requireAuth, (req, res) => {
     return res.json(readSpellsByClass());
+  });
+
+  app.get("/api/rules/skills", requireAuth, (req, res) => {
+    return res.json(readSkills());
+  });
+
+  app.get("/api/rules/spell-slots", requireAuth, (req, res) => {
+    return res.json(readSpellSlotProgressions());
   });
 
   app.put("/api/monsters/:monsterId", requireRole("dm"), (req, res) => {

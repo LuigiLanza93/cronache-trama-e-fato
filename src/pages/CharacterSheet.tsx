@@ -41,7 +41,15 @@ import {
   proficiencyBonus,
   calculateSkillValues,
 } from "@/utils";
-import { fetchSpells, type SpellsByClass as SpellsByClassFromApi, type SpellEntry as SpellFromApi } from "@/lib/auth";
+import {
+  fetchSkills,
+  fetchSpellSlots,
+  fetchSpells,
+  type SkillEntry as SkillEntryFromApi,
+  type SpellEntry as SpellFromApi,
+  type SpellSlotTable,
+  type SpellsByClass as SpellsByClassFromApi,
+} from "@/lib/auth";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
 import AbilityScores from "@/components/characterSheet/ability-scores";
@@ -166,6 +174,7 @@ interface Character {
 
 type Spell = SpellFromApi;
 type SpellsByClass = SpellsByClassFromApi;
+type SkillEntry = SkillEntryFromApi;
 
 const COIN_KEYS = {
   mr: "cp",
@@ -348,6 +357,8 @@ const CharacterSheet = () => {
   const [modalFeatureIndex, setModalFeatureIndex] = useState<number | null>(null);
   const [confirmRemoveFeatureOpen, setConfirmRemoveFeatureOpen] = useState(false);
   const [spells, setSpells] = useState<SpellsByClass>({});
+  const [skillsCatalog, setSkillsCatalog] = useState<SkillEntry[]>([]);
+  const [spellSlotTable, setSpellSlotTable] = useState<SpellSlotTable>({});
 
   const classOptions = useMemo(() => Object.keys(spells).sort(), []);
   const filteredSpells = useMemo(() => {
@@ -861,10 +872,22 @@ const CharacterSheet = () => {
     let active = true;
     (async () => {
       try {
-        const nextSpells = await fetchSpells();
-        if (active) setSpells(nextSpells);
+        const [nextSpells, nextSkills, nextSpellSlots] = await Promise.all([
+          fetchSpells(),
+          fetchSkills(),
+          fetchSpellSlots(),
+        ]);
+        if (active) {
+          setSpells(nextSpells);
+          setSkillsCatalog(Array.isArray(nextSkills?.skills) ? nextSkills.skills : []);
+          setSpellSlotTable(nextSpellSlots ?? {});
+        }
       } catch {
-        if (active) setSpells({});
+        if (active) {
+          setSpells({});
+          setSkillsCatalog([]);
+          setSpellSlotTable({});
+        }
       }
     })();
     return () => {
@@ -969,6 +992,7 @@ const CharacterSheet = () => {
               deathSaves={deathSaves}
               setDeathSaves={setDeathSaves}
               calculateSkillValues={calculateSkillValues}
+              skillsCatalog={skillsCatalog}
             />
             <Languages characterData={characterData} />
           </div>
@@ -1007,6 +1031,7 @@ const CharacterSheet = () => {
               findSpell={findSpell}
               openFeatureModal={openFeatureModal}
               setAddSpellOpen={setAddSpellOpen}
+              spellSlotTable={spellSlotTable}
             />
             <Inventory
               coins={coins}

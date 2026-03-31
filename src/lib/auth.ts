@@ -142,6 +142,17 @@ export type SpellEntry = {
 
 export type SpellsByClass = Record<string, SpellEntry[]>;
 
+export type SkillEntry = {
+  name: string;
+  ability: string;
+};
+
+export type SkillsPayload = {
+  skills: SkillEntry[];
+};
+
+export type SpellSlotTable = Record<string, Record<string, Record<string, number>>>;
+
 async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
@@ -256,6 +267,14 @@ export function fetchMonsters() {
 
 export function fetchSpells() {
   return authFetch<SpellsByClass>("/api/spells", { method: "GET" });
+}
+
+export function fetchSkills() {
+  return authFetch<SkillsPayload>("/api/rules/skills", { method: "GET" });
+}
+
+export function fetchSpellSlots() {
+  return authFetch<SpellSlotTable>("/api/rules/spell-slots", { method: "GET" });
 }
 
 export function fetchMonster(monsterId: string) {
