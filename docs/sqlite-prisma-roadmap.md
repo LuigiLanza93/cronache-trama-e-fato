@@ -20,6 +20,8 @@ Vincoli desiderati:
 
 ## Fase 1: Definizione Modello Dati
 
+Stato: completata
+
 Definire quali entita' diventano tabelle e quali campi restano serializzati come JSON nel database.
 
 Entita' iniziali candidate:
@@ -41,6 +43,8 @@ Decisioni da prendere in questa fase:
 
 ## Fase 2: Setup Prisma
 
+Stato: completata con workaround operativo
+
 Preparare l'infrastruttura minima per usare SQLite tramite Prisma.
 
 Attivita':
@@ -52,7 +56,17 @@ Attivita':
 - creare la prima migration
 - creare il file DB locale, ad esempio `prisma/dev.db`
 
+Nota:
+
+- su questa macchina il `schema engine` di Prisma fallisce su `migrate dev` / `db push`
+- il setup e' stato comunque completato con un workaround stabile:
+  - schema Prisma valido
+  - SQL bootstrap generato da Prisma
+  - DB SQLite inizializzato via `sqlite3`
+
 ## Fase 3: Disegno Schema Iniziale
+
+Stato: completata
 
 Creare uno schema che copra le feature attuali senza normalizzare subito tutto.
 
@@ -74,6 +88,8 @@ Scelta consigliata per limitare la complessita':
 - `EncounterScenario` e `EncounterScenarioEntry` normalizzati
 
 ## Fase 4: Script di Migrazione Dai JSON
+
+Stato: in corso
 
 Creare uno script che importi nel database i dati attuali.
 
@@ -151,4 +167,4 @@ Quando il database e' a regime:
 
 ## Prossimo Passo
 
-Tradurre questa roadmap nello schema Prisma iniziale, campo per campo.
+Completare e testare lo script di importazione dai JSON al database SQLite.

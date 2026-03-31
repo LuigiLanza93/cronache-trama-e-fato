@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "extract:bestiary": "node scripts/extract-srd-bestiary.mjs",
+    "db:import-json": "node scripts/import-json-to-sqlite.mjs",
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
