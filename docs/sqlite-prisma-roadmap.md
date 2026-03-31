@@ -141,6 +141,8 @@ Focus:
 
 ## Fase 7: Verifica Funzionale Completa
 
+Stato: completata
+
 Verificare che tutte le aree principali continuino a funzionare.
 
 Checklist minima:
@@ -155,13 +157,29 @@ Checklist minima:
 - tracker iniziativa
 - scenari di combattimento
 
+Esito:
+
+- verifica funzionale completata sul runtime SQLite
+- regressioni emerse durante i test corrette nel branch di migrazione
+- confermati i flussi principali lato DM e lato player
+- confermata la persistenza della sessione dopo riavvio server
+
 ## Fase 8: Spegnimento Del Layer JSON
+
+Stato: completata
 
 Quando il database e' a regime:
 
 - il runtime non deve piu' leggere/scrivere i JSON attuali
 - i JSON restano solo come backup o sorgente storica
 - eventuali export/import si faranno con script dedicati
+
+Esito:
+
+- il runtime applicativo usa SQLite per i dati principali
+- i file storici sono stati spostati in `src/data/JSON_LEGACY`
+- gli script di import continuano a usare `JSON_LEGACY` come sorgente
+- il layer JSON non e' piu' parte del flusso operativo standard
 
 ## Principi Guida
 
@@ -172,4 +190,9 @@ Quando il database e' a regime:
 
 ## Prossimo Passo
 
-Eseguire la verifica funzionale completa del runtime su backend SQLite e decidere gli ultimi affinamenti prima di spegnere del tutto il layer JSON residuo.
+La migrazione core e' conclusa. I prossimi passi consigliati sono:
+
+- manutenzione e hardening del codice migrato
+- cleanup dei residui legacy non piu' necessari
+- valutazione del merge del branch `migration` in `main`
+- evoluzione funzionale dell'app su base SQLite

@@ -29,8 +29,9 @@ Il runtime applicativo legge i dati principali da SQLite:
 - progressioni slot incantesimo
 - chat
 - scenari di combattimento
+- sessioni login
 
-I JSON in `src/data/` restano principalmente come:
+I JSON storici sono stati spostati in `src/data/JSON_LEGACY` e restano principalmente come:
 
 - sorgente storica
 - backup
@@ -91,10 +92,11 @@ Bootstrap SQL generato da Prisma:
 
 - `prisma/sqlite-init.sql`
 
-Patch incremental già aggiunte:
+Patch incrementali gia' aggiunte:
 
 - `prisma/sqlite-add-spell.sql`
 - `prisma/sqlite-add-rules.sql`
+- `prisma/sqlite-add-sessions.sql`
 
 ## Comandi utili
 
@@ -134,6 +136,10 @@ Import dei JSON nel DB:
 npm run db:import-json
 ```
 
+Lo script legge i dati storici da:
+
+- `src/data/JSON_LEGACY`
+
 Dry run dell'import:
 
 ```bash
@@ -164,6 +170,7 @@ SELECT COUNT(*) FROM "User";
 SELECT COUNT(*) FROM "Character";
 SELECT COUNT(*) FROM "Monster";
 SELECT COUNT(*) FROM "Spell";
+SELECT COUNT(*) FROM "Session";
 ```
 
 DBeaver funziona bene puntando direttamente a:
@@ -197,6 +204,10 @@ Script di migrazione:
 
 - `scripts/import-json-to-sqlite.mjs`
 
+Archivio storico JSON:
+
+- `src/data/JSON_LEGACY`
+
 ## Note operative
 
 - In questo ambiente Prisma non riesce a usare in modo affidabile `migrate dev` / `db push` per un problema del `schema engine`.
@@ -207,9 +218,17 @@ Script di migrazione:
 
 Questo non impedisce di usare SQLite o Prisma nel progetto, ma e' bene saperlo prima di lavorare sulla migrazione.
 
-## Prossimi passi
+## Stato Migrazione
 
-Le aree ancora aperte lato migrazione sono principalmente:
+La migrazione principale a SQLite e' completata:
 
-- verifica funzionale completa
-- cleanup finale del layer JSON storico
+- runtime applicativo su database
+- sessioni login persistenti su DB
+- layer JSON runtime spento per le feature principali
+- JSON storici conservati in `src/data/JSON_LEGACY`
+
+I prossimi passi non sono piu' la migrazione core, ma:
+
+- manutenzione e hardening
+- eventuale cleanup del codice legacy rimasto
+- merge del branch `migration` in `main` quando il team lo ritiene pronto
