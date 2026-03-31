@@ -388,6 +388,7 @@ function buildImportSql() {
   const lines = [
     "PRAGMA foreign_keys = OFF;",
     "BEGIN TRANSACTION;",
+    'DELETE FROM "Session";',
     'DELETE FROM "ChatMessage";',
     'DELETE FROM "EncounterScenarioEntry";',
     'DELETE FROM "EncounterScenario";',

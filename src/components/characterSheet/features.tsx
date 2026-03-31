@@ -49,10 +49,19 @@ const Features = ({
     };
 
     useEffect(() => {
-        const charClass = characterData.basicInfo.class.toLowerCase();
-        const level = characterData.basicInfo.level;
+        const charClass = (characterData?.basicInfo?.class ?? "").toLowerCase();
+        const level = characterData?.basicInfo?.level;
 
-        const expectedSlots = spellSlotTable[charClass]?.[level] || {};
+        if (!charClass || !level || !spellSlotTable || Object.keys(spellSlotTable).length === 0) {
+            return;
+        }
+
+        const classProgression = spellSlotTable[charClass];
+        if (!classProgression) {
+            return;
+        }
+
+        const expectedSlots = classProgression[level] || classProgression[String(level)] || {};
         const currentSlots = characterData.combatStats.spellSlots || {};
 
         const patch: Record<string, any> = { combatStats: { spellSlots: {} } };

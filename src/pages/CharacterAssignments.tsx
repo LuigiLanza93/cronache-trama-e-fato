@@ -332,8 +332,9 @@ export default function CharacterAssignments() {
             <AlertDialogHeader>
               <AlertDialogTitle>Archiviare questa scheda?</AlertDialogTitle>
               <AlertDialogDescription>
-                Il JSON verrà spostato fuori dalla cartella dei personaggi attivi, quindi non comparirà
-                più nel roster o nelle associazioni. Se servirà recuperarlo, lo farete manualmente.
+                La scheda verrà marcata come archiviata nel database e non comparirà più tra quelle
+                attive o nelle associazioni. I dati resteranno comunque conservati per un eventuale
+                recupero successivo.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

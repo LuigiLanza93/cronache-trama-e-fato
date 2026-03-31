@@ -22,6 +22,7 @@ const DATA_DIR = path.resolve(__dirname, "src/data");
 const MONSTERS_DIR = path.resolve(DATA_DIR, "monsters");
 const PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
 const SESSION_COOKIE = "ctf_session";
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
 const sqlite = new DatabaseSync(SQLITE_DB_FILE);
 sqlite.exec("PRAGMA foreign_keys = ON;");
@@ -59,6 +60,22 @@ function parseJsonString(value, fallback) {
     return JSON.parse(value);
   } catch {
     return fallback;
+  }
+}
+
+function runInTransaction(work) {
+  sqlite.exec("BEGIN");
+  try {
+    const result = work();
+    sqlite.exec("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      sqlite.exec("ROLLBACK");
+    } catch {
+      // Surface the original failure even if rollback also fails.
+    }
+    throw error;
   }
 }
 
@@ -262,39 +279,12 @@ function readOwnership() {
   return Object.fromEntries(rows.map((row) => [row.slug, row.ownerUserId]));
 }
 
-function writeUsers(users) {
-  sqlite.exec('DELETE FROM "User";');
-  const insert = sqlite.prepare(`
-    INSERT INTO "User" (
-      id, username, displayName, role, passwordSalt, passwordHash, mustChangePassword, createdAt, updatedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const transaction = sqlite.transaction((records) => {
-    for (const user of records) {
-      insert.run(
-        user.id,
-        user.username,
-        user.displayName ?? user.username,
-        String(user.role).toLowerCase() === "dm" ? "DM" : "PLAYER",
-        user.passwordSalt ?? "",
-        user.passwordHash ?? "",
-        user.mustChangePassword ? 1 : 0,
-        user.createdAt ?? new Date().toISOString(),
-        user.updatedAt ?? user.createdAt ?? new Date().toISOString()
-      );
-    }
-  });
-
-  transaction(users);
-}
-
 function writeOwnership(ownership) {
   const allCharacters = sqlite.prepare('SELECT id, slug FROM "Character"').all();
   const clear = sqlite.prepare('UPDATE "Character" SET ownerUserId = NULL WHERE id = ?');
   const set = sqlite.prepare('UPDATE "Character" SET ownerUserId = ? WHERE slug = ?');
 
-  const transaction = sqlite.transaction(() => {
+  runInTransaction(() => {
     for (const character of allCharacters) {
       clear.run(character.id);
     }
@@ -302,8 +292,6 @@ function writeOwnership(ownership) {
       set.run(userId, slug);
     }
   });
-
-  transaction();
 }
 
 function readChats() {
@@ -345,9 +333,9 @@ function writeChats(chats) {
     VALUES (?, ?, ?, ?, ?, ?)
   `);
 
-  const transaction = sqlite.transaction((threads) => {
+  runInTransaction(() => {
     deleteAll.run();
-    for (const [slug, messages] of Object.entries(threads)) {
+    for (const [slug, messages] of Object.entries(chats ?? {})) {
       const character = findCharacterId.get(slug);
       if (!character || !Array.isArray(messages)) continue;
       for (const message of messages) {
@@ -362,8 +350,6 @@ function writeChats(chats) {
       }
     }
   });
-
-  transaction(chats ?? {});
 }
 
 function readEncounterScenarios() {
@@ -463,11 +449,11 @@ function writeEncounterScenarios(scenarios) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const transaction = sqlite.transaction((records) => {
+  runInTransaction(() => {
     deleteEntries.run();
     deleteScenarios.run();
 
-    for (const scenario of records) {
+    for (const scenario of scenarios ?? []) {
       insertScenario.run(
         scenario.id,
         scenario.name,
@@ -494,8 +480,6 @@ function writeEncounterScenarios(scenarios) {
       });
     }
   });
-
-  transaction(scenarios ?? []);
 }
 
 function createScenarioId(name) {
@@ -939,11 +923,14 @@ function parseCookies(cookieHeader = "") {
 }
 
 function serializeSessionCookie(value) {
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
   const parts = [
     `${SESSION_COOKIE}=${encodeURIComponent(value)}`,
     "HttpOnly",
     "Path=/",
     "SameSite=Lax",
+    `Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`,
+    `Expires=${expiresAt.toUTCString()}`,
   ];
 
   if (isProd) parts.push("Secure");
@@ -967,6 +954,52 @@ function createSessionId() {
   return crypto.randomBytes(24).toString("hex");
 }
 
+function cleanupExpiredSessions() {
+  sqlite.prepare('DELETE FROM "Session" WHERE expiresAt <= ?').run(new Date().toISOString());
+}
+
+function getSessionById(sessionId) {
+  if (!sessionId) return null;
+  cleanupExpiredSessions();
+  const session = sqlite
+    .prepare('SELECT id, userId, createdAt, expiresAt, lastSeenAt FROM "Session" WHERE id = ? LIMIT 1')
+    .get(sessionId);
+  if (!session) return null;
+  if (new Date(session.expiresAt).getTime() <= Date.now()) {
+    sqlite.prepare('DELETE FROM "Session" WHERE id = ?').run(sessionId);
+    return null;
+  }
+  return session;
+}
+
+function touchSession(sessionId) {
+  if (!sessionId) return;
+  const nextExpiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  sqlite
+    .prepare('UPDATE "Session" SET lastSeenAt = ?, expiresAt = ? WHERE id = ?')
+    .run(new Date().toISOString(), nextExpiresAt, sessionId);
+}
+
+function createSession(userId) {
+  const sessionId = createSessionId();
+  const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
+  sqlite
+    .prepare('INSERT INTO "Session" (id, userId, createdAt, expiresAt, lastSeenAt) VALUES (?, ?, ?, ?, ?)')
+    .run(sessionId, userId, now, expiresAt, now);
+  return sessionId;
+}
+
+function deleteSessionById(sessionId) {
+  if (!sessionId) return;
+  sqlite.prepare('DELETE FROM "Session" WHERE id = ?').run(sessionId);
+}
+
+function deleteSessionsByUserId(userId) {
+  if (!userId) return;
+  sqlite.prepare('DELETE FROM "Session" WHERE userId = ?').run(userId);
+}
+
 function sanitizeUser(user, ownership) {
   if (!user) return null;
 
@@ -986,7 +1019,50 @@ function sanitizeUser(user, ownership) {
 }
 
 function getUserById(userId) {
-  return readUsers().find((user) => user.id === userId) ?? null;
+  const row = sqlite
+    .prepare('SELECT * FROM "User" WHERE id = ? LIMIT 1')
+    .get(userId);
+  return normalizeUserRow(row);
+}
+
+function createUserRecord(user) {
+  sqlite.prepare(`
+    INSERT INTO "User" (
+      id, username, displayName, role, passwordSalt, passwordHash, mustChangePassword, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    user.id,
+    user.username,
+    user.displayName ?? user.username,
+    String(user.role).toLowerCase() === "dm" ? "DM" : "PLAYER",
+    user.passwordSalt ?? "",
+    user.passwordHash ?? "",
+    user.mustChangePassword ? 1 : 0,
+    user.createdAt ?? new Date().toISOString(),
+    user.updatedAt ?? user.createdAt ?? new Date().toISOString()
+  );
+}
+
+function updateUserCredentials(userId, { passwordSalt, passwordHash, mustChangePassword }) {
+  const updatedAt = new Date().toISOString();
+  const result = sqlite.prepare(`
+    UPDATE "User"
+    SET passwordSalt = ?, passwordHash = ?, mustChangePassword = ?, updatedAt = ?
+    WHERE id = ?
+  `).run(
+    passwordSalt,
+    passwordHash,
+    mustChangePassword ? 1 : 0,
+    updatedAt,
+    userId
+  );
+
+  if (!result.changes) return null;
+  return getUserById(userId);
+}
+
+function deleteUserRecord(userId) {
+  return sqlite.prepare('DELETE FROM "User" WHERE id = ?').run(userId);
 }
 
 function canAccessCharacter(user, slug, ownership) {
@@ -1156,8 +1232,6 @@ function scheduleWrite(slug, state) {
 // ---- App ----
 async function start() {
   const app = express();
-  const sessions = new Map();
-
   app.use(express.json({ limit: "10mb" }));
   ensureDir(PORTRAIT_DIR);
   app.use("/portraits", express.static(PORTRAIT_DIR));
@@ -1165,10 +1239,11 @@ async function start() {
   app.use((req, res, next) => {
     const cookies = parseCookies(req.headers.cookie);
     const sessionId = cookies[SESSION_COOKIE];
-    const session = sessionId ? sessions.get(sessionId) : null;
+    const session = getSessionById(sessionId);
     const user = session?.userId ? getUserById(session.userId) : null;
     req.sessionId = sessionId ?? null;
     req.user = user ?? null;
+    if (sessionId && session) touchSession(sessionId);
     next();
   });
 
@@ -1206,14 +1281,13 @@ async function start() {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const sessionId = createSessionId();
-    sessions.set(sessionId, { userId: user.id, createdAt: Date.now() });
+    const sessionId = createSession(user.id);
     res.setHeader("Set-Cookie", serializeSessionCookie(sessionId));
     return res.json(sanitizeUser(user, readOwnership()));
   });
 
   app.post("/api/auth/logout", (req, res) => {
-    if (req.sessionId) sessions.delete(req.sessionId);
+    if (req.sessionId) deleteSessionById(req.sessionId);
     res.setHeader("Set-Cookie", serializeExpiredSessionCookie());
     return res.status(204).end();
   });
@@ -1225,23 +1299,25 @@ async function start() {
       return res.status(400).json({ error: "Password too short" });
     }
 
-    const users = readUsers();
-    const userIndex = users.findIndex((entry) => entry.id === req.user.id);
-    if (userIndex === -1) {
+    if (!getUserById(req.user.id)) {
       return res.status(404).json({ error: "User not found" });
     }
 
     const passwordSalt = crypto.randomBytes(16).toString("hex");
-    users[userIndex] = {
-      ...users[userIndex],
+    const updatedUser = updateUserCredentials(req.user.id, {
       passwordSalt,
       passwordHash: hashPassword(newPassword, passwordSalt),
       mustChangePassword: false,
-      updatedAt: new Date().toISOString(),
-    };
+    });
 
-    writeUsers(users);
-    return res.json(sanitizeUser(users[userIndex], readOwnership()));
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    deleteSessionsByUserId(req.user.id);
+    const sessionId = createSession(updatedUser.id);
+    res.setHeader("Set-Cookie", serializeSessionCookie(sessionId));
+    return res.json(sanitizeUser(updatedUser, readOwnership()));
   });
 
   // ===== User management =====
@@ -1285,31 +1361,31 @@ async function start() {
       createdAt: new Date().toISOString(),
     };
 
-    users.push(newUser);
-    writeUsers(users);
+    createUserRecord(newUser);
     return res.status(201).json(sanitizeUserForAdmin(newUser, readOwnership()));
   });
 
   app.post("/api/users/:userId/reset-password", requireRole("dm"), (req, res) => {
     const userId = req.params.userId;
-    const users = readUsers();
-    const userIndex = users.findIndex((entry) => entry.id === userId);
-    if (userIndex === -1) {
+    const currentUser = getUserById(userId);
+    if (!currentUser) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const nextPassword = users[userIndex].username;
+    const nextPassword = currentUser.username;
     const passwordSalt = crypto.randomBytes(16).toString("hex");
-    users[userIndex] = {
-      ...users[userIndex],
+    const updatedUser = updateUserCredentials(userId, {
       passwordSalt,
       passwordHash: hashPassword(nextPassword, passwordSalt),
       mustChangePassword: true,
-      updatedAt: new Date().toISOString(),
-    };
+    });
 
-    writeUsers(users);
-    return res.json(sanitizeUserForAdmin(users[userIndex], readOwnership()));
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    deleteSessionsByUserId(userId);
+    return res.json(sanitizeUserForAdmin(updatedUser, readOwnership()));
   });
 
   app.delete("/api/users/:userId", requireRole("dm"), (req, res) => {
@@ -1318,23 +1394,9 @@ async function start() {
       return res.status(400).json({ error: "Cannot delete current user" });
     }
 
-    const users = readUsers();
-    const nextUsers = users.filter((entry) => entry.id !== userId);
-    if (nextUsers.length === users.length) {
+    const result = deleteUserRecord(userId);
+    if (!result.changes) {
       return res.status(404).json({ error: "User not found" });
-    }
-
-    writeUsers(nextUsers);
-    const ownership = readOwnership();
-    const nextOwnership = Object.fromEntries(
-      Object.entries(ownership).filter(([, ownerUserId]) => ownerUserId !== userId)
-    );
-    writeOwnership(nextOwnership);
-
-    for (const [sessionId, session] of sessions.entries()) {
-      if (session.userId === userId) {
-        sessions.delete(sessionId);
-      }
     }
 
     return res.status(204).end();
@@ -1840,7 +1902,8 @@ async function start() {
   function getSocketUser(socket) {
     const cookies = parseCookies(socket.request.headers.cookie);
     const sessionId = cookies[SESSION_COOKIE];
-    const session = sessionId ? sessions.get(sessionId) : null;
+    const session = getSessionById(sessionId);
+    if (sessionId && session) touchSession(sessionId);
     return session?.userId ? getUserById(session.userId) : null;
   }
 

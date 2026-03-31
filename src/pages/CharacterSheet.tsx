@@ -45,7 +45,7 @@ import {
   fetchSkills,
   fetchSpellSlots,
   fetchSpells,
-  type SkillEntry as SkillEntryFromApi,
+  type SkillEntry as SkillCatalogEntry,
   type SpellEntry as SpellFromApi,
   type SpellSlotTable,
   type SpellsByClass as SpellsByClassFromApi,
@@ -174,7 +174,6 @@ interface Character {
 
 type Spell = SpellFromApi;
 type SpellsByClass = SpellsByClassFromApi;
-type SkillEntry = SkillEntryFromApi;
 
 const COIN_KEYS = {
   mr: "cp",
@@ -346,7 +345,7 @@ const CharacterSheet = () => {
 
   // ======= ADD SPELL dialog (CTA) =======
   const [addSpellOpen, setAddSpellOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<string>(characterData?.basicInfo.class?.toLowerCase?.());
+  const [selectedClass, setSelectedClass] = useState<string>(characterData?.basicInfo.class?.toLowerCase?.() ?? "");
   const [spellQuery, setSpellQuery] = useState("");
 
   // ======= SPELL DETAILS modal (click su riga) =======
@@ -357,16 +356,21 @@ const CharacterSheet = () => {
   const [modalFeatureIndex, setModalFeatureIndex] = useState<number | null>(null);
   const [confirmRemoveFeatureOpen, setConfirmRemoveFeatureOpen] = useState(false);
   const [spells, setSpells] = useState<SpellsByClass>({});
-  const [skillsCatalog, setSkillsCatalog] = useState<SkillEntry[]>([]);
+  const [skillsCatalog, setSkillsCatalog] = useState<SkillCatalogEntry[]>([]);
   const [spellSlotTable, setSpellSlotTable] = useState<SpellSlotTable>({});
 
-  const classOptions = useMemo(() => Object.keys(spells).sort(), []);
+  useEffect(() => {
+    const nextClass = characterData?.basicInfo?.class?.toLowerCase?.() ?? "";
+    setSelectedClass((current) => current || nextClass);
+  }, [characterData?.basicInfo?.class]);
+
+  const classOptions = useMemo(() => Object.keys(spells).sort(), [spells]);
   const filteredSpells = useMemo(() => {
     if (!selectedClass) return [];
     const list = spells[selectedClass] ?? [];
     const q = spellQuery.trim().toLowerCase();
     return q ? list.filter((s) => s.name.toLowerCase().includes(q)) : list;
-  }, [selectedClass, spellQuery]);
+  }, [selectedClass, spellQuery, spells]);
 
   const formatSpellBlock = (s: Spell) => {
     const tags: string[] = [];

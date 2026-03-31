@@ -64,6 +64,7 @@ model User {
   createdCharacters Character[]         @relation("CharacterCreator")
   sentMessages      ChatMessage[]       @relation("UserSentMessages")
   scenarios         EncounterScenario[] @relation("ScenarioCreator")
+  sessions          Session[]
 
   @@index([role])
 }
@@ -170,6 +171,19 @@ model SpellSlotProgression {
   @@unique([classSlug, characterLevel])
   @@index([classSlug, characterLevel])
   @@index([sourceType])
+}
+
+model Session {
+  id         String   @id
+  userId     String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model ChatMessage {

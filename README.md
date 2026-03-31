@@ -38,7 +38,7 @@ I JSON in `src/data/` restano principalmente come:
 
 Nota importante:
 
-- le sessioni login sono ancora in memoria server
+- le sessioni login sono persistite nel database SQLite
 - la roadmap della migrazione e' in `docs/sqlite-prisma-roadmap.md`
 
 ## Requisiti
@@ -212,5 +212,4 @@ Questo non impedisce di usare SQLite o Prisma nel progetto, ma e' bene saperlo p
 Le aree ancora aperte lato migrazione sono principalmente:
 
 - verifica funzionale completa
-- eventuale persistenza delle sessioni nel DB
 - cleanup finale del layer JSON storico
