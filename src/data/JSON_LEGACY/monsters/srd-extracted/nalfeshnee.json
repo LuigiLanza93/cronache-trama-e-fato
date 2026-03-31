@@ -1,0 +1,135 @@
+{
+  "slug": "nalfeshnee",
+  "general": {
+    "name": "Nalfeshnee",
+    "challengeRating": {
+      "fraction": "13",
+      "decimal": 13,
+      "display": "13",
+      "xp": 10000
+    },
+    "size": "Grande",
+    "creatureType": "immondo",
+    "subtype": "demone",
+    "typeLabel": "immondo (demone)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 184,
+      "formula": "16d10 + 96"
+    },
+    "speed": {
+      "walk": "6 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 21,
+    "dexterity": 10,
+    "constitution": 22,
+    "intelligence": 19,
+    "wisdom": 12,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 11
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 9
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 6
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco; contundente"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il demone ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il demone usa, se possibile, Aureola di Orrore. Poi effettua tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 3 m, un bersaglio. Colpisce: 15 (3d6 + 5) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 1,5 m, un bersaglio. Colpisce: 32 (5d10 + 5) danni perforanti."
+    },
+    {
+      "name": "Aureola di Orrore",
+      "usage": "Ricarica 5-6",
+      "description": "Il demone emette una luce magica multicolore e scintillante. Ogni creatura entro 4,5 metri dal demone e che possa vedere la luce, deve riuscire un tiro salvezza di Saggezza CD 15 o restare spaventata per 1 minuto. Una creatura può ripetere il tiro salvezza al termine di ciascun suo turno, terminando l'effetto per sé se lo riesce. Se il tiro salvezza della creatura riesce o l'effetto ha termine per essa, la creatura è immune all'Aureola di Orrore del demone gemente per le successive 24 ore."
+    },
+    {
+      "name": "Teletrasporto",
+      "usage": null,
+      "description": "Il demone si teletrasporta, insieme a tutto l'equipaggiamento che sta indossando o trasportando, in uno spazio non occupato che possa vedere fino a 36 metri di distanza."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Nalfeshnee\nGrande immondo (demone), caotico malvagio\nFORZA 21 (+5)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 22 (+6)\nINTELLIGENZA 19 (+4)\nSAGGEZZA 12 (+1)\nCARISMA 15 (+2)\nClasse Armatura 18 (armatura naturale)\nPunti Ferita 184 (16d10 + 96)\nVelocità 6 m, volo 9 m\nTiri Salvezza Costituzione +11, Intelligenza +9, Saggezza +6,\nCarisma +7\nResistenze al Danno freddo, fulmine, fuoco; contundente,\nperforante e tagliente di attacchi non magici\nImmunità al Danno veleno\nImmunità alle Condizioni avvelenato\nSensi scurovisione 36 m, Percezione passiva 11\nLinguaggi Abissale, telepatia 36 m\nSfida 13 (10.000 PE)\nResistenza alla Magia. Il demone ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nAzioni\nMultiattacco. Il demone usa, se possibile, Aureola di Orrore. Poi\neffettua tre attacchi: uno con il morso e due con gli artigli.\nArtiglio. Attacco con arma da mischia: +10 a colpire, portata 3\nm, un bersaglio.\nColpisce: 15 (3d6 + 5) danni taglienti.\nMorso. Attacco con arma da mischia: +10 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 32 (5d10 + 5) danni perforanti.\nAureola di Orrore (Ricarica 5-6). Il demone emette una luce\nmagica multicolore e scintillante. Ogni creatura entro 4,5 metri\ndal demone e che possa vedere la luce, deve riuscire un tiro\nsalvezza di Saggezza CD 15 o restare spaventata per 1 minuto.\nUna creatura può ripetere il tiro salvezza al termine di ciascun\nsuo turno, terminando l'effetto per sé se lo riesce. Se il tiro\nsalvezza della creatura riesce o l'effetto ha termine per essa, la\ncreatura è immune all'Aureola di Orrore del demone gemente\nper le successive 24 ore.\nTeletrasporto. Il demone si teletrasporta, insieme a tutto\nl'equipaggiamento che sta indossando o trasportando, in uno\nspazio non occupato che possa vedere fino a 36 metri di distanza."
+  }
+}

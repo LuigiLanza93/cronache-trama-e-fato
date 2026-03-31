@@ -1,0 +1,130 @@
+{
+  "slug": "mefito-di-ghiaccio",
+  "general": {
+    "name": "Mefito di Ghiaccio",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Piccola",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 21,
+      "formula": "6d6"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 7,
+    "dexterity": 13,
+    "constitution": 10,
+    "intelligence": 9,
+    "wisdom": 11,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [
+      "contundenti",
+      "fuoco"
+    ],
+    "damageResistances": [],
+    "damageImmunities": [
+      "freddo",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Aquan"
+      },
+      {
+        "name": "Auran"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Mentre il mefito rimane immobile, è indistinguibile da un ordinario frammento di ghiaccio."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": "1/Giorno",
+      "description": "Il mefito può lanciare in maniera innata nube di nebbia, senza bisogno di componenti materiali. La sua caratteristica da incantatore innato è il Carisma."
+    },
+    {
+      "name": "Natura Elementale",
+      "usage": null,
+      "description": "Un mefito non ha bisogno di cibo, bevande o sonno."
+    },
+    {
+      "name": "Scoppio Mortale",
+      "usage": null,
+      "description": "Quando il mefito muore, esplode in uno scoppio di frammenti di ghiaccio. Ogni creatura entro 1,5 metri da esso deve effettuare un tiro salvezza di Destrezza CD 10 o subire 4 (1d8) danni taglienti in caso di fallimento, o la metà di questi danni in caso di successo."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +3 a colpire, portata 1,5 m, una creatura. Colpisce: 3 (1d4 + 1) danni taglienti più 2 (1d4) danni da freddo."
+    },
+    {
+      "name": "Soffio Gelido",
+      "usage": "Ricarica 6",
+      "description": "Il mefito esala un cono di 4,5 metri di aria fredda. Ogni creatura nell'area deve effettuare un tiro salvezza di Destrezza CD 10, subendo 5 (2d4) danni da freddo in caso di fallimento, o la metà di questi danni in caso di successo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Mefito di Ghiaccio\nPiccola elementale, neutrale malvagio\nFORZA 7 (-2)\nDESTREZZA 13 (+1)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 9 (-1)\nSAGGEZZA 11 (+0)\nCARISMA 12 (+1)\nClasse Armatura 11\nPunti Ferita 21 (6d6)\nVelocità 9 m, volo 9 m\nAbilità Furtività +3, Percezione +2\nVulnerabilità ai Danni contundenti, fuoco\nImmunità ai Danni freddo, veleno\nImmunità alle Condizioni avvelenato\nSensi scurovisione 18 m, Percezione passiva 12\nLinguaggi Aquan, Auran\nSfida 1/2 (100 PE)\nFalso Aspetto. Mentre il mefito rimane immobile, è\nindistinguibile da un ordinario frammento di ghiaccio.\nIncantesimi Innati (1/Giorno). Il mefito può lanciare in maniera\ninnata nube di nebbia, senza bisogno di componenti materiali. La\nsua caratteristica da incantatore innato è il Carisma.\nNatura Elementale. Un mefito non ha bisogno di cibo, bevande\no sonno.\nScoppio Mortale. Quando il mefito muore, esplode in uno\nscoppio di frammenti di ghiaccio. Ogni creatura entro 1,5 metri\nda esso deve effettuare un tiro salvezza di Destrezza CD 10 o\nsubire 4 (1d8) danni taglienti in caso di fallimento, o la metà di\nquesti danni in caso di successo.\nAzioni\nArtigli. Attacco con arma da mischia: +3 a colpire, portata 1,5\nm, una creatura.\nColpisce: 3 (1d4 + 1) danni taglienti più 2 (1d4) danni da freddo.\nSoffio Gelido (Ricarica 6). Il mefito esala un cono di 4,5 metri di\naria fredda. Ogni creatura nell'area deve effettuare un tiro\nsalvezza di Destrezza CD 10, subendo 5 (2d4) danni da freddo in\ncaso di fallimento, o la metà di questi danni in caso di successo."
+  }
+}

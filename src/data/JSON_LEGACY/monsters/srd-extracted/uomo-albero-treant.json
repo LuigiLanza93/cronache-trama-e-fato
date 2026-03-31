@@ -1,0 +1,119 @@
+{
+  "slug": "uomo-albero-treant",
+  "general": {
+    "name": "Uomo Albero (Treant)",
+    "challengeRating": {
+      "fraction": "9",
+      "decimal": 9,
+      "display": "9",
+      "xp": 5000
+    },
+    "size": "Enorme",
+    "creatureType": "pianta",
+    "subtype": "",
+    "typeLabel": "pianta",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 138,
+      "formula": "12d12 + 60"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 23,
+    "dexterity": 8,
+    "constitution": 21,
+    "intelligence": 12,
+    "wisdom": 16,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [
+      "fuoco"
+    ],
+    "damageResistances": [
+      "contundente",
+      "perforante"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Druidico"
+      },
+      {
+        "name": "Elfico"
+      },
+      {
+        "name": "Silvano"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Mentre l'uomo albero rimane immobile, è indistinguibile da un normale albero."
+    },
+    {
+      "name": "Mostro d'Assedio",
+      "usage": null,
+      "description": "L'uomo albero infligge danni doppi agli oggetti e le strutture."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'uomo albero effettua due attacchi di schianto."
+    },
+    {
+      "name": "Schianto",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 1,5 m, un bersaglio. Colpisce: 16 (3d6 + 6) danni contundenti."
+    },
+    {
+      "name": "Sasso",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +10 a colpire, gittata 18/54 m, un bersaglio. Colpisce: 28 (4d10 + 6) danni contundenti."
+    },
+    {
+      "name": "Animare Alberi",
+      "usage": "1/Giorno",
+      "description": "L'uomo albero anima magicamente uno o due alberi visibili entro 18 metri da lui. Questi albeti hanno le stesse statistiche dell'ent, eccetto che hanno punteggio di Intelligenza e Carisma 1 (-5), non possono parlare, e hanno solo l'opzione di attacco Schianto. Un albero animato agisce come alleato dell'uomo albero. L'albero resta per 1 giorno o finché muore; finché l'uomo albero muore o si trova più di 36 metri lontano dall'albero, o finché l'uomo albero non effettua un'azione bonus per ritrasformarlo in un albero inanimato. Poi l'albero prenderà radici, se possibile."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Uomo Albero (Treant)\nEnorme pianta, caotico buono\nFORZA 23 (+6)\nDESTREZZA 8 (-1)\nCOSTITUZIONE 21 (+5)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 16 (+3)\nCARISMA 12 (+1)\nClasse Armatura 16 (armatura naturale)\nPunti Ferita 138 (12d12 + 60)\nVelocità 9 m\nResistenze al Danno contundente, perforante\nVulnerabilità al Danno fuoco\nSensi Percezione passiva 13\nLinguaggi Comune, Druidico, Elfico, Silvano\nSfida 9 (5.000 PE)\nFalso Aspetto. Mentre l'uomo albero rimane immobile, è\nindistinguibile da un normale albero.\nMostro d'Assedio. L'uomo albero infligge danni doppi agli\noggetti e le strutture.\nAzioni\nMultiattacco. L'uomo albero effettua due attacchi di schianto.\nSchianto. Attacco con arma da mischia: +10 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 16 (3d6 + 6) danni contundenti.\nSasso. Attacco con arma a Distanza: +10 a colpire, gittata 18/54\nm, un bersaglio.\nColpisce: 28 (4d10 + 6) danni contundenti.\nAnimare Alberi (1/Giorno). L'uomo albero anima magicamente\nuno o due alberi visibili entro 18 metri da lui. Questi albeti hanno\nle stesse statistiche dell'ent, eccetto che hanno punteggio di\nIntelligenza e Carisma 1 (-5), non possono parlare, e hanno solo\nl'opzione di attacco Schianto. Un albero animato agisce come\nalleato dell'uomo albero. L'albero resta per 1 giorno o finché\nmuore; finché l'uomo albero muore o si trova più di 36 metri\nlontano dall'albero, o finché l'uomo albero non effettua\nun'azione bonus per ritrasformarlo in un albero inanimato. Poi\nl'albero prenderà radici, se possibile."
+  }
+}

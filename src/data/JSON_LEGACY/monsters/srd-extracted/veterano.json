@@ -1,0 +1,114 @@
+{
+  "slug": "veterano",
+  "general": {
+    "name": "Veterano",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura di strisce"
+    },
+    "hitPoints": {
+      "average": 58,
+      "formula": "9d8 + 18"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 13,
+    "constitution": 14,
+    "intelligence": 10,
+    "wisdom": 11,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 4
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 2
+      }
+    ],
+    "skills": [
+      {
+        "name": "Atletica",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il cavaliere effettua due attacchi da mischia."
+    },
+    {
+      "name": "Spada Grossa",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 10 (2d6 + 3) danni taglienti."
+    },
+    {
+      "name": "Balestra Pesante",
+      "usage": null,
+      "description": "Attacco con Arma a Gittata: +2 a colpire, gittata 30/120 m, un bersaglio. Colpisce: 5 (1d10) perforanti."
+    },
+    {
+      "name": "Autorità",
+      "usage": "Ricarica dopo un Riposo Breve o Lungo",
+      "description": "Per 1 minuto, il cavaliere può pronunciare un comando speciale o avvertimento ogni qualvolta una creatura non ostile entro 9 metri da lui, e che possa vedere, effettua un tiro di attacco o tiro salvezza. La creatura può sommare un d4 al suo tiro purchè possa udire e comprendere il cavaliere. Una creatura può beneficiare di un solo dado Autorità alla volta. Questo effetto termina se il cavaliere è inabile."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [
+    {
+      "name": "Parata",
+      "usage": null,
+      "description": "Il cavaliere può aggiungere 2 alla sua CA contro un attacco da mischia che lo colpirebbe. Per farlo, il cavaliere deve vedere l'attaccante e star impugnando un'arma da mischia."
+    }
+  ],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Veterano\nGuerrieri sopravvissuti a lungo, guadagnandosi una\ngrande fama di esperti e abili combattenti.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 16 (+3)\nDESTREZZA 13 (+1)\nCOSTITUZIONE 14 (+2)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 11 (+0)\nCARISMA 10 (+0)\nClasse Armatura 17 (armatura di strisce)\nPunti Ferita 58 (9d8 + 18)\nVelocità 9 m\nAbilità Atletica +5, Percezione +2\nSensi Percezione passiva 12\nLingue una lingua qualsiasi (di solito il Comune)\nSfida 3 (700 PE)\nAzioni\nMultiattacco. Il veterano effettua due attacchi con la spada\nlunga. Se ha estratto una spada corta, può effettuare anche un\nattacco con la spada corta.\nSpada Lunga. Attacco con Arma da Mischia: +5 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 7 (1d8 + 3) danni taglienti, o 8 (1d10 + 3) danni\ntaglienti se usata con due mani.\nSpada Corta. Attacco con Arma da Mischia: +5 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 6 (1d6 + 3) danni perforanti.\nBalestra Pesante. Attacco con Arma a Gittata: +3 a colpire,\ngittata 30/120 m, un bersaglio.\nColpisce: 6 (1d10 + 1) danni perforanti.\nCavaliere\nI cavalieri sono combattenti che giurano fedeltà a\nsovrani, ordini religiosi, e nobili cause. L'allineamento\ndel cavaliere determina fino a che punto è disposto ad\nonorare il suo giuramento.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 16 (+3)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 14 (+2)\nINTELLIGENZA 11 (+0)\nSAGGEZZA 11 (+0)\nCARISMA 15 (+2)\nClasse Armatura 18 (armatura di piastre)\nPunti Ferita 52 (8d8 + 16)\nVelocità 9 m\nTiri Salvezza Costituzione +4, Saggezza +2\nSensi Percezione passiva 10\nLingue una qualsiasi lingua (di solito il Comune)\nSfida 3 (700 PE)\nCoraggioso. Il cavaliere ha vantaggio ai tiri salvezza contro\nl'essere spaventato.\nAzioni\nMultiattacco. Il cavaliere effettua due attacchi da mischia.\nSpada Grossa. Attacco con Arma da Mischia: +5 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 10 (2d6 + 3) danni taglienti.\nBalestra Pesante. Attacco con Arma a Gittata: +2 a colpire,\ngittata 30/120 m, un bersaglio.\nColpisce: 5 (1d10) perforanti.\nAutorità (Ricarica dopo un Riposo Breve o Lungo). Per 1\nminuto, il cavaliere può pronunciare un comando speciale o\navvertimento ogni qualvolta una creatura non ostile entro 9 metri\nda lui, e che possa vedere, effettua un tiro di attacco o tiro\nsalvezza. La creatura può sommare un d4 al suo tiro purchè\npossa udire e comprendere il cavaliere. Una creatura può\nbeneficiare di un solo dado Autorità alla volta. Questo effetto\ntermina se il cavaliere è inabile.\nReazioni\nParata. Il cavaliere può aggiungere 2 alla sua CA contro un\nattacco da mischia che lo colpirebbe. Per farlo, il cavaliere deve\nvedere l'attaccante e star impugnando un'arma da mischia."
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "slug": "behir",
+  "general": {
+    "name": "Behir",
+    "challengeRating": {
+      "fraction": "11",
+      "decimal": 11,
+      "display": "11",
+      "xp": 7200
+    },
+    "size": "Enorme",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 168,
+      "formula": "16d12 + 64"
+    },
+    "speed": {
+      "walk": "15 m",
+      "climb": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 23,
+    "dexterity": 16,
+    "constitution": 18,
+    "intelligence": 7,
+    "wisdom": 14,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 7
+      },
+      {
+        "name": "Percezione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fulmine"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "27 m"
+      },
+      {
+        "name": "Percezione passiva 16"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il behir effettua due attacchi: uno con il morso e uno per stritolare."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 3 m, un bersaglio. Colpisce: 22 (3d10 + 6) danni perforanti."
+    },
+    {
+      "name": "Stritolare",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 1,5 m, una creatura di taglia Grande o inferiore. Colpisce: 17 (2d10 + 6) danni contundenti più 17 (2d10 + 6) danni taglienti. Il bersaglio è afferrato (CD 16 per fuggire) Se il behir non sta già stritolando un'altra creatura, il bersaglio è afferrato e intralciato fino al termine dell'afferrare."
+    },
+    {
+      "name": "Inghiottire",
+      "usage": null,
+      "description": "Il behir effettua una attacco di morso contro un bersaglio di taglia Media o inferiore che sta afferrando. Se l'attacco colpisce, il bersaglio è inghiottito, e l'afferrare ha termine. Il bersaglio inghiottito è accecato e intralciato, ha copertura totale contro gli attacchi e altri effetti all'esterno del behir, e subisce 21 (6d6) danni da acido all'inizio di ciascun turno del behir. Il behir può inghiottire solo una creatura alla volta. Se il behir subisce 30 o più danni in un singolo turno da una creatura che ha inghiottito, deve riuscire un tiro salvezza di Costituzione CD 14 al termine di quel turno o vomitare la creatura, che ricade prona in uno spazio entro 3 metri dal behir. Se il behir muore, una creatura inghiottita non è più intralciata da esso e può uscire dal cadavere utilizzando 4,5 metri di movimento, uscendo prona."
+    },
+    {
+      "name": "Soffio di Fulmine",
+      "usage": "Ricarica 5-6",
+      "description": "Il behir esala fulmini in una linea lunga 6 metri e larga 1,5 metri. Ogni creatura su quella linea deve effettuare un tiro salvezza di Destrezza CD 16 e subire 66 (12d10) danni da fulmine se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Behir\nEnorme mostruosità, neutrale malvagio\nFORZA 23 (+6)\nDESTREZZA 16 (+3)\nCOSTITUZIONE 18 (+4)\nINTELLIGENZA 7 (-2)\nSAGGEZZA 14 (+2)\nCARISMA 12 (+1)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 168 (16d12 + 64)\nVelocità 15 m, scalata 12 m\nAbilità Furtività +7, Percezione +6\nImmunità al Danno fulmine\nSensi scurovisione 27 m, Percezione passiva 16\nLinguaggi Draconico\nSfida 11 (7.200 PE)\nAzioni\nMultiattacco. Il behir effettua due attacchi: uno con il morso e\nuno per stritolare.\nMorso. Attacco con arma da mischia: +10 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 22 (3d10 + 6) danni perforanti.\nStritolare. Attacco con arma da mischia: +10 a colpire, portata\n1,5 m, una creatura di taglia Grande o inferiore.\nColpisce: 17 (2d10 + 6) danni contundenti più 17 (2d10 + 6)\ndanni taglienti. Il bersaglio è afferrato (CD 16 per fuggire) Se il\nbehir non sta già stritolando un'altra creatura, il bersaglio è\nafferrato e intralciato fino al termine dell'afferrare.\nInghiottire. Il behir effettua una attacco di morso contro un\nbersaglio di taglia Media o inferiore che sta afferrando. Se\nl'attacco colpisce, il bersaglio è inghiottito, e l'afferrare ha\ntermine. Il bersaglio inghiottito è accecato e intralciato, ha\ncopertura totale contro gli attacchi e altri effetti all'esterno del\nbehir, e subisce 21 (6d6) danni da acido all'inizio di ciascun\nturno del behir. Il behir può inghiottire solo una creatura alla\nvolta.\nSe il behir subisce 30 o più danni in un singolo turno da una\ncreatura che ha inghiottito, deve riuscire un tiro salvezza di\nCostituzione CD 14 al termine di quel turno o vomitare la\ncreatura, che ricade prona in uno spazio entro 3 metri dal behir.\nSe il behir muore, una creatura inghiottita non è più intralciata da\nesso e può uscire dal cadavere utilizzando 4,5 metri di\nmovimento, uscendo prona.\nSoffio di Fulmine (Ricarica 5-6). Il behir esala fulmini in una\nlinea lunga 6 metri e larga 1,5 metri. Ogni creatura su quella\nlinea deve effettuare un tiro salvezza di Destrezza CD 16 e subire\n66 (12d10) danni da fulmine se fallisce il tiro salvezza, o la metà\ndi questi danni se lo riesce."
+  }
+}

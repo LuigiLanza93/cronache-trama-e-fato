@@ -1,0 +1,105 @@
+{
+  "slug": "tappeto-del-soffocamento",
+  "general": {
+    "name": "Tappeto del Soffocamento",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 33,
+      "formula": "6d10"
+    },
+    "speed": {
+      "walk": "3 m"
+    }
+  },
+  "abilities": {
+    "strength": 17,
+    "dexterity": 14,
+    "constitution": 10,
+    "intelligence": 1,
+    "wisdom": 3,
+    "charisma": 1
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "psichico",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "accecato",
+      "affascinato",
+      "assordato"
+    ],
+    "senses": [
+      {
+        "name": "vista cieca 18 m (cieco oltre questo raggio)"
+      },
+      {
+        "name": "Percezione"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Mentre il tappeto resta immobile, è indistinguibile da un normale tappeto."
+    },
+    {
+      "name": "Suscettibilità all'Anti Magia",
+      "usage": null,
+      "description": "Il tappeto è inabile mentre si trova nell'area di un campo anti-magia. Se è il bersaglio di dissolvi magie, il tappeto deve riuscire un tiro salvezza di Costituzione contro la CD del tiro salvezza dell'incantatore o cadere privo di sensi per 1 minuto."
+    },
+    {
+      "name": "Trasferimento di Danno",
+      "usage": null,
+      "description": "Mentre afferra una creatura, il tappeto subisce solo la metà dei danni che gli sono inferti, e la creatura afferrata dal tappeto subisce l'altra metà."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Soffocare",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, una creatura di taglia Media o inferiore. Colpisce: La creatura è afferrata (CD 13 per fuggire). Fino al termine dell'afferrare, il bersaglio è intralciato, accecato e rischia di soffocare, ma il tappeto non può soffocare un altro bersaglio. Inoltre, all'inizio di ciascun turno del bersaglio, il bersaglio subisce 10 (2d6 + 3) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Tappeto del Soffocamento\nGrande costrutto, disallineato\nFORZA 17 (+3)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 3 (-4)\nCARISMA 1 (-5)\nClasse Armatura 12\nPunti Ferita 33 (6d10)\nVelocità 3 m\nImmunità al Danno psichico, veleno\nImmunità alle Condizioni accecato, affascinato, assordato,\navvelenato, paralizzato, pietrificato, spaventato\nSensi vista cieca 18 m (cieco oltre questo raggio), Percezione\npassiva 6\nLinguaggi -\nSfida 2 (450 PE)\nFalso Aspetto. Mentre il tappeto resta immobile, è indistinguibile\nda un normale tappeto.\nSuscettibilità all'Anti Magia. Il tappeto è inabile mentre si trova\nnell'area di un campo anti-magia. Se è il bersaglio di dissolvi\nmagie, il tappeto deve riuscire un tiro salvezza di Costituzione\ncontro la CD del tiro salvezza dell'incantatore o cadere privo di\nsensi per 1 minuto.\nTrasferimento di Danno. Mentre afferra una creatura, il tappeto\nsubisce solo la metà dei danni che gli sono inferti, e la creatura\nafferrata dal tappeto subisce l'altra metà.\nAzioni\nSoffocare. Attacco con arma da mischia: +5 a colpire, portata\n1,5 m, una creatura di taglia Media o inferiore.\nColpisce: La creatura è afferrata (CD 13 per fuggire). Fino al\ntermine dell'afferrare, il bersaglio è intralciato, accecato e rischia\ndi soffocare, ma il tappeto non può soffocare un altro bersaglio.\nInoltre, all'inizio di ciascun turno del bersaglio, il bersaglio\nsubisce 10 (2d6 + 3) danni contundenti."
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "slug": "babbuino",
+  "general": {
+    "name": "Babbuino",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 10
+    },
+    "size": "Piccola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 3,
+      "formula": "1d6"
+    },
+    "speed": {
+      "walk": "9 m",
+      "climb": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 8,
+    "dexterity": 14,
+    "constitution": 11,
+    "intelligence": 4,
+    "wisdom": 12,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Tattiche di Branco",
+      "usage": null,
+      "description": "Il babbuino ha vantaggio al tiro di attacco contro una creatura se almeno uno degli alleati del babbuino si trova entro 1,5 metri dalla creatura e quell'alleato non è inabile."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +1 a colpire, portata 1,5 m, un bersaglio. Colpisce: 1 (1d4 - 1) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Babbuino\nPiccola bestia, disallineato\nFORZA 8 (-1)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 11 (+0)\nINTELLIGENZA 4 (-3)\nSAGGEZZA 12 (+1)\nCARISMA 6 (-2)\nClasse Armatura 12\nPunti Ferita 3 (1d6)\nVelocità 9 m, scalata 9 m\nSensi Percezione passiva 11\nLingue -\nSfida 0 (10 PE)\nTattiche di Branco. Il babbuino ha vantaggio al tiro di attacco\ncontro una creatura se almeno uno degli alleati del babbuino si\ntrova entro 1,5 metri dalla creatura e quell'alleato non è inabile.\nAzioni\nMorso. Attacco con Arma da Mischia: +1 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 1 (1d4 - 1) danni perforanti."
+  }
+}

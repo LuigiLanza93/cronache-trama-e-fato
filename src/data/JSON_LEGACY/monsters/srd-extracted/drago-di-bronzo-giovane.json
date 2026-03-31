@@ -1,0 +1,156 @@
+{
+  "slug": "drago-di-bronzo-giovane",
+  "general": {
+    "name": "Drago di Bronzo Giovane",
+    "challengeRating": {
+      "fraction": "8",
+      "decimal": 8,
+      "display": "8",
+      "xp": 3900
+    },
+    "size": "Grande",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 142,
+      "formula": "15d10 + 60"
+    },
+    "speed": {
+      "walk": "12 m",
+      "swim": "12 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 21,
+    "dexterity": 10,
+    "constitution": 19,
+    "intelligence": 14,
+    "wisdom": 13,
+    "charisma": 17
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 3
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 7
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 4
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 7
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fulmine"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m"
+      },
+      {
+        "name": "Percezione passiva 17"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il drago può respirare aria e acqua."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il drago può usare effettuare tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +8 a colpire, portata 1,5 m, un bersaglio. Colpisce: 12 (2d6 + 5) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +8 a colpire, portata 3 m, un bersaglio. Colpisce: 16 (2d10 + 5) danni perforanti."
+    },
+    {
+      "name": "Arma a Soffio",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago usa una delle seguenti armi a soffio:"
+    },
+    {
+      "name": "Soffio Fulminante",
+      "usage": null,
+      "description": "Il drago esala fulmini in una linea lunga 18 metri e larga 1,5 metri. Ogni creatura sulla linea deve effettuare un tiro salvezza di Destrezza CD 15, subendo 55 (10d10) danni da fulmine se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    },
+    {
+      "name": "Soffio Repulsivo",
+      "usage": null,
+      "description": "Il drago esala dell'energia repulsiva in un cono di 9 metri. Ogni creatura in quell'area deve riuscire un tiro salvezza di"
+    },
+    {
+      "name": "Forza CD 15, altrimenti viene allontana di 12 metri dal drago",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Drago di Bronzo Giovane\nGrande drago, caotico buono\nFORZA 21 (+5)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 19 (+4)\nINTELLIGENZA 14 (+2)\nSAGGEZZA 13 (+1)\nCARISMA 17 (+3)\nClasse Armatura 18 (armatura naturale)\nPunti Ferita 142 (15d10 + 60)\nVelocità 12 m, nuoto 12 m, volo 24 m\nTiri Salvezza Destrezza +3, Costituzione +7, Saggezza +4,\nCarisma +6\nAbilità Furtività +3, Intuizione +4, Percezione +7\nImmunità al Danno fulmine\nSensi scurovisione 36 m, vista cieca 9 m, Percezione passiva 17\nLinguaggi Comune, Draconico\nSfida 8 (3.900 PE)\nAnfibio. Il drago può respirare aria e acqua.\nAzioni\nMultiattacco. Il drago può usare effettuare tre attacchi: uno con\nil morso e due con gli artigli.\nArtiglio. Attacco con arma da mischia: +8 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 12 (2d6 + 5) danni taglienti.\nMorso. Attacco con arma da mischia: +8 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 16 (2d10 + 5) danni perforanti.\nArma a Soffio (Ricarica 5-6). Il drago usa una delle seguenti armi\na soffio:\nSoffio Fulminante. Il drago esala fulmini in una linea lunga 18 metri\ne larga 1,5 metri. Ogni creatura sulla linea deve effettuare un tiro\nsalvezza di Destrezza CD 15, subendo 55 (10d10) danni da fulmine\nse fallisce il tiro salvezza, o la metà di questi danni se lo riesce.\nSoffio Repulsivo. Il drago esala dell'energia repulsiva in un cono di 9\nmetri. Ogni creatura in quell'area deve riuscire un tiro salvezza di\nForza CD 15, altrimenti viene allontana di 12 metri dal drago."
+  }
+}

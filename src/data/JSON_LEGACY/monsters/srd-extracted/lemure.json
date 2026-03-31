@@ -1,0 +1,103 @@
+{
+  "slug": "lemure",
+  "general": {
+    "name": "Lemure",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 10
+    },
+    "size": "Media",
+    "creatureType": "immondo",
+    "subtype": "diavolo",
+    "typeLabel": "immondo (diavolo)",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 7,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 13,
+      "formula": "3d8"
+    },
+    "speed": {
+      "walk": "5 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 5,
+    "constitution": 11,
+    "intelligence": 1,
+    "wisdom": 11,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo"
+    ],
+    "damageImmunities": [
+      "fuoco",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "spaventato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "comprende l'Infernale ma non può parlare"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Rinvigorimento Diabolico",
+      "usage": null,
+      "description": "Un lemure che muore nei Nove Inferi ritorna in vita con tutti i suoi punti ferita in 1d10 giorni a meno che non venga ucciso da una creatura di allineamento buono su cui sia stato eseguito l'incantesimo benedire o i suoi resti vengano cosparsi di acqua sacra."
+    },
+    {
+      "name": "Vista del Diavolo",
+      "usage": null,
+      "description": "La scurovisione del diavolo non è limitata dall'oscurità magica."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 2 (1d4) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Lemure\nMedia immondo (diavolo), legale malvagio\nFORZA 10 (+0)\nDESTREZZA 5 (-3)\nCOSTITUZIONE 11 (+0)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 11 (+0)\nCARISMA 3 (-4)\nClasse Armatura 7\nPunti Ferita 13 (3d8)\nVelocità 4,5 m\nResistenze al Danno freddo\nImmunità al Danno fuoco, veleno\nImmunità alle Condizioni affascinato, avvelenato, spaventato\nSensi scurovisione 36 m, Percezione passiva 10\nLinguaggi comprende l'Infernale ma non può parlare\nSfida 0 (10 PE)\nRinvigorimento Diabolico. Un lemure che muore nei Nove\nInferi ritorna in vita con tutti i suoi punti ferita in 1d10 giorni a\nmeno che non venga ucciso da una creatura di allineamento\nbuono su cui sia stato eseguito l'incantesimo benedire o i suoi\nresti vengano cosparsi di acqua sacra.\nVista del Diavolo. La scurovisione del diavolo non è limitata\ndall'oscurità magica.\nAzioni\nPugno. Attacco con arma da mischia: +3 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 2 (1d4) danni contundenti."
+  }
+}

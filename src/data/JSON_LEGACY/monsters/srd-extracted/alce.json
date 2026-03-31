@@ -1,0 +1,91 @@
+{
+  "slug": "alce",
+  "general": {
+    "name": "Alce",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Grande",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 13,
+      "formula": "2d10 + 2"
+    },
+    "speed": {
+      "walk": "15 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 10,
+    "constitution": 12,
+    "intelligence": 2,
+    "wisdom": 10,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Carica",
+      "usage": null,
+      "description": "Se l'alce si muove di almeno 6 metri diretto verso il bersaglio e lo colpisce con un attacco di rostro durante lo stesso turno, il bersaglio subisce 7 (2d6) danni contundenti aggiuntivi. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di"
+    },
+    {
+      "name": "Forza CD 13 o cadere prono",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "actions": [
+    {
+      "name": "Rostro",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 6 (1d6 + 3) danni contundenti."
+    },
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 a colpire, portata 1,5 m, una creatura prona. Colpisce: 8 (2d4 + 3) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Alce\nGrande bestia, disallineato\nFORZA 16 (+3)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 10 (+0)\nCARISMA 6 (-2)\nClasse Armatura 10\nPunti Ferita 13 (2d10 + 2)\nVelocità 15 m\nSensi Percezione passiva 10\nLingue -\nSfida 1/4 (50 PE)\nCarica. Se l'alce si muove di almeno 6 metri diretto verso il\nbersaglio e lo colpisce con un attacco di rostro durante lo stesso\nturno, il bersaglio subisce 7 (2d6) danni contundenti aggiuntivi.\nSe il bersaglio è una creatura, deve riuscire un tiro salvezza di\nForza CD 13 o cadere prono.\nAzioni\nRostro. Attacco con Arma da Mischia: +5 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 6 (1d6 + 3) danni contundenti.\nZoccoli. Attacco con Arma da Mischia: +5 a colpire, portata 1,5\nm, una creatura prona.\nColpisce: 8 (2d4 + 3) danni contundenti."
+  }
+}

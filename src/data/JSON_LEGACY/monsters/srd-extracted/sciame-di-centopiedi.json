@@ -1,0 +1,94 @@
+{
+  "slug": "sciame-di-centopiedi",
+  "general": {
+    "name": "Sciame di Centopiedi",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Medio",
+    "creatureType": "sciame di Minuscole bestie",
+    "subtype": "",
+    "typeLabel": "sciame di Minuscole bestie",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 22,
+      "formula": "5d8"
+    },
+    "speed": {
+      "walk": "6 m",
+      "climb": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 3,
+    "dexterity": 13,
+    "constitution": 10,
+    "intelligence": 1,
+    "wisdom": 7,
+    "charisma": 1
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente",
+      "perforante",
+      "tagliente"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "affascinato",
+      "afferrato",
+      "intralciato"
+    ],
+    "senses": [
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "Percezione passiva 8"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Sciame",
+      "usage": null,
+      "description": "Lo sciame può occupare lo spazio di un'altra creatura e viceversa, e lo sciame può muoversi attraverso qualsiasi apertura grande abbastanza per un Minuscolo insetto. Lo sciame non può recuperare punti ferita né ottenere punti ferita temporanei."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morsi",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 a colpire, portata 0 m, un bersaglio nello spazio dello sciame. Colpisce: 10 (4d4) danni perforanti, o 5 (2d4) danni perforanti se lo sciame è ha metà o meno dei suoi punti ferita. Una creatura ridotta a 0 punti ferita da uno sciame di centopiedi e stabile resta avvelenata per 1 ora, anche dopo aver recuperato i punti ferita, e rimane paralizzata dal veleno durante questo periodo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Sciame di Centopiedi\nMedio sciame di Minuscole bestie, disallineato\nFORZA 3 (-4)\nDESTREZZA 13 (+1)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 7 (-2)\nCARISMA 1 (-5)\nClasse Armatura 12 (armatura naturale)\nPunti Ferita 22 (5d8)\nVelocità 6 m, scalata 6 m\nResistenze al Danno contundente, perforante, tagliente\nImmunità alle Condizioni affascinato, afferrato, intralciato,\nparalizzato, pietrificato, prono, spaventato, stordito\nSensi vista cieca 3 m, Percezione passiva 8\nLingue -\nSfida 1/2 (100 PE)\nSciame. Lo sciame può occupare lo spazio di un'altra creatura e\nviceversa, e lo sciame può muoversi attraverso qualsiasi apertura\ngrande abbastanza per un Minuscolo insetto. Lo sciame non può\nrecuperare punti ferita né ottenere punti ferita temporanei.\nAzioni\nMorsi. Attacco con Arma da Mischia: +3 a colpire, portata 0 m,\nun bersaglio nello spazio dello sciame.\nColpisce: 10 (4d4) danni perforanti, o 5 (2d4) danni perforanti se\nlo sciame è ha metà o meno dei suoi punti ferita. Una creatura\nridotta a 0 punti ferita da uno sciame di centopiedi e stabile resta\navvelenata per 1 ora, anche dopo aver recuperato i punti ferita, e\nrimane paralizzata dal veleno durante questo periodo."
+  }
+}

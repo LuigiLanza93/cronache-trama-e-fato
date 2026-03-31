@@ -1,0 +1,137 @@
+{
+  "slug": "drago-di-rame-cucciolo",
+  "general": {
+    "name": "Drago di Rame Cucciolo",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Media",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 22,
+      "formula": "4d8 + 4"
+    },
+    "speed": {
+      "walk": "9 m",
+      "climb": "9 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 12,
+    "constitution": 13,
+    "intelligence": 14,
+    "wisdom": 11,
+    "charisma": 13
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 3
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 3
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 2
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 3
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "acido"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "Percezione passiva 14"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 7 (1d10 + 2) danni perforanti."
+    },
+    {
+      "name": "Arma a Soffio",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago usa una delle seguenti armi a soffio:"
+    },
+    {
+      "name": "Soffio Acido",
+      "usage": null,
+      "description": "Il drago esala acido in una linea lunga 6 metri e larga 1,5 metri. Ogni creatura sulla linea deve effettuare un tiro salvezza di Destrezza CD 11, subendo 18 (4d8) danni da acido se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    },
+    {
+      "name": "Soffio Rallentante",
+      "usage": null,
+      "description": "Il drago esala del gas in un cono di 4,5 metri. Ogni creatura in quell'area deve riuscire un tiro salvezza di"
+    },
+    {
+      "name": "Costituzione CD 11",
+      "usage": null,
+      "description": "Se fallisce il tiro salvezza, la creatura non può usare la sua reazione, ha la velocità dimezzata, e non può effettuare più di un attacco durante il suo turno. Inoltre, la creatura può usare un'azione o un'azione bonus, ma non entrambe. Questi effetti permangono 1 minuto. La creatura può ripetere il tiro salvezza al termine di ciascun suo turno, terminando l'effetto su di sé in caso di successo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Drago di Rame Cucciolo\nMedia drago, caotico buono\nFORZA 15 (+2)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 14 (+2)\nSAGGEZZA 11 (+0)\nCARISMA 13 (+1)\nClasse Armatura 16 (armatura naturale)\nPunti Ferita 22 (4d8 + 4)\nVelocità 9 m, scalata 9 m, volo 18 m\nTiri Salvezza Destrezza +3, Costituzione +3, Saggezza +2, Carisma +3\nAbilità Furtività +3, Percezione +4\nImmunità al Danno acido\nSensi scurovisione 18 m, vista cieca 3 m, Percezione passiva 14\nLinguaggi Draconico\nSfida 1 (200 PE)\nAzioni\nMorso. Attacco con arma da mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 7 (1d10 + 2) danni perforanti.\nArma a Soffio (Ricarica 5-6). Il drago usa una delle seguenti armi\na soffio:\nSoffio Acido. Il drago esala acido in una linea lunga 6 metri e larga\n1,5 metri. Ogni creatura sulla linea deve effettuare un tiro salvezza di\nDestrezza CD 11, subendo 18 (4d8) danni da acido se fallisce il tiro\nsalvezza, o la metà di questi danni se lo riesce.\nSoffio Rallentante. Il drago esala del gas in un cono di 4,5 metri.\nOgni creatura in quell'area deve riuscire un tiro salvezza di\nCostituzione CD 11. Se fallisce il tiro salvezza, la creatura non può\nusare la sua reazione, ha la velocità dimezzata, e non può effettuare\npiù di un attacco durante il suo turno. Inoltre, la creatura può usare\nun'azione o un'azione bonus, ma non entrambe. Questi effetti\npermangono 1 minuto. La creatura può ripetere il tiro salvezza al\ntermine di ciascun suo turno, terminando l'effetto su di sé in caso di\nsuccesso."
+  }
+}

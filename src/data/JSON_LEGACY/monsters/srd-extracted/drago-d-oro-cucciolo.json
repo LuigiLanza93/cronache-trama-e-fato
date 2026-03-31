@@ -1,0 +1,139 @@
+{
+  "slug": "drago-d-oro-cucciolo",
+  "general": {
+    "name": "Drago d'Oro Cucciolo",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Media",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "legale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 60,
+      "formula": "8d8 + 24"
+    },
+    "speed": {
+      "walk": "9 m",
+      "swim": "9 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 14,
+    "constitution": 17,
+    "intelligence": 14,
+    "wisdom": 11,
+    "charisma": 16
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 4
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 5
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 2
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "Percezione passiva 14"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il drago può respirare aria e acqua."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 9 (1d10 + 4) danni perforanti."
+    },
+    {
+      "name": "Arma a Soffio",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago usa una delle seguenti armi a soffio:"
+    },
+    {
+      "name": "Soffio Infuocato",
+      "usage": null,
+      "description": "Il drago esala fuoco in un cono di 4,5 metri. Ogni creatura nell'area deve effettuare un tiro salvezza di Destrezza CD 13, subendo 22 (4d10) danni da fuoco se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    },
+    {
+      "name": "Soffio Indebolente",
+      "usage": null,
+      "description": "Il drago esala del gas in un cono di 4,5 metri. Ogni creatura in quell'area deve riuscire un tiro salvezza di Forza CD 13 o avere svantaggio ai tiri di attacco basati sulla Forza, prove di"
+    },
+    {
+      "name": "Forza, e tiri salvezza di Forza per 1 minuto",
+      "usage": null,
+      "description": "Una creatura può ripetere il tiro salvezza al termine di ciascun suo turno, terminando l'effetto su di sé in caso di successo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Drago d'Oro Cucciolo\nMedia drago, legale buono\nFORZA 19 (+4)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 17 (+3)\nINTELLIGENZA 14 (+2)\nSAGGEZZA 11 (+0)\nCARISMA 16 (+3)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 60 (8d8 + 24)\nVelocità 9 m, nuoto 9 m, volo 18 m\nTiri Salvezza Destrezza +4, Costituzione +5, Saggezza +2,\nCarisma +5\nAbilità Furtività +4, Percezione +4\nImmunità al Danno fuoco\nSensi scurovisione 18 m, vista cieca 3 m, Percezione passiva 14\nLinguaggi Draconico\nSfida 3 (700 PE)\nAnfibio. Il drago può respirare aria e acqua.\nAzioni\nMorso. Attacco con arma da mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 9 (1d10 + 4) danni perforanti.\nArma a Soffio (Ricarica 5-6). Il drago usa una delle seguenti armi\na soffio:\nSoffio Infuocato. Il drago esala fuoco in un cono di 4,5 metri. Ogni\ncreatura nell'area deve effettuare un tiro salvezza di Destrezza CD\n13, subendo 22 (4d10) danni da fuoco se fallisce il tiro salvezza, o la\nmetà di questi danni se lo riesce.\nSoffio Indebolente. Il drago esala del gas in un cono di 4,5 metri.\nOgni creatura in quell'area deve riuscire un tiro salvezza di Forza CD\n13 o avere svantaggio ai tiri di attacco basati sulla Forza, prove di\nForza, e tiri salvezza di Forza per 1 minuto. Una creatura può ripetere\nil tiro salvezza al termine di ciascun suo turno, terminando l'effetto\nsu di sé in caso di successo."
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "slug": "diavolo-barbuto",
+  "general": {
+    "name": "Diavolo Barbuto",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Media",
+    "creatureType": "immondo",
+    "subtype": "diavolo",
+    "typeLabel": "immondo (diavolo)",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 52,
+      "formula": "8d8 + 16"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 15,
+    "constitution": 15,
+    "intelligence": 9,
+    "wisdom": 11,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Forza",
+        "bonus": 5
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 4
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 2
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo; contundente",
+      "perforante e tagliente"
+    ],
+    "damageImmunities": [
+      "fuoco",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Infernale"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il diavolo ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Risoluto",
+      "usage": null,
+      "description": "Il diavolo non può essere spaventato finché riesce a vedere una creatura alleata entro 9 metri da lui."
+    },
+    {
+      "name": "Vista del Diavolo",
+      "usage": null,
+      "description": "La scurovisione del diavolo non è limitata dall'oscurità magica."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il diavolo effettua due attacchi: uno con la barba e uno con il falcione."
+    },
+    {
+      "name": "Barba",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, una creatura. Colpisce: 6 (1d8 + 2) danni perforanti, e il bersaglio deve riuscire un tiro salvezza di Costituzione CD 12 o restare avvelenato per 1 minuto. Mentre è avvelenato in questo modo, il bersaglio non può recuperare punti ferita. Il bersaglio può ripetere il tiro salvezza al termine di ciascun suo turno, terminando l'effetto se riesce il tiro salvezza."
+    },
+    {
+      "name": "Falcione",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 3 m, un bersaglio. Colpisce: 8 (1d10 + 3) danni taglienti. Se il bersaglio è una creatura, ad esclusione di costrutti e non morti, deve riuscire un tiro salvezza di Costituzione CD 12 o perdere 5 (1d10) punti ferita all'inizio di ciascun suo turno a causa della ferita infernale. Ogni volta che il diavolo colpisce il bersaglio ferito con questo attacco, il danno inflitto dalla ferita aumenta di 5 (1d10). Qualsiasi creatura può effettuare un'azione per bloccare la ferita con una prova riuscita di Saggezza (Medicina) CD 12. La ferita si richiude anche nel caso in cui il bersaglio riceva della magia guaritrice."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Diavolo Barbuto\nMedia immondo (diavolo), legale malvagio\nFORZA 16 (+3)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 15 (+2)\nINTELLIGENZA 9 (-1)\nSAGGEZZA 11 (+0)\nCARISMA 11 (+0)\nClasse Armatura 13 (armatura naturale)\nPunti Ferita 52 (8d8 + 16)\nVelocità 9 m\nTiri Salvezza Forza +5, Costituzione +4, Saggezza +2\nResistenze al Danno freddo; contundente, perforante e tagliente\ndi attacchi non magici che non siano argentati\nImmunità al Danno fuoco, veleno\nImmunità alle Condizioni avvelenato\nSensi scurovisione 36 m, Percezione passiva 10\nLinguaggi Infernale, telepatia 36 m\nSfida 3 (700 PE)\nResistenza alla Magia. Il diavolo ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nRisoluto. Il diavolo non può essere spaventato finché riesce a\nvedere una creatura alleata entro 9 metri da lui.\nVista del Diavolo. La scurovisione del diavolo non è limitata\ndall'oscurità magica.\nAzioni\nMultiattacco. Il diavolo effettua due attacchi: uno con la barba e\nuno con il falcione.\nBarba. Attacco con arma da mischia: +5 a colpire, portata 1,5 m,\nuna creatura.\nColpisce: 6 (1d8 + 2) danni perforanti, e il bersaglio deve\nriuscire un tiro salvezza di Costituzione CD 12 o restare\navvelenato per 1 minuto. Mentre è avvelenato in questo modo, il\nbersaglio non può recuperare punti ferita. Il bersaglio può\nripetere il tiro salvezza al termine di ciascun suo turno,\nterminando l'effetto se riesce il tiro salvezza.\nFalcione. Attacco con arma da mischia: +5 a colpire, portata 3\nm, un bersaglio.\nColpisce: 8 (1d10 + 3) danni taglienti. Se il bersaglio è una\ncreatura, ad esclusione di costrutti e non morti, deve riuscire un\ntiro salvezza di Costituzione CD 12 o perdere 5 (1d10) punti\nferita all'inizio di ciascun suo turno a causa della ferita infernale.\nOgni volta che il diavolo colpisce il bersaglio ferito con questo\nattacco, il danno inflitto dalla ferita aumenta di 5 (1d10).\nQualsiasi creatura può effettuare un'azione per bloccare la ferita\ncon una prova riuscita di Saggezza (Medicina) CD 12. La ferita\nsi richiude anche nel caso in cui il bersaglio riceva della magia\nguaritrice."
+  }
+}

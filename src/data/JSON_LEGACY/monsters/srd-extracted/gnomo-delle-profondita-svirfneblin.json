@@ -1,0 +1,128 @@
+{
+  "slug": "gnomo-delle-profondita-svirfneblin",
+  "general": {
+    "name": "Gnomo delle Profondità (Svirfneblin)",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "giaco di maglia"
+    },
+    "hitPoints": {
+      "average": 16,
+      "formula": "3d6 + 6"
+    },
+    "speed": {
+      "walk": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 14,
+    "constitution": 14,
+    "intelligence": 12,
+    "wisdom": 10,
+    "charisma": 9
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 4
+      },
+      {
+        "name": "Indagare",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gnomesco"
+      },
+      {
+        "name": "Sottocomune"
+      },
+      {
+        "name": "Terran"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Astuzia Gnomesca",
+      "usage": null,
+      "description": "Lo gnomo ha vantaggio ai tiri salvezza di"
+    },
+    {
+      "name": "Intelligenza, Saggezza e Carisma contro la magia",
+      "usage": null,
+      "description": ""
+    },
+    {
+      "name": "Camuffamento di Pietra",
+      "usage": null,
+      "description": "Lo gnomo ha vantaggio alle prove di Destrezza (Furtività) effettuate per nascondersi su terreni rocciosi."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore innato dello gnomo è l'Intelligenza (CD dei tiri salvezza 11). Lo gnomo può lanciare questi incantesimi in maniera innata, senza bisogno di componenti: A volontà: anti-individuazione (personale) 1/giorno ciascuno: camuffare sé stesso, cecità/sordità, sfocatura"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Piccone da Guerra",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 6 (1d8 + 2) danni perforanti."
+    },
+    {
+      "name": "Dardo Avvelenato",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +4 a colpire, gittata 9/36 m, un bersaglio. Colpisce: 4 (1d4 + 2) danni perforanti, e il bersaglio deve riuscire un tiro salvezza di Costituzione CD 12 o restare avvelenato per 1 minuto. Il bersaglio può ripetere il tiro salvezza al termine di ciascun suo turno, terminando l'effetto su di sé in caso di successo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gnomo delle\nProfondità (Svirfneblin)\nPiccola umanoide (gnomo), neutrale buono\nFORZA 15 (+2)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 14 (+2)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 10 (+0)\nCARISMA 9 (-1)\nClasse Armatura 15 (giaco di maglia)\nPunti Ferita 16 (3d6 + 6)\nVelocità 6 m\nAbilità Furtività +4, Indagare +3, Percezione +2\nSensi scurovisione 36 m, Percezione passiva 12\nLinguaggi Gnomesco, Sottocomune, Terran\nSfida 1/2 (100 PE)\nAstuzia Gnomesca. Lo gnomo ha vantaggio ai tiri salvezza di\nIntelligenza, Saggezza e Carisma contro la magia.\nCamuffamento di Pietra. Lo gnomo ha vantaggio alle prove di\nDestrezza (Furtività) effettuate per nascondersi su terreni\nrocciosi.\nIncantesimi Innati. La caratteristica da incantatore innato dello\ngnomo è l'Intelligenza (CD dei tiri salvezza 11). Lo gnomo può\nlanciare questi incantesimi in maniera innata, senza bisogno di\ncomponenti:\nA volontà: anti-individuazione (personale)\n1/giorno ciascuno: camuffare sé stesso, cecità/sordità, sfocatura\nAzioni\nPiccone da Guerra. Attacco con arma da mischia: +4 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 6 (1d8 + 2) danni perforanti.\nDardo Avvelenato. Attacco con arma a Distanza: +4 a colpire,\ngittata 9/36 m, un bersaglio.\nColpisce: 4 (1d4 + 2) danni perforanti, e il bersaglio deve\nriuscire un tiro salvezza di Costituzione CD 12 o restare\navvelenato per 1 minuto. Il bersaglio può ripetere il tiro salvezza\nal termine di ciascun suo turno, terminando l'effetto su di sé in\ncaso di successo."
+  }
+}

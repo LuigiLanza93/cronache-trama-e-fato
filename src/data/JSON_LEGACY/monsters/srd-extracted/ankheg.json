@@ -1,0 +1,93 @@
+{
+  "slug": "ankheg",
+  "general": {
+    "name": "Ankheg",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 0,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 39,
+      "formula": "6d10 + 6"
+    },
+    "speed": {
+      "walk": "9 m",
+      "burrow": "3 m"
+    }
+  },
+  "abilities": {
+    "strength": 17,
+    "dexterity": 11,
+    "constitution": 13,
+    "intelligence": 1,
+    "wisdom": 13,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "percezione tellurica",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 10 (2d6 + 3) danni taglienti più 3 (1d6) danni da acido. Se il bersaglio è una creatura di taglia Grande o inferiore, è afferrata (CD 13 per fuggire). Fino al termine dell'afferrare, l'ankheg può mordere solo la creatura afferrata e ha vantaggio ai tiri di attacco contro di essa."
+    },
+    {
+      "name": "Spruzzo Acido",
+      "usage": "Ricarica 6",
+      "description": "L'ankheg sputa acido in una linea lunga 9 metri e larga 1,5 metri, purché non stia afferrando nessuna creatura. Ogni creatura su quella linea deve effettuare un tiro salvezza di Destrezza CD 13, e subire 10 (3d6) danni da acido se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Ankheg\nGrande mostruosità, disallineato\nFORZA 17 (+3)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 13 (+1)\nCARISMA 6 (-2)\nClasse Armatura 14 (armatura naturale), 11 mentre è prono\nPunti Ferita 39 (6d10 + 6)\nVelocità 9 m, scavo 3 m\nSensi scurovisione 18 m, percezione tellurica 18 m, Percezione\npassiva 11\nLinguaggi -\nSfida 2 (450 PE)\nAzioni\nMorso. Attacco con arma da mischia: +5 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 10 (2d6 + 3) danni taglienti più 3 (1d6) danni da acido.\nSe il bersaglio è una creatura di taglia Grande o inferiore, è\nafferrata (CD 13 per fuggire). Fino al termine dell'afferrare,\nl'ankheg può mordere solo la creatura afferrata e ha vantaggio ai\ntiri di attacco contro di essa.\nSpruzzo Acido (Ricarica 6). L'ankheg sputa acido in una linea\nlunga 9 metri e larga 1,5 metri, purché non stia afferrando\nnessuna creatura. Ogni creatura su quella linea deve effettuare un\ntiro salvezza di Destrezza CD 13, e subire 10 (3d6) danni da\nacido se fallisce il tiro salvezza, o la metà di questi danni se lo\nriesce."
+  }
+}

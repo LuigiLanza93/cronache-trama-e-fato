@@ -1,0 +1,123 @@
+{
+  "slug": "wraith",
+  "general": {
+    "name": "Wraith",
+    "challengeRating": {
+      "fraction": "5",
+      "decimal": 5,
+      "display": "5",
+      "xp": 1800
+    },
+    "size": "Media",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 67,
+      "formula": "9d8 + 27"
+    },
+    "speed": {
+      "walk": "0 m",
+      "fly": "18 m (fluttua)"
+    }
+  },
+  "abilities": {
+    "strength": 6,
+    "dexterity": 16,
+    "constitution": 16,
+    "intelligence": 12,
+    "wisdom": 14,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "acido",
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "tuono;"
+    ],
+    "damageImmunities": [
+      "necrotico",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "afferrato",
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "le lingue che conosceva in vita"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Movimento Incorporeo",
+      "usage": null,
+      "description": "Il wraith può attraversare creature e oggetti come fossero terreno difficile. Subisce 5 (1d10) danni da forza se termina il proprio turno all'interno di un oggetto."
+    },
+    {
+      "name": "Natura Non Morta",
+      "usage": null,
+      "description": "Il wraith non ha bisogno di aria, cibo, bevande o sonno."
+    },
+    {
+      "name": "Sensibilità alla Luce",
+      "usage": null,
+      "description": "Mentre è alla luce del sole, il wraith ha svantaggio ai tiri di attacco, oltre che alle prove di Saggezza (Percezione) basate sulla vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Risucchiare Vita",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, una creatura. Colpisce: 21 (4d8 + 3) danni necrotici. Il bersaglio deve riuscire un tiro salvezza di Costituzione CD 14 o vedere i suoi punti ferita massimi ridotti di un ammontare pari al danno subito. Questa riduzione perdura finché il bersaglio non ha terminato un riposo lungo. Il bersaglio muore se l'effetto riduce i suoi punti ferita massimi a 0."
+    },
+    {
+      "name": "Creare Spettro",
+      "usage": null,
+      "description": "Il wraith prende a bersaglio un umanoide entro 3 metri da esso e che sia morto da non più di 1 minuto e per cause violente. Lo spirito del bersaglio si anima come spettro nello spazio del suo cadavere e nello spazio più vicino non occupato."
+    },
+    {
+      "name": "Lo spettro è sotto il controllo del wraith",
+      "usage": null,
+      "description": "Il wraith non può tenere più di sette spettri alla volta sotto il suo controllo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Wraith\nMedia non morto, neutrale malvagio\nFORZA 6 (-2)\nDESTREZZA 16 (+3)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 14 (+2)\nCARISMA 15 (+2)\nClasse Armatura 13\nPunti Ferita 67 (9d8 + 27)\nVelocità 0 m, volo 18 m (fluttua)\nResistenze al Danno acido, freddo, fulmine, fuoco, tuono;\ncontundente, perforante e tagliente di attacchi non magici che\nnon siano argentati\nImmunità al Danno necrotico, veleno\nImmunità alle Condizioni affascinato, afferrato, avvelenato,\nintralciato, paralizzato, pietrificato, prono, sfinimento\nSensi scurovisione 18 m, Percezione passiva 12\nLinguaggi le lingue che conosceva in vita\nSfida 5 (1.800 PE)\nMovimento Incorporeo. Il wraith può attraversare creature e\noggetti come fossero terreno difficile. Subisce 5 (1d10) danni da\nforza se termina il proprio turno all'interno di un oggetto.\nNatura Non Morta. Il wraith non ha bisogno di aria, cibo,\nbevande o sonno.\nSensibilità alla Luce. Mentre è alla luce del sole, il wraith ha\nsvantaggio ai tiri di attacco, oltre che alle prove di Saggezza\n(Percezione) basate sulla vista.\nAzioni\nRisucchiare Vita. Attacco con arma da mischia: +6 a colpire,\nportata 1,5 m, una creatura.\nColpisce: 21 (4d8 + 3) danni necrotici. Il bersaglio deve riuscire\nun tiro salvezza di Costituzione CD 14 o vedere i suoi punti\nferita massimi ridotti di un ammontare pari al danno subito.\nQuesta riduzione perdura finché il bersaglio non ha terminato un\nriposo lungo. Il bersaglio muore se l'effetto riduce i suoi punti\nferita massimi a 0.\nCreare Spettro. Il wraith prende a bersaglio un umanoide entro 3\nmetri da esso e che sia morto da non più di 1 minuto e per cause\nviolente. Lo spirito del bersaglio si anima come spettro nello\nspazio del suo cadavere e nello spazio più vicino non occupato.\nLo spettro è sotto il controllo del wraith. Il wraith non può tenere\npiù di sette spettri alla volta sotto il suo controllo."
+  }
+}

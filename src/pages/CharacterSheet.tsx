@@ -41,7 +41,15 @@ import {
   proficiencyBonus,
   calculateSkillValues,
 } from "@/utils";
-import spellsData from "@/data/spells.json";
+import {
+  fetchSkills,
+  fetchSpellSlots,
+  fetchSpells,
+  type SkillEntry as SkillCatalogEntry,
+  type SpellEntry as SpellFromApi,
+  type SpellSlotTable,
+  type SpellsByClass as SpellsByClassFromApi,
+} from "@/lib/auth";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
 import AbilityScores from "@/components/characterSheet/ability-scores";
@@ -164,22 +172,8 @@ interface Character {
   capabilities?: CapabilityEntry[];
 }
 
-type Spell = {
-  name: string;
-  level: number;
-  school: string;
-  casting_time: string;
-  range: string;
-  components: string;
-  duration: string;
-  concentration: boolean;
-  ritual: boolean;
-  description: string;
-  usage?: string | null;
-};
-
-type SpellsByClass = Record<string, Spell[]>;
-const spells = spellsData as SpellsByClass;
+type Spell = SpellFromApi;
+type SpellsByClass = SpellsByClassFromApi;
 
 const COIN_KEYS = {
   mr: "cp",
@@ -351,7 +345,7 @@ const CharacterSheet = () => {
 
   // ======= ADD SPELL dialog (CTA) =======
   const [addSpellOpen, setAddSpellOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<string>(characterData?.basicInfo.class?.toLowerCase?.());
+  const [selectedClass, setSelectedClass] = useState<string>(characterData?.basicInfo.class?.toLowerCase?.() ?? "");
   const [spellQuery, setSpellQuery] = useState("");
 
   // ======= SPELL DETAILS modal (click su riga) =======
@@ -361,14 +355,22 @@ const CharacterSheet = () => {
   const [modalDescription, setModalDescription] = useState<string>("");
   const [modalFeatureIndex, setModalFeatureIndex] = useState<number | null>(null);
   const [confirmRemoveFeatureOpen, setConfirmRemoveFeatureOpen] = useState(false);
+  const [spells, setSpells] = useState<SpellsByClass>({});
+  const [skillsCatalog, setSkillsCatalog] = useState<SkillCatalogEntry[]>([]);
+  const [spellSlotTable, setSpellSlotTable] = useState<SpellSlotTable>({});
 
-  const classOptions = useMemo(() => Object.keys(spells).sort(), []);
+  useEffect(() => {
+    const nextClass = characterData?.basicInfo?.class?.toLowerCase?.() ?? "";
+    setSelectedClass((current) => current || nextClass);
+  }, [characterData?.basicInfo?.class]);
+
+  const classOptions = useMemo(() => Object.keys(spells).sort(), [spells]);
   const filteredSpells = useMemo(() => {
     if (!selectedClass) return [];
     const list = spells[selectedClass] ?? [];
     const q = spellQuery.trim().toLowerCase();
     return q ? list.filter((s) => s.name.toLowerCase().includes(q)) : list;
-  }, [selectedClass, spellQuery]);
+  }, [selectedClass, spellQuery, spells]);
 
   const formatSpellBlock = (s: Spell) => {
     const tags: string[] = [];
@@ -871,6 +873,33 @@ const CharacterSheet = () => {
   }, [character]);
 
   useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const [nextSpells, nextSkills, nextSpellSlots] = await Promise.all([
+          fetchSpells(),
+          fetchSkills(),
+          fetchSpellSlots(),
+        ]);
+        if (active) {
+          setSpells(nextSpells);
+          setSkillsCatalog(Array.isArray(nextSkills?.skills) ? nextSkills.skills : []);
+          setSpellSlotTable(nextSpellSlots ?? {});
+        }
+      } catch {
+        if (active) {
+          setSpells({});
+          setSkillsCatalog([]);
+          setSpellSlotTable({});
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (characterData?.basicInfo?.class) {
       setSelectedClass(characterData.basicInfo.class.toLowerCase());
     }
@@ -967,6 +996,7 @@ const CharacterSheet = () => {
               deathSaves={deathSaves}
               setDeathSaves={setDeathSaves}
               calculateSkillValues={calculateSkillValues}
+              skillsCatalog={skillsCatalog}
             />
             <Languages characterData={characterData} />
           </div>
@@ -1005,6 +1035,7 @@ const CharacterSheet = () => {
               findSpell={findSpell}
               openFeatureModal={openFeatureModal}
               setAddSpellOpen={setAddSpellOpen}
+              spellSlotTable={spellSlotTable}
             />
             <Inventory
               coins={coins}

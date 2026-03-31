@@ -1,0 +1,86 @@
+{
+  "slug": "cinghiale",
+  "general": {
+    "name": "Cinghiale",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Media",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 13,
+    "dexterity": 11,
+    "constitution": 12,
+    "intelligence": 2,
+    "wisdom": 9,
+    "charisma": 5
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 9"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Carica",
+      "usage": null,
+      "description": "Se il cinghiale si muove di almeno 6 metri diretto verso il bersaglio e colpisce con un attacco di zanna durante lo stesso turno, il bersaglio subisce 3 (1d6) danni taglienti aggiuntivi. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di Forza CD 11 o cadere prono."
+    },
+    {
+      "name": "Implacabile",
+      "usage": "Ricarica dopo un Riposo Breve o Lungo",
+      "description": "Se il cinghiale subisce 7 danni o meno che lo ridurrebbero a 0 punti ferita, scende invece a 1 punto ferita."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Zanna",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 4 (1d6 + 1) danni taglienti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Cinghiale\nMedia bestia, disallineato\nFORZA 13 (+1)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 9 (-1)\nCARISMA 5 (-3)\nClasse Armatura 11 (armatura naturale)\nPunti Ferita 11 (2d8 + 2)\nVelocità 12 m\nSensi Percezione passiva 9\nLingue -\nSfida 1/4 (50 PE)\nCarica. Se il cinghiale si muove di almeno 6 metri diretto verso\nil bersaglio e colpisce con un attacco di zanna durante lo stesso\nturno, il bersaglio subisce 3 (1d6) danni taglienti aggiuntivi. Se il\nbersaglio è una creatura, deve riuscire un tiro salvezza di Forza\nCD 11 o cadere prono.\nImplacabile (Ricarica dopo un Riposo Breve o Lungo). Se il\ncinghiale subisce 7 danni o meno che lo ridurrebbero a 0 punti\nferita, scende invece a 1 punto ferita.\nAzioni\nZanna. Attacco con Arma da Mischia: +3 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 4 (1d6 + 1) danni taglienti."
+  }
+}

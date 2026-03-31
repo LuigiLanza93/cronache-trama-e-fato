@@ -1,0 +1,126 @@
+{
+  "slug": "djinni",
+  "general": {
+    "name": "Djinni",
+    "challengeRating": {
+      "fraction": "11",
+      "decimal": 11,
+      "display": "11",
+      "xp": 7200
+    },
+    "size": "Grande",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 161,
+      "formula": "14d10 + 84"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "27 m"
+    }
+  },
+  "abilities": {
+    "strength": 21,
+    "dexterity": 15,
+    "constitution": 22,
+    "intelligence": 15,
+    "wisdom": 16,
+    "charisma": 20
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 6
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 9
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fulmine",
+      "tuono"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Auran"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Decesso Elementale",
+      "usage": null,
+      "description": "Se il djinni muore, il suo corpo si disintegra in una brezza calda, lasciando dietro di sé solo l'equipaggiamento che il djinni stava indossando o trasportando."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore innato del djinni è il Carisma (CD dei tiri salvezza degli incantesimi 17, +9 a colpire con attacchi da incantesimo). Può lanciare in maniera innata i seguenti incantesimi, senza bisogno di componenti materiali: A volontà: individuazione del bene e del male, individuazione del magico, onda tonante 3/giorno ciascuno: camminare nel vento, creare cibo e acqua (può creare vino al posto dell'acqua), linguaggi 1/giorno ciascuno: creazione, evoca elementali (solo elementale dell'aria), forma gassosa, immagine maggiore, invisibilità, spostamento planare"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il djinni effettua tre attacchi di scimitarra."
+    },
+    {
+      "name": "Scimitarra",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +9 a colpire, portata 1,5 m, un bersaglio. Colpisce: 12 (2d6 + 5) danni taglienti più 3 (1d6) danni da fulmine o tuono (a scelta del gin)."
+    },
+    {
+      "name": "Creare Turbine",
+      "usage": null,
+      "description": "Un cilindro d'aria turbinante di 1,5 metri di raggio e alto 9 metri si forma magicamente in un punto visibile al djinni entro 36 metri da esso. Il turbine resta finché il djinni mantiene la concentrazione (come se si stesse concentrando su di un incantesimo). Qualsiasi creatura salvo il djinni che entri nel turbine deve riuscire un tiro salvezza di Forza CD 18 o restare intralciata da esso. Il djinni può muovere il turbine di massimo 18 metri con un'azione, e le creature intralciate dal turbine si muovono con esso. Il turbine termina se il djinni lo perde di vista. Una creatura può usare la sua azione per liberare una creatura intralciata dal turbine, compresa se stessa, riuscendo una prova di"
+    },
+    {
+      "name": "Forza CD 18",
+      "usage": null,
+      "description": "Se la prova riesce, la creatura non è più intralciata e si sposta nello spazio più vicino all'esterno del turbine."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Djinni\nGrande elementale, caotico buono\nFORZA 21 (+5)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 22 (+6)\nINTELLIGENZA 15 (+2)\nSAGGEZZA 16 (+3)\nCARISMA 20 (+5)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 161 (14d10 + 84)\nVelocità 9 m, volo 27 m\nTiri Salvezza Destrezza +6, Saggezza +7, Carisma +9\nImmunità al Danno fulmine, tuono\nSensi scurovisione 36 m, Percezione passiva 13\nLinguaggi Auran\nSfida 11 (7.200 PE)\nDecesso Elementale. Se il djinni muore, il suo corpo si\ndisintegra in una brezza calda, lasciando dietro di sé solo\nl'equipaggiamento che il djinni stava indossando o trasportando.\nIncantesimi Innati. La caratteristica da incantatore innato del\ndjinni è il Carisma (CD dei tiri salvezza degli incantesimi 17, +9\na colpire con attacchi da incantesimo). Può lanciare in maniera\ninnata i seguenti incantesimi, senza bisogno di componenti\nmateriali:\nA volontà: individuazione del bene e del male, individuazione del\nmagico, onda tonante\n3/giorno ciascuno: camminare nel vento, creare cibo e acqua\n(può creare vino al posto dell'acqua), linguaggi\n1/giorno ciascuno: creazione, evoca elementali (solo elementale\ndell'aria), forma gassosa, immagine maggiore, invisibilità,\nspostamento planare\nAzioni\nMultiattacco. Il djinni effettua tre attacchi di scimitarra.\nScimitarra. Attacco con arma da mischia: +9 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 12 (2d6 + 5) danni taglienti più 3 (1d6) danni da\nfulmine o tuono (a scelta del gin).\nCreare Turbine. Un cilindro d'aria turbinante di 1,5 metri di\nraggio e alto 9 metri si forma magicamente in un punto visibile al\ndjinni entro 36 metri da esso. Il turbine resta finché il djinni\nmantiene la concentrazione (come se si stesse concentrando su di\nun incantesimo). Qualsiasi creatura salvo il djinni che entri nel\nturbine deve riuscire un tiro salvezza di Forza CD 18 o restare\nintralciata da esso. Il djinni può muovere il turbine di massimo\n18 metri con un'azione, e le creature intralciate dal turbine si\nmuovono con esso. Il turbine termina se il djinni lo perde di\nvista.\nUna creatura può usare la sua azione per liberare una creatura\nintralciata dal turbine, compresa se stessa, riuscendo una prova di\nForza CD 18. Se la prova riesce, la creatura non è più intralciata\ne si sposta nello spazio più vicino all'esterno del turbine."
+  }
+}

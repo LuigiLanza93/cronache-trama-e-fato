@@ -4,7 +4,6 @@ import { Plus, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import SPELL_SLOT_TABLE from "@/data/spellSlots.json";
 import { cn } from "@/lib/utils";
 import { updateCharacter } from "@/realtime";
 
@@ -18,6 +17,7 @@ const Features = ({
     findSpell,
     openFeatureModal,
     setAddSpellOpen,
+    spellSlotTable,
 }: any) => {
     const toggleSlot = (level: number, index: number) => {
         const slots = characterData.combatStats.spellSlots[level];
@@ -49,10 +49,19 @@ const Features = ({
     };
 
     useEffect(() => {
-        const charClass = characterData.basicInfo.class.toLowerCase();
-        const level = characterData.basicInfo.level;
+        const charClass = (characterData?.basicInfo?.class ?? "").toLowerCase();
+        const level = characterData?.basicInfo?.level;
 
-        const expectedSlots = SPELL_SLOT_TABLE[charClass]?.[level] || {};
+        if (!charClass || !level || !spellSlotTable || Object.keys(spellSlotTable).length === 0) {
+            return;
+        }
+
+        const classProgression = spellSlotTable[charClass];
+        if (!classProgression) {
+            return;
+        }
+
+        const expectedSlots = classProgression[level] || classProgression[String(level)] || {};
         const currentSlots = characterData.combatStats.spellSlots || {};
 
         const patch: Record<string, any> = { combatStats: { spellSlots: {} } };
@@ -83,7 +92,7 @@ const Features = ({
                 updateCharacter(characterData.slug, patch);
             }, 500);
         }
-    }, [characterData.slug, characterData.basicInfo.class, characterData.basicInfo.level]);
+    }, [characterData.slug, characterData.basicInfo.class, characterData.basicInfo.level, spellSlotTable]);
 
     const orderedFeatures = [...characterData.features]
         .map((feature: any, index: number) => {

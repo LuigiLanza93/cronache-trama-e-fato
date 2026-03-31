@@ -1,0 +1,123 @@
+{
+  "slug": "pseudodrago",
+  "general": {
+    "name": "Pseudodrago",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Minuscola",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "neutrale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 7,
+      "formula": "2d4 + 2"
+    },
+    "speed": {
+      "walk": "5 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 6,
+    "dexterity": 15,
+    "constitution": 13,
+    "intelligence": 10,
+    "wisdom": 12,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [
+      {
+        "name": "comprende il Comune e il Draconico ma non parla"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Lo pseudodrago ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Sensi Affinati",
+      "usage": null,
+      "description": "Lo pseudodrago ha vantaggio alle prove di"
+    },
+    {
+      "name": "Saggezza (Percezione) basate su vista, udito e olfatto",
+      "usage": null,
+      "description": ""
+    },
+    {
+      "name": "Telepatia Limitata",
+      "usage": null,
+      "description": "Lo pseudodrago può comunicare semplici idee, emozioni e immagini telepaticamente con qualsiasi creatura entro 30 metri da esso che può comprendere una lingua."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 4 (1d4 + 2) danni perforanti."
+    },
+    {
+      "name": "Pungiglione",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, una creatura. Colpisce: 4 (1d4 + 2) danni perforanti, e il bersaglio deve riuscire un tiro salvezza di Costituzione CD 11 o restare avvelenato per 1 ora. Se il risultato del tiro salvezza è 6 o meno, il bersaglio cade privo di sensi per la stessa durata, o finché non subisce danni o un'altra creatura usa un'azione per risvegliarlo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Pseudodrago\nMinuscola drago, neutrale buono\nFORZA 6 (-2)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 12 (+1)\nCARISMA 10 (+0)\nClasse Armatura 13 (armatura naturale)\nPunti Ferita 7 (2d4 + 2)\nVelocità 4,5 m, volo 18 m\nAbilità Furtività +4, Percezione +3\nSensi scurovisione 18 m, vista cieca 3 m, Percezione passiva 13\nLinguaggi comprende il Comune e il Draconico ma non parla\nSfida 1/4 (50 PE)\nResistenza alla Magia. Lo pseudodrago ha vantaggio ai tiri\nsalvezza contro incantesimi e altri effetti magici.\nSensi Affinati. Lo pseudodrago ha vantaggio alle prove di\nSaggezza (Percezione) basate su vista, udito e olfatto.\nTelepatia Limitata. Lo pseudodrago può comunicare semplici\nidee, emozioni e immagini telepaticamente con qualsiasi creatura\nentro 30 metri da esso che può comprendere una lingua.\nAzioni\nMorso. Attacco con arma da mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 4 (1d4 + 2) danni perforanti.\nPungiglione. Attacco con arma da mischia: +4 a colpire, portata\n1,5 m, una creatura.\nColpisce: 4 (1d4 + 2) danni perforanti, e il bersaglio deve\nriuscire un tiro salvezza di Costituzione CD 11 o restare\navvelenato per 1 ora. Se il risultato del tiro salvezza è 6 o meno,\nil bersaglio cade privo di sensi per la stessa durata, o finché non\nsubisce danni o un'altra creatura usa un'azione per risvegliarlo."
+  }
+}

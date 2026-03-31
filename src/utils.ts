@@ -1,5 +1,3 @@
-import Skills from "@/data/skills.json";
-
 function coerce(value: string, kind: "string" | "int" | "float") {
     if (kind === "int") {
         const n = parseInt(value, 10);
@@ -73,10 +71,10 @@ function proficiencyBonus(level: number): number {
     return 2; // livello 1-4
 }
 
-function calculateSkillValues(character) {
+function calculateSkillValues(character, skillsCatalog = []) {
     const { abilityScores } = character;
 
-    return Skills.skills.map((skill) => {
+    return skillsCatalog.map((skill) => {
         const mod = abilityModifier(abilityScores[skill.ability]);
         let value = mod;
 

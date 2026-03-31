@@ -1,0 +1,98 @@
+{
+  "slug": "sciame-di-ratti",
+  "general": {
+    "name": "Sciame di Ratti",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Medio",
+    "creatureType": "sciame di Minuscole bestie",
+    "subtype": "",
+    "typeLabel": "sciame di Minuscole bestie",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 24,
+      "formula": "7d8 - 7"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 9,
+    "dexterity": 11,
+    "constitution": 9,
+    "intelligence": 2,
+    "wisdom": 10,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente",
+      "perforante",
+      "tagliente"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "affascinato",
+      "afferrato",
+      "intralciato"
+    ],
+    "senses": [
+      {
+        "name": "visione al buio",
+        "value": "9 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Olfatto Affinato",
+      "usage": null,
+      "description": "Lo sciame ha vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto."
+    },
+    {
+      "name": "Sciame",
+      "usage": null,
+      "description": "Lo sciame può occupare lo spazio di un'altra creatura e viceversa, e lo sciame può muoversi attraverso qualsiasi apertura grande abbastanza per un Minuscolo ratto. Lo sciame non può recuperare punti ferita né ottenere punti ferita temporanei."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morsi",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +2 a colpire, portata 0 m, un bersaglio nello spazio dello sciame. Colpisce: 7 (2d6) danni perforanti, o 3 (1d6) danni perforanti se lo sciame è ha metà o meno dei suoi punti ferita."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Sciame di Ratti\nMedio sciame di Minuscole bestie, disallineato\nFORZA 9 (-1)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 9 (-1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 10 (+0)\nCARISMA 3 (-4)\nClasse Armatura 10\nPunti Ferita 24 (7d8 - 7)\nVelocità 9 m\nResistenze al Danno contundente, perforante, tagliente\nImmunità alle Condizioni affascinato, afferrato, intralciato,\nparalizzato, pietrificato, prono, spaventato, stordito\nSensi visione al buio 9 m, Percezione passiva 10\nLingue -\nSfida 1/4 (50 PE)\nOlfatto Affinato. Lo sciame ha vantaggio alle prove di Saggezza\n(Percezione) basate sull'olfatto.\nSciame. Lo sciame può occupare lo spazio di un'altra creatura e\nviceversa, e lo sciame può muoversi attraverso qualsiasi apertura\ngrande abbastanza per un Minuscolo ratto. Lo sciame non può\nrecuperare punti ferita né ottenere punti ferita temporanei.\nAzioni\nMorsi. Attacco con Arma da Mischia: +2 a colpire, portata 0 m,\nun bersaglio nello spazio dello sciame.\nColpisce: 7 (2d6) danni perforanti, o 3 (1d6) danni perforanti se\nlo sciame è ha metà o meno dei suoi punti ferita."
+  }
+}

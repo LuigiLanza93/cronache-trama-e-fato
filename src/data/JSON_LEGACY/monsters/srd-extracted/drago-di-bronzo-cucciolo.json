@@ -1,0 +1,139 @@
+{
+  "slug": "drago-di-bronzo-cucciolo",
+  "general": {
+    "name": "Drago di Bronzo Cucciolo",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Media",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 32,
+      "formula": "5d8 + 10"
+    },
+    "speed": {
+      "walk": "9 m",
+      "swim": "9 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 17,
+    "dexterity": 10,
+    "constitution": 15,
+    "intelligence": 12,
+    "wisdom": 11,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 2
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 4
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 2
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 2
+      },
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fulmine"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "Percezione passiva 14"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il drago può respirare aria e acqua."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 8 (1d10 + 3) danni perforanti."
+    },
+    {
+      "name": "Arma a Soffio",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago usa una delle seguenti armi a soffio:"
+    },
+    {
+      "name": "Soffio Fulminante",
+      "usage": null,
+      "description": "Il drago esala fulmini in una linea lunga 12 metri e larga 1,5 metri. Ogni creatura sulla linea deve effettuare un tiro salvezza di Destrezza CD 12, subendo 16 (3d10) danni da fulmine se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    },
+    {
+      "name": "Soffio Repulsivo",
+      "usage": null,
+      "description": "Il drago esala dell'energia repulsiva in un cono di 9 metri. Ogni creatura in quell'area deve riuscire un tiro salvezza di"
+    },
+    {
+      "name": "Forza CD 12, altrimenti viene allontana di 9 metri dal drago",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Drago di Bronzo Cucciolo\nMedia drago, caotico buono\nFORZA 17 (+3)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 15 (+2)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 11 (+0)\nCARISMA 15 (+2)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 32 (5d8 + 10)\nVelocità 9 m, nuoto 9 m, volo 18 m\nTiri Salvezza Destrezza +2, Costituzione +4, Saggezza +2,\nCarisma +4\nAbilità Furtività +2, Percezione +4\nImmunità al Danno fulmine\nSensi scurovisione 18 m, vista cieca 3 m, Percezione passiva 14\nLinguaggi Draconico\nSfida 2 (450 PE)\nAnfibio. Il drago può respirare aria e acqua.\nAzioni\nMorso. Attacco con arma da mischia: +5 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 8 (1d10 + 3) danni perforanti.\nArma a Soffio (Ricarica 5-6). Il drago usa una delle seguenti armi\na soffio:\nSoffio Fulminante. Il drago esala fulmini in una linea lunga 12 metri\ne larga 1,5 metri. Ogni creatura sulla linea deve effettuare un tiro\nsalvezza di Destrezza CD 12, subendo 16 (3d10) danni da fulmine se\nfallisce il tiro salvezza, o la metà di questi danni se lo riesce.\nSoffio Repulsivo. Il drago esala dell'energia repulsiva in un cono di 9\nmetri. Ogni creatura in quell'area deve riuscire un tiro salvezza di\nForza CD 12, altrimenti viene allontana di 9 metri dal drago."
+  }
+}

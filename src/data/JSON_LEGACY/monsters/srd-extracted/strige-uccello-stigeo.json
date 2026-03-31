@@ -1,0 +1,89 @@
+{
+  "slug": "strige-uccello-stigeo",
+  "general": {
+    "name": "Strige (Uccello Stigeo)",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Minuscola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 2,
+      "formula": "1d4"
+    },
+    "speed": {
+      "walk": "3 m",
+      "fly": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 4,
+    "dexterity": 16,
+    "constitution": 11,
+    "intelligence": 2,
+    "wisdom": 8,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 9"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Risucchio di Sangue",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, una creatura. Colpisce: 5 (1d4 + 3) danni perforanti e lo strige si attacca al bersaglio. Mentre è attaccato, lo strige non attacca. Invece, all'inizio di ciascun turno dello strige, il bersaglio perde 5 (1d4 + 3) punti ferita a causa della perdita di sangue."
+    },
+    {
+      "name": "Lo strige può staccarsi spendendo 1,5 metri di movimento",
+      "usage": null,
+      "description": "Lo fa automaticamente dopo aver risucchiato 10 punti ferita dal bersaglio o alla morte del bersaglio. Una creatura, compreso il bersaglio, può usare la sua azione per staccare lo strige."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Strige (Uccello Stigeo)\nMinuscola bestia, disallineato\nFORZA 4 (-3)\nDESTREZZA 16 (+3)\nCOSTITUZIONE 11 (+0)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 8 (-1)\nCARISMA 6 (-2)\nClasse Armatura 14 (armatura naturale)\nPunti Ferita 2 (1d4)\nVelocità 3 m, volo 12 m\nSensi scurovisione 18 m, Percezione passiva 9\nLinguaggi -\nSfida 1/8 (25 PE)\nAzioni\nRisucchio di Sangue. Attacco con arma da mischia: +5 a\ncolpire, portata 1,5 m, una creatura.\nColpisce: 5 (1d4 + 3) danni perforanti e lo strige si attacca al\nbersaglio. Mentre è attaccato, lo strige non attacca. Invece,\nall'inizio di ciascun turno dello strige, il bersaglio perde 5 (1d4 +\n3) punti ferita a causa della perdita di sangue.\nLo strige può staccarsi spendendo 1,5 metri di movimento. Lo fa\nautomaticamente dopo aver risucchiato 10 punti ferita dal\nbersaglio o alla morte del bersaglio. Una creatura, compreso il\nbersaglio, può usare la sua azione per staccare lo strige."
+  }
+}

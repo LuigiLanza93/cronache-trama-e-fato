@@ -1,0 +1,111 @@
+{
+  "slug": "salamandra",
+  "general": {
+    "name": "Salamandra",
+    "challengeRating": {
+      "fraction": "5",
+      "decimal": 5,
+      "display": "5",
+      "xp": 1800
+    },
+    "size": "Grande",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 90,
+      "formula": "12d10 + 24"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 14,
+    "constitution": 15,
+    "intelligence": 11,
+    "wisdom": 10,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [
+      "freddo"
+    ],
+    "damageResistances": [
+      "contundente",
+      "perforante e tagliente di"
+    ],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Ignan"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Armi Riscaldate",
+      "usage": null,
+      "description": "Qualsiasi arma da mischia metallica che la salamandra impugni infligge 3 (1d6) danni da fuoco aggiuntivi per colpo (già incluso nell'attacco)."
+    },
+    {
+      "name": "Corpo Riscaldato",
+      "usage": null,
+      "description": "Una creatura che entri a contatto con la salamandra o la colpisce con un attacco da mischia mentre si trova entro 1,5 metri da essa subisce 7 (2d6) danni da fuoco."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "La salamandra effettua due attacchi: uno con la lancia e uno con la coda."
+    },
+    {
+      "name": "Coda",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 3 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni contundenti più 7 (2d6) danni da fuoco, e il bersaglio è afferrato (CD 14 per fuggire). Fino al termine dell'afferrare, il bersaglio è intralciato, la salamandra può colpire automaticamente il bersaglio con la coda, e la salamandra non può effettuare attacchi di coda contro altri bersagli."
+    },
+    {
+      "name": "Lancia",
+      "usage": null,
+      "description": "Attacco con arma da mischia o a Distanza: +7 a colpire, portata 1,5 m, gittata 6/18 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni perforanti, o 13 (2d8 +4) danni perforanti se usata con due mani per effettuare un attacco da mischia, più 3 (1d6) danni da fuoco."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Salamandra\nGrande elementale, neutrale malvagio\nFORZA 18 (+4)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 15 (+2)\nINTELLIGENZA 11 (+0)\nSAGGEZZA 10 (+0)\nCARISMA 12 (+1)\nClasse Armatura 15 (armatura naturale)\nPunti Ferita 90 (12d10 + 24)\nVelocità 9 m\nVulnerabilità al Danno freddo\nResistenze al Danno contundente, perforante e tagliente di\nattacchi non magici\nImmunità ai Danni fuoco\nSensi scurovisione 18 m, Percezione passiva 10\nLinguaggi Ignan\nSfida 5 (1.800 PE)\nArmi Riscaldate. Qualsiasi arma da mischia metallica che la\nsalamandra impugni infligge 3 (1d6) danni da fuoco aggiuntivi\nper colpo (già incluso nell'attacco).\nCorpo Riscaldato. Una creatura che entri a contatto con la\nsalamandra o la colpisce con un attacco da mischia mentre si\ntrova entro 1,5 metri da essa subisce 7 (2d6) danni da fuoco.\nAzioni\nMultiattacco. La salamandra effettua due attacchi: uno con la\nlancia e uno con la coda.\nCoda. Attacco con arma da mischia: +7 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 11 (2d6 + 4) danni contundenti più 7 (2d6) danni da\nfuoco, e il bersaglio è afferrato (CD 14 per fuggire). Fino al\ntermine dell'afferrare, il bersaglio è intralciato, la salamandra\npuò colpire automaticamente il bersaglio con la coda, e la\nsalamandra non può effettuare attacchi di coda contro altri\nbersagli.\nLancia. Attacco con arma da mischia o a Distanza: +7 a colpire,\nportata 1,5 m, gittata 6/18 m, un bersaglio.\nColpisce: 11 (2d6 + 4) danni perforanti, o 13 (2d8 +4) danni\nperforanti se usata con due mani per effettuare un attacco da\nmischia, più 3 (1d6) danni da fuoco."
+  }
+}

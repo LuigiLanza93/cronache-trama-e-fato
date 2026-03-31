@@ -1,0 +1,132 @@
+{
+  "slug": "couatl",
+  "general": {
+    "name": "Couatl",
+    "challengeRating": {
+      "fraction": "4",
+      "decimal": 4,
+      "display": "4",
+      "xp": 1100
+    },
+    "size": "Media",
+    "creatureType": "celestiale",
+    "subtype": "",
+    "typeLabel": "celestiale",
+    "alignment": "legale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 19,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 97,
+      "formula": "13d8 + 39"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 20,
+    "constitution": 17,
+    "intelligence": 18,
+    "wisdom": 20,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 5
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 6
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "radiante"
+    ],
+    "damageImmunities": [
+      "psichico; contundente",
+      "perforante e"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "visione del vero",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 15"
+      }
+    ],
+    "languages": [
+      {
+        "name": "tutte"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con armi del couatl sono magici."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore innato del couatl è il Carisma (CD dei tiri salvezza degli incantesimi 14). Il couatl può lanciare questi incantesimi in maniera innata, usando solo componenti verbali: A volontà: individuazione del bene e del male, individuazione del magico, individuazione dei pensieri 3/giorno ciascuno: benedizione, creare cibo e acqua, cura ferite, protezione dai veleni, ristorare inferiore, santuario, scudo 1/giorno ciascuno: ristorare superiore, scrutare, sogno"
+    },
+    {
+      "name": "Mente Protetta",
+      "usage": null,
+      "description": "Il couatl è immune allo scrutare e qualsiasi effetto che percepisca le sue emozioni, legga i suoi pensieri o individui la sua posizione."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +8 a colpire, portata 1,5 m, una creatura. Colpisce: 8 (1d6 + 5) danni perforanti, e il bersaglio deve riuscire un tiro salvezza di Costituzione CD 13 o restare avvelenato per 24 ore. Fino al termine dell'avvelenamento, il bersaglio è privo di sensi. Un'altra creatura può effettuare un'azione per risvegliare il bersaglio."
+    },
+    {
+      "name": "Stritolare",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 3 m, una creatura di taglia Media o inferiore. Colpisce: 10 (2d6 + 3) danni contundenti, e il bersaglio è afferrato (CD 15 per fuggire). Fino al termine dell'afferrare, il bersaglio è intralciato, e il couatl non può stritolare un altro bersaglio."
+    },
+    {
+      "name": "Mutare Forma",
+      "usage": null,
+      "description": "Il couatl può trasformarsi magicamente in un umanoide o bestia il cui grado di sfida sia pari o inferiore al proprio, o tornare alla sua vera forma. Alla morte ritorna alla sua vera forma. Qualsiasi equipaggiamento stia indossando o trasportando viene assorbito o trasportato nella nuova forma (a scelta del couatl). Nella nuova forma, il couatl mantiene le sue statistiche di gioco e la facoltà di parlare, ma la sua CA, metodi di movimento, Forza, Destrezza e altre azioni vengono rimpiazzati da quelli della nuova forma, e ottiene qualsiasi statistica o capacità (eccetto i privilegi di classe, azioni leggendarie e azioni da tana) possedute dalla sua nuova forma e non dalla sua originale. Se la nuova forma ha un attacco di morso, il couatl può usare il proprio morso nella nuova forma."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Couatl\nMedia celestiale, legale buono\nFORZA 16 (+3)\nDESTREZZA 20 (+5)\nCOSTITUZIONE 17 (+3)\nINTELLIGENZA 18 (+4)\nSAGGEZZA 20 (+5)\nCARISMA 18 (+4)\nClasse Armatura 19 (armatura naturale)\nPunti Ferita 97 (13d8 + 39)\nVelocità 9 m, volo 9 m\nTiri Salvezza Costituzione +5, Saggezza +7, Carisma +6\nResistenze al Danno radiante\nImmunità al Danno psichico; contundente, perforante e\ntagliente di attacchi non magici\nSensi visione del vero 36 m, Percezione passiva 15\nLinguaggi tutte, telepatia 36 m\nSfida 4 (1.100 PE)\nArmi Magiche. Gli attacchi con armi del couatl sono magici.\nIncantesimi Innati. La caratteristica da incantatore innato del\ncouatl è il Carisma (CD dei tiri salvezza degli incantesimi 14). Il\ncouatl può lanciare questi incantesimi in maniera innata, usando\nsolo componenti verbali:\nA volontà: individuazione del bene e del male, individuazione del\nmagico, individuazione dei pensieri\n3/giorno ciascuno: benedizione, creare cibo e acqua, cura ferite,\nprotezione dai veleni, ristorare inferiore, santuario, scudo\n1/giorno ciascuno: ristorare superiore, scrutare, sogno\nMente Protetta. Il couatl è immune allo scrutare e qualsiasi\neffetto che percepisca le sue emozioni, legga i suoi pensieri o\nindividui la sua posizione.\nAzioni\nMorso. Attacco con arma da mischia: +8 a colpire, portata 1,5\nm, una creatura.\nColpisce: 8 (1d6 + 5) danni perforanti, e il bersaglio deve\nriuscire un tiro salvezza di Costituzione CD 13 o restare\navvelenato per 24 ore. Fino al termine dell'avvelenamento, il\nbersaglio è privo di sensi. Un'altra creatura può effettuare\nun'azione per risvegliare il bersaglio.\nStritolare. Attacco con arma da mischia: +6 a colpire, portata 3\nm, una creatura di taglia Media o inferiore.\nColpisce: 10 (2d6 + 3) danni contundenti, e il bersaglio è afferrato\n(CD 15 per fuggire). Fino al termine dell'afferrare, il bersaglio è\nintralciato, e il couatl non può stritolare un altro bersaglio.\nMutare Forma. Il couatl può trasformarsi magicamente in un\numanoide o bestia il cui grado di sfida sia pari o inferiore al proprio,\no tornare alla sua vera forma. Alla morte ritorna alla sua vera forma.\nQualsiasi equipaggiamento stia indossando o trasportando viene\nassorbito o trasportato nella nuova forma (a scelta del couatl).\nNella nuova forma, il couatl mantiene le sue statistiche di gioco e la\nfacoltà di parlare, ma la sua CA, metodi di movimento, Forza,\nDestrezza e altre azioni vengono rimpiazzati da quelli della nuova\nforma, e ottiene qualsiasi statistica o capacità (eccetto i privilegi di\nclasse, azioni leggendarie e azioni da tana) possedute dalla sua nuova\nforma e non dalla sua originale. Se la nuova forma ha un attacco di\nmorso, il couatl può usare il proprio morso nella nuova forma."
+  }
+}

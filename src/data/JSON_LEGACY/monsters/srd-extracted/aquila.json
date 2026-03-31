@@ -1,0 +1,87 @@
+{
+  "slug": "aquila",
+  "general": {
+    "name": "Aquila",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 10
+    },
+    "size": "Piccola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 3,
+      "formula": "1d6"
+    },
+    "speed": {
+      "walk": "3 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 6,
+    "dexterity": 15,
+    "constitution": 10,
+    "intelligence": 2,
+    "wisdom": 14,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 14"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Vista Affinata",
+      "usage": null,
+      "description": "L'aquila ha vantaggio nelle prove di Saggezza (Percezione) basate sulla vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Speroni",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 4 (1d4 + 2) danni taglienti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Aquila\nPiccola bestia, disallineato\nFORZA 6 (-2)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 14 (+2)\nCARISMA 7 (-2)\nClasse Armatura 12\nPunti Ferita 3 (1d6)\nVelocità 3 m, volo 18 m\nAbilità Percezione +4\nSensi Percezione passiva 14\nLingue -\nSfida 0 (10 PE)\nVista Affinata. L'aquila ha vantaggio nelle prove di Saggezza\n(Percezione) basate sulla vista.\nAzioni\nSperoni. Attacco con Arma da Mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 4 (1d4 + 2) danni taglienti."
+  }
+}

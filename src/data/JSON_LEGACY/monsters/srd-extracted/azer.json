@@ -1,0 +1,110 @@
+{
+  "slug": "azer",
+  "general": {
+    "name": "Azer",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Media",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "legale neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale, scudo"
+    },
+    "hitPoints": {
+      "average": 39,
+      "formula": "6d8 + 12"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 17,
+    "dexterity": 12,
+    "constitution": 15,
+    "intelligence": 12,
+    "wisdom": 13,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 4
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fuoco",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Ignan"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Armi Riscaldate",
+      "usage": null,
+      "description": "Quando l'azer colpisce con un'arma da mischia in metallo, infligge 3 (1d6) danni da fuoco aggiuntivi (già inclusi nell'attacco)."
+    },
+    {
+      "name": "Corpo Riscaldato",
+      "usage": null,
+      "description": "Una creatura che entri a contatto con l'azer o lo colpisca con un attacco da mischia mentre si trova entro 1,5 metri da lui subisce 5 (1d10) danni da fuoco."
+    },
+    {
+      "name": "Fuoco Vivente",
+      "usage": null,
+      "description": "Un azer non ha bisogno di cibo, bevande o di dormire."
+    },
+    {
+      "name": "Illuminazione",
+      "usage": null,
+      "description": "L'azer irradia luce intensa in un raggio di 3 metri e luce fioca per ulteriori 3 metri."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Martello da Guerra",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 7 (1d8 + 3) danni contundenti, o 8 (1d10 + 3) danni contundenti se usato a due mani per effettuare un attacco da mischia, più 3 (1d6) danni da fuoco."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Azer\nMedia elementale, legale neutrale\nFORZA 17 (+3)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 15 (+2)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 13 (+1)\nCARISMA 10 (+0)\nClasse Armatura 17 (armatura naturale, scudo)\nPunti Ferita 39 (6d8 + 12)\nVelocità 9 m\nTiri Salvezza Costituzione +4\nImmunità ai Danni fuoco, veleno\nImmunità alle Condizioni avvelenato\nSensi Percezione passiva 11\nLinguaggi Ignan\nSfida 2 (450 PE)\nArmi Riscaldate. Quando l'azer colpisce con un'arma da mischia\nin metallo, infligge 3 (1d6) danni da fuoco aggiuntivi (già inclusi\nnell'attacco).\nCorpo Riscaldato. Una creatura che entri a contatto con l'azer o\nlo colpisca con un attacco da mischia mentre si trova entro 1,5\nmetri da lui subisce 5 (1d10) danni da fuoco.\nFuoco Vivente. Un azer non ha bisogno di cibo, bevande o di\ndormire.\nIlluminazione. L'azer irradia luce intensa in un raggio di 3 metri\ne luce fioca per ulteriori 3 metri.\nAzioni\nMartello da Guerra. Attacco con arma da mischia: +5 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 7 (1d8 + 3) danni contundenti, o 8 (1d10 + 3) danni\ncontundenti se usato a due mani per effettuare un attacco da\nmischia, più 3 (1d6) danni da fuoco."
+  }
+}

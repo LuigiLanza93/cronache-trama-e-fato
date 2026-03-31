@@ -1,0 +1,131 @@
+{
+  "slug": "drago-rosso-giovane",
+  "general": {
+    "name": "Drago Rosso Giovane",
+    "challengeRating": {
+      "fraction": "10",
+      "decimal": 10,
+      "display": "10",
+      "xp": 5900
+    },
+    "size": "Grande",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 178,
+      "formula": "17d10 + 85"
+    },
+    "speed": {
+      "walk": "12 m",
+      "climb": "12 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 23,
+    "dexterity": 10,
+    "constitution": 21,
+    "intelligence": 14,
+    "wisdom": 11,
+    "charisma": 19
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 4
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 9
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 4
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 8
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m"
+      },
+      {
+        "name": "Percezione passiva 18"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il drago può effettuare tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 1,5 m, un bersaglio. Colpisce: 13 (2d6 + 6) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 3 m, un bersaglio. Colpisce: 17 (2d10 + 6) danni perforanti più 3 (1d6) danni da fuoco."
+    },
+    {
+      "name": "Soffio Infuocato",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago esala fuoco in un cono di 9 metri. Ogni creatura in quell'area deve effettuare un tiro salvezza di Destrezza CD 17 e subire 56 (16d6) danni da fuoco se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Drago Rosso Giovane\nGrande drago, caotico malvagio\nFORZA 23 (+6)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 21 (+5)\nINTELLIGENZA 14 (+2)\nSAGGEZZA 11 (+0)\nCARISMA 19 (+4)\nClasse Armatura 18 (armatura naturale)\nPunti Ferita 178 (17d10 + 85)\nVelocità 12 m, scalata 12 m, volo 24 m\nTiri Salvezza Destrezza +4, Costituzione +9, Saggezza +4,\nCarisma +8\nAbilità Furtività +4, Percezione +8\nImmunità al Danno fuoco\nSensi scurovisione 36 m, vista cieca 9 m, Percezione passiva 18\nLinguaggi Comune, Draconico\nSfida 10 (5.900 PE)\nAzioni\nMultiattacco. Il drago può effettuare tre attacchi: uno con il\nmorso e due con gli artigli.\nArtiglio. Attacco con arma da mischia: +10 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 13 (2d6 + 6) danni taglienti.\nMorso. Attacco con arma da mischia: +10 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 17 (2d10 + 6) danni perforanti più 3 (1d6) danni da\nfuoco.\nSoffio Infuocato (Ricarica 5-6). Il drago esala fuoco in un cono\ndi 9 metri. Ogni creatura in quell'area deve effettuare un tiro\nsalvezza di Destrezza CD 17 e subire 56 (16d6) danni da fuoco\nse fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+  }
+}

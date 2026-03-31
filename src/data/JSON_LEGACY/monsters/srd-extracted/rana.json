@@ -1,0 +1,99 @@
+{
+  "slug": "rana",
+  "general": {
+    "name": "Rana",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 0
+    },
+    "size": "Minuscola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 1,
+      "formula": "1d4 - 1"
+    },
+    "speed": {
+      "walk": "6 m",
+      "swim": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 1,
+    "dexterity": 13,
+    "constitution": 8,
+    "intelligence": 1,
+    "wisdom": 8,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 1
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "visione al buio",
+        "value": "9 m"
+      },
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "La rana può respirare aria e acqua."
+    },
+    {
+      "name": "Salto da Fermo",
+      "usage": null,
+      "description": "Una rana può saltare in lungo fino a 3 metri e in alto fino a 1,5 metri, con o senza la rincorsa."
+    },
+    {
+      "name": "Una rana è sprovvista di attacchi",
+      "usage": null,
+      "description": "Si nutre di piccoli insetti e di solito vive in prossimità di acquitrini, dentro gli alberi o sottoterra."
+    }
+  ],
+  "actions": [],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Rana\nMinuscola bestia, disallineato\nFORZA 1 (-5)\nDESTREZZA 13 (+1)\nCOSTITUZIONE 8 (-1)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 8 (-1)\nCARISMA 3 (-4)\nClasse Armatura 11\nPunti Ferita 1 (1d4 - 1)\nVelocità 6 m, nuoto 6 m\nAbilità Furtività +3, Percezione +1\nSensi visione al buio 9 m, Percezione passiva 11\nLingue -\nSfida 0 (0 PE)\nAnfibio. La rana può respirare aria e acqua.\nSalto da Fermo. Una rana può saltare in lungo fino a 3 metri e in\nalto fino a 1,5 metri, con o senza la rincorsa.\nUna rana è sprovvista di attacchi. Si nutre di piccoli\ninsetti e di solito vive in prossimità di acquitrini, dentro\ngli alberi o sottoterra."
+  }
+}

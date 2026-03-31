@@ -1,0 +1,115 @@
+{
+  "slug": "idra",
+  "general": {
+    "name": "Idra",
+    "challengeRating": {
+      "fraction": "8",
+      "decimal": 8,
+      "display": "8",
+      "xp": 3900
+    },
+    "size": "Enorme",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 172,
+      "formula": "15d12 + 75"
+    },
+    "speed": {
+      "walk": "9 m",
+      "swim": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 20,
+    "dexterity": 12,
+    "constitution": 20,
+    "intelligence": 2,
+    "wisdom": 10,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 16"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Teste Multiple",
+      "usage": null,
+      "description": "L'idra ha cinque teste. Finché ha più di una testa, l'idra ha vantaggio ai tiri salvezza contro le condizioni accecata, affascinata, assordata, spaventata, stordita o svenuta. Ogni volta che l'idra subisce 25 o più danni in un singolo turno, una delle sue teste muore. Se tutte le teste muoiono, anche l'idra muore. Al termine del suo turno, l'idra ricresce due teste per ciascuna delle sue teste uccise dal suo ultimo turno, a meno che non abbia subito danno da fuoco dal suo ultimo turno. L'idra recupera 10 punti ferita per ogni testa ricresciuta in questo modo."
+    },
+    {
+      "name": "Teste Reattive",
+      "usage": null,
+      "description": "Per ogni testa posseduta oltre la prima, l'idra riceve una reazione extra che può essere usata solo per compiere attacchi di opportunità."
+    },
+    {
+      "name": "Trattenere il Fiato",
+      "usage": null,
+      "description": "L'idra può trattenere il fiato per 1 ora."
+    },
+    {
+      "name": "Veglia",
+      "usage": null,
+      "description": "Mentre l'idra dorme, almeno una delle sue teste resta sveglia."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'idra effettua tanti attacchi di morso quante sono le sue teste."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +8 a colpire, portata 3 m, un bersaglio. Colpisce: 10 (1d10 + 5) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Idra\nEnorme mostruosità, disallineato\nFORZA 20 (+5)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 20 (+5)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 10 (+0)\nCARISMA 7 (-2)\nClasse Armatura 15 (armatura naturale)\nPunti Ferita 172 (15d12 + 75)\nVelocità 9 m, nuoto 9 m\nAbilità Percezione +6\nSensi scurovisione 18 m, Percezione passiva 16\nLinguaggi -\nSfida 8 (3.900 PE)\nTeste Multiple. L'idra ha cinque teste. Finché ha più di una testa,\nl'idra ha vantaggio ai tiri salvezza contro le condizioni accecata,\naffascinata, assordata, spaventata, stordita o svenuta.\nOgni volta che l'idra subisce 25 o più danni in un singolo turno,\nuna delle sue teste muore. Se tutte le teste muoiono, anche l'idra\nmuore.\nAl termine del suo turno, l'idra ricresce due teste per ciascuna\ndelle sue teste uccise dal suo ultimo turno, a meno che non abbia\nsubito danno da fuoco dal suo ultimo turno. L'idra recupera 10\npunti ferita per ogni testa ricresciuta in questo modo.\nTeste Reattive. Per ogni testa posseduta oltre la prima, l'idra\nriceve una reazione extra che può essere usata solo per compiere\nattacchi di opportunità.\nTrattenere il Fiato. L'idra può trattenere il fiato per 1 ora.\nVeglia. Mentre l'idra dorme, almeno una delle sue teste resta\nsveglia.\nAzioni\nMultiattacco. L'idra effettua tanti attacchi di morso quante sono\nle sue teste.\nMorso. Attacco con arma da mischia: +8 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 10 (1d10 + 5) danni perforanti."
+  }
+}

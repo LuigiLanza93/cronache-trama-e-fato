@@ -1,0 +1,116 @@
+{
+  "slug": "centauro",
+  "general": {
+    "name": "Centauro",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "neutrale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 45,
+      "formula": "6d10 + 12"
+    },
+    "speed": {
+      "walk": "15 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 14,
+    "constitution": 14,
+    "intelligence": 9,
+    "wisdom": 13,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Atletica",
+        "bonus": 6
+      },
+      {
+        "name": "Percezione",
+        "bonus": 3
+      },
+      {
+        "name": "Sopravvivenza",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Elfico"
+      },
+      {
+        "name": "Silvano"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Carica",
+      "usage": null,
+      "description": "Se il centauro si muove di almeno 9 metri diretto verso il bersaglio e colpisce con un attacco di picca durante lo stesso turno, il bersaglio subisce 10 (3d6) danni perforanti aggiuntivi."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il centauro effettua due attacchi: uno con la picca e uno con gli zoccoli o due con l'arco lungo."
+    },
+    {
+      "name": "Picca",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 3 m, un bersaglio. Colpisce: 9 (1d10 + 4) danni perforanti."
+    },
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni contundenti."
+    },
+    {
+      "name": "Arco Lungo",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +4 a colpire, gittata 45/180 m, un bersaglio. Colpisce: 6 (1d8 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Centauro\nGrande mostruosità, neutrale buono\nFORZA 18 (+4)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 14 (+2)\nINTELLIGENZA 9 (-1)\nSAGGEZZA 13 (+1)\nCARISMA 11 (+0)\nClasse Armatura 12\nPunti Ferita 45 (6d10 + 12)\nVelocità 15 m\nAbilità Atletica +6, Percezione +3, Sopravvivenza +3\nSensi Percezione passiva 13\nLinguaggi Elfico, Silvano\nSfida 2 (450 PE)\nCarica. Se il centauro si muove di almeno 9 metri diretto verso il\nbersaglio e colpisce con un attacco di picca durante lo stesso\nturno, il bersaglio subisce 10 (3d6) danni perforanti aggiuntivi.\nAzioni\nMultiattacco. Il centauro effettua due attacchi: uno con la picca e\nuno con gli zoccoli o due con l'arco lungo.\nPicca. Attacco con arma da mischia: +6 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 9 (1d10 + 4) danni perforanti.\nZoccoli. Attacco con arma da mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni contundenti.\nArco Lungo. Attacco con arma a Distanza: +4 a colpire, gittata\n45/180 m, un bersaglio.\nColpisce: 6 (1d8 + 2) danni perforanti."
+  }
+}

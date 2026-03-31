@@ -1,0 +1,97 @@
+{
+  "slug": "hobgoblin",
+  "general": {
+    "name": "Hobgoblin",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "goblinoide",
+    "typeLabel": "umanoide (goblinoide)",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura di maglia, scudo"
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 13,
+    "dexterity": 12,
+    "constitution": 12,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 9
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Goblin"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Vantaggio Marziale",
+      "usage": null,
+      "description": "Una volta per turno, l'hobgoblin può infliggere 7 (2d6) danni aggiuntivi ad una creatura che colpisce con un attacco con arma, se quella creatura si trova entro 1,5 metri da un alleato dell'hobgoblin che non sia inabile."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Spada Lunga",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d8 + 1) danni taglienti o 6 (1d10 + 1) danni taglienti se usata con due mani."
+    },
+    {
+      "name": "Arco Lungo",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +3 a colpire, gittata 45/180 m, un bersaglio. Colpisce: 5 (1d8 + 1) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Hobgoblin\nMedia umanoide (goblinoide), legale malvagio\nFORZA 13 (+1)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 10 (+0)\nCARISMA 9 (-1)\nClasse Armatura 18 (armatura di maglia, scudo)\nPunti Ferita 11 (2d8 + 2)\nVelocità 9 m\nSensi scurovisione 18 m, Percezione passiva 10\nLinguaggi Comune, Goblin\nSfida 1/2 (100 PE)\nVantaggio Marziale. Una volta per turno, l'hobgoblin può\ninfliggere 7 (2d6) danni aggiuntivi ad una creatura che colpisce\ncon un attacco con arma, se quella creatura si trova entro 1,5\nmetri da un alleato dell'hobgoblin che non sia inabile.\nAzioni\nSpada Lunga. Attacco con arma da mischia: +3 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 5 (1d8 + 1) danni taglienti o 6 (1d10 + 1) danni\ntaglienti se usata con due mani.\nArco Lungo. Attacco con arma a Distanza: +3 a colpire, gittata\n45/180 m, un bersaglio.\nColpisce: 5 (1d8 + 1) danni perforanti."
+  }
+}

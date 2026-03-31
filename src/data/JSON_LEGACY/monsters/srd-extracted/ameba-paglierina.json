@@ -1,0 +1,114 @@
+{
+  "slug": "ameba-paglierina",
+  "general": {
+    "name": "Ameba Paglierina",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "melma",
+    "subtype": "",
+    "typeLabel": "melma",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 8,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 45,
+      "formula": "6d10 + 12"
+    },
+    "speed": {
+      "walk": "3 m",
+      "climb": "3 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 6,
+    "constitution": 14,
+    "intelligence": 2,
+    "wisdom": 6,
+    "charisma": 1
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "acido"
+    ],
+    "damageImmunities": [
+      "fulmine",
+      "tagliente"
+    ],
+    "conditionImmunities": [
+      "accecato",
+      "affascinato",
+      "assordato"
+    ],
+    "senses": [
+      {
+        "name": "vista cieca 18 m (cieca oltre questo raggio)"
+      },
+      {
+        "name": "Percezione"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Amorfo",
+      "usage": null,
+      "description": "L'ameba può muoversi attraverso uno spazio fino a 2,5 centimetri di larghezza senza doversi stringere."
+    },
+    {
+      "name": "Natura di Melma",
+      "usage": null,
+      "description": "L'ameba non necessita di dormire."
+    },
+    {
+      "name": "Scalare come Ragno",
+      "usage": null,
+      "description": "L'ameba può scalare superfici difficili, compreso lo stare a testa in giù sul soffitto, senza bisogno di effettuare una prova di abilità."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pseudopodo",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 9 (2d6 + 2) danni contundenti più 3 (1d6) danni da acido."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [
+    {
+      "name": "Divisione",
+      "usage": null,
+      "description": "Quando un'ameba Media o più grande subisce danni da fulmine o taglienti, si divide in due nuove amebe che hanno almeno 10 punti ferita. Ogni nuova ameba ha un numero di punti ferita pari alla metà dell'ameba originale, arrotondati per difetto. Le nuove amebe sono di una taglia più piccola di quella originale."
+    }
+  ],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Ameba Paglierina\nGrande melma, disallineato\nFORZA 15 (+2)\nDESTREZZA 6 (-2)\nCOSTITUZIONE 14 (+2)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 6 (-2)\nCARISMA 1 (-5)\nClasse Armatura 8\nPunti Ferita 45 (6d10 + 12)\nVelocità 3 m, scalata 3 m\nResistenze al Danno acido\nImmunità al Danno fulmine, tagliente\nImmunità alle Condizioni accecato, affascinato, assordato,\nprono, sfinimento, spaventato\nSensi vista cieca 18 m (cieca oltre questo raggio), Percezione\npassiva 8\nLinguaggi -\nSfida 2 (450 PE)\nAmorfo. L'ameba può muoversi attraverso uno spazio fino a 2,5\ncentimetri di larghezza senza doversi stringere.\nNatura di Melma. L'ameba non necessita di dormire.\nScalare come Ragno. L'ameba può scalare superfici difficili,\ncompreso lo stare a testa in giù sul soffitto, senza bisogno di\neffettuare una prova di abilità.\nAzioni\nPseudopodo. Attacco con arma da mischia: +4 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 9 (2d6 + 2) danni contundenti più 3 (1d6) danni da acido.\nReazioni\nDivisione. Quando un'ameba Media o più grande subisce danni da\nfulmine o taglienti, si divide in due nuove amebe che hanno almeno\n10 punti ferita. Ogni nuova ameba ha un numero di punti ferita pari\nalla metà dell'ameba originale, arrotondati per difetto. Le nuove\namebe sono di una taglia più piccola di quella originale."
+  }
+}

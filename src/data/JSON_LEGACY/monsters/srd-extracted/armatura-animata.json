@@ -1,0 +1,105 @@
+{
+  "slug": "armatura-animata",
+  "general": {
+    "name": "Armatura Animata",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Media",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 33,
+      "formula": "6d8 + 6"
+    },
+    "speed": {
+      "walk": "5 m"
+    }
+  },
+  "abilities": {
+    "strength": 14,
+    "dexterity": 11,
+    "constitution": 13,
+    "intelligence": 1,
+    "wisdom": 3,
+    "charisma": 1
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "psichico",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "accecato",
+      "affascinato",
+      "assordato"
+    ],
+    "senses": [
+      {
+        "name": "vista cieca 18 m (cieco oltre questo raggio)"
+      },
+      {
+        "name": "Percezione"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Mentre l'armatura rimane immobile, è indistinguibile da una normale armatura."
+    },
+    {
+      "name": "Suscettibilità all'Anti Magia",
+      "usage": null,
+      "description": "L'armatura è inabile se si trova nell'area di un campo anti-magia. Se è bersaglio di dissolvi magie, l'armatura deve riuscire un tiro salvezza di Costituzione contro la CD del tiro salvezza dell'incantesimo o restare svenuta per 1 minuto."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'armatura effettua due attacchi da mischia."
+    },
+    {
+      "name": "Schianto",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d6 + 2) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Armatura Animata\nMedia costrutto, disallineato\nFORZA 14 (+2)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 3 (-4)\nCARISMA 1 (-5)\nClasse Armatura 18 (armatura naturale)\nPunti Ferita 33 (6d8 + 6)\nVelocità 7,5 m\nImmunità al Danno psichico, veleno\nImmunità alle Condizioni accecato, affascinato, assordato,\navvelenato, paralizzato, pietrificato, sfinimento, spaventato\nSensi vista cieca 18 m (cieco oltre questo raggio), Percezione\npassiva 6\nLinguaggi -\nSfida 1 (200 PE)\nFalso Aspetto. Mentre l'armatura rimane immobile, è\nindistinguibile da una normale armatura.\nSuscettibilità all'Anti Magia. L'armatura è inabile se si trova\nnell'area di un campo anti-magia. Se è bersaglio di dissolvi\nmagie, l'armatura deve riuscire un tiro salvezza di Costituzione\ncontro la CD del tiro salvezza dell'incantesimo o restare svenuta\nper 1 minuto.\nAzioni\nMultiattacco. L'armatura effettua due attacchi da mischia.\nSchianto. Attacco con arma da mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 5 (1d6 + 2) danni contundenti."
+  }
+}

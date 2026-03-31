@@ -1,0 +1,141 @@
+{
+  "slug": "golem-di-argilla",
+  "general": {
+    "name": "Golem di Argilla",
+    "challengeRating": {
+      "fraction": "9",
+      "decimal": 9,
+      "display": "9",
+      "xp": 5000
+    },
+    "size": "Grande",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 133,
+      "formula": "14d10 + 56"
+    },
+    "speed": {
+      "walk": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 20,
+    "dexterity": 9,
+    "constitution": 18,
+    "intelligence": 3,
+    "wisdom": 8,
+    "charisma": 1
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "di Destrezza",
+        "bonus": 0
+      },
+      {
+        "ability": "e può usare gli attacchi di schianto",
+        "bonus": 0
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "acido",
+      "psichico",
+      "veleno; contundente"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "paralizzato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 9"
+      }
+    ],
+    "languages": [
+      {
+        "name": "comprende le lingue del suo creatore ma non può"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Berserk",
+      "usage": null,
+      "description": "Ogni volta che il golem inizia il suo turno con 60 punti ferita o meno, tira un d6. Se ottieni 6, il golem va in berserk. Durante ogni suo turno mentre è in berserk, il golem attacca la creatura più vicina che può vedere. Se non c'è nessuna creatura abbastanza vicina da muoversi e attaccarla, il golem attacca un oggetto, con preferenza per gli oggetti più piccoli di lui. Una volta che il golem è andato in berserk, continuerà ad esserlo finché non viene distrutto o recupera tutti i suoi punti ferita."
+    },
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con armi del golem sono magici."
+    },
+    {
+      "name": "Assorbimento dell'Acido",
+      "usage": null,
+      "description": "Ogni volta che il golem è vittima di danni da acido, non subisce danni ma invece recupera un pari numero di punti ferita."
+    },
+    {
+      "name": "Forma Immutabile",
+      "usage": null,
+      "description": "Il golem è immune a qualsiasi incantesimo o effetto che altererebbe la sua forma."
+    },
+    {
+      "name": "Natura di Costrutto",
+      "usage": null,
+      "description": "Un golem non ha bisogno di aria, cibo, bevande o sonno."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il golem ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il golem effettua due attacchi di schianto."
+    },
+    {
+      "name": "Schianto",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +8 a colpire, portata 1,5 m, un bersaglio. Colpisce: 16 (2d10 + 5) danni contundenti. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di Costituzione CD 15 o vedere i suoi punti ferita massimi ridotti di un ammontare pari al danno subito. Il bersaglio muore se l'attacco riduce i suoi punti ferita massimi a 0. La riduzione resta finché non viene rimossa dall'incantesimo ristorare superiore o altra magia."
+    },
+    {
+      "name": "Velocità",
+      "usage": "Ricarica 5-6",
+      "description": "Fino al termine del suo prossimo turno, il golem ottiene un bonus magico di +2 alla CA, ha vantaggio ai tiri salvezza di Destrezza, e può usare gli attacchi di schianto come azione bonus."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Golem di Argilla\nGrande costrutto, disallineato\nFORZA 20 (+5)\nDESTREZZA 9 (-1)\nCOSTITUZIONE 18 (+4)\nINTELLIGENZA 3 (-4)\nSAGGEZZA 8 (-1)\nCARISMA 1 (-5)\nClasse Armatura 14 (armatura naturale)\nPunti Ferita 133 (14d10 + 56)\nVelocità 6 m\nImmunità al Danno acido, psichico, veleno; contundente,\nperforante e tagliente di attacchi non magici che non siano di\nadamantio\nImmunità alle Condizioni affascinato, avvelenato, paralizzato,\npietrificato, sfinimento, spaventato\nSensi scurovisione 18 m, Percezione passiva 9\nLinguaggi comprende le lingue del suo creatore ma non può\nparlare\nSfida 9 (5.000 PE)\nBerserk. Ogni volta che il golem inizia il suo turno con 60 punti\nferita o meno, tira un d6. Se ottieni 6, il golem va in berserk.\nDurante ogni suo turno mentre è in berserk, il golem attacca la\ncreatura più vicina che può vedere. Se non c'è nessuna creatura\nabbastanza vicina da muoversi e attaccarla, il golem attacca un\noggetto, con preferenza per gli oggetti più piccoli di lui. Una\nvolta che il golem è andato in berserk, continuerà ad esserlo\nfinché non viene distrutto o recupera tutti i suoi punti ferita.\nArmi Magiche. Gli attacchi con armi del golem sono magici.\nAssorbimento dell'Acido. Ogni volta che il golem è vittima di\ndanni da acido, non subisce danni ma invece recupera un pari\nnumero di punti ferita.\nForma Immutabile. Il golem è immune a qualsiasi incantesimo o\neffetto che altererebbe la sua forma.\nNatura di Costrutto. Un golem non ha bisogno di aria, cibo,\nbevande o sonno.\nResistenza alla Magia. Il golem ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nAzioni\nMultiattacco. Il golem effettua due attacchi di schianto.\nSchianto. Attacco con arma da mischia: +8 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 16 (2d10 + 5) danni contundenti. Se il bersaglio è una\ncreatura, deve riuscire un tiro salvezza di Costituzione CD 15 o\nvedere i suoi punti ferita massimi ridotti di un ammontare pari al\ndanno subito. Il bersaglio muore se l'attacco riduce i suoi punti\nferita massimi a 0. La riduzione resta finché non viene rimossa\ndall'incantesimo ristorare superiore o altra magia.\nVelocità (Ricarica 5-6). Fino al termine del suo prossimo turno,\nil golem ottiene un bonus magico di +2 alla CA, ha vantaggio ai\ntiri salvezza di Destrezza, e può usare gli attacchi di schianto\ncome azione bonus."
+  }
+}

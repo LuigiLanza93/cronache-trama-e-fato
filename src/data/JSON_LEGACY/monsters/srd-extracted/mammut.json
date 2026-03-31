@@ -1,0 +1,86 @@
+{
+  "slug": "mammut",
+  "general": {
+    "name": "Mammut",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 126,
+      "formula": "11d12 + 55"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 24,
+    "dexterity": 9,
+    "constitution": 21,
+    "intelligence": 3,
+    "wisdom": 11,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Carica Travolgente",
+      "usage": null,
+      "description": "Se il mammut si muove di almeno 6 metri diretto verso una creatura e la colpisce con un attacco di incornata durante lo stesso turno, il bersaglio deve riuscire un tiro salvezza di Forza CD 18 o cadere prono. Se il bersaglio è prono, il mammut può effettuare un attacco di pestone contro di lui come azione bonus."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Incornata",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +10 a colpire, portata 3 m, un bersaglio. Colpisce: 25 (4d8 + 7) danni perforanti."
+    },
+    {
+      "name": "Pestone",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +10 a colpire, portata 1,5 m, una creatura prona. Colpisce: 29 (4d10 + 7) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Mammut\nIl mammut è una creatura simile all'elefante dalla folta\npelliccia e lunghe zanne.\nEnorme bestia, disallineato\nFORZA 24 (+7)\nDESTREZZA 9 (-1)\nCOSTITUZIONE 21 (+5)\nINTELLIGENZA 3 (-4)\nSAGGEZZA 11 (+0)\nCARISMA 6 (-2)\nClasse Armatura 13 (armatura naturale)\nPunti Ferita 126 (11d12 + 55)\nVelocità 12 m\nSensi Percezione passiva 10\nLingue -\nSfida 6 (2.300 PE)\nCarica Travolgente. Se il mammut si muove di almeno 6 metri\ndiretto verso una creatura e la colpisce con un attacco di\nincornata durante lo stesso turno, il bersaglio deve riuscire un\ntiro salvezza di Forza CD 18 o cadere prono. Se il bersaglio è\n\n-- 123 of 151 --\n\nSRD Italia 5a Edizione - Compendio dei Mostri\nprono, il mammut può effettuare un attacco di pestone contro di\nlui come azione bonus.\nAzioni\nIncornata. Attacco con Arma da Mischia: +10 a colpire, portata\n3 m, un bersaglio.\nColpisce: 25 (4d8 + 7) danni perforanti.\nPestone. Attacco con Arma da Mischia: +10 a colpire, portata\n1,5 m, una creatura prona.\nColpisce: 29 (4d10 + 7) danni contundenti."
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "slug": "protoplasma-nero",
+  "general": {
+    "name": "Protoplasma Nero",
+    "challengeRating": {
+      "fraction": "4",
+      "decimal": 4,
+      "display": "4",
+      "xp": 1100
+    },
+    "size": "Grande",
+    "creatureType": "melma",
+    "subtype": "",
+    "typeLabel": "melma",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 7,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 85,
+      "formula": "10d10 + 30"
+    },
+    "speed": {
+      "walk": "6 m",
+      "climb": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 5,
+    "constitution": 16,
+    "intelligence": 1,
+    "wisdom": 6,
+    "charisma": 1
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "acido",
+      "freddo",
+      "fulmine",
+      "tagliente"
+    ],
+    "conditionImmunities": [
+      "accecato",
+      "affascinato",
+      "assordato"
+    ],
+    "senses": [
+      {
+        "name": "vista cieca 18 m (cieco oltre questo raggio)"
+      },
+      {
+        "name": "Percezione"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Amorfo",
+      "usage": null,
+      "description": "Il protoplasma nero può muoversi attraverso uno spazio fino a 2,5 centimetri di larghezza senza doversi stringere."
+    },
+    {
+      "name": "Forma Corrosiva",
+      "usage": null,
+      "description": "Una creatura che entri a contatto col protoplasma nero o lo colpisca con un attacco da mischia mentre si trova entro 1,5 metri da esso subisce 4 (1d8) danni da acido. Qualsiasi arma non magica fatta di metallo o legno che colpisca il protoplasma nero si corrode. Dopo aver inflitto il danno, l'arma subisce una penalità permanente e cumulativa di -1 ai tiri di danno. Se la penalità arriva a -5, l'arma è distrutta. Le munizioni non magiche fatte di metallo o legno che colpiscano il protoplasma nero, si distruggono dopo aver inflitto il danno. Il protoplasma nero può divorare legno o metallo non magico dello spessore di 5 centimetri in un 1 round."
+    },
+    {
+      "name": "Natura di Melma",
+      "usage": null,
+      "description": "Il protoplasma nero non necessita di dormire."
+    },
+    {
+      "name": "Scalare come Ragno",
+      "usage": null,
+      "description": "Il protoplasma nero può scalare superfici difficili, compreso lo stare a testa in giù sul soffitto, senza bisogno di effettuare una prova di abilità."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pseudopodo",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 6 (1d6 + 3) danni contundenti più 18 (4d8) danni da acido. Inoltre, un'armatura non magica indossata dal bersaglio viene parzialmente dissolta e subisce una penalità permanente e cumulativa di -1 alla CA che offre. L'armatura è distrutta se la penalità riduce la sua CA a 10."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [
+    {
+      "name": "Divisione",
+      "usage": null,
+      "description": "Quando un protoplasma nero di taglia Media o più grande subisce danni da fulmine o taglienti, si divide in due nuovi protoplasma neri di almeno 10 punti ferita ciascuno. Ogni nuovo protoplasma nero ha un numero di punti ferita pari alla metà del protoplasma nero originale, arrotondati per difetto. I nuovi protoplasmi neri sono di una taglia più piccola di quella originale. Mezzo Drago Modello del Mezzo Drago Una bestia, umanoide, gigante o mostruosità può diventare un mezzo drago. Quando una creatura diventa un mezzo drago, mantiene tutte le sue statistiche eccetto come indicato di seguito."
+    },
+    {
+      "name": "Sensi",
+      "usage": null,
+      "description": "I mezzi draghi ottengono vista cieca con un raggio di 3 metri e scurovisione con un raggio di 18 metri."
+    },
+    {
+      "name": "Resistenze",
+      "usage": null,
+      "description": "Il mezzo drago ottiene resistenza ad un tipo di danno in base al suo colore. Colore Resistenza al Danno Bianco o argento freddo Blu o bronzo fulmine Nero o rame acido Oro, ottone o rosso fuoco Verde veleno"
+    },
+    {
+      "name": "Linguaggi",
+      "usage": null,
+      "description": "I mezzi draghi parlano Draconico oltre alle lingue che già conoscono."
+    },
+    {
+      "name": "Gradi di Sfida",
+      "usage": null,
+      "description": "Per evitare di dover ricalcolare il grado di sfida, applicare l'archetipo solo ad una creatura che soddisfi i prerequisiti opzionali della tabella Arma a"
+    },
+    {
+      "name": "Soffio seguente",
+      "usage": null,
+      "description": "Altrimenti, usare le linee guida in fondo a questo documento per ricalcolare il grado di sfida dopo aver applicato l'archetipo."
+    },
+    {
+      "name": "Nuova Azione: Soffio",
+      "usage": null,
+      "description": "Il mezzo drago possiede l'arma a soffio della sua parte draconica. La taglia del mezzo drago determina come funziona questa azione. Taglia Soffio Prerequisito Opzionale Grande o meno Come un cucciolo Sfida 2 o più Enorme Come un drago giovane Sfida 7 o più Mastodontica Come un drago adulto Sfida 8 o più"
+    }
+  ],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Protoplasma Nero\nGrande melma, disallineato\nFORZA 16 (+3)\nDESTREZZA 5 (-3)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 6 (-2)\nCARISMA 1 (-5)\nClasse Armatura 7\nPunti Ferita 85 (10d10 + 30)\nVelocità 6 m, scalata 6 m\nImmunità al Danno acido, freddo, fulmine, tagliente\nImmunità alle Condizioni accecato, affascinato, assordato,\nprono, sfinimento, spaventato\nSensi vista cieca 18 m (cieco oltre questo raggio), Percezione\npassiva 8\nLinguaggi -\nSfida 4 (1.100 PE)\nAmorfo. Il protoplasma nero può muoversi attraverso uno spazio\nfino a 2,5 centimetri di larghezza senza doversi stringere.\nForma Corrosiva. Una creatura che entri a contatto col protoplasma\nnero o lo colpisca con un attacco da mischia mentre si trova entro 1,5\nmetri da esso subisce 4 (1d8) danni da acido. Qualsiasi arma non\nmagica fatta di metallo o legno che colpisca il protoplasma nero si\ncorrode. Dopo aver inflitto il danno, l'arma subisce una penalità\npermanente e cumulativa di -1 ai tiri di danno. Se la penalità arriva a\n-5, l'arma è distrutta. Le munizioni non magiche fatte di metallo o\nlegno che colpiscano il protoplasma nero, si distruggono dopo aver\ninflitto il danno.\nIl protoplasma nero può divorare legno o metallo non magico dello\nspessore di 5 centimetri in un 1 round.\nNatura di Melma. Il protoplasma nero non necessita di dormire.\nScalare come Ragno. Il protoplasma nero può scalare superfici\ndifficili, compreso lo stare a testa in giù sul soffitto, senza\nbisogno di effettuare una prova di abilità.\nAzioni\nPseudopodo. Attacco con arma da mischia: +5 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 6 (1d6 + 3) danni contundenti più 18 (4d8) danni da\nacido. Inoltre, un'armatura non magica indossata dal bersaglio\nviene parzialmente dissolta e subisce una penalità permanente e\ncumulativa di -1 alla CA che offre. L'armatura è distrutta se la\npenalità riduce la sua CA a 10.\nReazioni\nDivisione. Quando un protoplasma nero di taglia Media o più grande\nsubisce danni da fulmine o taglienti, si divide in due nuovi\nprotoplasma neri di almeno 10 punti ferita ciascuno. Ogni nuovo\nprotoplasma nero ha un numero di punti ferita pari alla metà del\nprotoplasma nero originale, arrotondati per difetto. I nuovi\nprotoplasmi neri sono di una taglia più piccola di quella originale.\nMezzo Drago\nModello del Mezzo Drago\nUna bestia, umanoide, gigante o mostruosità può\ndiventare un mezzo drago. Quando una creatura\ndiventa un mezzo drago, mantiene tutte le sue\nstatistiche eccetto come indicato di seguito.\nSensi. I mezzi draghi ottengono vista cieca con un\nraggio di 3 metri e scurovisione con un raggio di 18\nmetri.\nResistenze. Il mezzo drago ottiene resistenza ad un\ntipo di danno in base al suo colore.\nColore Resistenza al Danno\nBianco o argento freddo\nBlu o bronzo fulmine\nNero o rame acido\nOro, ottone o rosso fuoco\nVerde veleno\nLinguaggi. I mezzi draghi parlano Draconico oltre alle\nlingue che già conoscono.\nGradi di Sfida. Per evitare di dover ricalcolare il grado\ndi sfida, applicare l'archetipo solo ad una creatura che\nsoddisfi i prerequisiti opzionali della tabella Arma a\nSoffio seguente. Altrimenti, usare le linee guida in fondo\na questo documento per ricalcolare il grado di sfida\ndopo aver applicato l'archetipo.\nNuova Azione: Soffio. Il mezzo drago possiede l'arma\na soffio della sua parte draconica. La taglia del mezzo\ndrago determina come funziona questa azione.\nTaglia Soffio Prerequisito Opzionale\nGrande o meno Come un cucciolo Sfida 2 o più\nEnorme Come un drago giovane Sfida 7 o più\nMastodontica Come un drago adulto Sfida 8 o più"
+  }
+}

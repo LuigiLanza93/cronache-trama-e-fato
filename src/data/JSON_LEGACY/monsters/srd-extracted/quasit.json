@@ -1,0 +1,121 @@
+{
+  "slug": "quasit",
+  "general": {
+    "name": "Quasit",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Minuscola",
+    "creatureType": "immondo (demone",
+    "subtype": "",
+    "typeLabel": "immondo (demone",
+    "alignment": "mutaforma), caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 7,
+      "formula": "3d4"
+    },
+    "speed": {
+      "walk": "12 m (3 m",
+      "fly": "12 m in forma di pipistrello; 12 m"
+    }
+  },
+  "abilities": {
+    "strength": 5,
+    "dexterity": 17,
+    "constitution": 10,
+    "intelligence": 7,
+    "wisdom": 10,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco; contundente"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "Il demone può usare la sua azione per trasformarsi in una forma bestiale da pipistrello, centopiedi o rospo, o per tornare alla sua vera forma. Le sue statistiche sono le stesse in tutte le forme, sebbene gli attacchi possano variare per alcune di esse. Qualsiasi equipaggiamento stia indossando o trasportando non viene trasformato. Alla morte ritorna alla sua vera forma."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il demone ha vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artigli",
+      "usage": "Morso in Forma di Bestia",
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d4 + 3) danni perforanti. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di Costituzione CD 10 o subire 5 (2d4) danni da veleno e restare avvelenato per 1 minuto. La creatura può ripetere il tiro salvezza al termine di ciascun suo turno, ponendo termine all'effetto se lo riesce."
+    },
+    {
+      "name": "Invisibilità",
+      "usage": null,
+      "description": "Il demone resta invisibile finché non attacca o termina la sua concentrazione. Qualsiasi cosa che il demone stia trasportando o indossando resta invisibile finché rimane in contatto con il demone."
+    },
+    {
+      "name": "Spavento",
+      "usage": "1/Giorno",
+      "description": "Una creatura scelta dal demone che si trovi entro 6 metri da lui, deve riuscire un tiro salvezza di Saggezza CD 10 o restare spaventata per 1 minuto. Il bersaglio può ripetere il tiro salvezza al termine di ciascun suo turno, con svantaggio se il demone è in linea di visuale, ponendo termine all'effetto prematuramente se riesce il tiro salvezza."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Quasit\nMinuscola immondo (demone, mutaforma), caotico malvagio\nFORZA 5 (-3)\nDESTREZZA 17 (+3)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 7 (-2)\nSAGGEZZA 10 (+0)\nCARISMA 10 (+0)\nClasse Armatura 13\nPunti Ferita 7 (3d4)\nVelocità 12 m (3 m, volo 12 m in forma di pipistrello; 12 m,\nscalata 12 m in forma di centopiedi; 12 m, nuoto 12 m in forma\ndi rospo)\nAbilità Furtività +5\nResistenze al Danno freddo, fulmine, fuoco; contundente,\nperforante e tagliente di attacchi non magici\nImmunità al Danno veleno\nImmunità alle Condizioni avvelenato\nSensi scurovisione 36 m, Percezione passiva 10\nLinguaggi Abissale, Comune\nSfida 1 (200 PE)\nMutaforma. Il demone può usare la sua azione per trasformarsi\nin una forma bestiale da pipistrello, centopiedi o rospo, o per\ntornare alla sua vera forma. Le sue statistiche sono le stesse in\ntutte le forme, sebbene gli attacchi possano variare per alcune di\nesse. Qualsiasi equipaggiamento stia indossando o trasportando\nnon viene trasformato. Alla morte ritorna alla sua vera forma.\nResistenza alla Magia. Il demone ha vantaggio ai tiri salvezza\ncontro incantesimi e altri effetti magici.\nAzioni\nArtigli (Morso in Forma di Bestia). Attacco con arma da\nmischia: +4 a colpire, portata 1,5 m, un bersaglio.\nColpisce: 5 (1d4 + 3) danni perforanti. Se il bersaglio è una\ncreatura, deve riuscire un tiro salvezza di Costituzione CD 10 o\nsubire 5 (2d4) danni da veleno e restare avvelenato per 1 minuto.\nLa creatura può ripetere il tiro salvezza al termine di ciascun suo\nturno, ponendo termine all'effetto se lo riesce.\nInvisibilità. Il demone resta invisibile finché non attacca o\ntermina la sua concentrazione. Qualsiasi cosa che il demone stia\ntrasportando o indossando resta invisibile finché rimane in\ncontatto con il demone.\nSpavento (1/Giorno). Una creatura scelta dal demone che si trovi\nentro 6 metri da lui, deve riuscire un tiro salvezza di Saggezza\nCD 10 o restare spaventata per 1 minuto. Il bersaglio può ripetere\nil tiro salvezza al termine di ciascun suo turno, con svantaggio se\nil demone è in linea di visuale, ponendo termine all'effetto\nprematuramente se riesce il tiro salvezza."
+  }
+}

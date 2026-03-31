@@ -1,0 +1,113 @@
+{
+  "slug": "gigante-del-gelo",
+  "general": {
+    "name": "Gigante del Gelo",
+    "challengeRating": {
+      "fraction": "8",
+      "decimal": 8,
+      "display": "8",
+      "xp": 3900
+    },
+    "size": "Enorme",
+    "creatureType": "gigante",
+    "subtype": "",
+    "typeLabel": "gigante",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura composita"
+    },
+    "hitPoints": {
+      "average": 138,
+      "formula": "12d12 + 60"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 23,
+    "dexterity": 9,
+    "constitution": 21,
+    "intelligence": 9,
+    "wisdom": 10,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 8
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 3
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 4
+      }
+    ],
+    "skills": [
+      {
+        "name": "Atletica",
+        "bonus": 9
+      },
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "freddo"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gigante"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il gigante effettua due attacchi con l'ascia bipenne."
+    },
+    {
+      "name": "Ascia Bipenne",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +9 a colpire, portata 3 m, un bersaglio. Colpisce: 25 (3d12 + 6) danni taglienti."
+    },
+    {
+      "name": "Sasso",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +9 a colpire, gittata 18/72 m, un bersaglio. Colpisce: 28 (4d10 + 6) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gigante del Gelo\nEnorme gigante, neutrale malvagio\nFORZA 23 (+6)\nDESTREZZA 9 (-1)\nCOSTITUZIONE 21 (+5)\nINTELLIGENZA 9 (-1)\nSAGGEZZA 10 (+0)\nCARISMA 12 (+1)\nClasse Armatura 15 (armatura composita)\nPunti Ferita 138 (12d12 + 60)\nVelocità 12 m\nTiri Salvezza Costituzione +8, Saggezza +3, Carisma +4\nAbilità Atletica +9, Percezione +3\nImmunità ai Danni freddo\nSensi Percezione passiva 13\nLinguaggi Gigante\nSfida 8 (3.900 PE)\nAzioni\nMultiattacco. Il gigante effettua due attacchi con l'ascia bipenne.\nAscia Bipenne. Attacco con arma da mischia: +9 a colpire,\nportata 3 m, un bersaglio.\nColpisce: 25 (3d12 + 6) danni taglienti.\nSasso. Attacco con arma a Distanza: +9 a colpire, gittata 18/72\nm, un bersaglio.\nColpisce: 28 (4d10 + 6) danni contundenti."
+  }
+}

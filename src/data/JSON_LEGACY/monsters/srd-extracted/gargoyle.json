@@ -1,0 +1,114 @@
+{
+  "slug": "gargoyle",
+  "general": {
+    "name": "Gargoyle",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Media",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 52,
+      "formula": "7d8 + 21"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 11,
+    "constitution": 16,
+    "intelligence": 6,
+    "wisdom": 11,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente",
+      "perforante e tagliente di"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato",
+      "pietrificato",
+      "sfinimento"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Terran"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Mentre la gargoyle rimane immobile, è indistinguibile da una statua inanimata."
+    },
+    {
+      "name": "Natura Elementale",
+      "usage": null,
+      "description": "Una gargoyle non ha bisogno di aria, cibo, bevande o sonno."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "La gargoyle effettua due attacchi: uno con il morso e uno con gli artigli."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d6 + 2) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +4 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d6 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gargoyle\nMedia elementale, caotico malvagio\nFORZA 15 (+2)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 6 (-2)\nSAGGEZZA 11 (+0)\nCARISMA 7 (-2)\nClasse Armatura 15 (armatura naturale)\nPunti Ferita 52 (7d8 + 21)\nVelocità 9 m, volo 18 m\nResistenze al Danno contundente, perforante e tagliente di\nattacchi non magici che non siano di adamantio\nImmunità ai Danni veleno\nImmunità alle Condizioni avvelenato, pietrificato, sfinimento\nSensi scurovisione 18 m, Percezione passiva 10\nLinguaggi Terran\nSfida 2 (450 PE)\nFalso Aspetto. Mentre la gargoyle rimane immobile, è\nindistinguibile da una statua inanimata.\nNatura Elementale. Una gargoyle non ha bisogno di aria, cibo,\nbevande o sonno.\nAzioni\nMultiattacco. La gargoyle effettua due attacchi: uno con il morso\ne uno con gli artigli.\nArtigli. Attacco con arma da mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 5 (1d6 + 2) danni taglienti.\nMorso. Attacco con arma da mischia: +4 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 5 (1d6 + 2) danni perforanti."
+  }
+}

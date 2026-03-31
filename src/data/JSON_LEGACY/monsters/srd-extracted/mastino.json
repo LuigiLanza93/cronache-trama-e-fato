@@ -1,0 +1,91 @@
+{
+  "slug": "mastino",
+  "general": {
+    "name": "Mastino",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 5,
+      "formula": "1d8 + 1"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 13,
+    "dexterity": 14,
+    "constitution": 12,
+    "intelligence": 3,
+    "wisdom": 12,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Udito e Olfatto Affinato",
+      "usage": null,
+      "description": "Il mastino ha vantaggio nelle prove di"
+    },
+    {
+      "name": "Saggezza (Percezione) basate su udito o olfatto",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 4 (1d6 + 1) danni perforanti. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di Forza CD 11 o cadere prono."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Mastino\nI mastini sono impressionanti segugi apprezzati dagli\numanoidi per la loro realtà e sensi affinati.\nMedia bestia, disallineato\nFORZA 13 (+1)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 3 (-4)\nSAGGEZZA 12 (+1)\nCARISMA 7 (-2)\nClasse Armatura 12\nPunti Ferita 5 (1d8 + 1)\nVelocità 12 m\nAbilità Percezione +3\nSensi Percezione passiva 13\nLingue -\nSfida 1/8 (25 PE)\nUdito e Olfatto Affinato. Il mastino ha vantaggio nelle prove di\nSaggezza (Percezione) basate su udito o olfatto.\nAzioni\nMorso. Attacco con Arma da Mischia: +3 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 4 (1d6 + 1) danni perforanti. Se il bersaglio è una creatura,\ndeve riuscire un tiro salvezza di Forza CD 11 o cadere prono."
+  }
+}

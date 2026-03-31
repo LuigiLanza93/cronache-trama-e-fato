@@ -1,0 +1,137 @@
+{
+  "slug": "drago-nero-giovane",
+  "general": {
+    "name": "Drago Nero Giovane",
+    "challengeRating": {
+      "fraction": "7",
+      "decimal": 7,
+      "display": "7",
+      "xp": 2900
+    },
+    "size": "Grande",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 127,
+      "formula": "15d10 + 45"
+    },
+    "speed": {
+      "walk": "12 m",
+      "climb": "12 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 14,
+    "constitution": 17,
+    "intelligence": 12,
+    "wisdom": 11,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 6
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 3
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "acido"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m"
+      },
+      {
+        "name": "Percezione passiva 16"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il drago può respirare aria e acqua."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il drago può effettuare tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +10 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 3 m, un bersaglio. Colpisce: 11 (2d10 + 4) danni perforanti più 4 (1d8) danni da acido."
+    },
+    {
+      "name": "Soffio Acido",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago esala acido in una linea di 9 metri larga 1,5 metri. Ogni creatura in quell'area deve effettuare un tiro salvezza di Destrezza CD 14 e subire 49 (11d8) danni da acido se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Drago Nero Giovane\nGrande drago, caotico malvagio\nFORZA 19 (+4)\nDESTREZZA 14 (+2)\nCOSTITUZIONE 17 (+3)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 11 (+0)\nCARISMA 15 (+2)\nClasse Armatura 18 (armatura naturale)\nPunti Ferita 127 (15d10 + 45)\nVelocità 12 m, scalata 12 m, volo 24 m\nTiri Salvezza Destrezza +5, Costituzione +6, Saggezza +3,\nCarisma +5\nAbilità Furtività +5, Percezione +6\nImmunità al Danno acido\nSensi scurovisione 36 m, vista cieca 9 m, Percezione passiva 16\nLinguaggi Comune, Draconico\nSfida 7 (2.900 PE)\nAnfibio. Il drago può respirare aria e acqua.\nAzioni\nMultiattacco. Il drago può effettuare tre attacchi: uno con il\nmorso e due con gli artigli.\nArtiglio. Attacco con arma da mischia: +10 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni taglienti.\nMorso. Attacco con arma da mischia: +7 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 11 (2d10 + 4) danni perforanti più 4 (1d8) danni da acido.\nSoffio Acido (Ricarica 5-6). Il drago esala acido in una linea di 9\nmetri larga 1,5 metri. Ogni creatura in quell'area deve effettuare un tiro\nsalvezza di Destrezza CD 14 e subire 49 (11d8) danni da acido se fallisce\nil tiro salvezza, o la metà di questi danni se lo riesce."
+  }
+}

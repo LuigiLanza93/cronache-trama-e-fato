@@ -1,0 +1,76 @@
+{
+    "skills": [
+        {
+            "name": "Acrobazia",
+            "ability": "dexterity"
+        },
+        {
+            "name": "Addestrare Animali",
+            "ability": "wisdom"
+        },
+        {
+            "name": "Arcano",
+            "ability": "intelligence"
+        },
+        {
+            "name": "Atletica",
+            "ability": "strength"
+        },
+        {
+            "name": "Inganno",
+            "ability": "charisma"
+        },
+        {
+            "name": "Storia",
+            "ability": "intelligence"
+        },
+        {
+            "name": "Intuizione",
+            "ability": "wisdom"
+        },
+        {
+            "name": "Intimidire",
+            "ability": "charisma"
+        },
+        {
+            "name": "Indagare",
+            "ability": "intelligence"
+        },
+        {
+            "name": "Medicina",
+            "ability": "wisdom"
+        },
+        {
+            "name": "Natura",
+            "ability": "intelligence"
+        },
+        {
+            "name": "Percezione",
+            "ability": "wisdom"
+        },
+        {
+            "name": "Intrattenere",
+            "ability": "charisma"
+        },
+        {
+            "name": "Persuasione",
+            "ability": "charisma"
+        },
+        {
+            "name": "Religione",
+            "ability": "intelligence"
+        },
+        {
+            "name": "Rapidità di Mano",
+            "ability": "dexterity"
+        },
+        {
+            "name": "Furtività",
+            "ability": "dexterity"
+        },
+        {
+            "name": "Sopravvivenza",
+            "ability": "wisdom"
+        }
+    ]
+}

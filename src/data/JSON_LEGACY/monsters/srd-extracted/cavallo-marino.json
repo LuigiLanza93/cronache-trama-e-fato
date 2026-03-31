@@ -1,0 +1,76 @@
+{
+  "slug": "cavallo-marino",
+  "general": {
+    "name": "Cavallo Marino",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 0
+    },
+    "size": "Minuscola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 1,
+      "formula": "1d4 - 1"
+    },
+    "speed": {
+      "walk": "0 m",
+      "swim": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 1,
+    "dexterity": 12,
+    "constitution": 8,
+    "intelligence": 1,
+    "wisdom": 10,
+    "charisma": 2
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Respirare Acqua",
+      "usage": null,
+      "description": "Il cavallo marino può respirare solo sottacqua."
+    }
+  ],
+  "actions": [],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Cavallo Marino\nMinuscola bestia, disallineato\nFORZA 1 (-5)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 8 (-1)\nINTELLIGENZA 1 (-5)\nSAGGEZZA 10 (+0)\nCARISMA 2 (-4)\nClasse Armatura 11\nPunti Ferita 1 (1d4 - 1)\nVelocità 0 m, nuoto 6 m\nSensi Percezione passiva 10\nLingue -\nSfida 0 (0 PE)\nRespirare Acqua. Il cavallo marino può respirare solo sottacqua."
+  }
+}

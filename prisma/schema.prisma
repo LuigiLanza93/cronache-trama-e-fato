@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  DM
+  PLAYER
+}
+
+enum CharacterType {
+  PG
+  PNG
+}
+
+enum MonsterSourceType {
+  SRD
+  CUSTOM
+}
+
+enum SpellSourceType {
+  SRD
+  CUSTOM
+}
+
+enum RuleSourceType {
+  SRD
+  CUSTOM
+}
+
+enum ChatSenderRole {
+  DM
+  PLAYER
+  SYSTEM
+}
+
+enum EncounterScenarioEntryType {
+  BESTIARY
+  MANUAL
+}
+
+enum MonsterPowerTag {
+  DEBOLISSIMO
+  DEBOLE
+  FORTE
+  FORTISSIMO
+}
+
+model User {
+  id                 String   @id
+  username           String   @unique
+  displayName        String
+  role               UserRole
+  passwordSalt       String
+  passwordHash       String
+  mustChangePassword Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  ownedCharacters   Character[]         @relation("CharacterOwner")
+  createdCharacters Character[]         @relation("CharacterCreator")
+  sentMessages      ChatMessage[]       @relation("UserSentMessages")
+  scenarios         EncounterScenario[] @relation("ScenarioCreator")
+  sessions          Session[]
+
+  @@index([role])
+}
+
+model Character {
+  id              String        @id
+  slug            String        @unique
+  name            String
+  characterType   CharacterType
+  ownerUserId     String?
+  createdByUserId String?
+  className       String?
+  race            String?
+  alignment       String?
+  background      String?
+  level           Int?
+  portraitUrl     String?
+  archivedAt      DateTime?
+  data            String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  owner     User?         @relation("CharacterOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  createdBy User?         @relation("CharacterCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  messages  ChatMessage[]
+
+  @@index([characterType])
+  @@index([ownerUserId])
+  @@index([createdByUserId])
+  @@index([archivedAt])
+}
+
+model Monster {
+  id                     String            @id
+  slug                   String            @unique
+  name                   String
+  sourceType             MonsterSourceType
+  sourceFile             String?
+  challengeRatingDisplay String?
+  challengeRatingDecimal Float?
+  challengeRatingXp      Int?
+  size                   String?
+  creatureType           String?
+  alignment              String?
+  data                   String
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  scenarioEntries EncounterScenarioEntry[]
+
+  @@index([sourceType])
+  @@index([name])
+  @@index([challengeRatingDecimal])
+}
+
+model Spell {
+  id            String          @id
+  slug          String          @unique
+  name          String
+  level         Int
+  school        String?
+  castingTime   String?
+  range         String?
+  duration      String?
+  concentration Boolean         @default(false)
+  ritual        Boolean         @default(false)
+  sourceType    SpellSourceType
+  sourceUrl     String?
+  classes       String
+  data          String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([name])
+  @@index([level])
+  @@index([school])
+  @@index([sourceType])
+}
+
+model Skill {
+  id         String         @id
+  slug       String         @unique
+  name       String
+  ability    String
+  sourceType RuleSourceType
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([name])
+  @@index([ability])
+  @@index([sourceType])
+}
+
+model SpellSlotProgression {
+  id             String         @id
+  classSlug      String
+  className      String
+  characterLevel Int
+  slots          String
+  sourceType     RuleSourceType
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([classSlug, characterLevel])
+  @@index([classSlug, characterLevel])
+  @@index([sourceType])
+}
+
+model Session {
+  id         String   @id
+  userId     String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ChatMessage {
+  id           String         @id
+  characterId  String
+  senderUserId String?
+  senderRole   ChatSenderRole
+  text         String
+  createdAt    DateTime       @default(now())
+
+  character  Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  senderUser User?     @relation("UserSentMessages", fields: [senderUserId], references: [id], onDelete: SetNull)
+
+  @@index([characterId, createdAt])
+  @@index([senderUserId])
+}
+
+model EncounterScenario {
+  id              String   @id
+  name            String
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  createdBy User?                     @relation("ScenarioCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  entries    EncounterScenarioEntry[]
+
+  @@index([name])
+  @@index([createdByUserId])
+}
+
+model EncounterScenarioEntry {
+  id         String                     @id
+  scenarioId String
+  entryType  EncounterScenarioEntryType
+  sortOrder  Int
+  monsterId  String?
+  name       String
+  count      Int
+  armorClass Int?
+  hitPoints  Int?
+  powerTag   MonsterPowerTag?
+  createdAt  DateTime                   @default(now())
+  updatedAt  DateTime                   @updatedAt
+
+  scenario EncounterScenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  monster  Monster?          @relation(fields: [monsterId], references: [id], onDelete: SetNull)
+
+  @@index([scenarioId, sortOrder])
+  @@index([monsterId])
+  @@index([entryType])
+}

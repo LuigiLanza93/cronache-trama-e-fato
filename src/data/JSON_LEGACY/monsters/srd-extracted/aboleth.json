@@ -1,0 +1,157 @@
+{
+  "slug": "aboleth",
+  "general": {
+    "name": "Aboleth",
+    "challengeRating": {
+      "fraction": "10",
+      "decimal": 10,
+      "display": "10",
+      "xp": 5900
+    },
+    "size": "Grande",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 135,
+      "formula": "18d10 + 36"
+    },
+    "speed": {
+      "walk": "3 m",
+      "swim": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 21,
+    "dexterity": 9,
+    "constitution": 15,
+    "intelligence": 18,
+    "wisdom": 15,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 6
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 8
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 6
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 10
+      },
+      {
+        "name": "Storia",
+        "bonus": 12
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 20"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Parlata delle Profondità"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "L'aboleth può respirare aria e acqua."
+    },
+    {
+      "name": "Nube di Muco",
+      "usage": null,
+      "description": "Mentre è sott'acqua, l'aboleth è avvolto da muco mutante. Una creatura che entri a contatto con l'aboleth, o che lo colpisca con un attacco da mischia mentre si trova entro 1,5 metri da esso, deve effettuare un tiro salvezza di Costituzione CD 14. Se lo fallisce, la creatura resta ammalata per 1d4 ore. La creatura ammalata può respirare solo sott'acqua."
+    },
+    {
+      "name": "Sonda Telepatica",
+      "usage": null,
+      "description": "Se una creatura comunica telepaticamente con l'aboleth, e l'aboleth può vederla, l'aboleth ne apprende i più grandi desideri."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'aboleth effettua tre attacchi con i tentacoli"
+    },
+    {
+      "name": "Tentacolo",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +9 a colpire, portata 3 m, un bersaglio. Colpisce: 12 (2d6 + 5) danni contundenti. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di Costituzione CD 14 o divenire ammalato. La malattia non produce alcun effetto per 1 minuto e può essere rimossa da qualsiasi magia che curi le malattie. Dopo 1 minuto, la pelle della creatura ammalata diventa trasparente e viscida, la creatura non può recuperare punti ferita a meno che non sia sott'acqua, e la malattia può essere rimossa solo da guarire o un altro incantesimo cura malattie di 6° livello o più alto. Quando la creatura si trova al di fuori di un corpo d'acqua, subisce 6 (1d12) danni da acido ogni 10 minuti a meno che la sua pelle non venga bagnata prima che siano passati questi 10 minuti."
+    },
+    {
+      "name": "Coda",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +9 a colpire, portata 3 m, un bersaglio. Colpisce: 15 (3d6 + 5) danni contundenti."
+    },
+    {
+      "name": "Schiavizzare",
+      "usage": "3/Giorno",
+      "description": "L'aboleth prende a bersaglio una creatura che può vedere entro 9 metri da esso. Il bersaglio deve riuscire un tiro salvezza di Saggezza CD 14 o restare affascinato magicamente dall'aboleth finché l'aboleth muore o i due si trovano su piani di esistenza differenti. Il bersaglio affascinato è sotto il controllo dell'aboleth e non può effettuare reazioni. L'aboleth e il bersaglio possono comunicare telepaticamente tra di loro a qualsiasi distanza. Ogniqualvolta il bersaglio affascinato subisce danni, può ripetere il tiro salvezza. Se lo riesce, l'effetto termina. Non più di una volta ogni 24 ore, può ripetere il tiro salvezza quando si trova almeno a 1,5 chilometri di distanza dall'aboleth."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "L'aboleth può effettuare 3 azioni leggendarie, scelte tra le opzioni seguenti. Può usare solo un'opzione leggendaria alla volta e solo al termine del turno di un'altra creatura. L'aboleth recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Individuare",
+        "description": "L'aboleth effettua una prova di Saggezza (Percezione).",
+        "cost": 1
+      },
+      {
+        "name": "Risucchio Psichico",
+        "description": "Una creatura affascinata dall'aboleth subisce 10 (3d6) danni psichici, e l'aboleth recupera un numero di punti ferita pari al danno subito dalla creatura.",
+        "cost": 2
+      },
+      {
+        "name": "Spazzata di Coda",
+        "description": "L'aboleth effettua un attacco di coda.",
+        "cost": 1
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Aboleth\nGrande aberrazione, legale malvagio\nFORZA 21 (+5)\nDESTREZZA 9 (-1)\nCOSTITUZIONE 15 (+2)\nINTELLIGENZA 18 (+4)\nSAGGEZZA 15 (+2)\nCARISMA 18 (+4)\nClasse Armatura 17 (armatura naturale)\nPunti Ferita 135 (18d10 + 36)\nVelocità 3 m, nuoto 12 m\nTiri Salvezza Costituzione +6, Intelligenza +8, Saggezza +6\nAbilità Percezione +10, Storia +12\nSensi scurovisione 36 m, Percezione passiva 20\nLinguaggi Parlata delle Profondità, telepatia 36 m\nSfida 10 (5.900 PE)\nAnfibio. L'aboleth può respirare aria e acqua.\nNube di Muco. Mentre è sott'acqua, l'aboleth è avvolto da muco\nmutante. Una creatura che entri a contatto con l'aboleth, o che lo\ncolpisca con un attacco da mischia mentre si trova entro 1,5\nmetri da esso, deve effettuare un tiro salvezza di Costituzione\nCD 14. Se lo fallisce, la creatura resta ammalata per 1d4 ore. La\ncreatura ammalata può respirare solo sott'acqua.\nSonda Telepatica. Se una creatura comunica telepaticamente con\nl'aboleth, e l'aboleth può vederla, l'aboleth ne apprende i più\ngrandi desideri.\nAzioni\nMultiattacco. L'aboleth effettua tre attacchi con i tentacoli\nTentacolo. Attacco con arma da mischia: +9 a colpire, portata 3\nm, un bersaglio.\nColpisce: 12 (2d6 + 5) danni contundenti. Se il bersaglio è una\ncreatura, deve riuscire un tiro salvezza di Costituzione CD 14 o\ndivenire ammalato. La malattia non produce alcun effetto per 1\nminuto e può essere rimossa da qualsiasi magia che curi le\nmalattie. Dopo 1 minuto, la pelle della creatura ammalata diventa\ntrasparente e viscida, la creatura non può recuperare punti ferita a\nmeno che non sia sott'acqua, e la malattia può essere rimossa\nsolo da guarire o un altro incantesimo cura malattie di 6° livello\no più alto. Quando la creatura si trova al di fuori di un corpo\nd'acqua, subisce 6 (1d12) danni da acido ogni 10 minuti a meno\nche la sua pelle non venga bagnata prima che siano passati questi\n10 minuti.\nCoda. Attacco con arma da mischia: +9 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 15 (3d6 + 5) danni contundenti.\nSchiavizzare (3/Giorno). L'aboleth prende a bersaglio una\ncreatura che può vedere entro 9 metri da esso. Il bersaglio deve\nriuscire un tiro salvezza di Saggezza CD 14 o restare affascinato\nmagicamente dall'aboleth finché l'aboleth muore o i due si\ntrovano su piani di esistenza differenti. Il bersaglio affascinato è\nsotto il controllo dell'aboleth e non può effettuare reazioni.\nL'aboleth e il bersaglio possono comunicare telepaticamente tra\ndi loro a qualsiasi distanza.\nOgniqualvolta il bersaglio affascinato subisce danni, può ripetere\nil tiro salvezza. Se lo riesce, l'effetto termina. Non più di una\nvolta ogni 24 ore, può ripetere il tiro salvezza quando si trova\nalmeno a 1,5 chilometri di distanza dall'aboleth.\nAzioni Leggendarie\nL'aboleth può effettuare 3 azioni leggendarie, scelte tra le\nopzioni seguenti. Può usare solo un'opzione leggendaria alla\nvolta e solo al termine del turno di un'altra creatura. L'aboleth\nrecupera le azioni leggendarie spese all'inizio del proprio turno.\nIndividuare. L'aboleth effettua una prova di Saggezza (Percezione).\nRisucchio Psichico (Costa 2 Azioni). Una creatura affascinata\ndall'aboleth subisce 10 (3d6) danni psichici, e l'aboleth recupera un\nnumero di punti ferita pari al danno subito dalla creatura.\nSpazzata di Coda. L'aboleth effettua un attacco di coda."
+  }
+}

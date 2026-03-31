@@ -1,0 +1,99 @@
+{
+  "slug": "gran-sacerdote",
+  "general": {
+    "name": "Gran Sacerdote",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "giaco di maglia"
+    },
+    "hitPoints": {
+      "average": 27,
+      "formula": "5d8 + 5"
+    },
+    "speed": {
+      "walk": "5 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 10,
+    "constitution": 12,
+    "intelligence": 13,
+    "wisdom": 16,
+    "charisma": 13
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Medicina",
+        "bonus": 7
+      },
+      {
+        "name": "Persuasione",
+        "bonus": 3
+      },
+      {
+        "name": "Religione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Eminenza Divina",
+      "usage": null,
+      "description": "Come azione bonus, il sacerdote può spendere uno slot incantesimo per far sì che il suo attacco con arma da mischia infligge 10 (3d6) danni radianti aggiuntivi. Il beneficio dura fino al termine del turno. Se il sacerdote spende uno slot di 2° livello o più alto, il danno aggiuntivo aumenta di 1d6 per ogni livello sopra il 1°."
+    },
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "Il sacerdote è un incantatore di 5° livello. La sua abilità da incantatore è la Saggezza (CD dei tiri salvezza degli incantesimi 13, +5 al colpire con attacchi con incantesimo). Il sacerdote ha preparato i seguenti incantesimi da chierico: Trucchetti (a volontà): fiamma sacra, luce, taumaturgia 1° livello (4 slot): cura ferite, dardo tracciante, santuario 2° livello (3 slot): arma spirituale, ristorare inferiore 3° livello (2 slot): dissolvi magie, guardiani spirituali"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Ascia Grossa",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 9 (1d12 + 3) danni taglienti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gran Sacerdote\nSono individui al comando di un tempio o altro luogo\nsacro e che hanno a loro disposizione diversi accoliti.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 10 (+0)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 13 (+1)\nSAGGEZZA 16 (+3)\nCARISMA 13 (+1)\nClasse Armatura 13 (giaco di maglia)\nPunti Ferita 27 (5d8 + 5)\nVelocità 7,5 m\nAbilità Medicina +7, Persuasione +3, Religione +4\nSensi Percezione passiva 13\nLingue due lingue qualsiasi\nSfida 2 (450 PE)\nEminenza Divina. Come azione bonus, il sacerdote può spendere\nuno slot incantesimo per far sì che il suo attacco con arma da\nmischia infligge 10 (3d6) danni radianti aggiuntivi. Il beneficio\ndura fino al termine del turno. Se il sacerdote spende uno slot di\n2° livello o più alto, il danno aggiuntivo aumenta di 1d6 per ogni\nlivello sopra il 1°.\nIncantesimi. Il sacerdote è un incantatore di 5° livello. La sua\nabilità da incantatore è la Saggezza (CD dei tiri salvezza degli\nincantesimi 13, +5 al colpire con attacchi con incantesimo). Il\nsacerdote ha preparato i seguenti incantesimi da chierico:\nTrucchetti (a volontà): fiamma sacra, luce, taumaturgia\n1° livello (4 slot): cura ferite, dardo tracciante, santuario\n2° livello (3 slot): arma spirituale, ristorare inferiore\n3° livello (2 slot): dissolvi magie, guardiani spirituali\nAzioni\nMazza. Attacco con Arma da Mischia: +2 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 3 (1d6) danni contundenti.\n\n-- 147 of 151 --\n\nSRD Italia 5a Edizione - Compendio dei Mostri\nSelvaggi\nQuesti individui vivono ai margini della civiltà, a volte\nentrandovi raramente in contatto. A disagio tra le mura\ne nelle terre civilizzate, si trovano nel loro ambiente\nquando possono muoversi tra le terre selvagge.\nBerserker\nProvenienti da terre selvagge, gli imprevedibili\nberserker si radunano in compagnie di guerra e sono\nsempre alla ricerca di conflitti in cui combattere.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\ncaotico\nFORZA 16 (+3)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 17 (+3)\nINTELLIGENZA 9 (-1)\nSAGGEZZA 11 (+0)\nCARISMA 9 (-1)\nClasse Armatura 13 (armatura di pelle)\nPunti Ferita 67 (9d8 + 27)\nVelocità 9 m\nSensi Percezione passiva 10\nLingue una qualsiasi lingua (di solito il Comune)\nSfida 2 (450 PE)\nIncauto. All'inizio del suo turno, il berserker può ottenere\nvantaggio su tutti i tiri di attacco con armi da mischia effettuati\ndurante quel turno, ma i tiri di attacco contro di esso hanno\nvantaggio fino all'inizio del suo prossimo turno.\nAzioni\nAscia Grossa. Attacco con Arma da Mischia: +5 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 9 (1d12 + 3) danni taglienti."
+  }
+}

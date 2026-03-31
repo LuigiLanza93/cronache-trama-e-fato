@@ -1,0 +1,81 @@
+{
+  "slug": "cavallo-da-guerra",
+  "general": {
+    "name": "Cavallo da Guerra",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Grande",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": "più possibile bardatura"
+    },
+    "hitPoints": {
+      "average": 19,
+      "formula": "3d10 + 3"
+    },
+    "speed": {
+      "walk": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 12,
+    "constitution": 13,
+    "intelligence": 2,
+    "wisdom": 12,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Carica Travolgente",
+      "usage": null,
+      "description": "Se il cavallo si muove di almeno 6 metri diretto verso il bersaglio e lo colpisce con un attacco di zoccoli durante lo stesso turno, il bersaglio deve riuscire un tiro salvezza di Forza CD 14 o cadere prono. Se il bersaglio è prono, il cavallo può effettuare un altro attacco di zoccoli contro di lui come azione bonus."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Cavallo da Guerra\nGrande bestia, disallineato\nFORZA 18 (+4)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 12 (+1)\nCARISMA 7 (-2)\nClasse Armatura 11 (più possibile bardatura)\nPunti Ferita 19 (3d10 + 3)\nVelocità 18 m\nSensi Percezione passiva 11\nLingue -\nSfida 1/2 (100 PE)\nCarica Travolgente. Se il cavallo si muove di almeno 6 metri diretto\nverso il bersaglio e lo colpisce con un attacco di zoccoli durante lo\nstesso turno, il bersaglio deve riuscire un tiro salvezza di Forza CD\n14 o cadere prono. Se il bersaglio è prono, il cavallo può effettuare\nun altro attacco di zoccoli contro di lui come azione bonus.\nAzioni\nZoccoli. Attacco con Arma da Mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni contundenti."
+  }
+}

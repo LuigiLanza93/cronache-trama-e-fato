@@ -1,0 +1,105 @@
+{
+  "slug": "gufo-gigante",
+  "general": {
+    "name": "Gufo Gigante",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 19,
+      "formula": "3d10 + 3"
+    },
+    "speed": {
+      "walk": "5 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 13,
+    "dexterity": 15,
+    "constitution": 12,
+    "intelligence": 8,
+    "wisdom": 13,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "visione al buio",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 15"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Sorvolare",
+      "usage": null,
+      "description": "Il gufo non provoca attacchi di opportunità quando vola via dalla portata di un nemico."
+    },
+    {
+      "name": "Udito e Vista Affinati",
+      "usage": null,
+      "description": "Il gufo ha vantaggio nelle prove di"
+    },
+    {
+      "name": "Saggezza (Percezione) basate su udito o vista",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "actions": [
+    {
+      "name": "Speroni",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 a colpire, portata 1,5 m, un bersaglio. Colpisce: 8 (2d6 + 1) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Gufo Gigante\nI gufi giganti sono creature intelligenti che proteggono i\nregni silvani.\nGrande bestia, neutrale\nFORZA 13 (+1)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 8 (-1)\nSAGGEZZA 13 (+1)\nCARISMA 10 (+0)\nClasse Armatura 12\nPunti Ferita 19 (3d10 + 3)\nVelocità 1,5 m, volo 18 m\nAbilità Furtività +4, Percezione +5\nSensi visione al buio 36 m, Percezione passiva 15\nLingue Gufo Gigante, comprende Comune, Elfico e Silvano ma\nnon può parlarli\nSfida 1/4 (50 PE)\nSorvolare. Il gufo non provoca attacchi di opportunità quando\nvola via dalla portata di un nemico.\nUdito e Vista Affinati. Il gufo ha vantaggio nelle prove di\nSaggezza (Percezione) basate su udito o vista.\nAzioni\nSperoni. Attacco con Arma da Mischia: +3 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 8 (2d6 + 1) danni perforanti."
+  }
+}

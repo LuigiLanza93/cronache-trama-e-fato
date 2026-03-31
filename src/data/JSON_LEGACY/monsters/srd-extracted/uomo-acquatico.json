@@ -1,0 +1,94 @@
+{
+  "slug": "uomo-acquatico",
+  "general": {
+    "name": "Uomo Acquatico",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "uomo acquatico",
+    "typeLabel": "umanoide (uomo acquatico)",
+    "alignment": "neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "3 m",
+      "swim": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 13,
+    "constitution": 12,
+    "intelligence": 11,
+    "wisdom": 11,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Aquan"
+      },
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "L'uomo acquatico può respirare aria e acqua."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Lancia",
+      "usage": null,
+      "description": "Attacco con arma da mischia o a Distanza: +2 a colpire, portata 1,5 m o gittata 6/18 m, un bersaglio. Colpisce: 3 (1d6) danni perforanti, o 4 (1d8) danni perforanti se usata con due mani per effettuare un attacco da mischia."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Uomo Acquatico\nMedia umanoide (uomo acquatico), neutrale\nFORZA 10 (+0)\nDESTREZZA 13 (+1)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 11 (+0)\nSAGGEZZA 11 (+0)\nCARISMA 12 (+1)\nClasse Armatura 11\nPunti Ferita 11 (2d8 + 2)\nVelocità 3 m, nuoto 12 m\nAbilità Percezione +2\nSensi Percezione passiva 12\nLinguaggi Aquan, Comune\nSfida 1/8 (25 PE)\nAnfibio. L'uomo acquatico può respirare aria e acqua.\nAzioni\nLancia. Attacco con arma da mischia o a Distanza: +2 a colpire,\nportata 1,5 m o gittata 6/18 m, un bersaglio.\nColpisce: 3 (1d6) danni perforanti, o 4 (1d8) danni perforanti se\nusata con due mani per effettuare un attacco da mischia."
+  }
+}

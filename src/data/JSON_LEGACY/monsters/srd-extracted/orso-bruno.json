@@ -1,0 +1,97 @@
+{
+  "slug": "orso-bruno",
+  "general": {
+    "name": "Orso Bruno",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Grande",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 34,
+      "formula": "4d10 + 12"
+    },
+    "speed": {
+      "walk": "12 m",
+      "climb": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 10,
+    "constitution": 16,
+    "intelligence": 2,
+    "wisdom": 13,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Olfatto Affinato",
+      "usage": null,
+      "description": "L'orso ha vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'orso effettua due attacchi: uno con il morso e uno con gli artigli."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 11 (2d6 + 4) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 8 (1d8 + 4) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Orso Bruno\nGrande bestia, disallineato\nFORZA 19 (+4)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 13 (+1)\nCARISMA 7 (-2)\nClasse Armatura 11 (armatura naturale)\nPunti Ferita 34 (4d10 + 12)\nVelocità 12 m, scalata 9 m\nAbilità Percezione +3\nSensi Percezione passiva 13\nLingue -\nSfida 1 (200 PE)\nOlfatto Affinato. L'orso ha vantaggio alle prove di Saggezza\n(Percezione) basate sull'olfatto.\nAzioni\nMultiattacco. L'orso effettua due attacchi: uno con il morso e\nuno con gli artigli.\nArtigli. Attacco con Arma da Mischia: +5 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 11 (2d6 + 4) danni taglienti.\nMorso. Attacco con Arma da Mischia: +5 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 8 (1d8 + 4) danni perforanti."
+  }
+}

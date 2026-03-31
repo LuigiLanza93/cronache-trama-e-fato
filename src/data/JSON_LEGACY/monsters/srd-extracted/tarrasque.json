@@ -1,0 +1,176 @@
+{
+  "slug": "tarrasque",
+  "general": {
+    "name": "Tarrasque",
+    "challengeRating": {
+      "fraction": "30",
+      "decimal": 30,
+      "display": "30",
+      "xp": 155000
+    },
+    "size": "Mastodontica",
+    "creatureType": "mostruosità",
+    "subtype": "titano",
+    "typeLabel": "mostruosità (titano)",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 25,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 676,
+      "formula": "33d20 + 330"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 30,
+    "dexterity": 11,
+    "constitution": 30,
+    "intelligence": 3,
+    "wisdom": 11,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Intelligenza",
+        "bonus": 5
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 9
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 9
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fuoco",
+      "veleno; contundente",
+      "perforante e"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "paralizzato"
+    ],
+    "senses": [
+      {
+        "name": "vista cieca",
+        "value": "36 m"
+      },
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 9
+  },
+  "traits": [
+    {
+      "name": "Carapace Riflettente",
+      "usage": null,
+      "description": "Ogni volta che il tarrasque è il bersaglio di un incantesimo dardo incantato, un incantesimo a linea, o un incantesimo che richiede un tiro di attacco a gittata, tira un d6."
+    },
+    {
+      "name": "Da 1 a 5, il tarrasque lo ignora",
+      "usage": null,
+      "description": "Con 6, il tarrasque lo ignora, e l'effetto viene riflesso contro l'incantatore come se fosse originato dal tarrasque, trasformando l'incantatore nel bersaglio."
+    },
+    {
+      "name": "Mostro d'Assedio",
+      "usage": null,
+      "description": "Il tarrasque infligge danni doppi agli oggetti e le strutture."
+    },
+    {
+      "name": "Resistenza Leggendaria",
+      "usage": "3/Giorno",
+      "description": "Se il tarrasque fallisce un tiro salvezza, può scegliere invece di riuscire."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il tarrasque ha vantaggio ai tiri salvezza contro incantesimi o altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il tarrasque può usare la sua Presenza Spaventosa. Poi effettua cinque attacchi: uno con il morso, due con gli artigli, uno con le corna, e uno con la coda. Al posto del morso può usare Inghiottire."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +19 a colpire, portata 4,5 m, un bersaglio. Colpisce: 28 (4d8 + 10) danni taglienti."
+    },
+    {
+      "name": "Coda",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +19 a colpire, portata 6 m, un bersaglio. Colpisce: 24 (4d6 + 10) danni contundenti. Se il bersaglio è una creatura, deve riuscire un tiro salvezza di Forza CD 20 o cadere prona."
+    },
+    {
+      "name": "Corna",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +19 a colpire, portata 3 m, un bersaglio. Colpisce: 32 (4d10 + 10) danni perforanti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +19 a colpire, portata 3 m, un bersaglio. Colpisce: 36 (4d12 + 10) danni perforanti. Se il bersaglio è una creatura, è afferrata (CD 20 per fuggire). Fino al termine dell'afferrare, il bersaglio è intralciato, e il tarrasque non può usare il morso contro un altro bersaglio."
+    },
+    {
+      "name": "Inghiottire",
+      "usage": null,
+      "description": "Il tarrasque effettua una attacco di morso contro un bersaglio di taglia Grande o inferiore che sta afferrando. Se l'attacco colpisce, il bersaglio è inghiottito, e l'afferrare ha termine. Il bersaglio inghiottito è accecato e intralciato, ha copertura totale contro gli attacchi e altri effetti all'esterno del tarrasque, e subisce 56 (16d6) danni da acido all'inizio di ciascun turno del tarrasque. Se il tarrasque subisce 60 o più danni in un singolo turno da una creatura al suo interno, il tarrasque deve riuscire un tiro salvezza di Costituzione CD 30 al termine di quel turno o vomitare tutte le creature inghiottite, che cadono prone in uno spazio entro 3 metri dal tarrasque. Se il tarrasque muore, una creatura inghiottita non è più intralciata da esso e può uscire dal cadavere utilizzando 9 metri di movimento, uscendo prona."
+    },
+    {
+      "name": "Presenza Spaventosa",
+      "usage": null,
+      "description": "Ogni creatura scelta dal tarrasque, che si trovi entro 36 metri da esso e consapevole della sua presenza, deve riuscire un tiro salvezza di Saggezza CD 17 o restare spaventata per 1 minuto. Una creatura può ripetere il tiro salvezza al termine di ciascun suo turno, con svantaggio se il tarrasque è in linea di visuale, terminando l'effetto per sé, se lo riesce. Se il tiro salvezza della creatura ha successo o l'effetto ha termine per essa, la creatura è immune alla Presenza Spaventosa del tarrasque per le successive 24 ore."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "Il tarrasque può effettuare 3 azioni leggendarie, scelte tra le opzioni seguenti. Può usare solo un'opzione leggendaria alla volta e solo al termine del turno di un'altra creatura. Il tarrasque recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Attacco",
+        "description": "Il tarrasque effettua un attacco di artiglio o di coda.",
+        "cost": 1
+      },
+      {
+        "name": "Masticare",
+        "description": "Il tarrasque effettua un attacco di morso o usa Inghiottire.",
+        "cost": 2
+      },
+      {
+        "name": "Muoversi",
+        "description": "Il tarrasque si muove fino a metà della sua velocità.",
+        "cost": 1
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Tarrasque\nMastodontica mostruosità (titano), disallineato\nFORZA 30 (+10)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 30 (+10)\nINTELLIGENZA 3 (-4)\nSAGGEZZA 11 (+0)\nCARISMA 11 (+0)\nClasse Armatura 25 (armatura naturale)\nPunti Ferita 676 (33d20 + 330)\nVelocità 12 m\nTiri Salvezza Intelligenza +5, Saggezza +9, Carisma +9\nImmunità al Danno fuoco, veleno; contundente, perforante e\ntagliente di attacchi non magici\nImmunità alle Condizioni affascinato, avvelenato, paralizzato,\nspaventato\nSensi vista cieca 36 m, Percezione passiva 10\nLinguaggi -\nSfida 30 (155.000 PE)\nCarapace Riflettente. Ogni volta che il tarrasque è il bersaglio di\nun incantesimo dardo incantato, un incantesimo a linea, o un\nincantesimo che richiede un tiro di attacco a gittata, tira un d6.\nDa 1 a 5, il tarrasque lo ignora. Con 6, il tarrasque lo ignora, e\nl'effetto viene riflesso contro l'incantatore come se fosse\noriginato dal tarrasque, trasformando l'incantatore nel bersaglio.\nMostro d'Assedio. Il tarrasque infligge danni doppi agli oggetti e\nle strutture.\nResistenza Leggendaria (3/Giorno). Se il tarrasque fallisce un\ntiro salvezza, può scegliere invece di riuscire.\nResistenza alla Magia. Il tarrasque ha vantaggio ai tiri salvezza\ncontro incantesimi o altri effetti magici.\nAzioni\nMultiattacco. Il tarrasque può usare la sua Presenza Spaventosa.\nPoi effettua cinque attacchi: uno con il morso, due con gli artigli,\nuno con le corna, e uno con la coda. Al posto del morso può\nusare Inghiottire.\nArtiglio. Attacco con arma da mischia: +19 a colpire, portata 4,5\nm, un bersaglio.\nColpisce: 28 (4d8 + 10) danni taglienti.\nCoda. Attacco con arma da mischia: +19 a colpire, portata 6 m,\nun bersaglio.\nColpisce: 24 (4d6 + 10) danni contundenti. Se il bersaglio è una\ncreatura, deve riuscire un tiro salvezza di Forza CD 20 o cadere\nprona.\nCorna. Attacco con arma da mischia: +19 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 32 (4d10 + 10) danni perforanti.\nMorso. Attacco con arma da mischia: +19 a colpire, portata 3 m,\nun bersaglio.\nColpisce: 36 (4d12 + 10) danni perforanti. Se il bersaglio è una\ncreatura, è afferrata (CD 20 per fuggire). Fino al termine\ndell'afferrare, il bersaglio è intralciato, e il tarrasque non può\nusare il morso contro un altro bersaglio.\nInghiottire. Il tarrasque effettua una attacco di morso contro un\nbersaglio di taglia Grande o inferiore che sta afferrando. Se\nl'attacco colpisce, il bersaglio è inghiottito, e l'afferrare ha\ntermine. Il bersaglio inghiottito è accecato e intralciato, ha\ncopertura totale contro gli attacchi e altri effetti all'esterno del\ntarrasque, e subisce 56 (16d6) danni da acido all'inizio di ciascun\nturno del tarrasque.\nSe il tarrasque subisce 60 o più danni in un singolo turno da una\ncreatura al suo interno, il tarrasque deve riuscire un tiro salvezza\ndi Costituzione CD 30 al termine di quel turno o vomitare tutte le\ncreature inghiottite, che cadono prone in uno spazio entro 3 metri\ndal tarrasque. Se il tarrasque muore, una creatura inghiottita non\nè più intralciata da esso e può uscire dal cadavere utilizzando 9\nmetri di movimento, uscendo prona.\nPresenza Spaventosa. Ogni creatura scelta dal tarrasque, che si\ntrovi entro 36 metri da esso e consapevole della sua presenza,\ndeve riuscire un tiro salvezza di Saggezza CD 17 o restare\nspaventata per 1 minuto. Una creatura può ripetere il tiro\nsalvezza al termine di ciascun suo turno, con svantaggio se il\ntarrasque è in linea di visuale, terminando l'effetto per sé, se lo\nriesce. Se il tiro salvezza della creatura ha successo o l'effetto ha\ntermine per essa, la creatura è immune alla Presenza Spaventosa\ndel tarrasque per le successive 24 ore.\nAzioni Leggendarie\nIl tarrasque può effettuare 3 azioni leggendarie, scelte tra le\nopzioni seguenti. Può usare solo un'opzione leggendaria alla\nvolta e solo al termine del turno di un'altra creatura. Il tarrasque\nrecupera le azioni leggendarie spese all'inizio del proprio turno.\nAttacco. Il tarrasque effettua un attacco di artiglio o di coda.\nMasticare (Costa 2 Azioni). Il tarrasque effettua un attacco di\nmorso o usa Inghiottire.\nMuoversi. Il tarrasque si muove fino a metà della sua velocità."
+  }
+}

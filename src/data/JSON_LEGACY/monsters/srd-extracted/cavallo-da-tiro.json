@@ -1,0 +1,75 @@
+{
+  "slug": "cavallo-da-tiro",
+  "general": {
+    "name": "Cavallo da Tiro",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Grande",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 19,
+      "formula": "3d10 + 3"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 10,
+    "constitution": 12,
+    "intelligence": 2,
+    "wisdom": 11,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 9 (2d4 + 4) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Cavallo da Tiro\nGrande bestia, disallineato\nFORZA 18 (+4)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 11 (+0)\nCARISMA 7 (-2)\nClasse Armatura 10\nPunti Ferita 19 (3d10 + 3)\nVelocità 12 m\nSensi Percezione passiva 10\nLingue -\nSfida 1/4 (50 PE)\nAzioni\nZoccoli. Attacco con Arma da Mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 9 (2d4 + 4) danni contundenti."
+  }
+}

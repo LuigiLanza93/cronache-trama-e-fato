@@ -1,0 +1,120 @@
+{
+  "slug": "naga-guardiano",
+  "general": {
+    "name": "Naga Guardiano",
+    "challengeRating": {
+      "fraction": "10",
+      "decimal": 10,
+      "display": "10",
+      "xp": 5900
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "legale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 127,
+      "formula": "15d10 + 45"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 18,
+    "constitution": 16,
+    "intelligence": 16,
+    "wisdom": 19,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 8
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 7
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 7
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 14"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Celestiale"
+      },
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "Il naga è un incantatore di 11° livello. La sua caratteristica da incantatore è la Saggezza (CD dei tiri salvezza degli incantesimi 16, +8 a colpire con attacchi con incantesimo), e ha bisogno solo delle componenti verbali per lanciare i suoi incantesimi. Il naga prepara i seguenti incantesimi dalla lista degli incantesimi da chierico: Trucchetti (a volontà): fiamma sacra, riparare, taumaturgia 1° livello (4 slot): comando, cura ferite, scudo della fede 2° livello (3 slot): bloccare persone, calmare emozioni 3° livello (3 slot): chiaroveggenza, scagliare maledizione 4° livello (3 slot): esilio, libertà di movimento 5° livello (2 slot): colpo infuocato, costrizione 6° livello (1 slot): visione del vero"
+    },
+    {
+      "name": "Rinvigorimento",
+      "usage": null,
+      "description": "Se muore, il naga ritorna in vita in 1d6 giorni e recupera tutti i suoi punti ferita. Solo l'incantesimo desiderio può impedire a questo tratto di funzionare."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +8 a colpire, portata 3 m, una creatura. Colpisce: 8 (1d8 + 4) danni perforanti, e il bersaglio deve effettuare un tiro salvezza di Costituzione CD 15, subendo 45 (10d8) danni da veleno se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    },
+    {
+      "name": "Sputare Veleno",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +8 a colpire, gittata 4,5/9 m, una creatura. Colpisce: Il bersaglio deve effettuare un tiro salvezza di Costituzione CD 15, subendo 45 (10d8) danni da veleno se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Naga Guardiano\nGrande mostruosità, legale buono\nFORZA 19 (+4)\nDESTREZZA 18 (+4)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 16 (+3)\nSAGGEZZA 19 (+4)\nCARISMA 18 (+4)\nClasse Armatura 18 (armatura naturale)\nPunti Ferita 127 (15d10 + 45)\nVelocità 12 m\nTiri Salvezza Destrezza +8, Costituzione +7, Intelligenza +7,\nSaggezza +8, Carisma +8\nImmunità ai Danni veleno\nImmunità alle Condizioni affascinato, avvelenato\nSensi scurovisione 18 m, Percezione passiva 14\nLinguaggi Celestiale, Comune\nSfida 10 (5.900 PE)\nIncantesimi. Il naga è un incantatore di 11° livello. La sua\ncaratteristica da incantatore è la Saggezza (CD dei tiri salvezza\ndegli incantesimi 16, +8 a colpire con attacchi con incantesimo),\ne ha bisogno solo delle componenti verbali per lanciare i suoi\nincantesimi. Il naga prepara i seguenti incantesimi dalla lista\ndegli incantesimi da chierico:\nTrucchetti (a volontà): fiamma sacra, riparare, taumaturgia\n1° livello (4 slot): comando, cura ferite, scudo della fede\n2° livello (3 slot): bloccare persone, calmare emozioni\n3° livello (3 slot): chiaroveggenza, scagliare maledizione\n4° livello (3 slot): esilio, libertà di movimento\n5° livello (2 slot): colpo infuocato, costrizione\n6° livello (1 slot): visione del vero\nRinvigorimento. Se muore, il naga ritorna in vita in 1d6 giorni e\nrecupera tutti i suoi punti ferita. Solo l'incantesimo desiderio può\nimpedire a questo tratto di funzionare.\nAzioni\nMorso. Attacco con arma da mischia: +8 a colpire, portata 3 m,\nuna creatura.\nColpisce: 8 (1d8 + 4) danni perforanti, e il bersaglio deve\neffettuare un tiro salvezza di Costituzione CD 15, subendo 45\n(10d8) danni da veleno se fallisce il tiro salvezza, o la metà di\nquesti danni se lo riesce.\nSputare Veleno. Attacco con arma a Distanza: +8 a colpire,\ngittata 4,5/9 m, una creatura.\nColpisce: Il bersaglio deve effettuare un tiro salvezza di\nCostituzione CD 15, subendo 45 (10d8) danni da veleno se\nfallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "slug": "fustigatore",
+  "general": {
+    "name": "Fustigatore",
+    "challengeRating": {
+      "fraction": "5",
+      "decimal": 5,
+      "display": "5",
+      "xp": 1800
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 20,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 93,
+      "formula": "11d10 + 33"
+    },
+    "speed": {
+      "walk": "3 m",
+      "climb": "3 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 8,
+    "constitution": 17,
+    "intelligence": 7,
+    "wisdom": 16,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "psichici e da veleno). Distruggere un viticcio"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 16"
+      }
+    ],
+    "languages": [
+      {
+        "name": "-"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Quando il fustigatore rimane immobile, è indistinguibile da una normale formazione rocciosa, come una stalagmite."
+    },
+    {
+      "name": "Scalare come Ragno",
+      "usage": null,
+      "description": "Il fustigatore può scalare superfici difficili, compreso lo stare a testa in giù sul soffitto, senza bisogno di effettuare una prova di abilità."
+    },
+    {
+      "name": "Viticci Afferranti",
+      "usage": null,
+      "description": "Il fustigatore può avere fino a sei viticci alla volta. Ogni viticcio può essere attaccato (CA 20; 10 punti ferita; immunità ai danni psichici e da veleno). Distruggere un viticcio non infligge danni al fustigatore, che può produrre un viticcio di rimpiazzo nel suo prossimo turno. Un viticcio può essere anche rotto se una creatura effettua un'azione e riesce una prova di"
+    },
+    {
+      "name": "Forza CD 15 contro di esso",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il fustigatore può effettuare quattro attacchi con i suoi viticci, usare avvolgere e effettuare un attacco con il morso."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 22 (4d8 + 4) danni perforanti."
+    },
+    {
+      "name": "Viticcio",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +7 a colpire, portata 15 m, una creatura. Colpisce: Il bersaglio è afferrato (CD 15 per fuggire). Fino al termine dell'afferrare, il bersaglio è intralciato e ha svantaggio alle prove di Forza e ai tiri salvezza di Forza, mentre il fustigatore non può usare lo stesso viticcio contro un altro bersaglio."
+    },
+    {
+      "name": "Avvolgere",
+      "usage": null,
+      "description": "Il fustigatore trascina le creature afferrate da lui di 7,5 metri verso di lui."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Fustigatore\nGrande mostruosità, neutrale malvagio\nFORZA 18 (+4)\nDESTREZZA 8 (-1)\nCOSTITUZIONE 17 (+3)\nINTELLIGENZA 7 (-2)\nSAGGEZZA 16 (+3)\nCARISMA 6 (-2)\nClasse Armatura 20 (armatura naturale)\nPunti Ferita 93 (11d10 + 33)\nVelocità 3 m, scalata 3 m\nAbilità Furtività +5, Percezione +6\nSensi scurovisione 18 m, Percezione passiva 16\nLinguaggi -\nSfida 5 (1.800 PE)\nFalso Aspetto. Quando il fustigatore rimane immobile, è\nindistinguibile da una normale formazione rocciosa, come una\nstalagmite.\nScalare come Ragno. Il fustigatore può scalare superfici difficili,\ncompreso lo stare a testa in giù sul soffitto, senza bisogno di\neffettuare una prova di abilità.\nViticci Afferranti. Il fustigatore può avere fino a sei viticci alla\nvolta. Ogni viticcio può essere attaccato (CA 20; 10 punti ferita;\nimmunità ai danni psichici e da veleno). Distruggere un viticcio\nnon infligge danni al fustigatore, che può produrre un viticcio di\nrimpiazzo nel suo prossimo turno. Un viticcio può essere anche\nrotto se una creatura effettua un'azione e riesce una prova di\nForza CD 15 contro di esso.\nAzioni\nMultiattacco. Il fustigatore può effettuare quattro attacchi con i\nsuoi viticci, usare avvolgere e effettuare un attacco con il morso.\nMorso. Attacco con arma da mischia: +7 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 22 (4d8 + 4) danni perforanti.\nViticcio. Attacco con arma da mischia: +7 a colpire, portata 15\nm, una creatura.\nColpisce: Il bersaglio è afferrato (CD 15 per fuggire). Fino al\ntermine dell'afferrare, il bersaglio è intralciato e ha svantaggio\nalle prove di Forza e ai tiri salvezza di Forza, mentre il\nfustigatore non può usare lo stesso viticcio contro un altro\nbersaglio.\nAvvolgere. Il fustigatore trascina le creature afferrate da lui di 7,5\nmetri verso di lui."
+  }
+}

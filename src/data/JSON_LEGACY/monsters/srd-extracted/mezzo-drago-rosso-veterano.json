@@ -1,0 +1,121 @@
+{
+  "slug": "mezzo-drago-rosso-veterano",
+  "general": {
+    "name": "Mezzo Drago Rosso Veterano",
+    "challengeRating": {
+      "fraction": "5",
+      "decimal": 5,
+      "display": "5",
+      "xp": 1800
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "umano",
+    "typeLabel": "umanoide (umano)",
+    "alignment": "qualsiasi allineamento",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura di piastre"
+    },
+    "hitPoints": {
+      "average": 65,
+      "formula": "10d8 + 20"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 13,
+    "constitution": 14,
+    "intelligence": 10,
+    "wisdom": 11,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Atletica",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "fuoco"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      },
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il veterano effettua due attacchi con la spada lunga. Se ha estratto una spada corta, può effettuare anche un attacco con la spada corta."
+    },
+    {
+      "name": "Spada Lunga",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 7 (1d8 + 3) danni taglienti, o 8 (1d10 + 3) danni taglienti se usata con due mani."
+    },
+    {
+      "name": "Spada Corta",
+      "usage": null,
+      "description": "Attacco con arma da mischia +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 6 (1d6 + 3) danni perforanti."
+    },
+    {
+      "name": "Balestra Pesante",
+      "usage": null,
+      "description": "Attacco con arma a Distanza: +3 a colpire, gittata 30/120 m, un bersaglio. Colpisce: 6 (1d10 + 1) danni perforanti."
+    },
+    {
+      "name": "Soffio Infuocato",
+      "usage": "Ricarica 5-6",
+      "description": "Il veterano esala fuoco in un cono di 4,5 metri. Ogni creatura in quell'area deve effettuare un tiro salvezza di Destrezza CD 15 e subire 24 (7d6) danni da fuoco se fallisce il tiro salvezza, o la metà di questi danni se lo riesce."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Mezzo Drago Rosso Veterano\nMedia umanoide (umano), qualsiasi allineamento\nFORZA 16 (+3)\nDESTREZZA 13 (+1)\nCOSTITUZIONE 14 (+2)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 11 (+0)\nCARISMA 10 (+0)\nClasse Armatura 18 (armatura di piastre)\nPunti Ferita 65 (10d8 + 20)\nVelocità 9 m\nAbilità Atletica +5, Percezione +2\nResistenze al Danno fuoco\nSensi scurovisione 18 m, vista cieca 3 m, Percezione passiva 12\nLinguaggi Comune, Draconico\nSfida 5 (1.800 PE)\nAzioni\nMultiattacco. Il veterano effettua due attacchi con la spada\nlunga. Se ha estratto una spada corta, può effettuare anche un\nattacco con la spada corta.\nSpada Lunga. Attacco con arma da mischia: +5 a colpire,\nportata 1,5 m, un bersaglio.\nColpisce: 7 (1d8 + 3) danni taglienti, o 8 (1d10 + 3) danni\ntaglienti se usata con due mani.\nSpada Corta. Attacco con arma da mischia +5 a colpire, portata\n1,5 m, un bersaglio.\nColpisce: 6 (1d6 + 3) danni perforanti.\nBalestra Pesante. Attacco con arma a Distanza: +3 a colpire,\ngittata 30/120 m, un bersaglio.\nColpisce: 6 (1d10 + 1) danni perforanti.\nSoffio Infuocato (Ricarica 5-6). Il veterano esala fuoco in un\ncono di 4,5 metri. Ogni creatura in quell'area deve effettuare un\ntiro salvezza di Destrezza CD 15 e subire 24 (7d6) danni da\nfuoco se fallisce il tiro salvezza, o la metà di questi danni se lo\nriesce."
+  }
+}

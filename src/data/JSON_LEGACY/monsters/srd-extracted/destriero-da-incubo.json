@@ -1,0 +1,101 @@
+{
+  "slug": "destriero-da-incubo",
+  "general": {
+    "name": "Destriero da Incubo",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Grande",
+    "creatureType": "immondo",
+    "subtype": "",
+    "typeLabel": "immondo",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 68,
+      "formula": "8d10 + 24"
+    },
+    "speed": {
+      "walk": "18 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 15,
+    "constitution": 16,
+    "intelligence": 10,
+    "wisdom": 13,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [
+      {
+        "name": "comprende Abissale"
+      },
+      {
+        "name": "Comune e Infernale ma non può"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Conferire Resistenza al Fuoco",
+      "usage": null,
+      "description": "Il destriero da incubo può conferire resistenza al danno da fuoco a chiunque lo cavalchi."
+    },
+    {
+      "name": "Illuminazione",
+      "usage": null,
+      "description": "Il destriero da incubo irradia luce intensa in un raggio di 3 metri e luce fioca per ulteriori 3 metri."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con arma da mischia: +6 a colpire, portata 1,5 m, un bersaglio. Colpisce: 13 (2d8 + 4) danni contundenti più 7 (2d6) danni da fuoco."
+    },
+    {
+      "name": "Passo Etereo",
+      "usage": null,
+      "description": "Il destriero da incubo e fino a tre creature consenzienti entro 1,5 metri da esso possono entrare magicamente nel Piano Etereo dal Piano Materiale e viceversa."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Destriero da Incubo\nGrande immondo, neutrale malvagio\nFORZA 18 (+4)\nDESTREZZA 15 (+2)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 10 (+0)\nSAGGEZZA 13 (+1)\nCARISMA 15 (+2)\nClasse Armatura 13 (armatura naturale)\nPunti Ferita 68 (8d10 + 24)\nVelocità 18 m, volo 24 m\nImmunità al Danno fuoco\nSensi Percezione passiva 11\nLinguaggi comprende Abissale, Comune e Infernale ma non può\nparlare\nSfida 3 (700 PE)\nConferire Resistenza al Fuoco. Il destriero da incubo può\nconferire resistenza al danno da fuoco a chiunque lo cavalchi.\nIlluminazione. Il destriero da incubo irradia luce intensa in un\nraggio di 3 metri e luce fioca per ulteriori 3 metri.\nAzioni\nZoccoli. Attacco con arma da mischia: +6 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 13 (2d8 + 4) danni contundenti più 7 (2d6) danni da\nfuoco.\nPasso Etereo. Il destriero da incubo e fino a tre creature\nconsenzienti entro 1,5 metri da esso possono entrare\nmagicamente nel Piano Etereo dal Piano Materiale e viceversa."
+  }
+}

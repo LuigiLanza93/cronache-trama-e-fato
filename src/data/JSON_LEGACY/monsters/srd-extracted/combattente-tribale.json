@@ -1,0 +1,94 @@
+{
+  "slug": "combattente-tribale",
+  "general": {
+    "name": "Combattente Tribale",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": "armatura di pelle"
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 13,
+    "dexterity": 11,
+    "constitution": 12,
+    "intelligence": 8,
+    "wisdom": 11,
+    "charisma": 8
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Medicina",
+        "bonus": 4
+      },
+      {
+        "name": "Natura",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Tattiche di Branco",
+      "usage": null,
+      "description": "Il combattente tribale ha vantaggio ai tiri di attacco contro una creatura se almeno uno degli alleati del picchiatore si trova entro 1,5 metri dalla creatura e quell'alleato non è inabile."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Bastone da Combattimento",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +2 a colpire (+4 a colpire con bastone*), portata 1,5 m o gittata 6/18 m, un bersaglio. Colpisce: 3 (1d6) danni contundenti, o 6 (1d8 + 2) danni contundenti con bastone o se impugnato con due mani."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Combattente Tribale\nSono i difensori delle tribù che vivono ai margini della\nciviltà.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 13 (+1)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 8 (-1)\nSAGGEZZA 11 (+0)\nCARISMA 8 (-1)\nClasse Armatura 12 (armatura di pelle)\nPunti Ferita 11 (2d8 + 2)\nVelocità 9 m\nSensi Percezione passiva 10\nLingue una qualsiasi lingua\nSfida 1/8 (25 PE)\nTattiche di Branco. Il combattente tribale ha vantaggio ai tiri di\nattacco contro una creatura se almeno uno degli alleati del\npicchiatore si trova entro 1,5 metri dalla creatura e quell'alleato\nnon è inabile.\nAzioni\nLancia. Attacco con Arma da Mischia o a Gittata: +3 a colpire,\nportata 1,5 m o gittata 6/18 m, un bersaglio.\nColpisce: 4 (1d6 + 1) danni perforanti, o 5 (1d8 + 1) danni\nperforanti se usata con due mani per effettuare un attacco da\nmischia.\nDruido\nI druidi proteggono il mondo naturale dai mostri e\ndall'avanzare della civiltà. Alcuni sono sciamani tribali\nche curano i malati, pregano agli spiriti animali e\nforniscono consigli spirituali.\nMedia umanoide (qualsiasi razza), qualsiasi allineamento\nFORZA 10 (+0)\nDESTREZZA 12 (+1)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 12 (+1)\nSAGGEZZA 15 (+2)\nCARISMA 11 (+0)\nClasse Armatura 11 (16 con pelle di corteccia*)\nPunti Ferita 27 (5d8 + 5)\nVelocità 9 m\nAbilità Medicina +4, Natura +3, Percezione +4\nSensi Percezione passiva 14\nLingue Druidico più due altre lingue\nSfida 2 (450 PE)\nIncantesimi. Il sacerdote è un incantatore di 4° livello. La sua\nabilità da incantatore è la Saggezza (CD dei tiri salvezza degli\nincantesimi 12, +4 al colpire con attacchi con incantesimo). Il\nsacerdote ha preparato i seguenti incantesimi da druido:\nTrucchetti (a volontà): arte druidica, bastone, produrre fiamma\n1° livello (4 slot): intralciare, onda tonante, parlare con gli\nanimali, passo veloce\n2° livello (3 slot): animale messaggero, pelle di corteccia\nAzioni\nBastone da Combattimento. Attacco con Arma da Mischia: +2 a\ncolpire (+4 a colpire con bastone*), portata 1,5 m o gittata 6/18\nm, un bersaglio.\nColpisce: 3 (1d6) danni contundenti, o 6 (1d8 + 2) danni\ncontundenti con bastone o se impugnato con due mani."
+  }
+}

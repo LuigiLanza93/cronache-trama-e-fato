@@ -1,0 +1,345 @@
+{
+  "slug": "valthor",
+  "characterType": "pg",
+  "basicInfo": {
+    "characterName": "Valthor",
+    "class": "Warlock",
+    "level": 5,
+    "background": "Nobile Decaduto",
+    "playerName": "Luigi",
+    "race": "Tiefling",
+    "alignment": "Neutrale buono",
+    "experiencePoints": 0,
+    "portraitUrl": "public/portraits/valthor.png"
+  },
+  "abilityScores": {
+    "strength": 10,
+    "dexterity": 11,
+    "constitution": 12,
+    "intelligence": 16,
+    "wisdom": 10,
+    "charisma": 18
+  },
+  "combatStats": {
+    "armorClass": 11,
+    "initiative": 0,
+    "speed": 9,
+    "hitPointMaximum": 45,
+    "currentHitPoints": 45,
+    "temporaryHitPoints": 4,
+    "hitDice": "1d8",
+    "deathSaves": {
+      "successes": 0,
+      "failures": 0
+    },
+    "spellSlots": {
+      "1": [],
+      "2": [],
+      "3": [
+        {
+          "id": 1,
+          "active": false
+        },
+        {
+          "id": 2,
+          "active": false
+        }
+      ],
+      "4": [],
+      "5": [],
+      "6": [],
+      "7": [],
+      "8": [],
+      "9": [],
+      "10": [],
+      "11": [],
+      "12": []
+    }
+  },
+  "proficiencies": {
+    "savingThrows": [
+      "Saggezza",
+      "Carisma"
+    ],
+    "languages": [
+      "Comune",
+      "Infernale",
+      "Draconico"
+    ],
+    "skills": [
+      {
+        "name": "Acrobazia",
+        "ability": "dexterity",
+        "proficient": false
+      },
+      {
+        "name": "Addestrare Animali",
+        "ability": "wisdom",
+        "proficient": false
+      },
+      {
+        "name": "Arcano",
+        "ability": "intelligence",
+        "proficient": true
+      },
+      {
+        "name": "Atletica",
+        "ability": "strength",
+        "proficient": false
+      },
+      {
+        "name": "Inganno",
+        "ability": "charisma",
+        "proficient": false
+      },
+      {
+        "name": "Storia",
+        "ability": "intelligence",
+        "proficient": true
+      },
+      {
+        "name": "Intuizione",
+        "ability": "wisdom",
+        "proficient": false
+      },
+      {
+        "name": "Intimidire",
+        "ability": "charisma",
+        "proficient": false
+      },
+      {
+        "name": "Indagare",
+        "ability": "intelligence",
+        "proficient": false
+      },
+      {
+        "name": "Medicina",
+        "ability": "wisdom",
+        "proficient": false
+      },
+      {
+        "name": "Natura",
+        "ability": "intelligence",
+        "proficient": true
+      },
+      {
+        "name": "Percezione",
+        "ability": "wisdom",
+        "proficient": false
+      },
+      {
+        "name": "Intrattenere",
+        "ability": "charisma",
+        "proficient": false
+      },
+      {
+        "name": "Persuasione",
+        "ability": "charisma",
+        "proficient": true
+      },
+      {
+        "name": "Religione",
+        "ability": "intelligence",
+        "proficient": false
+      },
+      {
+        "name": "Rapidità di Mano",
+        "ability": "dexterity",
+        "proficient": false
+      },
+      {
+        "name": "Furtività",
+        "ability": "dexterity",
+        "proficient": false
+      },
+      {
+        "name": "Sopravvivenza",
+        "ability": "wisdom",
+        "proficient": false
+      }
+    ]
+  },
+  "equipment": {
+    "attacks": [
+      {
+        "name": "Spada corta",
+        "attackBonus": 0,
+        "damageDice": "1d6",
+        "damageType": "perforante",
+        "category": "melee",
+        "hands": "1",
+        "equipped": true
+      },
+      {
+        "name": "Arco corto",
+        "attackBonus": 0,
+        "damageDice": "1d6",
+        "damageType": "perforante",
+        "category": "ranged",
+        "range": "24/96 m",
+        "equipped": true
+      }
+    ],
+    "equipment": [
+      "Explorer's pack"
+    ],
+    "coins": {
+      "cp": 0,
+      "sp": 30,
+      "ep": 0,
+      "gp": 34,
+      "pp": 0
+    },
+    "items": [
+      {
+        "type": "object",
+        "name": "Armatura di cuoio",
+        "description": "CA: 11 + DES",
+        "equippable": true,
+        "equipped": true
+      },
+      {
+        "type": "object",
+        "name": "Dotazione da Esploratore",
+        "description": "Zaino - Giaciglio - Gavetta - Acciarino - Pietra Focaia - 10 Torce - Otre - 15m di corda",
+        "equippable": true,
+        "equipped": false
+      },
+      {
+        "type": "object",
+        "name": "Anello della Vita Sepolcrale",
+        "description": "L’anello è d’argento annerito, decorato con un piccolo teschio.",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "volonta": [
+            {
+              "name": "Ogni volta che recuperi PF tramite magia, ottieni +2 PF extra.",
+              "used": false
+            }
+          ],
+          "riposoLungo": [
+            {
+              "name": "Una volta per lungo riposo, se scendi a 0 PF, invece rimani a 1 PF.",
+              "used": false
+            }
+          ]
+        }
+      },
+      {
+        "type": "consumable",
+        "name": "Pozione di Cura",
+        "quantity": 1,
+        "subtype": "potion",
+        "dice": "2d4+2"
+      },
+      {
+        "type": "consumable",
+        "name": "Componenti Arcani",
+        "quantity": 12,
+        "subtype": "generic"
+      },
+      {
+        "type": "object",
+        "name": "Pietra Misteriosa d20",
+        "description": "Pietra Misteriosa a 20 facce che può modificare dei consumabili in modo casuale",
+        "equippable": false,
+        "equipped": false
+      },
+      {
+        "type": "object",
+        "name": "Amuleto di Piume",
+        "description": "Amuleto di legno a forma di penna di gufo, legato con un cordino di cuoio.",
+        "equippable": true,
+        "equipped": true,
+        "skillsByType": {
+          "riposoLungo": [
+            {
+              "name": "Riduce a 0 i danni da caduta.",
+              "used": false
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "features": [
+    {
+      "name": "Deflagrazione Occulta (warlock, Lv 0)",
+      "description": "Livello 0 · null · Concentrazione\nTempo di lancio: 1 azione\nGittata: 36\nComponenti: V, S\nDurata: Istantanea\n\nUn raggio di energia crepitante sfreccia verso una creatura entro gittata. L'incantatore effettua un attacco a distanza con questo incantesimo contro il bersaglio. Se lo colpisce, il bersaglio subisce ldlO danni da forza. Quando l'incantatore arriva ai livelli superiori, l'incantesimo crea più raggi: due raggi al 5° livello, tre raggi all'll' livello e quattro raggi al 17. livello. Vincantatore può indirizzare i raggi contro lo stesso bersaglio o contro bersagli diversi, effettuando un tiro per colpire separato per ogni raggio.\n"
+    },
+    {
+      "name": "Spruzzo Velenoso (warlock, Lv 0)",
+      "description": "Livello 0 · Evocazione\nTempo di lancio: 1 azione\nGittata: 3 metri\nComponenti: V, S\nDurata: Istantanea\n\nStendi la mano verso una creatura a gittata e che puoi vedere, e proietti una nube di gas velenoso dal tuo palmo. La creatura deve superare un tiro salvezza su Costituzione o subire 1d12 danni da veleno. Il danno dell’incantesimo aumenta di 1d12 quando raggiungi il 5° livello (2d12), 11° livello (3d12) e 17° livello (4d12).\n"
+    },
+    {
+      "name": "Mani Brucianti (mago, Lv 1)",
+      "description": "Livello 1 · Invocazione\nTempo di lancio: 1 azione\nGittata: Incantatore (cono di 4,5 metri)\nComponenti: V, S\nDurata: Istantanea\n\nMentre tieni le mani con i pollici che si toccano e le dita tese, un sottile fiotto di fiamme parte da ciascuna delle punta delle tue dita. Ogni creatura in un cono di 4,5 metri deve effettuare un tiro salvezza su Destrezza. Una creatura subisce 3d6 danni da fuoco se fallisce il tiro salvezza, o la metà se lo supera. Il fuoco incendia gli oggetti infiammabili nell’area che non siano indossati o trasportati.\n"
+    },
+    {
+      "name": "Vita Falsata (mago, Lv 1)",
+      "description": "Livello 1 · Necromanzia\nTempo di lancio: 1 azione\nGittata: Incantatore\nComponenti: V, S, M (un piccolo ammontare di alcool o spirito distillato)\nDurata: 1 ora\n\nPotenziandoti con una parvenza necromantica di vitalità, ottieni 1d4 + 4 punti ferita temporanei per la durata.\n"
+    },
+    {
+      "name": "Ritirata Rapida (warlock, Lv 1)",
+      "description": "Livello 1 · Trasmutazione · Concentrazione\nTempo di lancio: 1 azione bonus\nGittata: Incantatore\nComponenti: V, S\nDurata: Concentrazione, massimo 10 minuti\n\nQuesto incantesimo ti permette di muoverti a un’andatura incredibile. Quando lanci questo incantesimo, e poi con un’azione bonus durante ciascun tuo turno fino al termine dell’incantesimo, puoi effettuare l’azione Scattare.\n"
+    },
+    {
+      "name": "Nube di Pugnali (warlock, Lv 2)",
+      "description": "Livello 2 · Evocazione · Concentrazione\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (una scheggia di vetro)\nDurata: Fino a 1 minuto\n\nCrei una nube di pugnali che riempie un cubo di 1,5 metri di lato, centrato su un punto a gittata che puoi vedere. Una creatura subisce 4d4 danni taglienti quando entra per la prima volta in un turno nell’area dell’incantesimo o quando inizia il suo turno lì.\n"
+    },
+    {
+      "name": "Sortilegio (warlock, Lv 1)",
+      "description": "Livello 1 · Ammaliamento · Concentrazione · Rituale\nTempo di lancio: 1 azione bonus\nGittata: 27 metri\nComponenti: V, S, M (l'occhio pietrificato di un girino)\nDurata: 1 ora\n\nL'incantatore scaglia una maledizione su una creatura entro gittata e che egli sia in grado di vedere. Finché l'incantesimo non termina, l'incantatore infligge ld6 danni necrotici extra al bersaglio ogni volta che lo colpisce con un attacco. Inoltre, quando l'incantatore lancia l'incantesimo, sceglie una caratteristica. Il bersaglio subisce svantaggio alle prove di caratteristica effettuate con la caratteristica scelta. Se il bersaglio scende a O punti ferita prima che questo incantesimo termini, l'incantatore può usare un'azione bonus in un suo turno successivo per maledire una nuova creatura. Un incantesimo rimuovi maledizione lanciato sul bersaglio termina questo incantesimo prematuramente. Al Livelll Superiori. Quando l'incantatore lancia questo incantesimo usando uno slot incantesimo di 3a o 4 livello. può mantenere la concentrazione sull'incantesimo fino a un massimo di 8 ore. Quando usa uno slot incantesimo di s􀁍 livello o superiore, può mantenere la concentrazione sull'incantesimo fino a un massimo di 24 ore.\n"
+    },
+    {
+      "name": "Blocca Persone (warlock, Lv 2)",
+      "description": "Livello 2 · Ammaliamento · Concentrazione\nTempo di lancio: 1 azione\nGittata: 18 metri\nComponenti: V, S, M (un piccolo pezzo dritto di ferro)\nDurata: Concentrazione, massimo 1 minuto\n\nScegli un umanoide a gittata e che puoi vedere. Il bersaglio deve superare un tiro salvezza su Saggezza o restare paralizzato per la durata. Al termine di ciascun suo turno, il bersaglio può effettuare un altro tiro salvezza su Saggezza. Se lo supera, per quel bersaglio l’incantesimo ha termine.\n"
+    },
+    {
+      "name": "Mano Magica (warlock, Lv 0)",
+      "description": "Livello 0 · Evocazione\nTempo di lancio: 1 azione\nGittata: 9 metri\nComponenti: V, S\nDurata: 1 minuto\n\nUna mano spettrale fluttuante compare in un punto a gittata, scelto da te. La mano resta per la durata dell’incantesimo o finché non viene interrotta con un’azione. La mano svanisce se si dovesse trovare a più di 9 metri da te o se lanci nuovamente l’incantesimo. Puoi usare la tua azione per controllare la mano. Puoi usare la mano per manipolare un oggetto, aprire una porta o un contenitore non chiusi a chiave, inserire o recuperare un oggetto da un contenitore aperto, o versare fuori i contenuti di una fiala. Puoi muovere la mano di 9 metri ogni volta che la usi. La mano non può attaccare, attivare oggetti magici o trasportare più di 5 chili.\n"
+    },
+    {
+      "name": "Palla di Fuoco (stregone, Lv 3)",
+      "description": "Livello 3 · Invocazione\nTempo di lancio: 1 azione\nGittata: 45 metri\nComponenti: V, S, M (una minuscola palla di guano di pipistrello e zolfo)\nDurata: Istantanea\n\nUn fascio di luce gialla parte dal tuo dito puntato verso un punto a gittata scelto da te, e poi esplode con un boato sommesso e si trasforma in un getto di fiamme. Ogni creatura in una sfera di 6 metri di raggio centrata in quel punto deve effettuare un tiro salvezza su Destrezza. Una creatura subisce 8d6 danni da fuoco se fallisce il tiro salvezza, o la metà di questi danni se lo supera. Il fuoco si propaga intorno agli angoli. Il fuoco incendia gli oggetti infiammabili nell’area che non sono indossati o trasportati.\n"
+    }
+  ],
+  "spells": [],
+  "personalityTraits": "Non cerco la gloria, cerco la prova. Ogni battaglia mi dice chi sono davvero, non posso voltare le spalle a chi è più debole, sarebbe come tradire me stesso.",
+  "ideals": "Protezione: 'La mia spada vale qualcosa solo se difende chi non può brandirne una.' Crescita: 'Ogni sfida, ogni ferita, ogni duello è un passo per diventare più forte di ieri.'",
+  "bonds": "Porta con sé la vecchia spada scheggiata che usò nel suo primo vero combattimento: simbolo del momento in cui ha scelto la sua strada.",
+  "flaws": "Non riesce a resistere al richiamo di una sfida: il rischio di superare se stesso lo spinge anche quando dovrebbe fermarsi.",
+  "backstory": "",
+  "capabilities": [
+    {
+      "name": "Deflagrazione Agonizzante",
+      "kind": "active",
+      "shortDescription": "Mod. CAR ai danni di Deflagrazione Occulta",
+      "category": "Supplica occulta",
+      "description": "Prerequisito: trucchetto Deflagrazione Occulta.\nEffetto: quando lanci Deflagrazione Occulta, aggiungi il tuo modificatore di Carisma ai danni di ogni raggio che colpisce.",
+      "usage": {
+        "resetOn": "atWill",
+        "used": []
+      }
+    },
+    {
+      "name": "Vigore immondo",
+      "kind": "active",
+      "shortDescription": "Vita Falsata (1°) a volontà",
+      "category": "Supplica Occulta",
+      "description": "Puoi lanciare Vita Falsata su te stesso a volontà come incantesimo di 1° livello, senza spendere slot incantesimo né componenti materiali.",
+      "usage": {
+        "resetOn": "atWill",
+        "used": []
+      }
+    },
+    {
+      "name": "Lama Assetata",
+      "kind": "passive",
+      "shortDescription": "Doppio attacco con la lama del patto",
+      "category": "Supplica Occulta",
+      "description": "Prerequisiti: 5° livello, privilegio Patto della Lama\nOgni volta che effettua l'azione Attacco nel suo turno, il warlock può attaccare con la sua arma del patto due volte anziché una."
+    }
+  ]
+}

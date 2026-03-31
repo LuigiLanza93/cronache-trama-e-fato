@@ -120,6 +120,39 @@ export type EncounterScenario = {
   updatedAt: string;
 };
 
+export type SpellEntry = {
+  name: string;
+  level: number;
+  school: string | null;
+  casting_time: string | null;
+  range: string | null;
+  components: string | null;
+  duration: string | null;
+  concentration: boolean;
+  saving_throw?: string | null;
+  attack_roll?: boolean;
+  damage?: string | null;
+  scaling?: string | null;
+  ritual: boolean;
+  description: string;
+  usage?: string | null;
+  rest?: string | null;
+  _source?: string | null;
+};
+
+export type SpellsByClass = Record<string, SpellEntry[]>;
+
+export type SkillEntry = {
+  name: string;
+  ability: string;
+};
+
+export type SkillsPayload = {
+  skills: SkillEntry[];
+};
+
+export type SpellSlotTable = Record<string, Record<string, Record<string, number>>>;
+
 async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
@@ -230,6 +263,18 @@ export function createCharacterRequest(payload: {
 
 export function fetchMonsters() {
   return authFetch<MonsterSummary[]>("/api/monsters", { method: "GET" });
+}
+
+export function fetchSpells() {
+  return authFetch<SpellsByClass>("/api/spells", { method: "GET" });
+}
+
+export function fetchSkills() {
+  return authFetch<SkillsPayload>("/api/rules/skills", { method: "GET" });
+}
+
+export function fetchSpellSlots() {
+  return authFetch<SpellSlotTable>("/api/rules/spell-slots", { method: "GET" });
 }
 
 export function fetchMonster(monsterId: string) {

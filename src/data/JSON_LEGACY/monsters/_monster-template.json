@@ -1,0 +1,98 @@
+{
+  "slug": "nome-mostro",
+  "general": {
+    "name": "Nome Mostro",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "0.25 (1/4)",
+      "xp": 50
+    },
+    "size": "Media",
+    "creatureType": "Umanoide",
+    "subtype": "Sottotipo",
+    "typeLabel": "Umanoide (Sottotipo)",
+    "alignment": "Neutrale",
+    "environments": ["Ambiente"]
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 1,
+      "formula": "1d8"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 10,
+    "constitution": 10,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 0
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 0
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva",
+        "value": "10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Nome tratto",
+      "description": "Descrizione del tratto.",
+      "usage": null
+    }
+  ],
+  "actions": [
+    {
+      "name": "Nome azione",
+      "description": "Descrizione dell'azione.",
+      "usage": null
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": [
+      {
+        "name": "Nome azione leggendaria",
+        "description": "Descrizione dell'azione leggendaria.",
+        "cost": 1
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": []
+}

@@ -1,0 +1,99 @@
+{
+  "slug": "donnola-gigante",
+  "general": {
+    "name": "Donnola Gigante",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Media",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 9,
+      "formula": "2d8"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 16,
+    "constitution": 10,
+    "intelligence": 4,
+    "wisdom": 12,
+    "charisma": 5
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "visione al buio",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Udito e Olfatto Affinati",
+      "usage": null,
+      "description": "La donnola ha vantaggio nelle prove di"
+    },
+    {
+      "name": "Saggezza (Percezione) basate su udito o olfatto",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 a colpire, portata 1,5 m, un bersaglio. Colpisce: 5 (1d4 + 3) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Donnola Gigante\nMedia bestia, disallineato\nFORZA 11 (+0)\nDESTREZZA 16 (+3)\nCOSTITUZIONE 10 (+0)\nINTELLIGENZA 4 (-3)\nSAGGEZZA 12 (+1)\nCARISMA 5 (-3)\nClasse Armatura 13\nPunti Ferita 9 (2d8)\nVelocità 12 m\nAbilità Furtività +5, Percezione +3\nSensi visione al buio 18 m, Percezione passiva 13\nLingue -\nSfida 1/8 (25 PE)\nUdito e Olfatto Affinati. La donnola ha vantaggio nelle prove di\nSaggezza (Percezione) basate su udito o olfatto.\nAzioni\nMorso. Attacco con Arma da Mischia: +5 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 5 (1d4 + 3) danni perforanti."
+  }
+}

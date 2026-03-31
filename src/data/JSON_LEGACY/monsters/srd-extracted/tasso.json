@@ -1,0 +1,86 @@
+{
+  "slug": "tasso",
+  "general": {
+    "name": "Tasso",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 10
+    },
+    "size": "Minuscola",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 3,
+      "formula": "1d4 + 1"
+    },
+    "speed": {
+      "walk": "5 m",
+      "burrow": "1"
+    }
+  },
+  "abilities": {
+    "strength": 4,
+    "dexterity": 11,
+    "constitution": 12,
+    "intelligence": 2,
+    "wisdom": 12,
+    "charisma": 5
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "visione al buio",
+        "value": "9 m"
+      },
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Olfatto Affinato",
+      "usage": null,
+      "description": "Il tasso ha vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +2 a colpire, portata 1,5 m, un bersaglio. Colpisce: 1 danno perforante."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Tasso\nMinuscola bestia, disallineato\nFORZA 4 (-3)\nDESTREZZA 11 (+0)\nCOSTITUZIONE 12 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 12 (+1)\nCARISMA 5 (-3)\nClasse Armatura 10\nPunti Ferita 3 (1d4 + 1)\nVelocità 6 m, scavo 1,5 m\nSensi visione al buio 9 m, Percezione passiva 11\nLingue -\nSfida 0 (10 PE)\nOlfatto Affinato. Il tasso ha vantaggio alle prove di Saggezza\n(Percezione) basate sull'olfatto.\nAzioni\nMorso. Attacco con Arma da Mischia: +2 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 1 danno perforante."
+  }
+}

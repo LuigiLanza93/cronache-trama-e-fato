@@ -1,0 +1,102 @@
+{
+  "slug": "orso-polare",
+  "general": {
+    "name": "Orso Polare",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 42,
+      "formula": "5d10 + 15"
+    },
+    "speed": {
+      "walk": "12 m",
+      "swim": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 20,
+    "dexterity": 10,
+    "constitution": 16,
+    "intelligence": 2,
+    "wisdom": 13,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Olfatto Affinato",
+      "usage": null,
+      "description": "L'orso ha vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'orso effettua due attacchi: uno con il morso e uno con gli artigli."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 12 (2d6 + 5) danni taglienti."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 a colpire, portata 1,5 m, un bersaglio. Colpisce: 9 (1d8 + 5) danni perforanti. VARIANTE: ORSO DELLE CAVERNE"
+    },
+    {
+      "name": "Alcuni orsi si sono adattati alla vita sottoterra",
+      "usage": null,
+      "description": "Costoro hanno le stesse statistiche degli orsi polari, ma con visione al buio 18 m."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Orso Polare\nGrande bestia, disallineato\nFORZA 20 (+5)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 16 (+3)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 13 (+1)\nCARISMA 7 (-2)\nClasse Armatura 12 (armatura naturale)\nPunti Ferita 42 (5d10 + 15)\nVelocità 12 m, nuoto 9 m\nAbilità Percezione +3\nSensi Percezione passiva 13\nLingue -\nSfida 2 (450 PE)\nOlfatto Affinato. L'orso ha vantaggio alle prove di Saggezza\n(Percezione) basate sull'olfatto.\nAzioni\nMultiattacco. L'orso effettua due attacchi: uno con il morso e\nuno con gli artigli.\nArtigli. Attacco con Arma da Mischia: +7 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 12 (2d6 + 5) danni taglienti.\nMorso. Attacco con Arma da Mischia: +7 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 9 (1d8 + 5) danni perforanti.\nVARIANTE: ORSO DELLE CAVERNE\nAlcuni orsi si sono adattati alla vita sottoterra. Costoro hanno le\nstesse statistiche degli orsi polari, ma con visione al buio 18 m."
+  }
+}

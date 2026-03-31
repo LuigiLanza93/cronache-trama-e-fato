@@ -1,0 +1,91 @@
+{
+  "slug": "mulo",
+  "general": {
+    "name": "Mulo",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Media",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "disallineato",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 14,
+    "dexterity": 10,
+    "constitution": 13,
+    "intelligence": 2,
+    "wisdom": 10,
+    "charisma": 5
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Bestia da Soma",
+      "usage": null,
+      "description": "Il mulo è considerato un animale Grande al fine di determinare la sua capacità di carico."
+    },
+    {
+      "name": "Piedi Saldi",
+      "usage": null,
+      "description": "Il mulo ha vantaggio ai tiri salvezza di Forza e"
+    },
+    {
+      "name": "Destrezza effettuati contro effetti che lo farebbero cadere prono",
+      "usage": null,
+      "description": ""
+    }
+  ],
+  "actions": [
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +2 a colpire, portata 1,5 m, un bersaglio. Colpisce: 4 (1d4 + 2) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "srd05_13_bestiario.pdf",
+    "rawText": "Mulo\nMedia bestia, disallineato\nFORZA 14 (+2)\nDESTREZZA 10 (+0)\nCOSTITUZIONE 13 (+1)\nINTELLIGENZA 2 (-4)\nSAGGEZZA 10 (+0)\nCARISMA 5 (-3)\nClasse Armatura 10\nPunti Ferita 11 (2d8 + 2)\nVelocità 12 m\nSensi Percezione passiva 10\nLingue -\nSfida 1/8 (25 PE)\nBestia da Soma. Il mulo è considerato un animale Grande al fine\ndi determinare la sua capacità di carico.\nPiedi Saldi. Il mulo ha vantaggio ai tiri salvezza di Forza e\nDestrezza effettuati contro effetti che lo farebbero cadere prono.\nAzioni\nZoccoli. Attacco con Arma da Mischia: +2 a colpire, portata 1,5\nm, un bersaglio.\nColpisce: 4 (1d4 + 2) danni contundenti."
+  }
+}
