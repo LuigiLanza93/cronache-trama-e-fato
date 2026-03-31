@@ -52,6 +52,26 @@ CREATE TABLE "Monster" (
 );
 
 -- CreateTable
+CREATE TABLE "Spell" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "slug" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "level" INTEGER NOT NULL,
+    "school" TEXT,
+    "castingTime" TEXT,
+    "range" TEXT,
+    "duration" TEXT,
+    "concentration" BOOLEAN NOT NULL DEFAULT false,
+    "ritual" BOOLEAN NOT NULL DEFAULT false,
+    "sourceType" TEXT NOT NULL,
+    "sourceUrl" TEXT,
+    "classes" TEXT NOT NULL,
+    "data" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
 CREATE TABLE "ChatMessage" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "characterId" TEXT NOT NULL,
@@ -123,6 +143,21 @@ CREATE INDEX "Monster_name_idx" ON "Monster"("name");
 
 -- CreateIndex
 CREATE INDEX "Monster_challengeRatingDecimal_idx" ON "Monster"("challengeRatingDecimal");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Spell_slug_key" ON "Spell"("slug");
+
+-- CreateIndex
+CREATE INDEX "Spell_name_idx" ON "Spell"("name");
+
+-- CreateIndex
+CREATE INDEX "Spell_level_idx" ON "Spell"("level");
+
+-- CreateIndex
+CREATE INDEX "Spell_school_idx" ON "Spell"("school");
+
+-- CreateIndex
+CREATE INDEX "Spell_sourceType_idx" ON "Spell"("sourceType");
 
 -- CreateIndex
 CREATE INDEX "ChatMessage_characterId_createdAt_idx" ON "ChatMessage"("characterId", "createdAt");

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import fs from "node:fs";
 import crypto from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
 import express from "express";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
@@ -18,17 +19,13 @@ const PORT = process.env.PORT || 3000;
 
 // ---- Disk paths ----
 const DATA_DIR = path.resolve(__dirname, "src/data");
-const CHAR_DIR = path.resolve(DATA_DIR, "characters");
-const ARCHIVED_CHAR_DIR = path.resolve(DATA_DIR, "archived-characters");
 const MONSTERS_DIR = path.resolve(DATA_DIR, "monsters");
-const CUSTOM_MONSTERS_DIR = path.resolve(MONSTERS_DIR, "custom");
 const SKILLS_FILE = path.resolve(DATA_DIR, "skills.json");
-const USERS_FILE = path.resolve(DATA_DIR, "users.json");
-const OWNERSHIP_FILE = path.resolve(DATA_DIR, "character-ownership.json");
-const CHATS_FILE = path.resolve(DATA_DIR, "chats.json");
-const ENCOUNTER_SCENARIOS_FILE = path.resolve(DATA_DIR, "encounter-scenarios.json");
 const PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
 const SESSION_COOKIE = "ctf_session";
+const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
+const sqlite = new DatabaseSync(SQLITE_DB_FILE);
+sqlite.exec("PRAGMA foreign_keys = ON;");
 
 // ---- Utilities ----
 function ensureDir(p) {
@@ -43,11 +40,6 @@ function readJsonFile(filePath, fallback) {
     console.error(`[server] Failed to read ${filePath}:`, error);
     return fallback;
   }
-}
-
-function writeJsonFile(filePath, value) {
-  ensureDir(path.dirname(filePath));
-  fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + "\n", "utf-8");
 }
 
 function sanitizeSlug(value = "") {
@@ -72,40 +64,419 @@ function extensionFromType(contentType = "", fileName = "") {
   return null;
 }
 
+function parseJsonString(value, fallback) {
+  if (typeof value !== "string" || !value.trim()) return fallback;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function normalizeUserRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    displayName: row.displayName,
+    role: String(row.role).toLowerCase() === "dm" ? "dm" : "player",
+    passwordSalt: row.passwordSalt,
+    passwordHash: row.passwordHash,
+    mustChangePassword: !!row.mustChangePassword,
+    createdAt: row.createdAt ?? null,
+    updatedAt: row.updatedAt ?? null,
+  };
+}
+
+function normalizeCharacterRow(row) {
+  if (!row) return null;
+  const data = parseJsonString(row.data, {});
+  return {
+    ...data,
+    slug: row.slug,
+    characterType: String(row.characterType).toLowerCase(),
+    basicInfo: {
+      ...(data.basicInfo ?? {}),
+      characterName: row.name,
+      class: row.className ?? data?.basicInfo?.class ?? "",
+      race: row.race ?? data?.basicInfo?.race ?? "",
+      alignment: row.alignment ?? data?.basicInfo?.alignment ?? "",
+      background: row.background ?? data?.basicInfo?.background ?? "",
+      level: row.level ?? data?.basicInfo?.level ?? 1,
+      portraitUrl: row.portraitUrl ?? data?.basicInfo?.portraitUrl ?? "",
+    },
+  };
+}
+
+function normalizeMonsterDbRow(row) {
+  if (!row) return null;
+  const data = parseJsonString(row.data, {});
+  if (!data?.general && data?.name) {
+    const legacyCr = String(data.challengeRating ?? "");
+    const legacyDecimal =
+      legacyCr === "1/8" ? 0.125 :
+      legacyCr === "1/4" ? 0.25 :
+      legacyCr === "1/2" ? 0.5 :
+      Number.isFinite(Number(legacyCr)) ? Number(legacyCr) : null;
+
+    return normalizeMonsterRecord(
+      {
+        slug: row.slug,
+        general: {
+          name: String(data.name),
+          challengeRating: {
+            fraction: legacyCr,
+            decimal: legacyDecimal,
+            display: legacyCr,
+            xp: typeof row.challengeRatingXp === "number" ? row.challengeRatingXp : 0,
+          },
+          size: String(data.size ?? ""),
+          creatureType: String(data.type ?? ""),
+          subtype: "",
+          typeLabel: String(data.type ?? ""),
+          alignment: String(data.alignment ?? ""),
+          environments: [],
+        },
+        combat: {
+          armorClass: {
+            value: Number.isFinite(Number(data.armorClass)) ? Number(data.armorClass) : 0,
+            note: "",
+          },
+          hitPoints: {
+            average: Number.isFinite(Number(data.hitPoints)) ? Number(data.hitPoints) : 0,
+            formula: String(data.hitDice ?? ""),
+          },
+          speed: Object.fromEntries(
+            Object.entries(data.speed ?? {}).map(([key, value]) => [key, typeof value === "number" ? `${value}` : String(value)])
+          ),
+        },
+        abilities: {
+          strength: Number(data?.abilityScores?.strength ?? 10),
+          dexterity: Number(data?.abilityScores?.dexterity ?? 10),
+          constitution: Number(data?.abilityScores?.constitution ?? 10),
+          intelligence: Number(data?.abilityScores?.intelligence ?? 10),
+          wisdom: Number(data?.abilityScores?.wisdom ?? 10),
+          charisma: Number(data?.abilityScores?.charisma ?? 10),
+        },
+        details: {
+          savingThrows: [],
+          skills: Array.isArray(data.skills)
+            ? data.skills.map((skill) => ({ name: String(skill), bonus: 0 }))
+            : [],
+          damageVulnerabilities: [],
+          damageResistances: [],
+          damageImmunities: [],
+          conditionImmunities: [],
+          senses: Array.isArray(data.senses)
+            ? data.senses.map((sense) => ({ name: String(sense) }))
+            : [],
+          languages: Array.isArray(data.languages)
+            ? data.languages.map((language) => ({ name: String(language) }))
+            : [],
+          proficiencyBonus: Number.isFinite(Number(data.proficiencyBonus)) ? Number(data.proficiencyBonus) : 2,
+        },
+        traits: Array.isArray(data.specialAbilities)
+          ? data.specialAbilities.map((item) => ({
+              name: String(item.name ?? ""),
+              usage: null,
+              description: String(item.description ?? ""),
+            }))
+          : [],
+        actions: Array.isArray(data.actions)
+          ? data.actions.map((item) => ({
+              name: String(item.name ?? ""),
+              usage: null,
+              description: String(item.description ?? ""),
+            }))
+          : [],
+        bonusActions: [],
+        reactions: [],
+        legendaryActions: {
+          description: "",
+          actions: [],
+        },
+        lairActions: [],
+        regionalEffects: [],
+        notes: [],
+        source: {},
+      },
+      row.id,
+      row.sourceFile ?? row.filePath ?? ""
+    );
+  }
+  return normalizeMonsterRecord(
+    data,
+    row.id,
+    row.sourceFile ?? row.filePath ?? ""
+  );
+}
+
+function normalizeSpellRow(row) {
+  if (!row) return null;
+  const data = parseJsonString(row.data, {});
+  const classes = parseJsonString(row.classes, []);
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    level: Number.isFinite(Number(row.level)) ? Number(row.level) : 0,
+    school: row.school ?? "",
+    casting_time: row.castingTime ?? data?.casting_time ?? "",
+    range: row.range ?? data?.range ?? "",
+    components: data?.components ?? "",
+    duration: row.duration ?? data?.duration ?? "",
+    concentration: !!row.concentration,
+    saving_throw: data?.saving_throw ?? null,
+    attack_roll: !!data?.attack_roll,
+    damage: data?.damage ?? null,
+    scaling: data?.scaling ?? null,
+    ritual: !!row.ritual,
+    description: data?.description ?? "",
+    usage: data?.usage ?? null,
+    rest: data?.rest ?? null,
+    _source: row.sourceUrl ?? data?._source ?? null,
+    classes: Array.isArray(classes) ? classes : [],
+  };
+}
+
 function readUsers() {
-  return readJsonFile(USERS_FILE, []);
-}
-
-function readOwnership() {
-  return readJsonFile(OWNERSHIP_FILE, {});
-}
-
-function writeUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2) + "\n", "utf-8");
-}
-
-function writeOwnership(ownership) {
-  fs.writeFileSync(OWNERSHIP_FILE, JSON.stringify(ownership, null, 2) + "\n", "utf-8");
-}
-
-function readChats() {
-  return readJsonFile(CHATS_FILE, {});
+  return sqlite
+    .prepare('SELECT * FROM "User" ORDER BY username COLLATE NOCASE')
+    .all()
+    .map(normalizeUserRow);
 }
 
 function readSkills() {
   return readJsonFile(SKILLS_FILE, { skills: [] });
 }
 
+function readOwnership() {
+  const rows = sqlite
+    .prepare('SELECT slug, ownerUserId FROM "Character" WHERE archivedAt IS NULL AND ownerUserId IS NOT NULL')
+    .all();
+  return Object.fromEntries(rows.map((row) => [row.slug, row.ownerUserId]));
+}
+
+function writeUsers(users) {
+  sqlite.exec('DELETE FROM "User";');
+  const insert = sqlite.prepare(`
+    INSERT INTO "User" (
+      id, username, displayName, role, passwordSalt, passwordHash, mustChangePassword, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const transaction = sqlite.transaction((records) => {
+    for (const user of records) {
+      insert.run(
+        user.id,
+        user.username,
+        user.displayName ?? user.username,
+        String(user.role).toLowerCase() === "dm" ? "DM" : "PLAYER",
+        user.passwordSalt ?? "",
+        user.passwordHash ?? "",
+        user.mustChangePassword ? 1 : 0,
+        user.createdAt ?? new Date().toISOString(),
+        user.updatedAt ?? user.createdAt ?? new Date().toISOString()
+      );
+    }
+  });
+
+  transaction(users);
+}
+
+function writeOwnership(ownership) {
+  const allCharacters = sqlite.prepare('SELECT id, slug FROM "Character"').all();
+  const clear = sqlite.prepare('UPDATE "Character" SET ownerUserId = NULL WHERE id = ?');
+  const set = sqlite.prepare('UPDATE "Character" SET ownerUserId = ? WHERE slug = ?');
+
+  const transaction = sqlite.transaction(() => {
+    for (const character of allCharacters) {
+      clear.run(character.id);
+    }
+    for (const [slug, userId] of Object.entries(ownership)) {
+      set.run(userId, slug);
+    }
+  });
+
+  transaction();
+}
+
+function readChats() {
+  const rows = sqlite.prepare(`
+    SELECT
+      m.id,
+      c.slug AS slug,
+      m.senderUserId,
+      m.senderRole,
+      COALESCE(u.displayName, u.username, CASE WHEN m.senderRole = 'DM' THEN 'DM' ELSE 'Player' END) AS senderName,
+      m.text,
+      m.createdAt
+    FROM "ChatMessage" m
+    JOIN "Character" c ON c.id = m.characterId
+    LEFT JOIN "User" u ON u.id = m.senderUserId
+    ORDER BY m.createdAt ASC
+  `).all();
+
+  return rows.reduce((acc, row) => {
+    if (!acc[row.slug]) acc[row.slug] = [];
+    acc[row.slug].push({
+      id: row.id,
+      slug: row.slug,
+      senderUserId: row.senderUserId,
+      senderRole: String(row.senderRole).toLowerCase(),
+      senderName: row.senderName,
+      text: row.text,
+      createdAt: row.createdAt,
+    });
+    return acc;
+  }, {});
+}
+
 function writeChats(chats) {
-  fs.writeFileSync(CHATS_FILE, JSON.stringify(chats, null, 2) + "\n", "utf-8");
+  const deleteAll = sqlite.prepare('DELETE FROM "ChatMessage"');
+  const findCharacterId = sqlite.prepare('SELECT id FROM "Character" WHERE slug = ?');
+  const insert = sqlite.prepare(`
+    INSERT INTO "ChatMessage" (id, characterId, senderUserId, senderRole, text, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  const transaction = sqlite.transaction((threads) => {
+    deleteAll.run();
+    for (const [slug, messages] of Object.entries(threads)) {
+      const character = findCharacterId.get(slug);
+      if (!character || !Array.isArray(messages)) continue;
+      for (const message of messages) {
+        insert.run(
+          message.id ?? crypto.randomUUID(),
+          character.id,
+          message.senderUserId ?? null,
+          String(message.senderRole).toLowerCase() === "dm" ? "DM" : "PLAYER",
+          message.text ?? "",
+          message.createdAt ?? new Date().toISOString()
+        );
+      }
+    }
+  });
+
+  transaction(chats ?? {});
 }
 
 function readEncounterScenarios() {
-  return readJsonFile(ENCOUNTER_SCENARIOS_FILE, []);
+  const scenarios = sqlite.prepare(`
+    SELECT id, name, createdByUserId, createdAt, updatedAt
+    FROM "EncounterScenario"
+    ORDER BY name COLLATE NOCASE
+  `).all();
+  const entries = sqlite.prepare(`
+    SELECT id, scenarioId, entryType, sortOrder, monsterId, name, count, armorClass, hitPoints, powerTag, createdAt, updatedAt
+    FROM "EncounterScenarioEntry"
+    ORDER BY sortOrder ASC
+  `).all();
+
+  return scenarios.map((scenario) => ({
+    id: scenario.id,
+    name: scenario.name,
+    createdByUserId: scenario.createdByUserId ?? null,
+    createdAt: scenario.createdAt,
+    updatedAt: scenario.updatedAt,
+    entries: entries
+      .filter((entry) => entry.scenarioId === scenario.id)
+      .map((entry) => ({
+        type: entry.entryType === "BESTIARY" ? "bestiary" : "manual",
+        monsterId: entry.monsterId ?? undefined,
+        name: entry.name,
+        count: entry.count,
+        armorClass: entry.armorClass ?? undefined,
+        hitPoints: entry.hitPoints ?? undefined,
+        powerTag: entry.powerTag ? String(entry.powerTag).toLowerCase() : null,
+      })),
+  }));
+}
+
+function readSpellsByClass() {
+  const rows = sqlite
+    .prepare('SELECT * FROM "Spell" ORDER BY level ASC, name COLLATE NOCASE ASC')
+    .all();
+
+  const byClass = {};
+  for (const row of rows) {
+    const spell = normalizeSpellRow(row);
+    if (!spell) continue;
+    for (const className of spell.classes) {
+      if (!byClass[className]) byClass[className] = [];
+      byClass[className].push({
+        name: spell.name,
+        level: spell.level,
+        school: spell.school,
+        casting_time: spell.casting_time,
+        range: spell.range,
+        components: spell.components,
+        duration: spell.duration,
+        concentration: spell.concentration,
+        saving_throw: spell.saving_throw,
+        attack_roll: spell.attack_roll,
+        damage: spell.damage,
+        scaling: spell.scaling,
+        ritual: spell.ritual,
+        description: spell.description,
+        usage: spell.usage,
+        rest: spell.rest,
+        _source: spell._source,
+      });
+    }
+  }
+
+  return Object.fromEntries(
+    Object.entries(byClass).sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+  );
 }
 
 function writeEncounterScenarios(scenarios) {
-  writeJsonFile(ENCOUNTER_SCENARIOS_FILE, scenarios);
+  const deleteEntries = sqlite.prepare('DELETE FROM "EncounterScenarioEntry"');
+  const deleteScenarios = sqlite.prepare('DELETE FROM "EncounterScenario"');
+  const insertScenario = sqlite.prepare(`
+    INSERT INTO "EncounterScenario" (id, name, createdByUserId, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  const insertEntry = sqlite.prepare(`
+    INSERT INTO "EncounterScenarioEntry" (
+      id, scenarioId, entryType, sortOrder, monsterId, name, count, armorClass, hitPoints, powerTag, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const transaction = sqlite.transaction((records) => {
+    deleteEntries.run();
+    deleteScenarios.run();
+
+    for (const scenario of records) {
+      insertScenario.run(
+        scenario.id,
+        scenario.name,
+        scenario.createdByUserId ?? null,
+        scenario.createdAt ?? new Date().toISOString(),
+        scenario.updatedAt ?? scenario.createdAt ?? new Date().toISOString()
+      );
+
+      (Array.isArray(scenario.entries) ? scenario.entries : []).forEach((entry, index) => {
+        insertEntry.run(
+          `${scenario.id}:${index + 1}`,
+          scenario.id,
+          entry.type === "bestiary" ? "BESTIARY" : "MANUAL",
+          index + 1,
+          entry.monsterId ?? null,
+          entry.name ?? "",
+          Math.max(1, parseInt(entry.count, 10) || 1),
+          entry.armorClass ?? null,
+          entry.hitPoints ?? null,
+          entry.powerTag ? String(entry.powerTag).toUpperCase() : null,
+          scenario.updatedAt ?? scenario.createdAt ?? new Date().toISOString(),
+          scenario.updatedAt ?? scenario.createdAt ?? new Date().toISOString()
+        );
+      });
+    }
+  });
+
+  transaction(scenarios ?? []);
 }
 
 function createScenarioId(name) {
@@ -294,19 +665,18 @@ function normalizeMonsterRecord(data = {}, fileId, relativePath) {
 }
 
 function readMonsterByRelativePath(relativePath) {
-  const filePath = path.resolve(MONSTERS_DIR, relativePath);
-  if (!filePath.startsWith(MONSTERS_DIR)) return null;
-  if (!fs.existsSync(filePath)) return null;
-  const data = readJsonFile(filePath, null);
-  if (!data || typeof data !== "object" || !data.general?.name) return null;
-  return normalizeMonsterRecord(data, encodeMonsterId(relativePath), relativePath);
+  const row = sqlite
+    .prepare('SELECT * FROM "Monster" WHERE sourceFile = ? LIMIT 1')
+    .get(relativePath);
+  return normalizeMonsterDbRow(row);
 }
 
 function listMonsters() {
-  return listMonsterFiles()
-    .map((relativePath) => readMonsterByRelativePath(relativePath))
-    .filter(Boolean)
-    .sort((a, b) => a.general.name.localeCompare(b.general.name, undefined, { sensitivity: "base" }));
+  return sqlite
+    .prepare('SELECT * FROM "Monster" ORDER BY name COLLATE NOCASE')
+    .all()
+    .map(normalizeMonsterDbRow)
+    .filter(Boolean);
 }
 
 function createEmptyMonster(name) {
@@ -383,12 +753,12 @@ function createEmptyMonster(name) {
 }
 
 function createUniqueMonsterFileName(baseName) {
-  ensureDir(CUSTOM_MONSTERS_DIR);
   const baseSlug = sanitizeSlug(baseName || "monster");
   const existing = new Set(
-    fs.readdirSync(CUSTOM_MONSTERS_DIR, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
-      .map((entry) => entry.name.replace(/\.json$/i, ""))
+    sqlite
+      .prepare(`SELECT sourceFile FROM "Monster" WHERE sourceType = 'CUSTOM' AND sourceFile IS NOT NULL`)
+      .all()
+      .map((row) => String(row.sourceFile).replace(/^custom\//, "").replace(/\.json$/i, ""))
   );
 
   if (!existing.has(baseSlug)) return `${baseSlug}.json`;
@@ -401,51 +771,122 @@ function createUniqueMonsterFileName(baseName) {
 }
 
 function listCharacterSlugs() {
-  ensureDir(CHAR_DIR);
-  return fs
-    .readdirSync(CHAR_DIR, { withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
-    .map((entry) => entry.name.replace(/\.json$/i, ""));
+  return sqlite
+    .prepare('SELECT slug FROM "Character" WHERE archivedAt IS NULL ORDER BY slug COLLATE NOCASE')
+    .all()
+    .map((row) => row.slug);
 }
 
 function readCharacter(slug) {
-  ensureDir(CHAR_DIR);
-  const filePath = path.join(CHAR_DIR, `${slug}.json`);
-  if (!fs.existsSync(filePath)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
-  } catch (e) {
-    console.error(`[server] Failed to read ${slug}.json:`, e);
-    return null;
-  }
+  const row = sqlite
+    .prepare('SELECT * FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(slug);
+  return normalizeCharacterRow(row);
 }
 
 function listCharacters() {
-  return listCharacterSlugs()
-    .map((slug) => readCharacter(slug))
+  return sqlite
+    .prepare('SELECT * FROM "Character" WHERE archivedAt IS NULL ORDER BY name COLLATE NOCASE')
+    .all()
+    .map(normalizeCharacterRow)
     .filter(Boolean);
 }
 
 function writeCharacter(slug, data) {
-  ensureDir(CHAR_DIR);
-  const filePath = path.join(CHAR_DIR, `${slug}.json`);
-  const tmpPath = filePath + ".tmp";
-  const json = JSON.stringify(data, null, 2) + "\n";
-  fs.writeFileSync(tmpPath, json, "utf-8");
-  fs.renameSync(tmpPath, filePath);
+  const basicInfo = data?.basicInfo ?? {};
+  const createdByUserId = data?.createdBy?.userId ?? null;
+  const existing = sqlite
+    .prepare('SELECT id, ownerUserId, createdByUserId, createdAt, archivedAt FROM "Character" WHERE slug = ? LIMIT 1')
+    .get(slug);
+
+  const payload = {
+    id: existing?.id ?? slug,
+    slug,
+    name: String(basicInfo.characterName ?? slug),
+    characterType: String(data?.characterType).toLowerCase() === "png" ? "PNG" : "PG",
+    ownerUserId: existing?.ownerUserId ?? null,
+    createdByUserId: existing?.createdByUserId ?? createdByUserId,
+    className: basicInfo.class ? String(basicInfo.class) : null,
+    race: basicInfo.race ? String(basicInfo.race) : null,
+    alignment: basicInfo.alignment ? String(basicInfo.alignment) : null,
+    background: basicInfo.background ? String(basicInfo.background) : null,
+    level: Number.isFinite(Number(basicInfo.level)) ? Number(basicInfo.level) : null,
+    portraitUrl: basicInfo.portraitUrl ? String(basicInfo.portraitUrl) : null,
+    archivedAt: existing?.archivedAt ?? null,
+    data: JSON.stringify(data),
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existing) {
+    sqlite.prepare(`
+      UPDATE "Character"
+      SET
+        name = ?,
+        characterType = ?,
+        ownerUserId = ?,
+        createdByUserId = ?,
+        className = ?,
+        race = ?,
+        alignment = ?,
+        background = ?,
+        level = ?,
+        portraitUrl = ?,
+        archivedAt = ?,
+        data = ?,
+        updatedAt = ?
+      WHERE slug = ?
+    `).run(
+      payload.name,
+      payload.characterType,
+      payload.ownerUserId,
+      payload.createdByUserId,
+      payload.className,
+      payload.race,
+      payload.alignment,
+      payload.background,
+      payload.level,
+      payload.portraitUrl,
+      payload.archivedAt,
+      payload.data,
+      payload.updatedAt,
+      slug
+    );
+    return;
+  }
+
+  sqlite.prepare(`
+    INSERT INTO "Character" (
+      id, slug, name, characterType, ownerUserId, createdByUserId, className, race, alignment, background,
+      level, portraitUrl, archivedAt, data, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    payload.id,
+    payload.slug,
+    payload.name,
+    payload.characterType,
+    payload.ownerUserId,
+    payload.createdByUserId,
+    payload.className,
+    payload.race,
+    payload.alignment,
+    payload.background,
+    payload.level,
+    payload.portraitUrl,
+    payload.archivedAt,
+    payload.data,
+    payload.createdAt,
+    payload.updatedAt
+  );
 }
 
 function archiveCharacter(slug) {
-  ensureDir(CHAR_DIR);
-  ensureDir(ARCHIVED_CHAR_DIR);
-
-  const sourcePath = path.join(CHAR_DIR, `${slug}.json`);
-  if (!fs.existsSync(sourcePath)) return null;
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const destinationPath = path.join(ARCHIVED_CHAR_DIR, `${slug}--archived-${timestamp}.json`);
-  fs.renameSync(sourcePath, destinationPath);
-  return destinationPath;
+  const archivedAt = new Date().toISOString();
+  const result = sqlite
+    .prepare('UPDATE "Character" SET archivedAt = ?, updatedAt = ? WHERE slug = ? AND archivedAt IS NULL')
+    .run(archivedAt, archivedAt, slug);
+  if (!result.changes) return null;
+  return archivedAt;
 }
 
 function hashPassword(password, salt) {
@@ -554,7 +995,9 @@ function createUserId(username) {
 }
 
 function createUniqueCharacterSlug(baseSlug) {
-  const existing = new Set(listCharacterSlugs());
+  const existing = new Set(
+    sqlite.prepare('SELECT slug FROM "Character"').all().map((row) => row.slug)
+  );
   if (!existing.has(baseSlug)) return baseSlug;
 
   let index = 2;
@@ -955,15 +1398,14 @@ async function start() {
     return res.json(monster);
   });
 
+  app.get("/api/spells", requireAuth, (req, res) => {
+    return res.json(readSpellsByClass());
+  });
+
   app.put("/api/monsters/:monsterId", requireRole("dm"), (req, res) => {
     const relativePath = decodeMonsterId(req.params.monsterId);
     if (!relativePath) {
       return res.status(400).json({ error: "Invalid monster id" });
-    }
-
-    const filePath = path.resolve(MONSTERS_DIR, relativePath);
-    if (!filePath.startsWith(MONSTERS_DIR) || !fs.existsSync(filePath)) {
-      return res.status(404).json({ error: "Monster not found" });
     }
 
     const currentMonster = readMonsterByRelativePath(relativePath);
@@ -981,22 +1423,48 @@ async function start() {
       return res.status(400).json({ error: "Monster name required" });
     }
 
-    writeJsonFile(filePath, {
-      slug: nextMonster.slug || sanitizeSlug(nextMonster.general.name),
-      general: nextMonster.general,
-      combat: nextMonster.combat,
-      abilities: nextMonster.abilities,
-      details: nextMonster.details,
-      traits: nextMonster.traits,
-      actions: nextMonster.actions,
-      bonusActions: nextMonster.bonusActions,
-      reactions: nextMonster.reactions,
-      legendaryActions: nextMonster.legendaryActions,
-      lairActions: nextMonster.lairActions,
-      regionalEffects: nextMonster.regionalEffects,
-      notes: nextMonster.notes,
-      source: nextMonster.source,
-    });
+    sqlite.prepare(`
+      UPDATE "Monster"
+      SET
+        slug = ?,
+        name = ?,
+        challengeRatingDisplay = ?,
+        challengeRatingDecimal = ?,
+        challengeRatingXp = ?,
+        size = ?,
+        creatureType = ?,
+        alignment = ?,
+        data = ?,
+        updatedAt = ?
+      WHERE id = ?
+    `).run(
+      nextMonster.slug || sanitizeSlug(nextMonster.general.name),
+      nextMonster.general.name,
+      nextMonster.general.challengeRating.display || null,
+      nextMonster.general.challengeRating.decimal,
+      nextMonster.general.challengeRating.xp,
+      nextMonster.general.size || null,
+      nextMonster.general.creatureType || nextMonster.general.typeLabel || null,
+      nextMonster.general.alignment || null,
+      JSON.stringify({
+        slug: nextMonster.slug || sanitizeSlug(nextMonster.general.name),
+        general: nextMonster.general,
+        combat: nextMonster.combat,
+        abilities: nextMonster.abilities,
+        details: nextMonster.details,
+        traits: nextMonster.traits,
+        actions: nextMonster.actions,
+        bonusActions: nextMonster.bonusActions,
+        reactions: nextMonster.reactions,
+        legendaryActions: nextMonster.legendaryActions,
+        lairActions: nextMonster.lairActions,
+        regionalEffects: nextMonster.regionalEffects,
+        notes: nextMonster.notes,
+        source: nextMonster.source,
+      }),
+      new Date().toISOString(),
+      nextMonster.id
+    );
 
     return res.json(readMonsterByRelativePath(relativePath));
   });
@@ -1040,24 +1508,45 @@ async function start() {
 
     const fileName = createUniqueMonsterFileName(name);
     const relativePath = `custom/${fileName}`;
-    const filePath = path.resolve(MONSTERS_DIR, relativePath);
+    const now = new Date().toISOString();
+    const monsterId = encodeMonsterId(relativePath);
 
-    writeJsonFile(filePath, {
-      slug: nextMonster.slug || sanitizeSlug(name),
-      general: nextMonster.general,
-      combat: nextMonster.combat,
-      abilities: nextMonster.abilities,
-      details: nextMonster.details,
-      traits: nextMonster.traits,
-      actions: nextMonster.actions,
-      bonusActions: nextMonster.bonusActions,
-      reactions: nextMonster.reactions,
-      legendaryActions: nextMonster.legendaryActions,
-      lairActions: nextMonster.lairActions,
-      regionalEffects: nextMonster.regionalEffects,
-      notes: nextMonster.notes,
-      source: nextMonster.source,
-    });
+    sqlite.prepare(`
+      INSERT INTO "Monster" (
+        id, slug, name, sourceType, sourceFile, challengeRatingDisplay, challengeRatingDecimal,
+        challengeRatingXp, size, creatureType, alignment, data, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      monsterId,
+      nextMonster.slug || sanitizeSlug(name),
+      nextMonster.general.name,
+      "CUSTOM",
+      relativePath,
+      nextMonster.general.challengeRating.display || null,
+      nextMonster.general.challengeRating.decimal,
+      nextMonster.general.challengeRating.xp,
+      nextMonster.general.size || null,
+      nextMonster.general.creatureType || nextMonster.general.typeLabel || null,
+      nextMonster.general.alignment || null,
+      JSON.stringify({
+        slug: nextMonster.slug || sanitizeSlug(name),
+        general: nextMonster.general,
+        combat: nextMonster.combat,
+        abilities: nextMonster.abilities,
+        details: nextMonster.details,
+        traits: nextMonster.traits,
+        actions: nextMonster.actions,
+        bonusActions: nextMonster.bonusActions,
+        reactions: nextMonster.reactions,
+        legendaryActions: nextMonster.legendaryActions,
+        lairActions: nextMonster.lairActions,
+        regionalEffects: nextMonster.regionalEffects,
+        notes: nextMonster.notes,
+        source: nextMonster.source,
+      }),
+      now,
+      now
+    );
 
     return res.status(201).json(readMonsterByRelativePath(relativePath));
   });

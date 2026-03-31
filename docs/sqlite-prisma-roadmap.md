@@ -89,7 +89,7 @@ Scelta consigliata per limitare la complessita':
 
 ## Fase 4: Script di Migrazione Dai JSON
 
-Stato: in corso
+Stato: completata
 
 Creare uno script che importi nel database i dati attuali.
 
@@ -102,12 +102,15 @@ Sorgenti da migrare:
 - `src/data/chats.json`
 - `src/data/encounter-scenarios.json`
 
-Output atteso:
+Output ottenuto:
 
 - database SQLite popolato
-- preservazione dei riferimenti tra utenti, schede, mostri, chat e scenari
+- script di import disponibile
+- preservazione dei riferimenti tra utenti, schede, mostri, chat e scenari presenti nei JSON sorgente
 
 ## Fase 5: Sostituzione Graduale Del Layer JSON
+
+Stato: completata
 
 Sostituire progressivamente in `server.js` il layer basato su file con query Prisma.
 
@@ -125,6 +128,8 @@ Obiettivo:
 - mantenere le API attuali il piu' possibile stabili
 
 ## Fase 6: Compatibilita' Applicativa
+
+Stato: completata
 
 Adattare il backend in modo che il frontend continui a funzionare con modifiche minime.
 
@@ -167,4 +172,4 @@ Quando il database e' a regime:
 
 ## Prossimo Passo
 
-Completare e testare lo script di importazione dai JSON al database SQLite.
+Eseguire la verifica funzionale completa del runtime su backend SQLite e decidere gli ultimi affinamenti prima di spegnere del tutto il layer JSON residuo.

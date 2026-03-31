@@ -11,6 +11,7 @@ const DATA_DIR = path.resolve(repoRoot, "src/data");
 const CHAR_DIR = path.resolve(DATA_DIR, "characters");
 const ARCHIVED_CHAR_DIR = path.resolve(DATA_DIR, "archived-characters");
 const MONSTERS_DIR = path.resolve(DATA_DIR, "monsters");
+const SPELLS_FILE = path.resolve(DATA_DIR, "spells.json");
 const USERS_FILE = path.resolve(DATA_DIR, "users.json");
 const OWNERSHIP_FILE = path.resolve(DATA_DIR, "character-ownership.json");
 const CHATS_FILE = path.resolve(DATA_DIR, "chats.json");
@@ -176,6 +177,89 @@ function collectMonsters() {
   });
 }
 
+function collectSpells() {
+  const catalog = readJson(SPELLS_FILE, {});
+  const deduped = new Map();
+
+  for (const [className, spells] of Object.entries(catalog)) {
+    if (!Array.isArray(spells)) continue;
+
+    for (const spell of spells) {
+      const normalizedName = String(spell?.name ?? "").trim();
+      if (!normalizedName) continue;
+
+      const key = sanitizeSlug(normalizedName);
+      const now = new Date().toISOString();
+
+      if (!deduped.has(key)) {
+        deduped.set(key, {
+          id: key,
+          slug: key,
+          name: normalizedName,
+          level: Number.isFinite(Number(spell?.level)) ? Number(spell.level) : 0,
+          school: spell?.school ? String(spell.school) : null,
+          castingTime: spell?.casting_time ? String(spell.casting_time) : null,
+          range: spell?.range ? String(spell.range) : null,
+          duration: spell?.duration ? String(spell.duration) : null,
+          concentration: !!spell?.concentration,
+          ritual: !!spell?.ritual,
+          sourceType: "SRD",
+          sourceUrl: spell?._source ? String(spell._source) : null,
+          classes: new Set(),
+          payload: {
+            name: normalizedName,
+            level: Number.isFinite(Number(spell?.level)) ? Number(spell.level) : 0,
+            school: spell?.school ?? null,
+            casting_time: spell?.casting_time ?? null,
+            range: spell?.range ?? null,
+            components: spell?.components ?? null,
+            duration: spell?.duration ?? null,
+            concentration: !!spell?.concentration,
+            saving_throw: spell?.saving_throw ?? null,
+            attack_roll: !!spell?.attack_roll,
+            damage: spell?.damage ?? null,
+            scaling: spell?.scaling ?? null,
+            ritual: !!spell?.ritual,
+            description: spell?.description ?? "",
+            usage: spell?.usage ?? null,
+            rest: spell?.rest ?? null,
+            _source: spell?._source ?? null,
+          },
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      const entry = deduped.get(key);
+      entry.classes.add(String(className));
+    }
+  }
+
+  return Array.from(deduped.values())
+    .map((entry) => ({
+      id: entry.id,
+      slug: entry.slug,
+      name: entry.name,
+      level: entry.level,
+      school: entry.school,
+      castingTime: entry.castingTime,
+      range: entry.range,
+      duration: entry.duration,
+      concentration: entry.concentration,
+      ritual: entry.ritual,
+      sourceType: entry.sourceType,
+      sourceUrl: entry.sourceUrl,
+      classes: JSON.stringify(Array.from(entry.classes).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))),
+      data: JSON.stringify({
+        ...entry.payload,
+        classes: Array.from(entry.classes).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })),
+      }),
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
 function collectChatMessages() {
   const chats = readJson(CHATS_FILE, {});
   const messages = [];
@@ -244,6 +328,7 @@ function buildImportSql() {
   const users = collectUsers();
   const characters = collectCharacters();
   const monsters = collectMonsters();
+  const spells = collectSpells();
   const chatMessages = collectChatMessages();
   const { scenarios, entries } = collectScenarios();
 
@@ -253,12 +338,14 @@ function buildImportSql() {
     'DELETE FROM "ChatMessage";',
     'DELETE FROM "EncounterScenarioEntry";',
     'DELETE FROM "EncounterScenario";',
+    'DELETE FROM "Spell";',
     'DELETE FROM "Monster";',
     'DELETE FROM "Character";',
     'DELETE FROM "User";',
     ...users.map((row) => toSqlInsert("User", row)),
     ...characters.map((row) => toSqlInsert("Character", row)),
     ...monsters.map((row) => toSqlInsert("Monster", row)),
+    ...spells.map((row) => toSqlInsert("Spell", row)),
     ...scenarios.map((row) => toSqlInsert("EncounterScenario", row)),
     ...entries.map((row) => toSqlInsert("EncounterScenarioEntry", row)),
     ...chatMessages.map((row) => toSqlInsert("ChatMessage", row)),
@@ -273,6 +360,7 @@ function buildImportSql() {
       users: users.length,
       characters: characters.length,
       monsters: monsters.length,
+      spells: spells.length,
       scenarios: scenarios.length,
       scenarioEntries: entries.length,
       chatMessages: chatMessages.length,

@@ -41,7 +41,7 @@ import {
   proficiencyBonus,
   calculateSkillValues,
 } from "@/utils";
-import spellsData from "@/data/spells.json";
+import { fetchSpells, type SpellsByClass as SpellsByClassFromApi, type SpellEntry as SpellFromApi } from "@/lib/auth";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
 import AbilityScores from "@/components/characterSheet/ability-scores";
@@ -164,22 +164,8 @@ interface Character {
   capabilities?: CapabilityEntry[];
 }
 
-type Spell = {
-  name: string;
-  level: number;
-  school: string;
-  casting_time: string;
-  range: string;
-  components: string;
-  duration: string;
-  concentration: boolean;
-  ritual: boolean;
-  description: string;
-  usage?: string | null;
-};
-
-type SpellsByClass = Record<string, Spell[]>;
-const spells = spellsData as SpellsByClass;
+type Spell = SpellFromApi;
+type SpellsByClass = SpellsByClassFromApi;
 
 const COIN_KEYS = {
   mr: "cp",
@@ -361,6 +347,7 @@ const CharacterSheet = () => {
   const [modalDescription, setModalDescription] = useState<string>("");
   const [modalFeatureIndex, setModalFeatureIndex] = useState<number | null>(null);
   const [confirmRemoveFeatureOpen, setConfirmRemoveFeatureOpen] = useState(false);
+  const [spells, setSpells] = useState<SpellsByClass>({});
 
   const classOptions = useMemo(() => Object.keys(spells).sort(), []);
   const filteredSpells = useMemo(() => {
@@ -869,6 +856,21 @@ const CharacterSheet = () => {
       try { announceLeave(); } catch {}
     };
   }, [character]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const nextSpells = await fetchSpells();
+        if (active) setSpells(nextSpells);
+      } catch {
+        if (active) setSpells({});
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (characterData?.basicInfo?.class) {
