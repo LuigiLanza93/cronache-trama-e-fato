@@ -9,11 +9,15 @@
     "build:dev": "vite build --mode development",
     "extract:bestiary": "node scripts/extract-srd-bestiary.mjs",
     "lint": "eslint .",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
     "preview": "vite preview",
     "start": "NODE_ENV=production node server.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
+    "@prisma/client": "^7.6.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -53,6 +57,7 @@
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "pdf-parse": "^2.4.5",
+    "prisma": "^7.6.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
