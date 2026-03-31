@@ -124,6 +124,7 @@ export default function Login() {
               <div>`luigi_f` / `luigi_f`</div>
             </div>
           </div>
+
         </Card>
       </div>
     </div>

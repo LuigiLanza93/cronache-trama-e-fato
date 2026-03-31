@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { AppVersionDialog } from "@/components/app-version-dialog";
 import { useAuth } from "@/components/auth-provider";
 import { fetchCharacters } from "@/realtime";
 
@@ -213,6 +214,9 @@ const Index = () => {
                   ? "Da qui puoi aprire la gestione sessione, organizzare gli utenti e mantenere allineate le associazioni tra account e personaggi."
                   : "Da qui accedi ai tuoi personaggi associati e, quando sarà pronta, potrai iniziare la creazione di un nuovo personaggio."}
               </p>
+              <div className="mt-4">
+                <AppVersionDialog />
+              </div>
             </div>
 
             <Button variant="ghost" size="sm" onClick={() => void logout()}>

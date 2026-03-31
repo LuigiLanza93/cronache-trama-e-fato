@@ -1,0 +1,106 @@
+{
+  "version": "1.0.0",
+  "releaseName": "SQLite Release",
+  "releasedAt": "2026-03-31",
+  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite.",
+  "sections": [
+    {
+      "title": "Autenticazione e struttura app",
+      "items": [
+        "Introdotta autenticazione con ruoli DM e Player.",
+        "Aggiunta home dedicata per master e giocatori dopo il login.",
+        "Implementato il cambio password guidato.",
+        "Aggiunta persistenza della sessione anche dopo il riavvio del server."
+      ]
+    },
+    {
+      "title": "Gestione utenti e schede",
+      "items": [
+        "Implementata Gestione utenti con creazione, eliminazione e reset password.",
+        "Implementata Gestione Schede con associazione tra utenze e personaggi.",
+        "Supporto alla distinzione tra PG e PNG.",
+        "Creazione scheda con campi base D&D 5e: nome, classe, razza, allineamento e background.",
+        "Archiviazione non distruttiva delle schede."
+      ]
+    },
+    {
+      "title": "Dashboard DM",
+      "items": [
+        "Rework della pagina DM con roster sempre visibile.",
+        "Indicatore online semplificato con pallino acceso o spento.",
+        "Informazioni del roster piu' utili durante la sessione.",
+        "Azioni rapide ripensate con icone piu' leggere e organiche."
+      ]
+    },
+    {
+      "title": "Chat DM e personaggio",
+      "items": [
+        "Introdotta chat privata persistente tra DM e personaggio.",
+        "Lato DM: finestre chat multiple stile messenger.",
+        "Lato giocatore: accesso diretto alla chat dalla scheda.",
+        "Supporto a cronologia, notifiche unread e consultazione continua durante la sessione."
+      ]
+    },
+    {
+      "title": "Tracker iniziativa",
+      "items": [
+        "Migliorata la gestione del roster giocatori.",
+        "Integrazione del bestiario direttamente nel tracker.",
+        "Possibilita' di aggiungere mostri manualmente o dal bestiario.",
+        "Apertura rapida del dettaglio mostro durante il combattimento.",
+        "Pulsante d20 per tirare l'iniziativa dei mostri.",
+        "Supporto agli scenari di combattimento salvabili e ricaricabili."
+      ]
+    },
+    {
+      "title": "Mostri con PF variabili",
+      "items": [
+        "Gestione PF mostri da bestiario con slider basato sulla formula dadi.",
+        "Classificazione visiva dei mostri in base ai PF scelti: Debolissimo, Debole, Forte, Fortissimo.",
+        "Fasce colorate sullo slider per valutare a colpo d'occhio la potenza relativa."
+      ]
+    },
+    {
+      "title": "Alert di turno",
+      "items": [
+        "Aggiunto highlight visivo della scheda quando arriva il turno del personaggio.",
+        "Su device compatibili, supporto alla vibrazione per segnalare il proprio turno."
+      ]
+    },
+    {
+      "title": "Bestiario",
+      "items": [
+        "Creata Gestione bestiario completa.",
+        "Elenco mostri con filtri principali.",
+        "Dettaglio mostro ridisegnato in stile Manuale dei Mostri.",
+        "Sezioni collassabili per una consultazione piu' pratica.",
+        "Modalita' modifica dedicata.",
+        "Possibilita' di creare mostri da zero o duplicare mostri esistenti."
+      ]
+    },
+    {
+      "title": "Import SRD",
+      "items": [
+        "Definito un nuovo formato strutturato per i mostri.",
+        "Integrato parser per estrarre il bestiario SRD da PDF.",
+        "Importato un ampio catalogo di mostri in formato navigabile e modificabile."
+      ]
+    },
+    {
+      "title": "Migrazione a SQLite",
+      "items": [
+        "Runtime migrato da JSON a SQLite e Prisma.",
+        "Dati applicativi principali ora gestiti da database: utenti, schede, ownership, mostri, incantesimi, skill, progressioni slot, chat, scenari e sessioni.",
+        "JSON storici mantenuti come archivio e sorgente di import."
+      ]
+    },
+    {
+      "title": "Documentazione e tooling",
+      "items": [
+        "Aggiornati README e roadmap tecnica.",
+        "Aggiunto supporto pratico all'accesso locale al DB.",
+        "Consolidata l'infrastruttura per il versioning della release."
+      ]
+    }
+  ]
+}
