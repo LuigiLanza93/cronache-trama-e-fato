@@ -3,14 +3,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fetchMonster, fetchMonsters, type MonsterEntry, type MonsterSummary } from "@/lib/auth";
+import { Slider } from "@/components/ui/slider";
+import {
+  createEncounterScenarioRequest,
+  deleteEncounterScenarioRequest,
+  fetchEncounterScenarios,
+  fetchMonster,
+  fetchMonsters,
+  type EncounterScenario,
+  type EncounterScenarioEntry,
+  type MonsterEntry,
+  type MonsterSummary,
+} from "@/lib/auth";
 import { fetchCharacter, fetchCharacters, notifyInitiativeTurn } from "@/realtime";
 import {
   BookOpen,
+  FolderOpen,
   Check,
   ChevronRight,
   Copy,
@@ -20,6 +33,7 @@ import {
   Heart,
   Play,
   Plus,
+  Save,
   Skull,
   Sword,
   Swords,
@@ -67,6 +81,7 @@ type MonsterEncounterEntry = {
   sortOrder: number;
   source: "custom" | "bestiary";
   sourceMonsterId: string | null;
+  powerTag?: MonsterPowerTag | null;
 };
 
 type EncounterState = {
@@ -110,6 +125,19 @@ type BestiaryMonsterDraft = {
   initiative: string;
   hitPoints: string;
 };
+
+type PendingScenarioCombatant = {
+  id: string;
+  source: "bestiary" | "manual";
+  sourceMonsterId: string | null;
+  name: string;
+  armorClass: number;
+  hitPoints: number;
+  initiative: string;
+  powerTag?: MonsterPowerTag | null;
+};
+
+type MonsterPowerTag = "debolissimo" | "debole" | "forte" | "fortissimo";
 
 const STORAGE_KEY = "dm-initiative-tracker-v1";
 const STATUS_OPTIONS = [
@@ -288,6 +316,13 @@ function parseEncounterState(raw: string | null): EncounterState {
               : [],
             source: monster?.source === "bestiary" ? "bestiary" : "custom",
             sourceMonsterId: typeof monster?.sourceMonsterId === "string" ? monster.sourceMonsterId : null,
+            powerTag:
+              monster?.powerTag === "debolissimo" ||
+              monster?.powerTag === "debole" ||
+              monster?.powerTag === "forte" ||
+              monster?.powerTag === "fortissimo"
+                ? monster.powerTag
+                : null,
           }))
         : [],
       started: !!parsed?.started,
@@ -403,6 +438,13 @@ function nextMonsterCopyName(name: string, monsters: MonsterEncounterEntry[]) {
   return `${normalizedBase} ${highest + 1}`;
 }
 
+function sanitizeNameForId(value: string) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function crLabel(challengeRating?: { display?: string; fraction?: string }) {
   return challengeRating?.display || challengeRating?.fraction || "-";
 }
@@ -410,6 +452,95 @@ function crLabel(challengeRating?: { display?: string; fraction?: string }) {
 function abilityModifierLabel(score: number) {
   const value = abilityModifier(score);
   return `${score} (${value >= 0 ? `+${value}` : value})`;
+}
+
+function parseHitPointFormulaRange(formula: string | undefined, average: number) {
+  const normalized = String(formula ?? "")
+    .trim()
+    .replace(/[−–—]/g, "-")
+    .replace(/\s+/g, "");
+
+  if (!normalized) return null;
+
+  const terms = normalized.match(/[+-]?\d+d\d+|[+-]?\d+/gi);
+  if (!terms || terms.length === 0) return null;
+
+  let min = 0;
+  let max = 0;
+  let consumed = "";
+
+  for (const rawTerm of terms) {
+    const term = rawTerm.replace(/\s+/g, "");
+    consumed += term;
+
+    const diceMatch = term.match(/^([+-]?)(\d+)d(\d+)$/i);
+    if (diceMatch) {
+      const sign = diceMatch[1] === "-" ? -1 : 1;
+      const count = parseInt(diceMatch[2], 10);
+      const sides = parseInt(diceMatch[3], 10);
+      if (!Number.isFinite(count) || !Number.isFinite(sides) || count <= 0 || sides <= 0) return null;
+
+      if (sign >= 0) {
+        min += count;
+        max += count * sides;
+      } else {
+        min -= count * sides;
+        max -= count;
+      }
+      continue;
+    }
+
+    const flat = parseInt(term, 10);
+    if (!Number.isFinite(flat)) return null;
+    min += flat;
+    max += flat;
+  }
+
+  if (consumed !== normalized) return null;
+
+  const safeMin = Math.max(0, min);
+  const safeMax = Math.max(safeMin, max);
+  const safeAverage = Math.min(safeMax, Math.max(safeMin, Math.round(average)));
+
+  return {
+    min: safeMin,
+    max: safeMax,
+    average: safeAverage,
+  };
+}
+
+function classifyMonsterPowerTag(hitPoints: number, range: ReturnType<typeof parseHitPointFormulaRange>) {
+  if (!range || !Number.isFinite(hitPoints)) return null;
+  if (hitPoints <= range.min) return "debolissimo" as const;
+  if (hitPoints >= range.max) return "fortissimo" as const;
+
+  const span = range.max - range.min;
+  if (span <= 0) return null;
+
+  const edgeBand = Math.max(1, Math.floor(span * 0.2));
+  if (hitPoints <= range.min + edgeBand) return "debole" as const;
+  if (hitPoints >= range.max - edgeBand) return "forte" as const;
+  return null;
+}
+
+function formatMonsterPowerTag(tag: MonsterPowerTag | null | undefined) {
+  if (!tag) return null;
+  return tag.charAt(0).toUpperCase() + tag.slice(1);
+}
+
+function monsterPowerTagClassName(tag: MonsterPowerTag | null | undefined) {
+  switch (tag) {
+    case "debolissimo":
+      return "border-rose-300/60 bg-rose-500/10 text-rose-200 dark:border-rose-300/40 dark:bg-rose-400/10 dark:text-rose-200";
+    case "debole":
+      return "border-amber-300/60 bg-amber-500/10 text-amber-100 dark:border-amber-300/40 dark:bg-amber-400/10 dark:text-amber-100";
+    case "forte":
+      return "border-sky-300/60 bg-sky-500/10 text-sky-100 dark:border-sky-300/40 dark:bg-sky-400/10 dark:text-sky-100";
+    case "fortissimo":
+      return "border-emerald-300/60 bg-emerald-500/10 text-emerald-100 dark:border-emerald-300/40 dark:bg-emerald-400/10 dark:text-emerald-100";
+    default:
+      return "";
+  }
 }
 
 function formatMonsterTagged(items: Array<{ name: string; value?: string }>) {
@@ -591,6 +722,11 @@ export default function InitiativeTracker() {
   const [monsterDetailOpen, setMonsterDetailOpen] = useState(false);
   const [monsterDetailLoading, setMonsterDetailLoading] = useState(false);
   const [selectedMonsterDetail, setSelectedMonsterDetail] = useState<MonsterEntry | null>(null);
+  const [scenarioDialogOpen, setScenarioDialogOpen] = useState(false);
+  const [scenarioSaveOpen, setScenarioSaveOpen] = useState(false);
+  const [scenarioName, setScenarioName] = useState("");
+  const [encounterScenarios, setEncounterScenarios] = useState<EncounterScenario[]>([]);
+  const [pendingScenarioCombatants, setPendingScenarioCombatants] = useState<PendingScenarioCombatant[]>([]);
 
   const rollD20 = () => Math.floor(Math.random() * 20) + 1;
 
@@ -657,6 +793,20 @@ export default function InitiativeTracker() {
     () => bestiaryCatalog.find((entry) => entry.id === bestiaryMonsterDraft.monsterId) ?? null,
     [bestiaryCatalog, bestiaryMonsterDraft.monsterId]
   );
+  const selectedBestiaryMonsterDetails = useMemo(
+    () => (selectedBestiaryMonster ? bestiaryById[selectedBestiaryMonster.id] ?? null : null),
+    [bestiaryById, selectedBestiaryMonster]
+  );
+  const bestiaryHitPointRange = useMemo(
+    () =>
+      selectedBestiaryMonsterDetails
+        ? parseHitPointFormulaRange(
+            selectedBestiaryMonsterDetails.combat.hitPoints.formula,
+            selectedBestiaryMonsterDetails.combat.hitPoints.average
+          )
+        : null,
+    [selectedBestiaryMonsterDetails]
+  );
 
   useEffect(() => {
     document.title = "Iniziativa | D&D Character Manager";
@@ -679,6 +829,14 @@ export default function InitiativeTracker() {
       })
       .catch(() => {
         if (active) setBestiaryCatalog([]);
+      });
+
+    void fetchEncounterScenarios()
+      .then((scenarios) => {
+        if (active) setEncounterScenarios(Array.isArray(scenarios) ? scenarios : []);
+      })
+      .catch(() => {
+        if (active) setEncounterScenarios([]);
       });
 
     return () => {
@@ -867,7 +1025,7 @@ export default function InitiativeTracker() {
 
   const addBestiaryMonster = () => {
     if (!selectedBestiaryMonster) return false;
-    const sourceMonster = bestiaryById[selectedBestiaryMonster.id];
+    const sourceMonster = selectedBestiaryMonsterDetails;
     if (!sourceMonster) return false;
 
     const initiative = Number.isFinite(parseInt(bestiaryMonsterDraft.initiative, 10))
@@ -878,6 +1036,7 @@ export default function InitiativeTracker() {
     const hitPoints = Number.isFinite(parseInt(bestiaryMonsterDraft.hitPoints, 10))
       ? Math.max(0, parseInt(bestiaryMonsterDraft.hitPoints, 10))
       : sourceMonster.combat.hitPoints.average;
+    const powerTag = classifyMonsterPowerTag(hitPoints, bestiaryHitPointRange);
 
     setEncounter((prev) => ({
       ...prev,
@@ -895,6 +1054,7 @@ export default function InitiativeTracker() {
           sortOrder: prev.nextSortOrder,
           source: "bestiary",
           sourceMonsterId: sourceMonster.id,
+          powerTag,
         },
       ],
       nextSortOrder: prev.nextSortOrder + 1,
@@ -1081,6 +1241,159 @@ export default function InitiativeTracker() {
     }
   };
 
+  const saveCurrentMonstersAsScenario = async () => {
+    const monstersToSave = encounter.monsters;
+    if (monstersToSave.length === 0 || !scenarioName.trim()) return;
+
+    const grouped = new Map<string, EncounterScenarioEntry>();
+    monstersToSave.forEach((monster) => {
+      const key = monster.source === "bestiary" && monster.sourceMonsterId
+        ? `bestiary:${monster.sourceMonsterId}:${monster.maxHitPoints}`
+        : `manual:${monster.name}:${monster.armorClass}:${monster.maxHitPoints}`;
+
+      if (grouped.has(key)) {
+        const current = grouped.get(key)!;
+        current.count += 1;
+        return;
+      }
+
+      if (monster.source === "bestiary" && monster.sourceMonsterId) {
+        grouped.set(key, {
+          type: "bestiary",
+          monsterId: monster.sourceMonsterId,
+          name: monster.name,
+          hitPoints: monster.maxHitPoints,
+          powerTag: monster.powerTag ?? null,
+          count: 1,
+        });
+      } else {
+        grouped.set(key, {
+          type: "manual",
+          name: monster.name,
+          armorClass: monster.armorClass,
+          hitPoints: monster.maxHitPoints,
+          count: 1,
+        });
+      }
+    });
+
+    try {
+      const created = await createEncounterScenarioRequest({
+        name: scenarioName.trim(),
+        entries: Array.from(grouped.values()),
+      });
+      setEncounterScenarios((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })));
+      setScenarioName("");
+      setScenarioSaveOpen(false);
+    } catch {
+      // keep silent for now
+    }
+  };
+
+  const loadScenario = async (scenario: EncounterScenario) => {
+    const pending: PendingScenarioCombatant[] = [];
+
+    for (const entry of scenario.entries) {
+      if (entry.type === "bestiary") {
+        let monster = bestiaryById[entry.monsterId];
+        if (!monster) {
+          try {
+            monster = await fetchMonster(entry.monsterId);
+            setBestiaryById((prev) => ({ ...prev, [monster!.id]: monster! }));
+          } catch {
+            continue;
+          }
+        }
+
+        for (let index = 0; index < entry.count; index += 1) {
+          pending.push({
+            id: `${scenario.id}:${entry.monsterId}:${index}`,
+            source: "bestiary",
+            sourceMonsterId: entry.monsterId,
+            name: entry.count > 1 ? `${monster.general.name} ${index + 1}` : monster.general.name,
+            armorClass: monster.combat.armorClass.value,
+            hitPoints:
+              typeof entry.hitPoints === "number" && Number.isFinite(entry.hitPoints)
+                ? Math.max(0, entry.hitPoints)
+                : monster.combat.hitPoints.average,
+            initiative: "",
+            powerTag:
+              entry.powerTag ??
+              classifyMonsterPowerTag(
+                typeof entry.hitPoints === "number" && Number.isFinite(entry.hitPoints)
+                  ? Math.max(0, entry.hitPoints)
+                  : monster.combat.hitPoints.average,
+                parseHitPointFormulaRange(monster.combat.hitPoints.formula, monster.combat.hitPoints.average)
+              ),
+          });
+        }
+        continue;
+      }
+
+      for (let index = 0; index < entry.count; index += 1) {
+        pending.push({
+          id: `${scenario.id}:${sanitizeNameForId(entry.name)}:${index}`,
+          source: "manual",
+          sourceMonsterId: null,
+          name: entry.count > 1 ? `${entry.name} ${index + 1}` : entry.name,
+          armorClass: entry.armorClass,
+          hitPoints: entry.hitPoints,
+          initiative: "",
+        });
+      }
+    }
+
+    setPendingScenarioCombatants(pending);
+    setScenarioDialogOpen(false);
+    setSetupSectionsOpen(true);
+  };
+
+  const addPendingScenarioCombatants = () => {
+    const ready = pendingScenarioCombatants
+      .map((entry) => {
+        const initiative = Number.isFinite(parseInt(entry.initiative, 10)) ? parseInt(entry.initiative, 10) : NaN;
+        if (!Number.isFinite(initiative)) return null;
+        return {
+          id: `monster:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          type: "monster" as const,
+          name: entry.name,
+          initiative,
+          armorClass: entry.armorClass,
+          currentHitPoints: entry.hitPoints,
+          maxHitPoints: entry.hitPoints,
+          statuses: [],
+          source: entry.source,
+          sourceMonsterId: entry.sourceMonsterId,
+          powerTag: entry.powerTag ?? null,
+        };
+      })
+      .filter(Boolean);
+
+    if (ready.length !== pendingScenarioCombatants.length) return;
+
+    setEncounter((prev) => ({
+      ...prev,
+      monsters: [
+        ...prev.monsters,
+        ...ready.map((monster, index) => ({
+          ...monster!,
+          sortOrder: prev.nextSortOrder + index,
+        })),
+      ],
+      nextSortOrder: prev.nextSortOrder + ready.length,
+    }));
+    setPendingScenarioCombatants([]);
+  };
+
+  const deleteScenario = async (scenarioId: string) => {
+    try {
+      await deleteEncounterScenarioRequest(scenarioId);
+      setEncounterScenarios((prev) => prev.filter((scenario) => scenario.id !== scenarioId));
+    } catch {
+      // keep silent for now
+    }
+  };
+
   return (
     <div className="min-h-screen parchment p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -1089,6 +1402,14 @@ export default function InitiativeTracker() {
           <p className="text-sm text-muted-foreground">
             Prepara il combattimento, ordina i partecipanti e scorri i turni senza perdere di vista PF e CA.
           </p>
+          <div className="flex justify-center gap-2">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setScenarioDialogOpen(true)} title="Carica scenario" aria-label="Carica scenario">
+              <FolderOpen className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setScenarioSaveOpen(true)} title="Salva scenario dai mostri attuali" aria-label="Salva scenario">
+              <Save className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -1303,8 +1624,8 @@ export default function InitiativeTracker() {
                       {selectedBestiaryMonster ? crLabel(selectedBestiaryMonster.challengeRating) : "-"}
                     </div>
                     <div className="flex h-7 items-center text-xs text-muted-foreground">
-                      {selectedBestiaryMonster && bestiaryById[selectedBestiaryMonster.id]
-                        ? bestiaryById[selectedBestiaryMonster.id].combat.armorClass.value
+                      {selectedBestiaryMonsterDetails
+                        ? selectedBestiaryMonsterDetails.combat.armorClass.value
                         : "-"}
                     </div>
                     <div>
@@ -1348,7 +1669,90 @@ export default function InitiativeTracker() {
                       </Button>
                     </div>
                   </form>
+                  {selectedBestiaryMonsterDetails && bestiaryHitPointRange ? (
+                    <div className="border-t border-border/60 px-3 py-3">
+                      <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-wide text-muted-foreground">
+                        <span>Range Punti Ferita</span>
+                        <span>
+                          {bestiaryHitPointRange.min} - {bestiaryHitPointRange.max}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[
+                          Math.min(
+                            bestiaryHitPointRange.max,
+                            Math.max(
+                              bestiaryHitPointRange.min,
+                              Number.isFinite(parseInt(bestiaryMonsterDraft.hitPoints, 10))
+                                ? parseInt(bestiaryMonsterDraft.hitPoints, 10)
+                                : bestiaryHitPointRange.average
+                            )
+                          ),
+                        ]}
+                        min={bestiaryHitPointRange.min}
+                        max={bestiaryHitPointRange.max}
+                        step={1}
+                        onValueChange={([value]) =>
+                          setBestiaryMonsterDraft((prev) => ({ ...prev, hitPoints: String(value ?? bestiaryHitPointRange.average) }))
+                        }
+                        aria-label="Punti ferita del mostro"
+                        className="py-1"
+                        trackClassName="bg-[linear-gradient(90deg,rgba(244,63,94,0.55)_0%,rgba(244,63,94,0.55)_0.8%,rgba(251,191,36,0.5)_0.8%,rgba(251,191,36,0.5)_20%,rgba(148,163,184,0.35)_20%,rgba(148,163,184,0.35)_80%,rgba(56,189,248,0.45)_80%,rgba(56,189,248,0.45)_99.2%,rgba(16,185,129,0.55)_99.2%,rgba(16,185,129,0.55)_100%)]"
+                        rangeClassName="bg-primary/30"
+                        thumbClassName="border-primary bg-background shadow-[0_0_0_2px_rgba(0,0,0,0.08)]"
+                      />
+                      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Min {bestiaryHitPointRange.min}</span>
+                        <span>Medio {selectedBestiaryMonsterDetails.combat.hitPoints.average}</span>
+                        <span>Max {bestiaryHitPointRange.max}</span>
+                      </div>
+                      <div className="mt-1 text-[11px] text-muted-foreground">
+                        Formula: {selectedBestiaryMonsterDetails.combat.hitPoints.formula}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
+
+                {pendingScenarioCombatants.length > 0 ? (
+                  <div className="overflow-hidden rounded-md border border-primary/30 bg-primary/5">
+                    <div className="flex items-center justify-between border-b border-primary/20 px-3 py-2">
+                      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Scenario pronto da caricare</div>
+                      <div className="flex items-center gap-2">
+                        <Button size="icon" className="h-7 w-7" onClick={addPendingScenarioCombatants} title="Conferma scenario" aria-label="Conferma scenario">
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setPendingScenarioCombatants([])} title="Annulla scenario" aria-label="Annulla scenario">
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1.6fr)_90px_80px_90px_70px] gap-2 border-b border-primary/20 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <span>Nome</span>
+                      <span>Init</span>
+                      <span>CA</span>
+                      <span>PF</span>
+                      <span>Fonte</span>
+                    </div>
+                    <div className="max-h-[260px] overflow-y-auto">
+                      {pendingScenarioCombatants.map((entry) => (
+                        <div key={entry.id} className="grid grid-cols-[minmax(0,1.6fr)_90px_80px_90px_70px] items-center gap-2 px-3 py-1.5 text-sm border-b border-primary/10 last:border-b-0">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div className="truncate font-medium text-primary">{entry.name}</div>
+                          {entry.powerTag ? (
+                            <Badge variant="outline" className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${monsterPowerTagClassName(entry.powerTag)}`}>
+                              {formatMonsterPowerTag(entry.powerTag)}
+                            </Badge>
+                          ) : null}
+                        </div>
+                          <Input value={entry.initiative} onChange={(event) => setPendingScenarioCombatants((prev) => prev.map((current) => current.id === entry.id ? { ...current, initiative: event.target.value } : current))} inputMode="numeric" className="h-7 text-xs" />
+                          <div className="text-xs text-foreground">{entry.armorClass}</div>
+                          <div className="text-xs text-foreground">{entry.hitPoints}</div>
+                          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{entry.source === "bestiary" ? "Best." : "Manuale"}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </CollapsibleContent>
             </Collapsible>
           </Card>
@@ -1444,6 +1848,11 @@ export default function InitiativeTracker() {
                             <div className="font-heading text-lg font-semibold text-primary">
                               {combatant.name}
                             </div>
+                            {combatant.type === "monster" && combatant.powerTag ? (
+                              <Badge variant="outline" className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${monsterPowerTagClassName(combatant.powerTag)}`}>
+                                {formatMonsterPowerTag(combatant.powerTag)}
+                              </Badge>
+                            ) : null}
                             <Badge variant="secondary">{combatant.initiative}</Badge>
                             {combatant.type === "player" ? (
                               <Badge variant="outline">
@@ -1648,6 +2057,80 @@ export default function InitiativeTracker() {
           )}
         </Card>
       </div>
+
+      <Dialog
+        open={scenarioSaveOpen}
+        onOpenChange={(open) => {
+          setScenarioSaveOpen(open);
+          if (!open) setScenarioName("");
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Salva scenario</DialogTitle>
+            <DialogDescription>
+              Salva i mostri attualmente nel tracker come composizione riutilizzabile.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="scenario-name">Nome scenario</Label>
+              <Input id="scenario-name" value={scenarioName} onChange={(event) => setScenarioName(event.target.value)} placeholder="Es. Scontro nella grotta" />
+            </div>
+            <div className="rounded-md border border-border/60 bg-background/50 px-3 py-3 text-sm text-muted-foreground">
+              {encounter.monsters.length === 0
+                ? "Nessun mostro attualmente nel tracker."
+                : `${encounter.monsters.length} nemici verranno trasformati in scenario.`}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScenarioSaveOpen(false)}>Annulla</Button>
+            <Button onClick={() => void saveCurrentMonstersAsScenario()} disabled={!scenarioName.trim() || encounter.monsters.length === 0}>
+              Salva
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={scenarioDialogOpen}
+        onOpenChange={setScenarioDialogOpen}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Carica scenario</DialogTitle>
+            <DialogDescription>
+              Seleziona uno scenario preparato: poi inserirai solo le iniziative dei nemici generati.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {encounterScenarios.length === 0 ? (
+              <div className="rounded-md border border-border/60 bg-background/50 px-3 py-4 text-sm text-muted-foreground">
+                Nessuno scenario salvato.
+              </div>
+            ) : encounterScenarios.map((scenario) => (
+              <div key={scenario.id} className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background/50 px-3 py-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground">{scenario.name}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {scenario.entries
+                      .map((entry) => `${entry.count} ${entry.name}${entry.type === "bestiary" && entry.powerTag ? ` (${formatMonsterPowerTag(entry.powerTag)})` : ""}`)
+                      .join(" + ")}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="icon" className="h-8 w-8" onClick={() => void loadScenario(scenario)} title="Carica scenario" aria-label="Carica scenario">
+                    <FolderOpen className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => void deleteScenario(scenario.id)} title="Elimina scenario" aria-label="Elimina scenario">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={monsterDetailOpen}

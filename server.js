@@ -26,6 +26,7 @@ const SKILLS_FILE = path.resolve(DATA_DIR, "skills.json");
 const USERS_FILE = path.resolve(DATA_DIR, "users.json");
 const OWNERSHIP_FILE = path.resolve(DATA_DIR, "character-ownership.json");
 const CHATS_FILE = path.resolve(DATA_DIR, "chats.json");
+const ENCOUNTER_SCENARIOS_FILE = path.resolve(DATA_DIR, "encounter-scenarios.json");
 const PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
 const SESSION_COOKIE = "ctf_session";
 
@@ -99,6 +100,18 @@ function writeChats(chats) {
   fs.writeFileSync(CHATS_FILE, JSON.stringify(chats, null, 2) + "\n", "utf-8");
 }
 
+function readEncounterScenarios() {
+  return readJsonFile(ENCOUNTER_SCENARIOS_FILE, []);
+}
+
+function writeEncounterScenarios(scenarios) {
+  writeJsonFile(ENCOUNTER_SCENARIOS_FILE, scenarios);
+}
+
+function createScenarioId(name) {
+  return `scenario_${sanitizeSlug(name)}_${crypto.randomBytes(4).toString("hex")}`;
+}
+
 function encodeMonsterId(relativePath) {
   return Buffer.from(relativePath, "utf-8").toString("base64url");
 }
@@ -111,6 +124,71 @@ function decodeMonsterId(monsterId) {
   } catch {
     return null;
   }
+}
+
+function parseMonsterHitPointRange(formula = "", average = 0) {
+  const normalized = String(formula)
+    .trim()
+    .replace(/[−–—]/g, "-")
+    .replace(/\s+/g, "");
+
+  if (!normalized) return null;
+
+  const terms = normalized.match(/[+-]?\d+d\d+|[+-]?\d+/gi);
+  if (!terms || terms.length === 0) return null;
+
+  let min = 0;
+  let max = 0;
+  let consumed = "";
+
+  for (const rawTerm of terms) {
+    const term = rawTerm.replace(/\s+/g, "");
+    consumed += term;
+
+    const diceMatch = term.match(/^([+-]?)(\d+)d(\d+)$/i);
+    if (diceMatch) {
+      const sign = diceMatch[1] === "-" ? -1 : 1;
+      const count = parseInt(diceMatch[2], 10);
+      const sides = parseInt(diceMatch[3], 10);
+      if (!Number.isFinite(count) || !Number.isFinite(sides) || count <= 0 || sides <= 0) return null;
+
+      if (sign >= 0) {
+        min += count;
+        max += count * sides;
+      } else {
+        min -= count * sides;
+        max -= count;
+      }
+      continue;
+    }
+
+    const flat = parseInt(term, 10);
+    if (!Number.isFinite(flat)) return null;
+    min += flat;
+    max += flat;
+  }
+
+  if (consumed !== normalized) return null;
+
+  const safeMin = Math.max(0, min);
+  const safeMax = Math.max(safeMin, max);
+  const safeAverage = Math.min(safeMax, Math.max(safeMin, Math.round(average)));
+
+  return { min: safeMin, max: safeMax, average: safeAverage };
+}
+
+function classifyMonsterPowerTag(hitPoints, range) {
+  if (!range || !Number.isFinite(hitPoints)) return null;
+  if (hitPoints <= range.min) return "debolissimo";
+  if (hitPoints >= range.max) return "fortissimo";
+
+  const span = range.max - range.min;
+  if (span <= 0) return null;
+
+  const edgeBand = Math.max(1, Math.floor(span * 0.2));
+  if (hitPoints <= range.min + edgeBand) return "debole";
+  if (hitPoints >= range.max - edgeBand) return "forte";
+  return null;
 }
 
 function isBestiaryJsonFile(entryName) {
@@ -982,6 +1060,102 @@ async function start() {
     });
 
     return res.status(201).json(readMonsterByRelativePath(relativePath));
+  });
+
+  // ===== Encounter scenarios =====
+  app.get("/api/encounter-scenarios", requireRole("dm"), (req, res) => {
+    const scenarios = readEncounterScenarios()
+      .filter((scenario) => scenario && typeof scenario === "object" && typeof scenario.id === "string")
+      .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""), undefined, { sensitivity: "base" }));
+
+    return res.json(scenarios);
+  });
+
+  app.post("/api/encounter-scenarios", requireRole("dm"), (req, res) => {
+    const name = String(req.body?.name ?? "").trim();
+    const entries = Array.isArray(req.body?.entries) ? req.body.entries : [];
+
+    if (!name) {
+      return res.status(400).json({ error: "Scenario name required" });
+    }
+
+    if (entries.length === 0) {
+      return res.status(400).json({ error: "Scenario entries required" });
+    }
+
+    const normalizedEntries = [];
+    for (const entry of entries) {
+      const type = entry?.type === "bestiary" ? "bestiary" : "manual";
+      const count = Math.max(1, parseInt(entry?.count, 10) || 1);
+
+      if (type === "bestiary") {
+        const monsterId = typeof entry?.monsterId === "string" ? entry.monsterId : "";
+        const hitPoints = parseInt(entry?.hitPoints, 10);
+        const relativePath = decodeMonsterId(monsterId);
+        const monster = relativePath ? readMonsterByRelativePath(relativePath) : null;
+        if (!monster) {
+          return res.status(400).json({ error: "Invalid bestiary monster in scenario" });
+        }
+
+        const normalizedHitPoints = Number.isFinite(hitPoints)
+          ? Math.max(0, hitPoints)
+          : monster.combat.hitPoints.average;
+        const powerTag = classifyMonsterPowerTag(
+          normalizedHitPoints,
+          parseMonsterHitPointRange(monster.combat.hitPoints.formula, monster.combat.hitPoints.average)
+        );
+
+        normalizedEntries.push({
+          type: "bestiary",
+          monsterId: monster.id,
+          name: monster.general.name,
+          hitPoints: normalizedHitPoints,
+          powerTag,
+          count,
+        });
+        continue;
+      }
+
+      const manualName = String(entry?.name ?? "").trim();
+      const armorClass = parseInt(entry?.armorClass, 10);
+      const hitPoints = parseInt(entry?.hitPoints, 10);
+      if (!manualName) {
+        return res.status(400).json({ error: "Manual scenario entry requires a name" });
+      }
+
+      normalizedEntries.push({
+        type: "manual",
+        name: manualName,
+        armorClass: Number.isFinite(armorClass) ? armorClass : 0,
+        hitPoints: Number.isFinite(hitPoints) ? Math.max(0, hitPoints) : 0,
+        count,
+      });
+    }
+
+    const scenarios = readEncounterScenarios();
+    const scenario = {
+      id: createScenarioId(name),
+      name,
+      entries: normalizedEntries,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    scenarios.push(scenario);
+    writeEncounterScenarios(scenarios);
+    return res.status(201).json(scenario);
+  });
+
+  app.delete("/api/encounter-scenarios/:scenarioId", requireRole("dm"), (req, res) => {
+    const scenarioId = req.params.scenarioId;
+    const scenarios = readEncounterScenarios();
+    const nextScenarios = scenarios.filter((scenario) => scenario.id !== scenarioId);
+    if (nextScenarios.length === scenarios.length) {
+      return res.status(404).json({ error: "Scenario not found" });
+    }
+
+    writeEncounterScenarios(nextScenarios);
+    return res.status(204).end();
   });
 
   // ===== Characters =====

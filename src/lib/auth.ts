@@ -95,6 +95,31 @@ export type MonsterEntry = {
   };
 };
 
+export type EncounterScenarioEntry =
+  | {
+      type: "bestiary";
+      monsterId: string;
+      name: string;
+      hitPoints?: number;
+      powerTag?: "debolissimo" | "debole" | "forte" | "fortissimo" | null;
+      count: number;
+    }
+  | {
+      type: "manual";
+      name: string;
+      armorClass: number;
+      hitPoints: number;
+      count: number;
+    };
+
+export type EncounterScenario = {
+  id: string;
+  name: string;
+  entries: EncounterScenarioEntry[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
@@ -222,5 +247,25 @@ export function createMonsterRequest(payload: { name: string; duplicateFromId?: 
   return authFetch<MonsterEntry>("/api/monsters", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function fetchEncounterScenarios() {
+  return authFetch<EncounterScenario[]>("/api/encounter-scenarios", { method: "GET" });
+}
+
+export function createEncounterScenarioRequest(payload: {
+  name: string;
+  entries: EncounterScenarioEntry[];
+}) {
+  return authFetch<EncounterScenario>("/api/encounter-scenarios", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteEncounterScenarioRequest(scenarioId: string) {
+  return authFetch<null>(`/api/encounter-scenarios/${scenarioId}`, {
+    method: "DELETE",
   });
 }
