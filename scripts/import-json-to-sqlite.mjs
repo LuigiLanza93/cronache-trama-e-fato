@@ -2,6 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { buildMonsterDiscoverSkillRuleRows } from "../shared/monster-discover-skill-rules.mjs";
+import { computeMonsterRarity } from "../shared/monster-rarity-rules.mjs";
+import {
+  buildMonsterDiscoveryDcByCrRuleRows,
+  buildMonsterDiscoveryDcByRarityRuleRows,
+} from "../shared/monster-discovery-dc-rules.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -171,6 +177,10 @@ function collectMonsters() {
       challengeRatingXp: typeof challenge?.xp === "number" ? challenge.xp : null,
       size: data?.general?.size ? String(data.general.size) : null,
       creatureType: data?.general?.creatureType ? String(data.general.creatureType) : null,
+      rarity: computeMonsterRarity({
+        creatureType: data?.general?.creatureType ? String(data.general.creatureType) : "",
+        challengeRating: challenge,
+      }) || null,
       alignment: data?.general?.alignment ? String(data.general.alignment) : null,
       data: JSON.stringify(data),
       createdAt: new Date(stats.birthtimeMs || stats.mtimeMs).toISOString(),
@@ -381,6 +391,9 @@ function buildImportSql() {
   const monsters = collectMonsters();
   const spells = collectSpells();
   const skills = collectSkills();
+  const monsterDiscoverSkillRules = buildMonsterDiscoverSkillRuleRows();
+  const monsterDiscoveryDcByCrRules = buildMonsterDiscoveryDcByCrRuleRows();
+  const monsterDiscoveryDcByRarityRules = buildMonsterDiscoveryDcByRarityRuleRows();
   const spellSlotProgressions = collectSpellSlotProgressions();
   const chatMessages = collectChatMessages();
   const { scenarios, entries } = collectScenarios();
@@ -392,6 +405,9 @@ function buildImportSql() {
     'DELETE FROM "ChatMessage";',
     'DELETE FROM "EncounterScenarioEntry";',
     'DELETE FROM "EncounterScenario";',
+    'DELETE FROM "MonsterDiscoveryDcByRarityRule";',
+    'DELETE FROM "MonsterDiscoveryDcByCrRule";',
+    'DELETE FROM "MonsterDiscoverSkillRule";',
     'DELETE FROM "SpellSlotProgression";',
     'DELETE FROM "Skill";',
     'DELETE FROM "Spell";',
@@ -403,6 +419,9 @@ function buildImportSql() {
     ...monsters.map((row) => toSqlInsert("Monster", row)),
     ...spells.map((row) => toSqlInsert("Spell", row)),
     ...skills.map((row) => toSqlInsert("Skill", row)),
+    ...monsterDiscoverSkillRules.map((row) => toSqlInsert("MonsterDiscoverSkillRule", row)),
+    ...monsterDiscoveryDcByCrRules.map((row) => toSqlInsert("MonsterDiscoveryDcByCrRule", row)),
+    ...monsterDiscoveryDcByRarityRules.map((row) => toSqlInsert("MonsterDiscoveryDcByRarityRule", row)),
     ...spellSlotProgressions.map((row) => toSqlInsert("SpellSlotProgression", row)),
     ...scenarios.map((row) => toSqlInsert("EncounterScenario", row)),
     ...entries.map((row) => toSqlInsert("EncounterScenarioEntry", row)),
@@ -420,6 +439,9 @@ function buildImportSql() {
       monsters: monsters.length,
       spells: spells.length,
       skills: skills.length,
+      monsterDiscoverSkillRules: monsterDiscoverSkillRules.length,
+      monsterDiscoveryDcByCrRules: monsterDiscoveryDcByCrRules.length,
+      monsterDiscoveryDcByRarityRules: monsterDiscoveryDcByRarityRules.length,
       spellSlotProgressions: spellSlotProgressions.length,
       scenarios: scenarios.length,
       scenarioEntries: entries.length,

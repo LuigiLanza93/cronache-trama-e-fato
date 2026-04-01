@@ -1,8 +1,8 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "releaseName": "SQLite Release",
   "releasedAt": "2026-04-01",
-  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione, e una prima trasformazione del bestiario in vista gestionale tabellare piu' leggibile e compatta.",
+  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione, e una trasformazione piu' profonda del bestiario con normalizzazione dei tipi, rarita', regole di discovery, ordinamento tabellare e archiviazione logica dei mostri.",
   "sections": [
     {
       "title": "Autenticazione e struttura app",
@@ -86,7 +86,13 @@
         "Header pagina riallineato al nuovo stile DM con contatori compatti, navigazione iconica e tooltip.",
         "Elenco mostri ripensato in modalita' tabellare con scroll interno dedicato, righe cliccabili e struttura piu' adatta alla gestione.",
         "Anteprima riga arricchita con CA e PF medi, con rimozione delle informazioni di path e delle azioni ridondanti.",
-        "Filtri del bestiario resi piu' organici e utili alla sessione, con soglie rapide per CA minima e PF minimi."
+        "Filtri del bestiario resi piu' organici e utili alla sessione, con soglie rapide per CA minima e PF minimi.",
+        "Normalizzati type e subtype dei mostri, con armonizzazione dei valori canonici e recupero dei tipi mancanti.",
+        "Aggiunta rarita' ai mostri con regole di assegnazione iniziale basate su GS e tipologia della creatura.",
+        "Censite e collegate le regole di discovery: skill per type/subtype, DC analisi per GS e DC ricerca per rarita'.",
+        "Elenco mostri esteso con colonne DC Analisi, DC Ricerca e Skill di discovery.",
+        "Intestazioni della tabella bestiario rese cliccabili per l'ordinamento per colonna.",
+        "Introdotta l'archiviazione logica dei mostri, con eliminazione non distruttiva dal bestiario."
       ]
     },
     {

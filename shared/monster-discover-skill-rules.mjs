@@ -1,0 +1,57 @@
+const DEFAULT_SUBTYPE = "";
+
+function makeRule(creatureType, subtype, skillId) {
+  return {
+    creatureType,
+    subtype,
+    skillId,
+  };
+}
+
+export const MONSTER_DISCOVER_SKILL_RULES = [
+  makeRule("aberrazione", DEFAULT_SUBTYPE, "arcano"),
+  makeRule("bestia", DEFAULT_SUBTYPE, "natura"),
+  makeRule("celestiale", DEFAULT_SUBTYPE, "religione"),
+  makeRule("costrutto", DEFAULT_SUBTYPE, "arcano"),
+  makeRule("drago", DEFAULT_SUBTYPE, "arcano"),
+  makeRule("elementale", DEFAULT_SUBTYPE, "arcano"),
+  makeRule("fatato", DEFAULT_SUBTYPE, "natura"),
+  makeRule("gigante", DEFAULT_SUBTYPE, "storia"),
+  makeRule("immondo", DEFAULT_SUBTYPE, "religione"),
+  makeRule("immondo", "demone", "religione"),
+  makeRule("immondo", "diavolo", "religione"),
+  makeRule("immondo", "mutaforma", "religione"),
+  makeRule("melma", DEFAULT_SUBTYPE, "arcano"),
+  makeRule("mostruosit\u00E0", DEFAULT_SUBTYPE, "natura"),
+  makeRule("mostruosit\u00E0", "mutaforma", "natura"),
+  makeRule("mostruosit\u00E0", "titano", "natura"),
+  makeRule("non morto", DEFAULT_SUBTYPE, "religione"),
+  makeRule("non morto", "mutaforma", "religione"),
+  makeRule("pianta", DEFAULT_SUBTYPE, "natura"),
+  makeRule("sciame di minuscole bestie", DEFAULT_SUBTYPE, "natura"),
+  makeRule("umanoide", "coboldo", "storia"),
+  makeRule("umanoide", "elfo", "storia"),
+  makeRule("umanoide", "gnoll", "storia"),
+  makeRule("umanoide", "gnomo", "storia"),
+  makeRule("umanoide", "goblinoid", "storia"),
+  makeRule("umanoide", "goblinoide", "storia"),
+  makeRule("umanoide", "grimlock", "storia"),
+  makeRule("umanoide", "lucertoloide", "storia"),
+  makeRule("umanoide", "nano", "storia"),
+  makeRule("umanoide", "orco", "storia"),
+  makeRule("umanoide", "qualsiasi razza", "storia"),
+  makeRule("umanoide", "sahuagin", "storia"),
+  makeRule("umanoide", "umano", "storia"),
+  makeRule("umanoide", "uomo acquatico", "storia"),
+];
+
+export function buildMonsterDiscoverSkillRuleRows(now = new Date().toISOString()) {
+  return MONSTER_DISCOVER_SKILL_RULES.map((rule) => ({
+    id: `${rule.creatureType}:${rule.subtype || "__base"}`,
+    creatureType: rule.creatureType,
+    subtype: rule.subtype,
+    skillId: rule.skillId,
+    createdAt: now,
+    updatedAt: now,
+  }));
+}

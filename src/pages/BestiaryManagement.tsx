@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Home, Pencil, Plus, Save, ScrollText, Sparkles, Trash2, WandSparkles, X } from "lucide-react";
+import { ArrowUpDown, Check, Home, Pencil, Plus, Save, ScrollText, Sparkles, Trash2, WandSparkles, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { createMonsterRequest, fetchMonster, fetchMonsters, updateMonsterRequest, type MonsterEntry, type MonsterSummary } from "@/lib/auth";
+import { archiveMonsterRequest, createMonsterRequest, fetchMonster, fetchMonsters, updateMonsterRequest, type MonsterEntry, type MonsterSummary } from "@/lib/auth";
 import { toast } from "@/components/ui/sonner";
 
 const ABILITIES = [
@@ -32,6 +32,19 @@ const SPEED_LABELS: Record<string, string> = {
   climb: "Scalare",
   burrow: "Scavare",
 };
+const BESTIARY_TABLE_GRID = "minmax(220px, 1.6fr) 64px 84px 84px minmax(128px, 0.95fr) 112px 56px 76px 84px minmax(140px, 1fr)";
+
+type BestiarySortKey =
+  | "name"
+  | "challengeRating"
+  | "analysisDc"
+  | "researchDc"
+  | "discoverSkill"
+  | "rarity"
+  | "armorClass"
+  | "hitPointsAverage"
+  | "size"
+  | "typeLabel";
 
 function cloneMonster(monster: MonsterEntry) {
   return structuredClone(monster);
@@ -65,6 +78,16 @@ function textToList(value: string) {
   return value.split("\n").map((entry) => entry.trim()).filter(Boolean);
 }
 
+function compareNullableNumber(a: number | null | undefined, b: number | null | undefined) {
+  const left = typeof a === "number" ? a : Number.NEGATIVE_INFINITY;
+  const right = typeof b === "number" ? b : Number.NEGATIVE_INFINITY;
+  return left - right;
+}
+
+function compareText(a: string | null | undefined, b: string | null | undefined) {
+  return String(a ?? "").localeCompare(String(b ?? ""), "it", { sensitivity: "base", numeric: true });
+}
+
 function summaryFromMonster(monster: MonsterEntry): MonsterSummary {
   return {
     id: monster.id,
@@ -72,11 +95,16 @@ function summaryFromMonster(monster: MonsterEntry): MonsterSummary {
     name: monster.general.name,
     challengeRating: monster.general.challengeRating,
     size: monster.general.size,
-    creatureType: monster.general.creatureType || monster.general.typeLabel,
+    creatureType: monster.general.creatureType,
+    typeLabel: monster.general.typeLabel || monster.general.creatureType,
+    rarity: monster.rarity,
     alignment: monster.general.alignment,
     filePath: monster.filePath,
     armorClass: monster.combat.armorClass.value,
     hitPointsAverage: monster.combat.hitPoints.average,
+    analysisDc: monster.analysisDc,
+    researchDc: monster.researchDc,
+    discoverSkill: monster.discoverSkill,
   };
 }
 
@@ -129,6 +157,34 @@ function FeatureList({
         ))}
       </div>
     </div>
+  );
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  activeSort,
+  direction,
+  onToggle,
+}: {
+  label: string;
+  sortKey: BestiarySortKey;
+  activeSort: BestiarySortKey;
+  direction: "asc" | "desc";
+  onToggle: (key: BestiarySortKey) => void;
+}) {
+  const isActive = activeSort === sortKey;
+
+  return (
+    <button
+      type="button"
+      className={`flex items-center gap-1 text-left transition-colors ${isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+      onClick={() => onToggle(sortKey)}
+    >
+      <span>{label}</span>
+      <ArrowUpDown className={`h-3 w-3 ${isActive ? "opacity-100" : "opacity-45"}`} />
+      {isActive ? <span className="text-[9px]">{direction === "asc" ? "A-Z" : "Z-A"}</span> : null}
+    </button>
   );
 }
 
@@ -488,7 +544,9 @@ function MonsterEditForm({
 export default function BestiaryManagement() {
   const [monsters, setMonsters] = useState<MonsterSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ name: "", challenge: "__all__", size: "__all__", creatureType: "__all__", alignment: "__all__", minArmorClass: "", minHitPoints: "" });
+  const [filters, setFilters] = useState({ name: "", challenge: "__all__", size: "__all__", creatureType: "__all__", rarity: "__all__", alignment: "__all__", minArmorClass: "", minHitPoints: "" });
+  const [sortBy, setSortBy] = useState<BestiarySortKey>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedMonsterId, setSelectedMonsterId] = useState<string | null>(null);
@@ -496,6 +554,7 @@ export default function BestiaryManagement() {
   const [draftMonster, setDraftMonster] = useState<MonsterEntry | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createMode, setCreateMode] = useState<"blank" | "duplicate">("blank");
   const [newMonsterName, setNewMonsterName] = useState("");
@@ -522,7 +581,8 @@ export default function BestiaryManagement() {
   const filterOptions = useMemo(() => ({
     challenges: Array.from(new Set(monsters.map((monster) => crLabel(monster.challengeRating)).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })),
     sizes: Array.from(new Set(monsters.map((monster) => monster.size).filter(Boolean))).sort(),
-    types: Array.from(new Set(monsters.map((monster) => monster.creatureType).filter(Boolean))).sort(),
+    types: Array.from(new Set(monsters.map((monster) => monster.typeLabel || monster.creatureType).filter(Boolean))).sort(),
+    rarities: Array.from(new Set(monsters.map((monster) => monster.rarity).filter(Boolean))).sort(),
     alignments: Array.from(new Set(monsters.map((monster) => monster.alignment).filter(Boolean))).sort(),
   }), [monsters]);
 
@@ -533,22 +593,79 @@ export default function BestiaryManagement() {
     const nameMatch = !needle || monster.name.toLowerCase().includes(needle) || monster.slug.toLowerCase().includes(needle);
     const challengeMatch = filters.challenge === "__all__" || crLabel(monster.challengeRating) === filters.challenge;
     const sizeMatch = filters.size === "__all__" || monster.size === filters.size;
-    const typeMatch = filters.creatureType === "__all__" || monster.creatureType === filters.creatureType;
+    const typeMatch = filters.creatureType === "__all__" || (monster.typeLabel || monster.creatureType) === filters.creatureType;
+    const rarityMatch = filters.rarity === "__all__" || monster.rarity === filters.rarity;
     const alignmentMatch = filters.alignment === "__all__" || monster.alignment === filters.alignment;
     const armorClassMatch = !Number.isFinite(minArmorClass) || monster.armorClass >= minArmorClass;
     const hitPointsMatch = !Number.isFinite(minHitPoints) || monster.hitPointsAverage >= minHitPoints;
-    return nameMatch && challengeMatch && sizeMatch && typeMatch && alignmentMatch && armorClassMatch && hitPointsMatch;
+    return nameMatch && challengeMatch && sizeMatch && typeMatch && rarityMatch && alignmentMatch && armorClassMatch && hitPointsMatch;
   }), [filters, monsters]);
+  const sortedMonsters = useMemo(() => {
+    const items = [...filteredMonsters];
+    items.sort((left, right) => {
+      let result = 0;
+
+      switch (sortBy) {
+        case "name":
+          result = compareText(left.name, right.name);
+          break;
+        case "challengeRating":
+          result = compareNullableNumber(left.challengeRating.decimal, right.challengeRating.decimal);
+          break;
+        case "analysisDc":
+          result = compareNullableNumber(left.analysisDc, right.analysisDc);
+          break;
+        case "researchDc":
+          result = compareNullableNumber(left.researchDc, right.researchDc);
+          break;
+        case "discoverSkill":
+          result = compareText(left.discoverSkill, right.discoverSkill);
+          break;
+        case "rarity":
+          result = compareText(left.rarity, right.rarity);
+          break;
+        case "armorClass":
+          result = compareNullableNumber(left.armorClass, right.armorClass);
+          break;
+        case "hitPointsAverage":
+          result = compareNullableNumber(left.hitPointsAverage, right.hitPointsAverage);
+          break;
+        case "size":
+          result = compareText(left.size, right.size);
+          break;
+        case "typeLabel":
+          result = compareText(left.typeLabel || left.creatureType, right.typeLabel || right.creatureType);
+          break;
+      }
+
+      if (result === 0) {
+        result = compareText(left.name, right.name);
+      }
+
+      return sortDirection === "asc" ? result : -result;
+    });
+    return items;
+  }, [filteredMonsters, sortBy, sortDirection]);
   const hasActiveFilters =
     filters.name.trim().length > 0 ||
     filters.challenge !== "__all__" ||
     filters.size !== "__all__" ||
     filters.creatureType !== "__all__" ||
+    filters.rarity !== "__all__" ||
     filters.alignment !== "__all__" ||
     filters.minArmorClass.trim().length > 0 ||
     filters.minHitPoints.trim().length > 0;
 
   const monster = editing ? draftMonster : selectedMonster;
+
+  const toggleSort = (key: BestiarySortKey) => {
+    if (sortBy === key) {
+      setSortDirection((prev) => prev === "asc" ? "desc" : "asc");
+      return;
+    }
+    setSortBy(key);
+    setSortDirection("asc");
+  };
 
   const openMonster = async (monsterId: string) => {
     setSelectedMonsterId(monsterId);
@@ -581,6 +698,28 @@ export default function BestiaryManagement() {
       toast.error("Non sono riuscito a salvare il mostro.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const archiveMonster = async () => {
+    if (!selectedMonsterId || !monster) return;
+    const confirmed = window.confirm(`Archiviare ${monster.general.name}? Il mostro verra nascosto dal bestiario ma non eliminato definitivamente.`);
+    if (!confirmed) return;
+
+    setArchiving(true);
+    try {
+      await archiveMonsterRequest(selectedMonsterId);
+      setMonsters((prev) => prev.filter((entry) => entry.id !== selectedMonsterId));
+      setDetailOpen(false);
+      setSelectedMonsterId(null);
+      setSelectedMonster(null);
+      setDraftMonster(null);
+      setEditing(false);
+      toast.success(`${monster.general.name} archiviato.`);
+    } catch {
+      toast.error("Non sono riuscito ad archiviare il mostro.");
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -655,7 +794,7 @@ export default function BestiaryManagement() {
 
         <Card className="character-section space-y-4">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(6,minmax(110px,1fr))]">
+            <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_repeat(7,minmax(100px,1fr))]">
               <div className="space-y-2">
                 <Label htmlFor="monster-filter-name">Mostro</Label>
                 <Input
@@ -692,6 +831,16 @@ export default function BestiaryManagement() {
                   <SelectContent>
                     <SelectItem value="__all__">Tutti</SelectItem>
                     {filterOptions.types.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Rarità</Label>
+                <Select value={filters.rarity} onValueChange={(value) => setFilters((prev) => ({ ...prev, rarity: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Tutte" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Tutte</SelectItem>
+                    {filterOptions.rarities.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -739,7 +888,7 @@ export default function BestiaryManagement() {
                   variant="ghost"
                   size="sm"
                   className="text-muted-foreground hover:text-foreground"
-                  onClick={() => setFilters({ name: "", challenge: "__all__", size: "__all__", creatureType: "__all__", alignment: "__all__", minArmorClass: "", minHitPoints: "" })}
+                  onClick={() => setFilters({ name: "", challenge: "__all__", size: "__all__", creatureType: "__all__", rarity: "__all__", alignment: "__all__", minArmorClass: "", minHitPoints: "" })}
                 >
                   <X className="mr-2 h-4 w-4" />
                   Reset filtri
@@ -748,46 +897,51 @@ export default function BestiaryManagement() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/45">
-            <div className="grid grid-cols-[minmax(0,1.9fr)_88px_88px_104px_110px_minmax(0,1.1fr)_minmax(0,1.1fr)] gap-3 border-b border-border/60 bg-muted/30 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              <span>Mostro</span>
-              <span>GS</span>
-              <span>CA</span>
-              <span>PF medi</span>
-              <span>Taglia</span>
-              <span>Tipo</span>
-              <span>Allineamento</span>
+          <div className="h-[calc(100vh-23rem)] min-h-[280px] overflow-auto rounded-2xl border border-border/60 bg-background/45">
+            <div className="sticky top-0 z-10 grid min-w-[1040px] gap-3 border-b border-border/60 bg-muted/95 px-4 py-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur [&>*:nth-child(7)]:hidden" style={{ gridTemplateColumns: BESTIARY_TABLE_GRID }}>
+              <SortHeader label="Mostro" sortKey="name" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
+              <SortHeader label="GS" sortKey="challengeRating" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
+              <SortHeader label="DC Analisi" sortKey="analysisDc" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
+              <SortHeader label="DC Ricerca" sortKey="researchDc" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
+              <SortHeader label="Skill" sortKey="discoverSkill" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
+              <SortHeader label="Rarita" sortKey="rarity" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
+              <span>Rarità</span>
+              <SortHeader label="CA" sortKey="armorClass" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
+              <SortHeader label="PF medi" sortKey="hitPointsAverage" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
+              <SortHeader label="Taglia" sortKey="size" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
+              <SortHeader label="Tipo" sortKey="typeLabel" activeSort={sortBy} direction={sortDirection} onToggle={toggleSort} />
             </div>
 
-            <div className="h-[calc(100vh-23rem)] min-h-[280px] overflow-y-auto">
-              {loading ? (
+            {loading ? (
                 <div className="px-4 py-6 text-sm text-muted-foreground">Carico il bestiario...</div>
               ) : filteredMonsters.length === 0 ? (
                 <div className="px-4 py-6 text-sm text-muted-foreground">Nessun mostro corrisponde ai filtri attivi.</div>
               ) : (
                 <div className="divide-y divide-border/50">
-                  {filteredMonsters.map((entry) => (
+                  {sortedMonsters.map((entry) => (
                     <button
                       key={entry.id}
                       type="button"
-                      className="grid w-full grid-cols-[minmax(0,1.9fr)_88px_88px_104px_110px_minmax(0,1.1fr)_minmax(0,1.1fr)] gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/20"
+                      className="grid min-w-[1040px] w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/20"
+                      style={{ gridTemplateColumns: BESTIARY_TABLE_GRID }}
                       onClick={() => void openMonster(entry.id)}
                     >
                       <div className="min-w-0">
-                        <div className="truncate font-heading text-xl font-semibold text-primary">{entry.name}</div>
-                        <div className="mt-1 truncate text-xs text-muted-foreground">{entry.slug}</div>
+                        <div className="truncate font-heading text-lg font-semibold text-primary">{entry.name}</div>
                       </div>
-                      <div className="text-sm text-foreground">GS {crLabel(entry.challengeRating)}</div>
-                      <div className="text-sm text-foreground">{entry.armorClass || "-"}</div>
-                      <div className="text-sm text-foreground">{entry.hitPointsAverage || "-"}</div>
-                      <div className="text-sm text-foreground">{entry.size || "-"}</div>
-                      <div className="truncate text-sm text-foreground">{entry.creatureType || "-"}</div>
-                      <div className="truncate text-sm text-foreground">{entry.alignment || "-"}</div>
+                      <div className="text-xs text-foreground">GS {crLabel(entry.challengeRating)}</div>
+                      <div className="text-xs text-foreground">{entry.analysisDc ?? "-"}</div>
+                      <div className="text-xs text-foreground">{entry.researchDc ?? "-"}</div>
+                      <div className="truncate text-xs text-foreground">{entry.discoverSkill || "-"}</div>
+                      <div className="truncate text-xs text-foreground">{entry.rarity || "-"}</div>
+                      <div className="text-xs text-foreground">{entry.armorClass || "-"}</div>
+                      <div className="text-xs text-foreground">{entry.hitPointsAverage || "-"}</div>
+                      <div className="text-xs text-foreground">{entry.size || "-"}</div>
+                      <div className="truncate text-xs text-foreground">{entry.typeLabel || entry.creatureType || "-"}</div>
                     </button>
                   ))}
                 </div>
               )}
-            </div>
           </div>
         </Card>
       </div>
@@ -809,7 +963,7 @@ export default function BestiaryManagement() {
                 <DialogDescription>{editing ? "Modalità modifica attiva." : "Vista da combattimento in stile scheda mostro."}</DialogDescription>
                 {monster ? <div className="flex flex-wrap gap-2"><Badge variant="outline">GS {crLabel(monster.general.challengeRating)}</Badge><Badge variant="outline">{monster.general.size || "Taglia?"}</Badge><Badge variant="outline">{monster.general.typeLabel || monster.general.creatureType || "Tipo?"}</Badge><Badge variant="outline">{monster.general.alignment || "Allineamento?"}</Badge></div> : null}
               </div>
-              {monster ? <div className="flex flex-wrap gap-2">{editing ? <><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setDraftMonster(selectedMonster ? cloneMonster(selectedMonster) : null); setEditing(false); }}><X className="h-4 w-4" /></Button><Button size="icon" className="rounded-full" onClick={() => void saveMonster()} disabled={saving}><Check className="h-4 w-4" /></Button></> : <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></Button>}</div> : null}
+              {monster ? <div className="flex flex-wrap gap-2">{editing ? <><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setDraftMonster(selectedMonster ? cloneMonster(selectedMonster) : null); setEditing(false); }}><X className="h-4 w-4" /></Button><Button size="icon" className="rounded-full" onClick={() => void saveMonster()} disabled={saving}><Check className="h-4 w-4" /></Button></> : <><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full text-destructive hover:text-destructive" onClick={() => void archiveMonster()} disabled={archiving}><Trash2 className="h-4 w-4" /></Button></>}</div> : null}
             </div>
           </DialogHeader>
 

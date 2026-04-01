@@ -25,16 +25,25 @@ export type MonsterSummary = {
   };
   size: string;
   creatureType: string;
+  typeLabel: string;
+  rarity: string;
   alignment: string;
   filePath: string;
   armorClass: number;
   hitPointsAverage: number;
+  analysisDc: number | null;
+  researchDc: number | null;
+  discoverSkill: string;
 };
 
 export type MonsterEntry = {
   id: string;
   filePath: string;
   slug: string;
+  rarity: string;
+  analysisDc: number | null;
+  researchDc: number | null;
+  discoverSkill: string;
   general: {
     name: string;
     challengeRating: {
@@ -294,6 +303,12 @@ export function createMonsterRequest(payload: { name: string; duplicateFromId?: 
   return authFetch<MonsterEntry>("/api/monsters", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function archiveMonsterRequest(monsterId: string) {
+  return authFetch<null>(`/api/monsters/${monsterId}`, {
+    method: "DELETE",
   });
 }
 

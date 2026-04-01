@@ -10,6 +10,8 @@ import express from "express";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { Server as SocketIOServer } from "socket.io";
+import { normalizeMonsterTypeFields } from "./shared/monster-type-normalization.mjs";
+import { computeMonsterRarity } from "./shared/monster-rarity-rules.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -253,6 +255,128 @@ function normalizeSkillRow(row) {
     name: row.name,
     ability: row.ability,
     sourceType: String(row.sourceType).toLowerCase(),
+  };
+}
+
+const ABILITY_LABELS = {
+  strength: "Forza",
+  dexterity: "Destrezza",
+  constitution: "Costituzione",
+  intelligence: "Intelligenza",
+  wisdom: "Saggezza",
+  charisma: "Carisma",
+};
+
+function tableExists(tableName) {
+  return !!sqlite
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
+    .get(tableName);
+}
+
+function columnExists(tableName, columnName) {
+  return sqlite
+    .prepare(`PRAGMA table_info("${tableName}")`)
+    .all()
+    .some((column) => String(column.name) === columnName);
+}
+
+function formatSkillLabel(skillName, ability) {
+  const normalizedSkillName = String(skillName ?? "").trim();
+  const normalizedAbility = String(ability ?? "").trim().toLowerCase();
+  const abilityLabel = ABILITY_LABELS[normalizedAbility] ?? String(ability ?? "").trim();
+
+  if (!normalizedSkillName) return "";
+  return abilityLabel ? `${normalizedSkillName} (${abilityLabel})` : normalizedSkillName;
+}
+
+function readMonsterDiscoveryRules() {
+  const crRules = tableExists("MonsterDiscoveryDcByCrRule")
+    ? sqlite
+        .prepare('SELECT minCr, maxCr, dc FROM "MonsterDiscoveryDcByCrRule" ORDER BY minCr ASC')
+        .all()
+    : [];
+
+  const rarityRules = tableExists("MonsterDiscoveryDcByRarityRule")
+    ? sqlite
+        .prepare('SELECT rarity, dc FROM "MonsterDiscoveryDcByRarityRule"')
+        .all()
+    : [];
+
+  const discoverSkillRules = tableExists("MonsterDiscoverSkillRule")
+    ? sqlite.prepare(`
+        SELECT
+          r.creatureType,
+          r.subtype,
+          s.id AS skillId,
+          s.name AS skillName,
+          s.ability AS skillAbility
+        FROM "MonsterDiscoverSkillRule" r
+        JOIN "Skill" s ON s.id = r.skillId
+      `).all()
+    : [];
+
+  return {
+    crRules,
+    rarityRuleMap: new Map(
+      rarityRules.map((rule) => [String(rule.rarity ?? "").trim(), Number(rule.dc)])
+    ),
+    discoverSkillRuleMap: new Map(
+      discoverSkillRules.map((rule) => [
+        `${String(rule.creatureType ?? "").trim()}::${String(rule.subtype ?? "").trim()}`,
+        {
+          id: String(rule.skillId ?? "").trim(),
+          name: String(rule.skillName ?? "").trim(),
+          ability: String(rule.skillAbility ?? "").trim(),
+        },
+      ])
+    ),
+  };
+}
+
+function resolveAnalysisDc(challengeRating, crRules) {
+  const decimal = typeof challengeRating?.decimal === "number" && Number.isFinite(challengeRating.decimal)
+    ? challengeRating.decimal
+    : null;
+
+  if (decimal === null) return null;
+
+  const rule = crRules.find((entry) => (
+    decimal >= Number(entry.minCr) &&
+    (entry.maxCr === null || decimal <= Number(entry.maxCr))
+  ));
+
+  return rule ? Number(rule.dc) : null;
+}
+
+function resolveResearchDc(rarity, rarityRuleMap) {
+  const normalizedRarity = String(rarity ?? "").trim();
+  if (!normalizedRarity) return null;
+  const dc = rarityRuleMap.get(normalizedRarity);
+  return typeof dc === "number" && Number.isFinite(dc) ? dc : null;
+}
+
+function resolveDiscoverSkill(general, discoverSkillRuleMap) {
+  const creatureType = String(general?.creatureType ?? "").trim();
+  const subtype = String(general?.subtype ?? "").trim();
+  if (!creatureType) return null;
+
+  return (
+    (subtype ? discoverSkillRuleMap.get(`${creatureType}::${subtype}`) : null) ??
+    discoverSkillRuleMap.get(`${creatureType}::`) ??
+    null
+  );
+}
+
+function enrichMonsterWithDiscovery(monster, discoveryRules = readMonsterDiscoveryRules()) {
+  if (!monster) return null;
+
+  const discoverSkill = resolveDiscoverSkill(monster.general, discoveryRules.discoverSkillRuleMap);
+
+  return {
+    ...monster,
+    analysisDc: resolveAnalysisDc(monster.general.challengeRating, discoveryRules.crRules),
+    researchDc: resolveResearchDc(monster.rarity, discoveryRules.rarityRuleMap),
+    discoverSkill: formatSkillLabel(discoverSkill?.name, discoverSkill?.ability),
   };
 }
 
@@ -593,23 +717,34 @@ function normalizeMonsterRecord(data = {}, fileId, relativePath) {
   const details = data?.details ?? {};
   const abilities = data?.abilities ?? {};
   const challengeRating = general?.challengeRating ?? {};
+  const normalizedType = normalizeMonsterTypeFields({
+    creatureType: general?.creatureType ?? "",
+    subtype: general?.subtype ?? "",
+    typeLabel: general?.typeLabel ?? "",
+  });
+  const normalizedChallengeRating = {
+    fraction: String(challengeRating?.fraction ?? challengeRating?.display ?? ""),
+    decimal: typeof challengeRating?.decimal === "number" ? challengeRating.decimal : null,
+    display: String(challengeRating?.display ?? challengeRating?.fraction ?? ""),
+    xp: typeof challengeRating?.xp === "number" ? challengeRating.xp : 0,
+  };
+  const rarity = computeMonsterRarity({
+    creatureType: normalizedType.creatureType,
+    challengeRating: normalizedChallengeRating,
+  });
 
   return {
     id: fileId,
     filePath: relativePath,
     slug: typeof data?.slug === "string" ? data.slug : sanitizeSlug(general?.name ?? path.basename(relativePath, ".json")),
+    rarity,
     general: {
       name: String(general?.name ?? path.basename(relativePath, ".json")),
-      challengeRating: {
-        fraction: String(challengeRating?.fraction ?? challengeRating?.display ?? ""),
-        decimal: typeof challengeRating?.decimal === "number" ? challengeRating.decimal : null,
-        display: String(challengeRating?.display ?? challengeRating?.fraction ?? ""),
-        xp: typeof challengeRating?.xp === "number" ? challengeRating.xp : 0,
-      },
+      challengeRating: normalizedChallengeRating,
       size: String(general?.size ?? ""),
-      creatureType: String(general?.creatureType ?? ""),
-      subtype: String(general?.subtype ?? ""),
-      typeLabel: String(general?.typeLabel ?? ""),
+      creatureType: normalizedType.creatureType,
+      subtype: normalizedType.subtype,
+      typeLabel: normalizedType.typeLabel,
       alignment: String(general?.alignment ?? ""),
       environments: Array.isArray(general?.environments) ? general.environments.filter(Boolean) : [],
     },
@@ -668,18 +803,22 @@ function normalizeMonsterRecord(data = {}, fileId, relativePath) {
 }
 
 function readMonsterByRelativePath(relativePath) {
+  const hasArchivedAt = columnExists("Monster", "archivedAt");
   const row = sqlite
-    .prepare('SELECT * FROM "Monster" WHERE sourceFile = ? LIMIT 1')
+    .prepare(`SELECT * FROM "Monster" WHERE sourceFile = ? ${hasArchivedAt ? 'AND archivedAt IS NULL' : ""} LIMIT 1`)
     .get(relativePath);
-  return normalizeMonsterDbRow(row);
+  return enrichMonsterWithDiscovery(normalizeMonsterDbRow(row));
 }
 
 function listMonsters() {
+  const discoveryRules = readMonsterDiscoveryRules();
+  const hasArchivedAt = columnExists("Monster", "archivedAt");
   return sqlite
-    .prepare('SELECT * FROM "Monster" ORDER BY name COLLATE NOCASE')
+    .prepare(`SELECT * FROM "Monster" ${hasArchivedAt ? 'WHERE archivedAt IS NULL' : ""} ORDER BY name COLLATE NOCASE`)
     .all()
     .map(normalizeMonsterDbRow)
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((monster) => enrichMonsterWithDiscovery(monster, discoveryRules));
 }
 
 function createEmptyMonster(name) {
@@ -1457,11 +1596,16 @@ async function start() {
       name: monster.general.name,
       challengeRating: monster.general.challengeRating,
       size: monster.general.size,
-      creatureType: monster.general.creatureType || monster.general.typeLabel,
+      creatureType: monster.general.creatureType,
+      typeLabel: monster.general.typeLabel || monster.general.creatureType,
+      rarity: monster.rarity,
       alignment: monster.general.alignment,
       filePath: monster.filePath,
       armorClass: monster.combat.armorClass.value,
       hitPointsAverage: monster.combat.hitPoints.average,
+      analysisDc: monster.analysisDc,
+      researchDc: monster.researchDc,
+      discoverSkill: monster.discoverSkill,
     }));
 
     return res.json(monsters);
@@ -1524,6 +1668,7 @@ async function start() {
         challengeRatingXp = ?,
         size = ?,
         creatureType = ?,
+        rarity = ?,
         alignment = ?,
         data = ?,
         updatedAt = ?
@@ -1536,6 +1681,7 @@ async function start() {
       nextMonster.general.challengeRating.xp,
       nextMonster.general.size || null,
       nextMonster.general.creatureType || nextMonster.general.typeLabel || null,
+      nextMonster.rarity || null,
       nextMonster.general.alignment || null,
       JSON.stringify({
         slug: nextMonster.slug || sanitizeSlug(nextMonster.general.name),
@@ -1605,8 +1751,8 @@ async function start() {
     sqlite.prepare(`
       INSERT INTO "Monster" (
         id, slug, name, sourceType, sourceFile, challengeRatingDisplay, challengeRatingDecimal,
-        challengeRatingXp, size, creatureType, alignment, data, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        challengeRatingXp, size, creatureType, rarity, alignment, data, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       monsterId,
       nextMonster.slug || sanitizeSlug(name),
@@ -1618,6 +1764,7 @@ async function start() {
       nextMonster.general.challengeRating.xp,
       nextMonster.general.size || null,
       nextMonster.general.creatureType || nextMonster.general.typeLabel || null,
+      nextMonster.rarity || null,
       nextMonster.general.alignment || null,
       JSON.stringify({
         slug: nextMonster.slug || sanitizeSlug(name),
@@ -1640,6 +1787,34 @@ async function start() {
     );
 
     return res.status(201).json(readMonsterByRelativePath(relativePath));
+  });
+
+  app.delete("/api/monsters/:monsterId", requireRole("dm"), (req, res) => {
+    const relativePath = decodeMonsterId(req.params.monsterId);
+    if (!relativePath) {
+      return res.status(400).json({ error: "Invalid monster id" });
+    }
+
+    const currentMonster = readMonsterByRelativePath(relativePath);
+    if (!currentMonster) {
+      return res.status(404).json({ error: "Monster not found" });
+    }
+
+    if (!columnExists("Monster", "archivedAt")) {
+      return res.status(500).json({ error: "Monster archive not available" });
+    }
+
+    sqlite.prepare(`
+      UPDATE "Monster"
+      SET archivedAt = ?, updatedAt = ?
+      WHERE id = ?
+    `).run(
+      new Date().toISOString(),
+      new Date().toISOString(),
+      currentMonster.id
+    );
+
+    return res.status(204).end();
   });
 
   // ===== Encounter scenarios =====

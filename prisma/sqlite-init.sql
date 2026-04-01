@@ -45,7 +45,9 @@ CREATE TABLE "Monster" (
     "challengeRatingXp" INTEGER,
     "size" TEXT,
     "creatureType" TEXT,
+    "rarity" TEXT,
     "alignment" TEXT,
+    "archivedAt" DATETIME,
     "data" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
@@ -90,6 +92,36 @@ CREATE TABLE "SpellSlotProgression" (
     "characterLevel" INTEGER NOT NULL,
     "slots" TEXT NOT NULL,
     "sourceType" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "MonsterDiscoverSkillRule" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "creatureType" TEXT NOT NULL,
+    "subtype" TEXT NOT NULL DEFAULT '',
+    "skillId" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "MonsterDiscoverSkillRule_skillId_fkey" FOREIGN KEY ("skillId") REFERENCES "Skill" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "MonsterDiscoveryDcByCrRule" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "minCr" REAL NOT NULL,
+    "maxCr" REAL,
+    "dc" INTEGER NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "MonsterDiscoveryDcByRarityRule" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "rarity" TEXT NOT NULL,
+    "dc" INTEGER NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL
 );
@@ -178,6 +210,12 @@ CREATE INDEX "Monster_name_idx" ON "Monster"("name");
 CREATE INDEX "Monster_challengeRatingDecimal_idx" ON "Monster"("challengeRatingDecimal");
 
 -- CreateIndex
+CREATE INDEX "Monster_rarity_idx" ON "Monster"("rarity");
+
+-- CreateIndex
+CREATE INDEX "Monster_archivedAt_idx" ON "Monster"("archivedAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Spell_slug_key" ON "Spell"("slug");
 
 -- CreateIndex
@@ -212,6 +250,18 @@ CREATE INDEX "SpellSlotProgression_sourceType_idx" ON "SpellSlotProgression"("so
 
 -- CreateIndex
 CREATE UNIQUE INDEX "SpellSlotProgression_classSlug_characterLevel_key" ON "SpellSlotProgression"("classSlug", "characterLevel");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "MonsterDiscoverSkillRule_creatureType_subtype_key" ON "MonsterDiscoverSkillRule"("creatureType", "subtype");
+
+-- CreateIndex
+CREATE INDEX "MonsterDiscoverSkillRule_skillId_idx" ON "MonsterDiscoverSkillRule"("skillId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "MonsterDiscoveryDcByCrRule_minCr_maxCr_key" ON "MonsterDiscoveryDcByCrRule"("minCr", "maxCr");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "MonsterDiscoveryDcByRarityRule_rarity_key" ON "MonsterDiscoveryDcByRarityRule"("rarity");
 
 -- CreateIndex
 CREATE INDEX "Session_userId_idx" ON "Session"("userId");

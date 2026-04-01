@@ -108,7 +108,9 @@ model Monster {
   challengeRatingXp      Int?
   size                   String?
   creatureType           String?
+  rarity                 String?
   alignment              String?
+  archivedAt             DateTime?
   data                   String
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
@@ -118,6 +120,8 @@ model Monster {
   @@index([sourceType])
   @@index([name])
   @@index([challengeRatingDecimal])
+  @@index([rarity])
+  @@index([archivedAt])
 }
 
 model Spell {
@@ -153,9 +157,44 @@ model Skill {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
+  monsterDiscoverSkillRules MonsterDiscoverSkillRule[]
+
   @@index([name])
   @@index([ability])
   @@index([sourceType])
+}
+
+model MonsterDiscoverSkillRule {
+  id           String   @id
+  creatureType String
+  subtype      String   @default("")
+  skillId      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@unique([creatureType, subtype])
+  @@index([skillId])
+}
+
+model MonsterDiscoveryDcByCrRule {
+  id        String   @id
+  minCr     Float
+  maxCr     Float?
+  dc        Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([minCr, maxCr])
+}
+
+model MonsterDiscoveryDcByRarityRule {
+  id        String   @id
+  rarity    String   @unique
+  dc        Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model SpellSlotProgression {
