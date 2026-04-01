@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Check, Eye, Pencil, Plus, Save, ScrollText, Sparkles, Trash2, WandSparkles, X } from "lucide-react";
+import { Check, Eye, Home, Pencil, Plus, Save, ScrollText, Sparkles, Trash2, WandSparkles, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { createMonsterRequest, fetchMonster, fetchMonsters, updateMonsterRequest, type MonsterEntry, type MonsterSummary } from "@/lib/auth";
 import { toast } from "@/components/ui/sonner";
 
@@ -593,21 +594,48 @@ export default function BestiaryManagement() {
   return (
     <div className="min-h-screen parchment px-6 py-12">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button variant="ghost" asChild className="w-fit"><Link to="/"><ArrowLeft className="mr-2 h-4 w-4" />Torna alla home</Link></Button>
-          <Button variant="outline" className="rounded-full px-4 text-muted-foreground hover:text-foreground" onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" /></Button>
-        </div>
-
-        <section className="dnd-frame p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="font-heading text-4xl font-bold text-primary">Gestione Bestiario</h1>
-              <p className="mt-3 max-w-3xl text-muted-foreground">Filtri rapidi, dettaglio da combattimento in stile scheda mostro e modifica solo quando serve.</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Card className="min-w-36 border-primary/15 bg-background/80 px-4 py-3"><div className="flex items-center gap-3"><ScrollText className="h-4 w-4 text-primary" /><div><div className="text-xs uppercase tracking-wide text-muted-foreground">Mostri</div><div className="text-lg font-semibold text-foreground">{monsters.length}</div></div></div></Card>
-              <Card className="min-w-36 border-primary/15 bg-background/80 px-4 py-3"><div className="flex items-center gap-3"><Sparkles className="h-4 w-4 text-primary" /><div><div className="text-xs uppercase tracking-wide text-muted-foreground">Filtrati</div><div className="text-lg font-semibold text-foreground">{filteredMonsters.length}</div></div></div></Card>
-            </div>
+        <section className="space-y-3 text-center">
+          <div>
+            <h1 className="font-heading text-4xl font-bold text-primary">Gestione Bestiario</h1>
+            <p className="mx-auto mt-2 max-w-3xl text-muted-foreground">Filtri rapidi, dettaglio da combattimento in stile scheda mostro e modifica solo quando serve.</p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                  <Link to="/" aria-label="Torna alla home">
+                    <Home className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Torna alla home</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground/90">
+                  <ScrollText className="h-4 w-4 text-primary" />
+                  <span>{monsters.length}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Mostri totali</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground/90">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span>{filteredMonsters.length}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Mostri filtrati</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setCreateOpen(true)} aria-label="Aggiungi mostro">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Aggiungi mostro</TooltipContent>
+            </Tooltip>
           </div>
         </section>
 

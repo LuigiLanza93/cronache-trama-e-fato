@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Link2, PlusCircle, Shield, Trash2, UserRound, Users } from "lucide-react";
+import { Home, Link2, PlusCircle, Shield, Trash2, UserRound, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -247,51 +248,55 @@ export default function CharacterAssignments() {
   return (
     <div className="min-h-screen parchment px-6 py-12">
       <div className="mx-auto max-w-6xl space-y-6">
-        <Button variant="ghost" asChild className="w-fit">
-          <Link to="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Torna alla home
-          </Link>
-        </Button>
-
-        <div className="dnd-frame p-6">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="font-heading text-4xl font-bold text-primary">Gestione Schede</h1>
-              <p className="mt-3 max-w-3xl text-muted-foreground">
-                Qui puoi associare le schede agli utenti, distinguere tra PG e PNG e
-                togliere dal roster quelle che vuoi archiviare senza cancellarne il file in modo definitivo.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Button asChild className="rounded-full">
-                <Link to="/characters/new">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Crea Scheda
-                </Link>
-              </Button>
-              <Card className="min-w-36 border-primary/15 bg-background/80 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Link2 className="h-4 w-4 text-primary" />
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Schede</div>
-                    <div className="text-lg font-semibold text-foreground">{characters.length}</div>
-                  </div>
-                </div>
-              </Card>
-              <Card className="min-w-36 border-primary/15 bg-background/80 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Users className="h-4 w-4 text-primary" />
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Utenti</div>
-                    <div className="text-lg font-semibold text-foreground">{users.length}</div>
-                  </div>
-                </div>
-              </Card>
-            </div>
+        <section className="space-y-3 text-center">
+          <div>
+            <h1 className="font-heading text-4xl font-bold text-primary">Gestione Schede</h1>
+            <p className="mx-auto mt-2 max-w-3xl text-muted-foreground">
+              Qui puoi associare le schede agli utenti, distinguere tra PG e PNG e togliere dal roster quelle che vuoi archiviare senza cancellarne il file in modo definitivo.
+            </p>
           </div>
-        </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                  <Link to="/" aria-label="Torna alla home">
+                    <Home className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Torna alla home</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground/90">
+                  <Link2 className="h-4 w-4 text-primary" />
+                  <span>{characters.length}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Schede totali</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground/90">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span>{users.length}</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>Utenti disponibili</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                  <Link to="/characters/new" aria-label="Crea scheda">
+                    <PlusCircle className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Crea scheda</TooltipContent>
+            </Tooltip>
+          </div>
+        </section>
 
         {loading ? (
           <Card className="character-section">

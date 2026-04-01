@@ -1,4 +1,5 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   createEncounterScenarioRequest,
   deleteEncounterScenarioRequest,
@@ -32,6 +34,7 @@ import {
   ExternalLink,
   FlaskConical,
   Heart,
+  Home,
   Play,
   Plus,
   Save,
@@ -1405,13 +1408,33 @@ export default function InitiativeTracker() {
           <p className="text-sm text-muted-foreground">
             Prepara il combattimento, ordina i partecipanti e scorri i turni senza perdere di vista PF e CA.
           </p>
-          <div className="flex justify-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setScenarioDialogOpen(true)} title="Carica scenario" aria-label="Carica scenario">
-              <FolderOpen className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setScenarioSaveOpen(true)} title="Salva scenario dai mostri attuali" aria-label="Salva scenario">
-              <Save className="h-4 w-4" />
-            </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                  <Link to="/" aria-label="Torna alla home">
+                    <Home className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Torna alla home</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setScenarioDialogOpen(true)} aria-label="Carica scenario">
+                  <FolderOpen className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Carica scenario</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setScenarioSaveOpen(true)} aria-label="Salva scenario">
+                  <Save className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Salva scenario</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 

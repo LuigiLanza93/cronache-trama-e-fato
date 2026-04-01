@@ -1,8 +1,8 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "releaseName": "SQLite Release",
   "releasedAt": "2026-04-01",
-  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live.",
+  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live e una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali.",
   "sections": [
     {
       "title": "Autenticazione e struttura app",
@@ -30,7 +30,8 @@
         "Indicatore online semplificato con pallino acceso o spento.",
         "Informazioni del roster piu' utili durante la sessione.",
         "Azioni rapide ripensate con icone piu' leggere e organiche.",
-        "Nuova resa grafica per slot incantesimo e manovre nel roster giocatori, con indicatori compatti a pallini, livelli distinti e colori dedicati per lettura immediata."
+        "Nuova resa grafica per slot incantesimo e manovre nel roster giocatori, con indicatori compatti a pallini, livelli distinti e colori dedicati per lettura immediata.",
+        "Header del roster riallineato al linguaggio visivo del tracker, con titolo centrato, icone minimali e tooltip sulle azioni rapide."
       ]
     },
     {
@@ -51,7 +52,8 @@
         "Apertura rapida del dettaglio mostro durante il combattimento.",
         "Pulsante d20 per tirare l'iniziativa dei mostri.",
         "Supporto agli scenari di combattimento salvabili e ricaricabili.",
-        "Allineato il riepilogo delle risorse dei personaggi alla nuova UI grafica del roster, mantenendo coerenza visiva tra dashboard e tracker."
+        "Allineato il riepilogo delle risorse dei personaggi alla nuova UI grafica del roster, mantenendo coerenza visiva tra dashboard e tracker.",
+        "Azioni header alleggerite e uniformate con tooltip per home, caricamento e salvataggio scenario."
       ]
     },
     {
@@ -77,7 +79,15 @@
         "Dettaglio mostro ridisegnato in stile Manuale dei Mostri.",
         "Sezioni collassabili per una consultazione piu' pratica.",
         "Modalita' modifica dedicata.",
-        "Possibilita' di creare mostri da zero o duplicare mostri esistenti."
+        "Possibilita' di creare mostri da zero o duplicare mostri esistenti.",
+        "Header pagina riallineato al nuovo stile DM con contatori compatti, navigazione iconica e tooltip."
+      ]
+    },
+    {
+      "title": "Gestione DM",
+      "items": [
+        "Gestione utenti, gestione schede e gestione bestiario ora condividono lo stesso linguaggio visuale degli header: titolo centrato, controlli compatti e lettura piu' immediata.",
+        "Aggiunti tooltip mouse-over ai controlli sotto gli header per rendere piu' chiaro il significato delle icone minimali."
       ]
     },
     {

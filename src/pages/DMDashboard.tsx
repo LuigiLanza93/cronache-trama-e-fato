@@ -2,16 +2,20 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight,
   Circle,
+  Home,
   ExternalLink,
   MessageSquareMore,
   Shield,
+  Swords,
   Users,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/components/auth-provider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
 import {
   applyPatch,
@@ -393,43 +397,53 @@ export default function DMDashboard() {
   return (
     <div className="min-h-screen parchment p-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="dnd-frame p-5">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-2">
-              <Badge variant="outline" className="w-fit border-primary/30 bg-background/70">
-                Pagina DM
-              </Badge>
-              <div>
-                <h1 className="font-heading text-4xl font-bold text-primary">Roster giocatori</h1>
-                <p className="max-w-2xl text-sm text-muted-foreground">
-                  Vista rapida del party sempre disponibile, con stato live e gli stessi riferimenti tattici del tracker.
-                </p>
-              </div>
-            </div>
+        <section className="space-y-3 text-center">
+          <div>
+            <h1 className="font-heading text-4xl font-bold text-primary">Roster giocatori</h1>
+            <p className="mx-auto mt-2 max-w-2xl text-sm text-muted-foreground">
+              Vista rapida del party sempre disponibile, con stato live e gli stessi riferimenti tattici del tracker.
+            </p>
+          </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Card className="min-w-36 border-primary/15 bg-background/80 px-4 py-3">
-                <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                  <Link to="/" aria-label="Torna alla home">
+                    <Home className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Torna alla home</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground/90">
                   <Users className="h-4 w-4 text-primary" />
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Giocatori</div>
-                    <div className="text-lg font-semibold text-foreground">{roster.length}</div>
-                  </div>
+                  <span>{roster.length}</span>
                 </div>
-              </Card>
-              <Card className="min-w-36 border-emerald-500/20 bg-background/80 px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Shield className="h-4 w-4 text-emerald-600" />
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Online</div>
-                    <div className="text-lg font-semibold text-foreground">{onlineCount}</div>
-                  </div>
+              </TooltipTrigger>
+              <TooltipContent>Giocatori nel roster</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground/90">
+                  <Circle className="h-3 w-3 fill-emerald-500 text-emerald-500" />
+                  <span>{onlineCount}</span>
                 </div>
-              </Card>
-              <Button variant="outline" className="bg-background/80" asChild>
-                <a href="/dm/initiative">Apri tracker iniziativa</a>
-              </Button>
-            </div>
+              </TooltipTrigger>
+              <TooltipContent>Giocatori online</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                  <a href="/dm/initiative" aria-label="Apri tracker iniziativa">
+                    <Swords className="h-4 w-4" />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Apri tracker iniziativa</TooltipContent>
+            </Tooltip>
           </div>
         </section>
 
