@@ -1,8 +1,8 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.6",
   "releaseName": "SQLite Release",
   "releasedAt": "2026-04-01",
-  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione, e una trasformazione piu' profonda del bestiario con normalizzazione dei tipi, rarita', regole di discovery, ordinamento tabellare e archiviazione logica dei mostri.",
+  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione, e una trasformazione piu' profonda del bestiario con normalizzazione dei tipi, rarita', regole di discovery, ordinamento tabellare, archiviazione logica dei mostri e prime fondamenta del compendio lato player.",
   "sections": [
     {
       "title": "Autenticazione e struttura app",
@@ -92,7 +92,9 @@
         "Censite e collegate le regole di discovery: skill per type/subtype, DC analisi per GS e DC ricerca per rarita'.",
         "Elenco mostri esteso con colonne DC Analisi, DC Ricerca e Skill di discovery.",
         "Intestazioni della tabella bestiario rese cliccabili per l'ordinamento per colonna.",
-        "Introdotta l'archiviazione logica dei mostri, con eliminazione non distruttiva dal bestiario."
+        "Introdotta l'archiviazione logica dei mostri, con eliminazione non distruttiva dal bestiario.",
+        "Poste le basi dati del compendio mostri lato player, con stati Sconosciuto, Conoscenza base e Conoscenza completa.",
+        "Aggiunta anteprima DM della scheda player del mostro, con blur delle informazioni ignote e prima resa grafica delle conoscenze parziali."
       ]
     },
     {

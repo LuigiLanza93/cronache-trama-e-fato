@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpDown, Check, Home, Pencil, Plus, Save, ScrollText, Sparkles, Trash2, WandSparkles, X } from "lucide-react";
+import { ArrowUpDown, Check, Eye, Home, Pencil, Plus, Save, ScrollText, Sparkles, Trash2, WandSparkles, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { archiveMonsterRequest, createMonsterRequest, fetchMonster, fetchMonsters, updateMonsterRequest, type MonsterEntry, type MonsterSummary } from "@/lib/auth";
 import { toast } from "@/components/ui/sonner";
 
@@ -46,6 +47,8 @@ type BestiarySortKey =
   | "size"
   | "typeLabel";
 
+type PlayerKnowledgePreviewState = "unknown" | "basic" | "complete";
+
 function cloneMonster(monster: MonsterEntry) {
   return structuredClone(monster);
 }
@@ -70,6 +73,66 @@ function abilityBlock(score: number) {
   return `${score} (${signedValue(abilityModifier(score))})`;
 }
 
+function parseHitPointRange(formula: string, average: number) {
+  const normalized = String(formula)
+    .trim()
+    .replace(/[−–—]/g, "-")
+    .replace(/\s+/g, "");
+
+  if (!normalized) return null;
+
+  const terms = normalized.match(/[+-]?\d+d\d+|[+-]?\d+/gi);
+  if (!terms || terms.length === 0) return null;
+
+  let min = 0;
+  let max = 0;
+  let consumed = "";
+
+  for (const rawTerm of terms) {
+    const term = rawTerm.replace(/\s+/g, "");
+    consumed += term;
+
+    const diceMatch = term.match(/^([+-]?)(\d+)d(\d+)$/i);
+    if (diceMatch) {
+      const sign = diceMatch[1] === "-" ? -1 : 1;
+      const count = Number.parseInt(diceMatch[2], 10);
+      const sides = Number.parseInt(diceMatch[3], 10);
+      if (!Number.isFinite(count) || !Number.isFinite(sides) || count <= 0 || sides <= 0) return null;
+
+      if (sign >= 0) {
+        min += count;
+        max += count * sides;
+      } else {
+        min -= count * sides;
+        max -= count;
+      }
+      continue;
+    }
+
+    const flat = Number.parseInt(term, 10);
+    if (!Number.isFinite(flat)) return null;
+    min += flat;
+    max += flat;
+  }
+
+  if (consumed !== normalized) return null;
+
+  return {
+    min: Math.max(0, min),
+    max: Math.max(Math.max(0, min), max),
+    average: Math.max(0, Math.round(average)),
+  };
+}
+
+function hitPointsLabel(hitPoints: MonsterEntry["combat"]["hitPoints"]) {
+  const average = hitPoints.average ? String(hitPoints.average) : "";
+  const formula = hitPoints.formula ? `(${hitPoints.formula})` : "";
+  const range = hitPoints.formula ? parseHitPointRange(hitPoints.formula, hitPoints.average) : null;
+  const minMax = range ? `[${range.min}-${range.max}]` : "";
+
+  return [average ? `${average} medi` : "", formula, minMax].filter(Boolean).join(" ");
+}
+
 function listToText(items: string[]) {
   return items.join("\n");
 }
@@ -86,6 +149,15 @@ function compareNullableNumber(a: number | null | undefined, b: number | null | 
 
 function compareText(a: string | null | undefined, b: string | null | undefined) {
   return String(a ?? "").localeCompare(String(b ?? ""), "it", { sensitivity: "base", numeric: true });
+}
+
+function qualitativeAbility(score: number) {
+  if (score <= 5) return "Molto bassa";
+  if (score <= 9) return "Bassa";
+  if (score <= 11) return "Nella media";
+  if (score <= 15) return "Alta";
+  if (score <= 19) return "Molto alta";
+  return "Eccezionale";
 }
 
 function summaryFromMonster(monster: MonsterEntry): MonsterSummary {
@@ -124,17 +196,16 @@ function StatLine({ label, value }: { label: string; value: string }) {
   if (!value) return null;
   return (
     <div className="text-[15px] leading-relaxed text-foreground">
-      <span className="font-semibold text-foreground">{label}</span> {value}
+      <span className="font-medium tracking-[0.08em] uppercase text-stone-700/80 dark:text-amber-100/70">{label}</span>{" "}
+      <span className="font-semibold text-foreground">{value}</span>
     </div>
   );
 }
 
 function FeatureList({
-  title,
   items,
   emptyLabel,
 }: {
-  title: string;
   items: Array<{ name: string; usage?: string | null; description: string }>;
   emptyLabel?: string;
 }) {
@@ -144,15 +215,14 @@ function FeatureList({
 
   return (
     <div className="space-y-4">
-      <h4 className="font-heading text-2xl font-semibold uppercase tracking-wide text-primary">{title}</h4>
       <div className="space-y-3">
         {items.map((item, index) => (
           <p key={`${item.name}-${index}`} className="text-[15px] leading-7 text-foreground">
-            <span className="font-semibold italic text-foreground">
+            <span className="font-medium tracking-[0.08em] uppercase text-stone-700/80 dark:text-amber-100/70">
               {item.name}
               {item.usage ? ` (${item.usage})` : ""}.
             </span>{" "}
-            {item.description}
+            <span className="font-semibold text-foreground">{item.description}</span>
           </p>
         ))}
       </div>
@@ -317,20 +387,20 @@ function MonsterStatBlock({ monster }: { monster: MonsterEntry }) {
     {
       value: "traits",
       title: "Tratti",
-      content: <FeatureList title="Tratti" items={monster.traits} emptyLabel="Nessun tratto disponibile." />,
+      content: <FeatureList items={monster.traits} emptyLabel="Nessun tratto disponibile." />,
     },
     {
       value: "actions",
       title: "Azioni",
-      content: <FeatureList title="Azioni" items={monster.actions} emptyLabel="Nessuna azione disponibile." />,
+      content: <FeatureList items={monster.actions} emptyLabel="Nessuna azione disponibile." />,
     },
     {
       value: "bonus-reactions",
       title: "Azioni bonus e reazioni",
       content: (
         <div className="space-y-8">
-          {monster.bonusActions.length > 0 ? <FeatureList title="Azioni Bonus" items={monster.bonusActions} /> : null}
-          {monster.reactions.length > 0 ? <FeatureList title="Reazioni" items={monster.reactions} /> : null}
+          {monster.bonusActions.length > 0 ? <FeatureList items={monster.bonusActions} /> : null}
+          {monster.reactions.length > 0 ? <FeatureList items={monster.reactions} /> : null}
           {monster.bonusActions.length === 0 && monster.reactions.length === 0 ? <p className="text-sm text-muted-foreground">Nessuna azione bonus o reazione disponibile.</p> : null}
         </div>
       ),
@@ -341,7 +411,7 @@ function MonsterStatBlock({ monster }: { monster: MonsterEntry }) {
       content: (
         <div className="space-y-4">
           {monster.legendaryActions.description ? <p className="text-[15px] leading-7 text-foreground">{monster.legendaryActions.description}</p> : null}
-          <FeatureList title="Azioni Leggendarie" items={monster.legendaryActions.actions.map((item) => ({ ...item, usage: item.cost > 1 ? `Costa ${item.cost} azioni` : null }))} emptyLabel="Nessuna azione leggendaria disponibile." />
+          <FeatureList items={monster.legendaryActions.actions.map((item) => ({ ...item, usage: item.cost > 1 ? `Costa ${item.cost} azioni` : null }))} emptyLabel="Nessuna azione leggendaria disponibile." />
         </div>
       ),
     },
@@ -350,33 +420,9 @@ function MonsterStatBlock({ monster }: { monster: MonsterEntry }) {
       title: "Azioni di tana ed effetti regionali",
       content: (
         <div className="space-y-8">
-          {monster.lairActions.length > 0 ? <FeatureList title="Azioni di Tana" items={monster.lairActions} /> : null}
-          {monster.regionalEffects.length > 0 ? <FeatureList title="Effetti Regionali" items={monster.regionalEffects} /> : null}
+          {monster.lairActions.length > 0 ? <FeatureList items={monster.lairActions} /> : null}
+          {monster.regionalEffects.length > 0 ? <FeatureList items={monster.regionalEffects} /> : null}
           {monster.lairActions.length === 0 && monster.regionalEffects.length === 0 ? <p className="text-sm text-muted-foreground">Nessuna azione di tana o effetto regionale disponibile.</p> : null}
-        </div>
-      ),
-    },
-    {
-      value: "source",
-      title: "Sorgente e note",
-      content: (
-        <div className="space-y-4">
-          <StatLine label="File" value={monster.filePath} />
-          <StatLine label="Origine" value={monster.source.extractedFrom || "Custom / manuale"} />
-          {monster.notes.length > 0 ? (
-            <div className="space-y-2">
-              <h4 className="font-semibold text-foreground">Note</h4>
-              <ul className="space-y-2 text-[15px] leading-7 text-foreground">
-                {monster.notes.map((note, index) => <li key={`${note}-${index}`}>{note}</li>)}
-              </ul>
-            </div>
-          ) : null}
-          {monster.source.rawText ? (
-            <div className="rounded-2xl border border-border/60 bg-background/65 p-4">
-              <div className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">Testo grezzo estratto</div>
-              <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{monster.source.rawText}</p>
-            </div>
-          ) : null}
         </div>
       ),
     },
@@ -386,7 +432,6 @@ function MonsterStatBlock({ monster }: { monster: MonsterEntry }) {
     if (section.value === "bonus-reactions") return monster.bonusActions.length > 0 || monster.reactions.length > 0;
     if (section.value === "legendary") return monster.legendaryActions.description || monster.legendaryActions.actions.length > 0;
     if (section.value === "lair") return monster.lairActions.length > 0 || monster.regionalEffects.length > 0;
-    if (section.value === "source") return true;
     return true;
   });
 
@@ -402,7 +447,7 @@ function MonsterStatBlock({ monster }: { monster: MonsterEntry }) {
 
         <div className="space-y-1">
           <StatLine label="Classe Armatura" value={[monster.combat.armorClass.value ? String(monster.combat.armorClass.value) : "", monster.combat.armorClass.note ? `(${monster.combat.armorClass.note})` : ""].filter(Boolean).join(" ")} />
-          <StatLine label="Punti Ferita" value={[monster.combat.hitPoints.average ? String(monster.combat.hitPoints.average) : "", monster.combat.hitPoints.formula ? `(${monster.combat.hitPoints.formula})` : ""].filter(Boolean).join(" ")} />
+          <StatLine label="Punti Ferita" value={hitPointsLabel(monster.combat.hitPoints)} />
           <StatLine label="Velocità" value={speedSummary(monster.combat.speed)} />
         </div>
 
@@ -438,6 +483,169 @@ function MonsterStatBlock({ monster }: { monster: MonsterEntry }) {
             </AccordionItem>
           ))}
         </Accordion>
+      </div>
+    </div>
+  );
+}
+
+function KnowledgeValue({
+  visible,
+  value,
+  widthClass = "w-28",
+}: {
+  visible: boolean;
+  value: string;
+  widthClass?: string;
+}) {
+  if (visible) {
+    return <span>{value}</span>;
+  }
+
+  return (
+    <span
+      className={`inline-flex h-5 ${widthClass} rounded-full bg-foreground/15 blur-sm select-none`}
+      aria-hidden="true"
+    />
+  );
+}
+
+function PlayerPreviewLine({
+  label,
+  visible,
+  value,
+  widthClass = "w-24",
+}: {
+  label: string;
+  visible: boolean;
+  value: string;
+  widthClass?: string;
+}) {
+  return (
+    <div className="text-[15px] leading-relaxed text-foreground">
+      <span className="font-medium tracking-[0.08em] uppercase text-stone-700/80 dark:text-amber-100/70">{label}</span>{" "}
+      <KnowledgeValue visible={visible} value={value} widthClass={widthClass} />
+    </div>
+  );
+}
+
+function BlurredSection({
+  rows = 3,
+}: {
+  rows?: number;
+}) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, index) => (
+        <div
+          key={`blurred-row-${index}`}
+          className={`h-4 rounded-full bg-foreground/15 blur-sm ${index % 3 === 0 ? "w-11/12" : index % 3 === 1 ? "w-10/12" : "w-8/12"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PlayerMonsterPreviewCard({
+  monster,
+  state,
+}: {
+  monster: MonsterEntry;
+  state: PlayerKnowledgePreviewState;
+}) {
+  if (state === "complete") {
+    return <MonsterStatBlock monster={monster} />;
+  }
+
+  const knowsBasic = state === "basic";
+
+  return (
+    <div className="rounded-[28px] border border-primary/25 bg-[linear-gradient(180deg,rgba(247,237,214,0.96),rgba(239,225,193,0.92))] p-6 text-stone-900 shadow-[0_18px_40px_rgba(34,25,16,0.18)] dark:border-amber-200/20 dark:bg-[linear-gradient(180deg,rgba(52,35,24,0.96),rgba(32,21,16,0.96))] dark:text-amber-50 dark:shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+      <div className="space-y-5">
+        <div>
+          <h2 className="font-heading text-4xl font-bold uppercase tracking-wide text-[#7d2c17] dark:text-amber-200">
+            <KnowledgeValue visible={knowsBasic} value={monster.general.name} widthClass="w-56" />
+          </h2>
+          <p className="mt-1 text-lg italic text-stone-700 dark:text-amber-50/75">
+            <KnowledgeValue
+              visible={knowsBasic}
+              value={[monster.general.size, monster.general.typeLabel || monster.general.creatureType].filter(Boolean).join("; ")}
+              widthClass="w-72"
+            />
+          </p>
+        </div>
+
+        <div className="h-[3px] rounded-full bg-[#8d3821]/70 dark:bg-amber-300/45" />
+
+        <div className="space-y-1">
+          <PlayerPreviewLine label="Classe Armatura" visible={knowsBasic} value={String(monster.combat.armorClass.value || "-")} widthClass="w-12" />
+          <PlayerPreviewLine label="Punti Ferita" visible={knowsBasic} value={monster.combat.hitPoints.average ? `${monster.combat.hitPoints.average} medi` : "-"} widthClass="w-24" />
+          <PlayerPreviewLine label="Velocita" visible={knowsBasic} value={speedSummary(monster.combat.speed)} widthClass="w-40" />
+        </div>
+
+        <div className="h-[3px] rounded-full bg-[#8d3821]/70 dark:bg-amber-300/45" />
+
+        <div className="grid grid-cols-3 gap-3 rounded-[24px] border border-[#8d3821]/20 bg-white/45 px-4 py-4 md:grid-cols-6 dark:border-amber-200/15 dark:bg-white/5">
+          {([
+            ["strength", "Forza", true],
+            ["dexterity", "Destrezza", true],
+            ["constitution", "Costituzione", true],
+            ["intelligence", "Intelligenza", false],
+            ["wisdom", "Saggezza", false],
+            ["charisma", "Carisma", false],
+          ] as const).map(([key, label, visible]) => (
+            <div key={key} className="text-center">
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#7d2c17] dark:text-amber-200">{label}</div>
+              <div className="mt-2 text-base font-semibold text-stone-900 dark:text-amber-50">
+                <KnowledgeValue
+                  visible={knowsBasic && visible}
+                  value={qualitativeAbility(monster.abilities[key])}
+                  widthClass="w-24"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-1">
+          <PlayerPreviewLine label="Tiri Salvezza" visible={false} value="-" widthClass="w-40" />
+          <PlayerPreviewLine label="Abilita" visible={false} value="-" widthClass="w-44" />
+          <PlayerPreviewLine label="Vulnerabilita ai Danni" visible={false} value="-" widthClass="w-44" />
+          <PlayerPreviewLine label="Resistenze ai Danni" visible={false} value="-" widthClass="w-44" />
+          <PlayerPreviewLine label="Immunita ai Danni" visible={false} value="-" widthClass="w-40" />
+          <PlayerPreviewLine label="Immunita alle Condizioni" visible={false} value="-" widthClass="w-48" />
+          <PlayerPreviewLine label="Sensi" visible={false} value="-" widthClass="w-32" />
+          <PlayerPreviewLine label="Linguaggi" visible={false} value="-" widthClass="w-36" />
+          <PlayerPreviewLine label="Sfida" visible={false} value="-" widthClass="w-20" />
+          <PlayerPreviewLine label="Ambiente" visible={false} value="-" widthClass="w-32" />
+        </div>
+
+        <Accordion type="multiple" defaultValue={["traits", "actions"]} className="rounded-[24px] border border-[#8d3821]/20 bg-white/45 px-5 dark:border-amber-200/15 dark:bg-white/5">
+          {[
+            ["traits", "Tratti", 3],
+            ["actions", "Azioni", 3],
+            ["bonus-reactions", "Azioni bonus e reazioni", 2],
+            ["legendary", "Azioni leggendarie", 2],
+            ["lair", "Azioni di tana ed effetti regionali", 2],
+          ].map(([value, title, rows]) => (
+            <AccordionItem key={value} value={value} className="border-[#8d3821]/15 dark:border-amber-200/10">
+              <AccordionTrigger className="font-heading text-left text-2xl uppercase tracking-wide text-[#7d2c17] hover:no-underline dark:text-amber-200">{title}</AccordionTrigger>
+              <AccordionContent className="pb-6">
+                <BlurredSection rows={Number(rows)} />
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+
+        <div className="rounded-[24px] border border-[#8d3821]/20 bg-white/45 px-5 py-5 dark:border-amber-200/15 dark:bg-white/5">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-[#7d2c17] dark:text-amber-200">
+            Note e informazioni non ancora note
+          </div>
+          <div className="space-y-3">
+            <div className="h-4 w-11/12 rounded-full bg-foreground/15 blur-sm" />
+            <div className="h-4 w-10/12 rounded-full bg-foreground/15 blur-sm" />
+            <div className="h-4 w-8/12 rounded-full bg-foreground/15 blur-sm" />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -555,6 +763,8 @@ export default function BestiaryManagement() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [playerPreviewOpen, setPlayerPreviewOpen] = useState(false);
+  const [playerPreviewState, setPlayerPreviewState] = useState<PlayerKnowledgePreviewState>("basic");
   const [createOpen, setCreateOpen] = useState(false);
   const [createMode, setCreateMode] = useState<"blank" | "duplicate">("blank");
   const [newMonsterName, setNewMonsterName] = useState("");
@@ -953,6 +1163,7 @@ export default function BestiaryManagement() {
           setSelectedMonster(null);
           setDraftMonster(null);
           setEditing(false);
+          setPlayerPreviewOpen(false);
         }
       }}>
         <DialogContent className="[&>button]:hidden max-w-6xl border-primary/20 bg-card/95 p-0">
@@ -963,11 +1174,36 @@ export default function BestiaryManagement() {
                 <DialogDescription>{editing ? "Modalità modifica attiva." : "Vista da combattimento in stile scheda mostro."}</DialogDescription>
                 {monster ? <div className="flex flex-wrap gap-2"><Badge variant="outline">GS {crLabel(monster.general.challengeRating)}</Badge><Badge variant="outline">{monster.general.size || "Taglia?"}</Badge><Badge variant="outline">{monster.general.typeLabel || monster.general.creatureType || "Tipo?"}</Badge><Badge variant="outline">{monster.general.alignment || "Allineamento?"}</Badge></div> : null}
               </div>
-              {monster ? <div className="flex flex-wrap gap-2">{editing ? <><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setDraftMonster(selectedMonster ? cloneMonster(selectedMonster) : null); setEditing(false); }}><X className="h-4 w-4" /></Button><Button size="icon" className="rounded-full" onClick={() => void saveMonster()} disabled={saving}><Check className="h-4 w-4" /></Button></> : <><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full text-destructive hover:text-destructive" onClick={() => void archiveMonster()} disabled={archiving}><Trash2 className="h-4 w-4" /></Button></>}</div> : null}
+              {monster ? <div className="flex flex-wrap gap-2">{editing ? <><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setDraftMonster(selectedMonster ? cloneMonster(selectedMonster) : null); setEditing(false); }}><X className="h-4 w-4" /></Button><Button size="icon" className="rounded-full" onClick={() => void saveMonster()} disabled={saving}><Check className="h-4 w-4" /></Button></> : <><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setPlayerPreviewOpen(true)}><Eye className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full text-destructive hover:text-destructive" onClick={() => void archiveMonster()} disabled={archiving}><Trash2 className="h-4 w-4" /></Button></>}</div> : null}
             </div>
           </DialogHeader>
 
           {detailLoading || !monster ? <div className="px-6 py-8 text-sm text-muted-foreground">Carico il dettaglio del mostro...</div> : <ScrollArea className="max-h-[78vh]"><div className="space-y-6 px-6 py-6">{editing ? <MonsterEditForm monster={monster} draftMonster={draftMonster} setDraftMonster={setDraftMonster} /> : <MonsterStatBlock monster={monster} />}</div></ScrollArea>}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={playerPreviewOpen} onOpenChange={setPlayerPreviewOpen}>
+        <DialogContent className="[&>button]:hidden max-w-5xl border-primary/20 bg-card/95 p-0">
+          <DialogHeader className="border-b border-border/60 px-6 py-5">
+            <div className="space-y-3">
+              <div>
+                <DialogTitle className="font-heading text-3xl text-primary">Anteprima compendio player</DialogTitle>
+                <DialogDescription>Vista di test della scheda mostro lato giocatore, con informazioni nascoste in base al livello di conoscenza.</DialogDescription>
+              </div>
+              <Tabs value={playerPreviewState} onValueChange={(value) => setPlayerPreviewState(value as PlayerKnowledgePreviewState)}>
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="unknown">Sconosciuto</TabsTrigger>
+                  <TabsTrigger value="basic">Conoscenza base</TabsTrigger>
+                  <TabsTrigger value="complete">Conoscenza completa</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </DialogHeader>
+          <ScrollArea className="max-h-[78vh]">
+            <div className="px-6 py-6">
+              {monster ? <PlayerMonsterPreviewCard monster={monster} state={playerPreviewState} /> : null}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 

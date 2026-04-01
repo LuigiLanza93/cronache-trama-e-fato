@@ -189,6 +189,16 @@ function collectMonsters() {
   });
 }
 
+function collectMonsterCompendiumEntries(monsters) {
+  const now = new Date().toISOString();
+  return monsters.map((monster) => ({
+    monsterId: monster.id,
+    knowledgeState: "UNKNOWN",
+    createdAt: now,
+    updatedAt: now,
+  }));
+}
+
 function collectSpells() {
   const catalog = readJson(SPELLS_FILE, {});
   const deduped = new Map();
@@ -389,6 +399,7 @@ function buildImportSql() {
   const users = collectUsers();
   const characters = collectCharacters();
   const monsters = collectMonsters();
+  const monsterCompendiumEntries = collectMonsterCompendiumEntries(monsters);
   const spells = collectSpells();
   const skills = collectSkills();
   const monsterDiscoverSkillRules = buildMonsterDiscoverSkillRuleRows();
@@ -405,6 +416,7 @@ function buildImportSql() {
     'DELETE FROM "ChatMessage";',
     'DELETE FROM "EncounterScenarioEntry";',
     'DELETE FROM "EncounterScenario";',
+    'DELETE FROM "MonsterCompendiumEntry";',
     'DELETE FROM "MonsterDiscoveryDcByRarityRule";',
     'DELETE FROM "MonsterDiscoveryDcByCrRule";',
     'DELETE FROM "MonsterDiscoverSkillRule";',
@@ -417,6 +429,7 @@ function buildImportSql() {
     ...users.map((row) => toSqlInsert("User", row)),
     ...characters.map((row) => toSqlInsert("Character", row)),
     ...monsters.map((row) => toSqlInsert("Monster", row)),
+    ...monsterCompendiumEntries.map((row) => toSqlInsert("MonsterCompendiumEntry", row)),
     ...spells.map((row) => toSqlInsert("Spell", row)),
     ...skills.map((row) => toSqlInsert("Skill", row)),
     ...monsterDiscoverSkillRules.map((row) => toSqlInsert("MonsterDiscoverSkillRule", row)),
@@ -437,6 +450,7 @@ function buildImportSql() {
       users: users.length,
       characters: characters.length,
       monsters: monsters.length,
+      monsterCompendiumEntries: monsterCompendiumEntries.length,
       spells: spells.length,
       skills: skills.length,
       monsterDiscoverSkillRules: monsterDiscoverSkillRules.length,

@@ -97,6 +97,15 @@ CREATE TABLE "SpellSlotProgression" (
 );
 
 -- CreateTable
+CREATE TABLE "MonsterCompendiumEntry" (
+    "monsterId" TEXT NOT NULL PRIMARY KEY,
+    "knowledgeState" TEXT NOT NULL DEFAULT 'UNKNOWN',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "MonsterCompendiumEntry_monsterId_fkey" FOREIGN KEY ("monsterId") REFERENCES "Monster" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "MonsterDiscoverSkillRule" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "creatureType" TEXT NOT NULL,
@@ -214,6 +223,9 @@ CREATE INDEX "Monster_rarity_idx" ON "Monster"("rarity");
 
 -- CreateIndex
 CREATE INDEX "Monster_archivedAt_idx" ON "Monster"("archivedAt");
+
+-- CreateIndex
+CREATE INDEX "MonsterCompendiumEntry_knowledgeState_idx" ON "MonsterCompendiumEntry"("knowledgeState");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Spell_slug_key" ON "Spell"("slug");

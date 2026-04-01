@@ -73,3 +73,14 @@ ALTER TABLE "Monster" ADD COLUMN "rarity" TEXT;
 CREATE INDEX IF NOT EXISTS "Monster_rarity_idx" ON "Monster"("rarity");
 ALTER TABLE "Monster" ADD COLUMN "archivedAt" DATETIME;
 CREATE INDEX IF NOT EXISTS "Monster_archivedAt_idx" ON "Monster"("archivedAt");
+
+CREATE TABLE IF NOT EXISTS "MonsterCompendiumEntry" (
+    "monsterId" TEXT NOT NULL PRIMARY KEY,
+    "knowledgeState" TEXT NOT NULL DEFAULT 'UNKNOWN',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "MonsterCompendiumEntry_monsterId_fkey" FOREIGN KEY ("monsterId") REFERENCES "Monster" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "MonsterCompendiumEntry_knowledgeState_idx"
+ON "MonsterCompendiumEntry"("knowledgeState");

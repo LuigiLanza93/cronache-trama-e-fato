@@ -1786,6 +1786,19 @@ async function start() {
       now
     );
 
+    if (tableExists("MonsterCompendiumEntry")) {
+      sqlite.prepare(`
+        INSERT OR IGNORE INTO "MonsterCompendiumEntry" (
+          monsterId, knowledgeState, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?)
+      `).run(
+        monsterId,
+        "UNKNOWN",
+        now,
+        now
+      );
+    }
+
     return res.status(201).json(readMonsterByRelativePath(relativePath));
   });
 

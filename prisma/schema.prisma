@@ -49,6 +49,12 @@ enum MonsterPowerTag {
   FORTISSIMO
 }
 
+enum MonsterKnowledgeState {
+  UNKNOWN
+  BASIC
+  COMPLETE
+}
+
 model User {
   id                 String   @id
   username           String   @unique
@@ -115,13 +121,25 @@ model Monster {
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
 
-  scenarioEntries EncounterScenarioEntry[]
+  scenarioEntries        EncounterScenarioEntry[]
+  compendiumEntry        MonsterCompendiumEntry?
 
   @@index([sourceType])
   @@index([name])
   @@index([challengeRatingDecimal])
   @@index([rarity])
   @@index([archivedAt])
+}
+
+model MonsterCompendiumEntry {
+  monsterId       String                @id
+  knowledgeState  MonsterKnowledgeState @default(UNKNOWN)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  monster Monster @relation(fields: [monsterId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeState])
 }
 
 model Spell {
