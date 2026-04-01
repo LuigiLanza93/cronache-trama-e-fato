@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { FileText } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
@@ -14,22 +15,56 @@ import { getChangelogByVersion } from "@/data/changelogs";
 
 type AppVersionDialogProps = {
   className?: string;
+  notifyOnNewVersion?: boolean;
 };
 
-export function AppVersionDialog({ className }: AppVersionDialogProps) {
+const SEEN_CHANGELOG_VERSION_KEY = "seen-changelog-version";
+
+export function AppVersionDialog({ className, notifyOnNewVersion = false }: AppVersionDialogProps) {
   const changelog = getChangelogByVersion(APP_VERSION);
+  const [open, setOpen] = useState(false);
+  const [hasUnreadUpdate, setHasUnreadUpdate] = useState(false);
+
+  useEffect(() => {
+    if (!notifyOnNewVersion || typeof window === "undefined") {
+      setHasUnreadUpdate(false);
+      return;
+    }
+
+    const seenVersion = window.localStorage.getItem(SEEN_CHANGELOG_VERSION_KEY);
+    setHasUnreadUpdate(seenVersion !== APP_VERSION);
+  }, [notifyOnNewVersion]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+
+    if (nextOpen && notifyOnNewVersion && typeof window !== "undefined") {
+      window.localStorage.setItem(SEEN_CHANGELOG_VERSION_KEY, APP_VERSION);
+      setHasUnreadUpdate(false);
+    }
+  };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <button
           type="button"
           className={
             className ??
-            "text-left text-xs uppercase tracking-[0.18em] text-muted-foreground/80 transition-colors hover:text-primary"
+            `text-left text-xs uppercase tracking-[0.18em] transition-colors hover:text-primary ${
+              hasUnreadUpdate ? "font-semibold text-primary" : "text-muted-foreground/80"
+            }`
           }
         >
-          {APP_DISPLAY_VERSION}
+          <span className="inline-flex items-center gap-2">
+            {APP_DISPLAY_VERSION}
+            {hasUnreadUpdate ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] tracking-[0.12em] text-primary">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                Novita
+              </span>
+            ) : null}
+          </span>
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl border-border/70 bg-background/95">

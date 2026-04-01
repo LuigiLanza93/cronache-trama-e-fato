@@ -1,8 +1,8 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "releaseName": "SQLite Release",
   "releasedAt": "2026-04-01",
-  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live e una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali.",
+  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, e un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione.",
   "sections": [
     {
       "title": "Autenticazione e struttura app",
@@ -10,7 +10,8 @@
         "Introdotta autenticazione con ruoli DM e Player.",
         "Aggiunta home dedicata per master e giocatori dopo il login.",
         "Implementato il cambio password guidato.",
-        "Aggiunta persistenza della sessione anche dopo il riavvio del server."
+        "Aggiunta persistenza della sessione anche dopo il riavvio del server.",
+        "Notifica locale delle novita' di versione per i giocatori, con stato 'non letto' persistente nel browser fino alla prima apertura del changelog."
       ]
     },
     {
@@ -20,7 +21,8 @@
         "Implementata Gestione Schede con associazione tra utenze e personaggi.",
         "Supporto alla distinzione tra PG e PNG.",
         "Creazione scheda con campi base D&D 5e: nome, classe, razza, allineamento e background.",
-        "Archiviazione non distruttiva delle schede."
+        "Archiviazione non distruttiva delle schede.",
+        "Creazione diretta di nuove schede riservata al master, con dialog 'Presto disponibile' lato giocatore e blocco dell'accesso diretto alla pagina dedicata."
       ]
     },
     {
@@ -31,7 +33,8 @@
         "Informazioni del roster piu' utili durante la sessione.",
         "Azioni rapide ripensate con icone piu' leggere e organiche.",
         "Nuova resa grafica per slot incantesimo e manovre nel roster giocatori, con indicatori compatti a pallini, livelli distinti e colori dedicati per lettura immediata.",
-        "Header del roster riallineato al linguaggio visivo del tracker, con titolo centrato, icone minimali e tooltip sulle azioni rapide."
+        "Header del roster riallineato al linguaggio visivo del tracker, con titolo centrato, icone minimali e tooltip sulle azioni rapide.",
+        "Home del master rifinita con card di sezione interamente cliccabili e card placeholder 'More to come' nel grid principale."
       ]
     },
     {
@@ -88,6 +91,14 @@
       "items": [
         "Gestione utenti, gestione schede e gestione bestiario ora condividono lo stesso linguaggio visuale degli header: titolo centrato, controlli compatti e lettura piu' immediata.",
         "Aggiunti tooltip mouse-over ai controlli sotto gli header per rendere piu' chiaro il significato delle icone minimali."
+      ]
+    },
+    {
+      "title": "Home Giocatore",
+      "items": [
+        "Header della home giocatore riallineato al linguaggio della home master, con blocco account in alto a destra e titolo centrato.",
+        "Le schede del giocatore ora usano card verticali piu' ricche e orientate alla sessione, con Init, CA, slot risorsa, Percezione passiva, CD incantesimi e barra PF.",
+        "Le card del giocatore sono direttamente cliccabili e l'azione di creazione nuova scheda e' stata trasformata in icona compatta coerente con gli altri controlli."
       ]
     },
     {

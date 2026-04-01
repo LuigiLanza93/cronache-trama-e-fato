@@ -44,6 +44,7 @@ export default function NewCharacter() {
   }, [user?.role]);
 
   if (!user) return null;
+  if (user.role !== "dm") return <Navigate to="/" replace />;
 
   const effectiveType = user.role === "dm" ? characterType : "pg";
 
