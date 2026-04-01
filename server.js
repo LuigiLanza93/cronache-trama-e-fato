@@ -1460,6 +1460,8 @@ async function start() {
       creatureType: monster.general.creatureType || monster.general.typeLabel,
       alignment: monster.general.alignment,
       filePath: monster.filePath,
+      armorClass: monster.combat.armorClass.value,
+      hitPointsAverage: monster.combat.hitPoints.average,
     }));
 
     return res.json(monsters);

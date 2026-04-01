@@ -4,6 +4,8 @@ import {
   Home,
   KeyRound,
   Plus,
+  Shield,
+  UserRound,
   Trash2,
   UserCog,
   UserRoundPlus,
@@ -221,8 +223,12 @@ export default function UserManagement() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="font-heading text-2xl font-semibold text-primary">{managedUser.username}</div>
-                        <Badge variant={managedUser.role === "dm" ? "default" : "secondary"}>
-                          {managedUser.role === "dm" ? "Master" : "Giocatore"}
+                        <Badge variant={managedUser.role === "dm" ? "default" : "secondary"} className="inline-flex items-center gap-1.5">
+                          {managedUser.role === "dm" ? (
+                            <Shield className="h-3.5 w-3.5" aria-label="Master" />
+                          ) : (
+                            <UserRound className="h-3.5 w-3.5" aria-label="Giocatore" />
+                          )}
                         </Badge>
                         {managedUser.mustChangePassword && <Badge variant="outline">Cambio password richiesto</Badge>}
                         {isCurrentUser && <Badge variant="outline">Tu</Badge>}

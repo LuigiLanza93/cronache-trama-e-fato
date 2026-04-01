@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Eye, Home, Pencil, Plus, Save, ScrollText, Sparkles, Trash2, WandSparkles, X } from "lucide-react";
+import { Check, Home, Pencil, Plus, Save, ScrollText, Sparkles, Trash2, WandSparkles, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +75,8 @@ function summaryFromMonster(monster: MonsterEntry): MonsterSummary {
     creatureType: monster.general.creatureType || monster.general.typeLabel,
     alignment: monster.general.alignment,
     filePath: monster.filePath,
+    armorClass: monster.combat.armorClass.value,
+    hitPointsAverage: monster.combat.hitPoints.average,
   };
 }
 
@@ -486,7 +488,7 @@ function MonsterEditForm({
 export default function BestiaryManagement() {
   const [monsters, setMonsters] = useState<MonsterSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ name: "", challenge: "__all__", size: "__all__", creatureType: "__all__", alignment: "__all__" });
+  const [filters, setFilters] = useState({ name: "", challenge: "__all__", size: "__all__", creatureType: "__all__", alignment: "__all__", minArmorClass: "", minHitPoints: "" });
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedMonsterId, setSelectedMonsterId] = useState<string | null>(null);
@@ -526,13 +528,25 @@ export default function BestiaryManagement() {
 
   const filteredMonsters = useMemo(() => monsters.filter((monster) => {
     const needle = filters.name.toLowerCase();
+    const minArmorClass = Number.parseInt(filters.minArmorClass, 10);
+    const minHitPoints = Number.parseInt(filters.minHitPoints, 10);
     const nameMatch = !needle || monster.name.toLowerCase().includes(needle) || monster.slug.toLowerCase().includes(needle);
     const challengeMatch = filters.challenge === "__all__" || crLabel(monster.challengeRating) === filters.challenge;
     const sizeMatch = filters.size === "__all__" || monster.size === filters.size;
     const typeMatch = filters.creatureType === "__all__" || monster.creatureType === filters.creatureType;
     const alignmentMatch = filters.alignment === "__all__" || monster.alignment === filters.alignment;
-    return nameMatch && challengeMatch && sizeMatch && typeMatch && alignmentMatch;
+    const armorClassMatch = !Number.isFinite(minArmorClass) || monster.armorClass >= minArmorClass;
+    const hitPointsMatch = !Number.isFinite(minHitPoints) || monster.hitPointsAverage >= minHitPoints;
+    return nameMatch && challengeMatch && sizeMatch && typeMatch && alignmentMatch && armorClassMatch && hitPointsMatch;
   }), [filters, monsters]);
+  const hasActiveFilters =
+    filters.name.trim().length > 0 ||
+    filters.challenge !== "__all__" ||
+    filters.size !== "__all__" ||
+    filters.creatureType !== "__all__" ||
+    filters.alignment !== "__all__" ||
+    filters.minArmorClass.trim().length > 0 ||
+    filters.minHitPoints.trim().length > 0;
 
   const monster = editing ? draftMonster : selectedMonster;
 
@@ -639,19 +653,143 @@ export default function BestiaryManagement() {
           </div>
         </section>
 
-        <Card className="character-section">
-          <div className="grid gap-4 lg:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))]">
-            <div className="space-y-2"><Label htmlFor="monster-filter-name">Mostro</Label><Input id="monster-filter-name" value={filters.name} onChange={(event) => setFilters((prev) => ({ ...prev, name: event.target.value }))} placeholder="Cerca per nome o slug" /></div>
-            <div className="space-y-2"><Label>GS</Label><Select value={filters.challenge} onValueChange={(value) => setFilters((prev) => ({ ...prev, challenge: value }))}><SelectTrigger><SelectValue placeholder="Tutti" /></SelectTrigger><SelectContent><SelectItem value="__all__">Tutti</SelectItem>{filterOptions.challenges.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label>Taglia</Label><Select value={filters.size} onValueChange={(value) => setFilters((prev) => ({ ...prev, size: value }))}><SelectTrigger><SelectValue placeholder="Tutte" /></SelectTrigger><SelectContent><SelectItem value="__all__">Tutte</SelectItem>{filterOptions.sizes.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label>Tipo</Label><Select value={filters.creatureType} onValueChange={(value) => setFilters((prev) => ({ ...prev, creatureType: value }))}><SelectTrigger><SelectValue placeholder="Tutti" /></SelectTrigger><SelectContent><SelectItem value="__all__">Tutti</SelectItem>{filterOptions.types.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label>Allineamento</Label><Select value={filters.alignment} onValueChange={(value) => setFilters((prev) => ({ ...prev, alignment: value }))}><SelectTrigger><SelectValue placeholder="Tutti" /></SelectTrigger><SelectContent><SelectItem value="__all__">Tutti</SelectItem>{filterOptions.alignments.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
+        <Card className="character-section space-y-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_repeat(6,minmax(110px,1fr))]">
+              <div className="space-y-2">
+                <Label htmlFor="monster-filter-name">Mostro</Label>
+                <Input
+                  id="monster-filter-name"
+                  value={filters.name}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, name: event.target.value }))}
+                  placeholder="Cerca per nome o slug"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>GS</Label>
+                <Select value={filters.challenge} onValueChange={(value) => setFilters((prev) => ({ ...prev, challenge: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Tutti" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Tutti</SelectItem>
+                    {filterOptions.challenges.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Taglia</Label>
+                <Select value={filters.size} onValueChange={(value) => setFilters((prev) => ({ ...prev, size: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Tutte" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Tutte</SelectItem>
+                    {filterOptions.sizes.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select value={filters.creatureType} onValueChange={(value) => setFilters((prev) => ({ ...prev, creatureType: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Tutti" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Tutti</SelectItem>
+                    {filterOptions.types.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Allineamento</Label>
+                <Select value={filters.alignment} onValueChange={(value) => setFilters((prev) => ({ ...prev, alignment: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Tutti" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Tutti</SelectItem>
+                    {filterOptions.alignments.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="monster-filter-ac">CA min</Label>
+                <Input
+                  id="monster-filter-ac"
+                  type="number"
+                  min="0"
+                  value={filters.minArmorClass}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, minArmorClass: event.target.value }))}
+                  placeholder="Es. 15"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="monster-filter-hp">PF min</Label>
+                <Input
+                  id="monster-filter-hp"
+                  type="number"
+                  min="0"
+                  value={filters.minHitPoints}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, minHitPoints: event.target.value }))}
+                  placeholder="Es. 50"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 text-sm">
+              <div className="text-muted-foreground">
+                <span className="font-medium text-foreground">{filteredMonsters.length}</span> / {monsters.length} visibili
+              </div>
+              {hasActiveFilters ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => setFilters({ name: "", challenge: "__all__", size: "__all__", creatureType: "__all__", alignment: "__all__", minArmorClass: "", minHitPoints: "" })}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Reset filtri
+                </Button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-background/45">
+            <div className="grid grid-cols-[minmax(0,1.9fr)_88px_88px_104px_110px_minmax(0,1.1fr)_minmax(0,1.1fr)] gap-3 border-b border-border/60 bg-muted/30 px-4 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span>Mostro</span>
+              <span>GS</span>
+              <span>CA</span>
+              <span>PF medi</span>
+              <span>Taglia</span>
+              <span>Tipo</span>
+              <span>Allineamento</span>
+            </div>
+
+            <div className="h-[calc(100vh-23rem)] min-h-[280px] overflow-y-auto">
+              {loading ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">Carico il bestiario...</div>
+              ) : filteredMonsters.length === 0 ? (
+                <div className="px-4 py-6 text-sm text-muted-foreground">Nessun mostro corrisponde ai filtri attivi.</div>
+              ) : (
+                <div className="divide-y divide-border/50">
+                  {filteredMonsters.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className="grid w-full grid-cols-[minmax(0,1.9fr)_88px_88px_104px_110px_minmax(0,1.1fr)_minmax(0,1.1fr)] gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/20"
+                      onClick={() => void openMonster(entry.id)}
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate font-heading text-xl font-semibold text-primary">{entry.name}</div>
+                        <div className="mt-1 truncate text-xs text-muted-foreground">{entry.slug}</div>
+                      </div>
+                      <div className="text-sm text-foreground">GS {crLabel(entry.challengeRating)}</div>
+                      <div className="text-sm text-foreground">{entry.armorClass || "-"}</div>
+                      <div className="text-sm text-foreground">{entry.hitPointsAverage || "-"}</div>
+                      <div className="text-sm text-foreground">{entry.size || "-"}</div>
+                      <div className="truncate text-sm text-foreground">{entry.creatureType || "-"}</div>
+                      <div className="truncate text-sm text-foreground">{entry.alignment || "-"}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </Card>
-
-        <section className="space-y-3">
-          {loading ? <Card className="character-section"><div className="text-sm text-muted-foreground">Carico il bestiario...</div></Card> : filteredMonsters.length === 0 ? <Card className="character-section"><div className="text-sm text-muted-foreground">Nessun mostro corrisponde ai filtri attivi.</div></Card> : filteredMonsters.map((entry) => <Card key={entry.id} className="character-section"><div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_90px_120px_minmax(0,1.2fr)_minmax(0,1.2fr)_64px] lg:items-center"><div className="min-w-0"><div className="font-heading text-2xl font-semibold text-primary">{entry.name}</div><div className="mt-1 text-xs text-muted-foreground">{entry.filePath}</div></div><div className="text-sm text-foreground">GS {crLabel(entry.challengeRating)}</div><div className="text-sm text-foreground">{entry.size || "-"}</div><div className="text-sm text-foreground">{entry.creatureType || "-"}</div><div className="text-sm text-foreground">{entry.alignment || "-"}</div><div className="flex justify-end"><Button type="button" variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => void openMonster(entry.id)}><Eye className="h-4 w-4" /></Button></div></div></Card>)}
-        </section>
       </div>
 
       <Dialog open={detailOpen} onOpenChange={(open) => {

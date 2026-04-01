@@ -27,6 +27,8 @@ export type MonsterSummary = {
   creatureType: string;
   alignment: string;
   filePath: string;
+  armorClass: number;
+  hitPointsAverage: number;
 };
 
 export type MonsterEntry = {

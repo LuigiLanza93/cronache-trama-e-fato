@@ -1,8 +1,8 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "releaseName": "SQLite Release",
   "releasedAt": "2026-04-01",
-  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, e un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione.",
+  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione, e una prima trasformazione del bestiario in vista gestionale tabellare piu' leggibile e compatta.",
   "sections": [
     {
       "title": "Autenticazione e struttura app",
@@ -83,14 +83,18 @@
         "Sezioni collassabili per una consultazione piu' pratica.",
         "Modalita' modifica dedicata.",
         "Possibilita' di creare mostri da zero o duplicare mostri esistenti.",
-        "Header pagina riallineato al nuovo stile DM con contatori compatti, navigazione iconica e tooltip."
+        "Header pagina riallineato al nuovo stile DM con contatori compatti, navigazione iconica e tooltip.",
+        "Elenco mostri ripensato in modalita' tabellare con scroll interno dedicato, righe cliccabili e struttura piu' adatta alla gestione.",
+        "Anteprima riga arricchita con CA e PF medi, con rimozione delle informazioni di path e delle azioni ridondanti.",
+        "Filtri del bestiario resi piu' organici e utili alla sessione, con soglie rapide per CA minima e PF minimi."
       ]
     },
     {
       "title": "Gestione DM",
       "items": [
         "Gestione utenti, gestione schede e gestione bestiario ora condividono lo stesso linguaggio visuale degli header: titolo centrato, controlli compatti e lettura piu' immediata.",
-        "Aggiunti tooltip mouse-over ai controlli sotto gli header per rendere piu' chiaro il significato delle icone minimali."
+        "Aggiunti tooltip mouse-over ai controlli sotto gli header per rendere piu' chiaro il significato delle icone minimali.",
+        "Gestione utenti ora distingue master e giocatori anche nei badge ruolo con sola iconografia, in coerenza con il linguaggio visivo del resto dell'app."
       ]
     },
     {
