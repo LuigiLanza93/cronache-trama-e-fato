@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
 import {
   applyPatch,
   ChatMessage,
@@ -43,7 +44,7 @@ type PlayerCardData = {
   passivePerception: number | null;
   spellSaveDc: number | null;
   abilityBonuses: Array<{ label: string; value: number }>;
-  resourceSummary: { label: string; entries: Array<{ label: string; remaining: number }> };
+  resourceSummary: { label: string; entries: Array<{ label: string; remaining: number; total: number }> };
   hp: {
     current: number;
     max: number;
@@ -132,24 +133,26 @@ function summarizeResourceSlots(
     .sort((a, b) => a.level - b.level);
 
   if (entries.length === 0) {
-    return { label: "", entries: [] as Array<{ label: string; remaining: number }> };
+    return { label: "", entries: [] as Array<{ label: string; remaining: number; total: number }> };
   }
 
   if (normalizedClass === "guerriero" || normalizedClass === "fighter") {
     return {
       label: "Manovre",
-      entries: entries.map(({ level, remaining }) => ({
+      entries: entries.map(({ level, remaining, total }) => ({
         label: `d${level}`,
         remaining,
+        total,
       })),
     };
   }
 
   return {
     label: "Slot",
-    entries: entries.map(({ level, remaining }) => ({
+    entries: entries.map(({ level, remaining, total }) => ({
       label: `${level}`,
       remaining,
+      total,
     })),
   };
 }
@@ -473,12 +476,10 @@ export default function DMDashboard() {
                         <span>{player.armorClass ?? "-"}</span>
                       </div>
                       {player.resourceSummary.entries.length > 0 && (
-                        <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
-                          <span className="text-muted-foreground">{player.resourceSummary.label}</span>{" "}
-                          <span>
-                            {player.resourceSummary.entries.map((entry) => `${entry.label}:${entry.remaining}`).join(" · ")}
-                          </span>
-                        </div>
+                        <ResourceSummaryBadge
+                          label={player.resourceSummary.label}
+                          entries={player.resourceSummary.entries}
+                        />
                       )}
                       <div className="rounded-full border border-border/70 bg-background/60 px-2.5 py-1 font-medium text-foreground/90">
                         <span className="text-muted-foreground">Perc</span>{" "}

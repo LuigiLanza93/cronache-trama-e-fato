@@ -1,8 +1,8 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "releaseName": "SQLite Release",
-  "releasedAt": "2026-03-31",
-  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite.",
+  "releasedAt": "2026-04-01",
+  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live.",
   "sections": [
     {
       "title": "Autenticazione e struttura app",
@@ -29,7 +29,8 @@
         "Rework della pagina DM con roster sempre visibile.",
         "Indicatore online semplificato con pallino acceso o spento.",
         "Informazioni del roster piu' utili durante la sessione.",
-        "Azioni rapide ripensate con icone piu' leggere e organiche."
+        "Azioni rapide ripensate con icone piu' leggere e organiche.",
+        "Nuova resa grafica per slot incantesimo e manovre nel roster giocatori, con indicatori compatti a pallini, livelli distinti e colori dedicati per lettura immediata."
       ]
     },
     {
@@ -49,7 +50,8 @@
         "Possibilita' di aggiungere mostri manualmente o dal bestiario.",
         "Apertura rapida del dettaglio mostro durante il combattimento.",
         "Pulsante d20 per tirare l'iniziativa dei mostri.",
-        "Supporto agli scenari di combattimento salvabili e ricaricabili."
+        "Supporto agli scenari di combattimento salvabili e ricaricabili.",
+        "Allineato il riepilogo delle risorse dei personaggi alla nuova UI grafica del roster, mantenendo coerenza visiva tra dashboard e tracker."
       ]
     },
     {
