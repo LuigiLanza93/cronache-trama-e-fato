@@ -973,6 +973,7 @@ const CharacterSheet = () => {
           characterData={characterData}
           editMode={editMode}
           setEditMode={setEditMode}
+          monsterCompendiumHref="/compendium/monsters"
           makeChangeHandler={makeChangeHandler}
         />
         {characterData.characterType !== "png" ? (

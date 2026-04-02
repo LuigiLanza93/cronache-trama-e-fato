@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, Pencil, Settings2, X } from "lucide-react";
+import { BookOpen, Check, Pencil, Settings2, X } from "lucide-react";
 import { updateCharacter } from "@/realtime";
 
 function getInitials(name: string | undefined) {
@@ -38,6 +38,7 @@ const CharacterHeader = ({
     characterData,
     editMode,
     setEditMode,
+    monsterCompendiumHref,
 }: any) => {
     const [portraitUrl, setPortraitUrl] = useState(characterData.basicInfo.portraitUrl ?? "");
     const [isUploadingPortrait, setIsUploadingPortrait] = useState(false);
@@ -156,17 +157,30 @@ const CharacterHeader = ({
                             </Button>
                         </div>
                     ) : (
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
-                            onMouseDown={() => setEditMode(true)}
-                            aria-label="Modifica intestazione"
-                            title="Modifica intestazione"
-                        >
-                            <Settings2 className="h-4 w-4 text-primary" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent">
+                                <a
+                                    href={monsterCompendiumHref}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    aria-label="Apri compendio mostri in una nuova scheda"
+                                    title="Apri compendio mostri in una nuova scheda"
+                                >
+                                    <BookOpen className="h-4 w-4 text-primary" />
+                                </a>
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
+                                onMouseDown={() => setEditMode(true)}
+                                aria-label="Modifica intestazione"
+                                title="Modifica intestazione"
+                            >
+                                <Settings2 className="h-4 w-4 text-primary" />
+                            </Button>
+                        </div>
                     )}
                 </div>
 

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { archiveMonsterRequest, createMonsterRequest, fetchMonster, fetchMonsters, updateMonsterRequest, type MonsterEntry, type MonsterSummary } from "@/lib/auth";
+import { archiveMonsterRequest, createMonsterRequest, fetchMonster, fetchMonsters, updateMonsterCompendiumKnowledgeRequest, updateMonsterRequest, type MonsterEntry, type MonsterSummary, type PlayerMonsterKnowledgeState } from "@/lib/auth";
 import { toast } from "@/components/ui/sonner";
 
 const ABILITIES = [
@@ -47,7 +47,7 @@ type BestiarySortKey =
   | "size"
   | "typeLabel";
 
-type PlayerKnowledgePreviewState = "unknown" | "basic" | "complete";
+export type PlayerKnowledgePreviewState = "unknown" | "basic" | "complete";
 
 function cloneMonster(monster: MonsterEntry) {
   return structuredClone(monster);
@@ -382,7 +382,7 @@ function FeatureTableEditor({
   );
 }
 
-function MonsterStatBlock({ monster }: { monster: MonsterEntry }) {
+export function MonsterStatBlock({ monster }: { monster: MonsterEntry }) {
   const statSections = [
     {
       value: "traits",
@@ -545,7 +545,7 @@ function BlurredSection({
   );
 }
 
-function PlayerMonsterPreviewCard({
+export function PlayerMonsterPreviewCard({
   monster,
   state,
 }: {
@@ -765,6 +765,7 @@ export default function BestiaryManagement() {
   const [archiving, setArchiving] = useState(false);
   const [playerPreviewOpen, setPlayerPreviewOpen] = useState(false);
   const [playerPreviewState, setPlayerPreviewState] = useState<PlayerKnowledgePreviewState>("basic");
+  const [updatingKnowledge, setUpdatingKnowledge] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createMode, setCreateMode] = useState<"blank" | "duplicate">("blank");
   const [newMonsterName, setNewMonsterName] = useState("");
@@ -886,6 +887,13 @@ export default function BestiaryManagement() {
       const nextMonster = await fetchMonster(monsterId);
       setSelectedMonster(nextMonster);
       setDraftMonster(cloneMonster(nextMonster));
+      setPlayerPreviewState(
+        nextMonster.compendiumKnowledgeState === "COMPLETE"
+          ? "complete"
+          : nextMonster.compendiumKnowledgeState === "UNKNOWN"
+            ? "unknown"
+            : "basic"
+      );
     } catch {
       toast.error("Non sono riuscito ad aprire il mostro.");
       setDetailOpen(false);
@@ -930,6 +938,28 @@ export default function BestiaryManagement() {
       toast.error("Non sono riuscito ad archiviare il mostro.");
     } finally {
       setArchiving(false);
+    }
+  };
+
+  const updateCompendiumKnowledge = async (knowledgeState: PlayerMonsterKnowledgeState) => {
+    if (!selectedMonsterId || !selectedMonster) return;
+    setUpdatingKnowledge(true);
+    try {
+      const result = await updateMonsterCompendiumKnowledgeRequest(selectedMonsterId, knowledgeState);
+      setSelectedMonster((prev) => (prev ? { ...prev, compendiumKnowledgeState: result.knowledgeState } : prev));
+      setDraftMonster((prev) => (prev ? { ...prev, compendiumKnowledgeState: result.knowledgeState } : prev));
+      setPlayerPreviewState(
+        result.knowledgeState === "COMPLETE"
+          ? "complete"
+          : result.knowledgeState === "UNKNOWN"
+            ? "unknown"
+            : "basic"
+      );
+      toast.success("Livello di conoscenza aggiornato.");
+    } catch {
+      toast.error("Non sono riuscito ad aggiornare il livello di conoscenza.");
+    } finally {
+      setUpdatingKnowledge(false);
     }
   };
 
@@ -1173,6 +1203,7 @@ export default function BestiaryManagement() {
                 <DialogTitle className="font-heading text-3xl text-primary">{monster?.general.name || "Dettaglio mostro"}</DialogTitle>
                 <DialogDescription>{editing ? "Modalità modifica attiva." : "Vista da combattimento in stile scheda mostro."}</DialogDescription>
                 {monster ? <div className="flex flex-wrap gap-2"><Badge variant="outline">GS {crLabel(monster.general.challengeRating)}</Badge><Badge variant="outline">{monster.general.size || "Taglia?"}</Badge><Badge variant="outline">{monster.general.typeLabel || monster.general.creatureType || "Tipo?"}</Badge><Badge variant="outline">{monster.general.alignment || "Allineamento?"}</Badge></div> : null}
+                {monster ? <div className="flex flex-wrap items-center gap-3 pt-1"><Label className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Conoscenza player</Label><Select value={monster.compendiumKnowledgeState ?? "UNKNOWN"} onValueChange={(value) => void updateCompendiumKnowledge(value as PlayerMonsterKnowledgeState)} disabled={updatingKnowledge}><SelectTrigger className="h-9 w-[190px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="UNKNOWN">Sconosciuto</SelectItem><SelectItem value="BASIC">Conoscenza base</SelectItem><SelectItem value="COMPLETE">Conoscenza completa</SelectItem></SelectContent></Select></div> : null}
               </div>
               {monster ? <div className="flex flex-wrap gap-2">{editing ? <><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setDraftMonster(selectedMonster ? cloneMonster(selectedMonster) : null); setEditing(false); }}><X className="h-4 w-4" /></Button><Button size="icon" className="rounded-full" onClick={() => void saveMonster()} disabled={saving}><Check className="h-4 w-4" /></Button></> : <><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setPlayerPreviewOpen(true)}><Eye className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full text-destructive hover:text-destructive" onClick={() => void archiveMonster()} disabled={archiving}><Trash2 className="h-4 w-4" /></Button></>}</div> : null}
             </div>

@@ -16,6 +16,7 @@ import UserManagement from "./pages/UserManagement";
 import CharacterAssignments from "./pages/CharacterAssignments";
 import NewCharacter from "./pages/NewCharacter";
 import BestiaryManagement from "./pages/BestiaryManagement";
+import PlayerMonsterCompendium from "./pages/PlayerMonsterCompendium";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -84,6 +85,14 @@ const App = () => (
                 element={
                   <RequireAuth>
                     <NewCharacter />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/compendium/monsters"
+                element={
+                  <RequireAuth>
+                    <PlayerMonsterCompendium />
                   </RequireAuth>
                 }
               />

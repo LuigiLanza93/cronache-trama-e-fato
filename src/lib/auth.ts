@@ -17,6 +17,7 @@ export type MonsterSummary = {
   id: string;
   slug: string;
   name: string;
+  compendiumKnowledgeState?: PlayerMonsterKnowledgeState;
   challengeRating: {
     fraction: string;
     decimal: number | null;
@@ -36,11 +37,49 @@ export type MonsterSummary = {
   discoverSkill: string;
 };
 
+export type PlayerMonsterKnowledgeState = "UNKNOWN" | "BASIC" | "COMPLETE";
+
+export type PlayerCompendiumMonsterSummary = {
+  id: string;
+  knowledgeState: Exclude<PlayerMonsterKnowledgeState, "UNKNOWN">;
+  name: string;
+  size: string;
+  typeLabel: string;
+  armorClass: number;
+  hitPointsAverage: number;
+  speedLabel: string;
+  strengthScore: number;
+  dexterityScore: number;
+  constitutionScore: number;
+  intelligenceScore: number;
+  wisdomScore: number;
+  charismaScore: number;
+  strengthDisplay: string | null;
+  dexterityDisplay: string | null;
+  constitutionDisplay: string | null;
+  intelligenceDisplay: string | null;
+  wisdomDisplay: string | null;
+  charismaDisplay: string | null;
+};
+
+export type PlayerCompendiumMonsterDetail =
+  | {
+      id: string;
+      knowledgeState: "BASIC";
+      monster: MonsterEntry;
+    }
+  | {
+      id: string;
+      knowledgeState: "COMPLETE";
+      monster: MonsterEntry;
+    };
+
 export type MonsterEntry = {
   id: string;
   filePath: string;
   slug: string;
   rarity: string;
+  compendiumKnowledgeState?: PlayerMonsterKnowledgeState;
   analysisDc: number | null;
   researchDc: number | null;
   discoverSkill: string;
@@ -292,6 +331,14 @@ export function fetchMonster(monsterId: string) {
   return authFetch<MonsterEntry>(`/api/monsters/${monsterId}`, { method: "GET" });
 }
 
+export function fetchPlayerCompendiumMonsters() {
+  return authFetch<PlayerCompendiumMonsterSummary[]>("/api/player-compendium/monsters", { method: "GET" });
+}
+
+export function fetchPlayerCompendiumMonster(monsterId: string) {
+  return authFetch<PlayerCompendiumMonsterDetail>(`/api/player-compendium/monsters/${monsterId}`, { method: "GET" });
+}
+
 export function updateMonsterRequest(monsterId: string, monster: MonsterEntry) {
   return authFetch<MonsterEntry>(`/api/monsters/${monsterId}`, {
     method: "PUT",
@@ -310,6 +357,19 @@ export function archiveMonsterRequest(monsterId: string) {
   return authFetch<null>(`/api/monsters/${monsterId}`, {
     method: "DELETE",
   });
+}
+
+export function updateMonsterCompendiumKnowledgeRequest(
+  monsterId: string,
+  knowledgeState: PlayerMonsterKnowledgeState
+) {
+  return authFetch<{ monsterId: string; knowledgeState: PlayerMonsterKnowledgeState }>(
+    `/api/monsters/${monsterId}/compendium-knowledge`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ knowledgeState }),
+    }
+  );
 }
 
 export function fetchEncounterScenarios() {

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import {
   fetchEncounterScenarios,
   fetchMonster,
   fetchMonsters,
+  updateMonsterCompendiumKnowledgeRequest,
   type EncounterScenario,
   type EncounterScenarioEntry,
   type MonsterEntry,
@@ -730,6 +732,9 @@ export default function InitiativeTracker() {
   const [selectedMonsterDetail, setSelectedMonsterDetail] = useState<MonsterEntry | null>(null);
   const [scenarioDialogOpen, setScenarioDialogOpen] = useState(false);
   const [scenarioSaveOpen, setScenarioSaveOpen] = useState(false);
+  const [unlockKnowledgeOpen, setUnlockKnowledgeOpen] = useState(false);
+  const [unlockingKnowledge, setUnlockingKnowledge] = useState(false);
+  const [unlockSelection, setUnlockSelection] = useState<string[]>([]);
   const [scenarioName, setScenarioName] = useState("");
   const [encounterScenarios, setEncounterScenarios] = useState<EncounterScenario[]>([]);
   const [pendingScenarioCombatants, setPendingScenarioCombatants] = useState<PendingScenarioCombatant[]>([]);
@@ -799,6 +804,22 @@ export default function InitiativeTracker() {
     () => bestiaryCatalog.find((entry) => entry.id === bestiaryMonsterDraft.monsterId) ?? null,
     [bestiaryCatalog, bestiaryMonsterDraft.monsterId]
   );
+  const encounterUnknownBestiaryMonsters = useMemo(() => {
+    const ids = Array.from(
+      new Set(
+        encounter.monsters
+          .filter((monster) => monster.source === "bestiary" && monster.sourceMonsterId)
+          .map((monster) => monster.sourceMonsterId)
+          .filter((value): value is string => Boolean(value))
+      )
+    );
+
+    return ids
+      .map((id) => bestiaryCatalog.find((entry) => entry.id === id) ?? null)
+      .filter((entry): entry is MonsterSummary => Boolean(entry))
+      .filter((entry) => (entry.compendiumKnowledgeState ?? "UNKNOWN") === "UNKNOWN")
+      .sort((left, right) => left.name.localeCompare(right.name, "it", { sensitivity: "base" }));
+  }, [bestiaryCatalog, encounter.monsters]);
   const selectedBestiaryMonsterDetails = useMemo(
     () => (selectedBestiaryMonster ? bestiaryById[selectedBestiaryMonster.id] ?? null : null),
     [bestiaryById, selectedBestiaryMonster]
@@ -1247,6 +1268,43 @@ export default function InitiativeTracker() {
     }
   };
 
+  const openUnlockKnowledgeDialog = () => {
+    const ids = encounterUnknownBestiaryMonsters.map((monster) => monster.id);
+    setUnlockSelection(ids);
+    setUnlockKnowledgeOpen(true);
+  };
+
+  const toggleUnlockSelection = (monsterId: string, checked: boolean) => {
+    setUnlockSelection((prev) =>
+      checked ? Array.from(new Set([...prev, monsterId])) : prev.filter((id) => id !== monsterId)
+    );
+  };
+
+  const unlockSelectedMonsterKnowledge = async () => {
+    if (unlockSelection.length === 0) return;
+
+    setUnlockingKnowledge(true);
+    try {
+      await Promise.all(
+        unlockSelection.map((monsterId) =>
+          updateMonsterCompendiumKnowledgeRequest(monsterId, "BASIC")
+        )
+      );
+
+      setBestiaryCatalog((prev) =>
+        prev.map((entry) =>
+          unlockSelection.includes(entry.id)
+            ? { ...entry, compendiumKnowledgeState: "BASIC" }
+            : entry
+        )
+      );
+      setUnlockKnowledgeOpen(false);
+      setUnlockSelection([]);
+    } finally {
+      setUnlockingKnowledge(false);
+    }
+  };
+
   const saveCurrentMonstersAsScenario = async () => {
     const monstersToSave = encounter.monsters;
     if (monstersToSave.length === 0 || !scenarioName.trim()) return;
@@ -1434,6 +1492,21 @@ export default function InitiativeTracker() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Salva scenario</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={openUnlockKnowledgeDialog}
+                  aria-label="Sblocca conoscenza base"
+                  disabled={encounterUnknownBestiaryMonsters.length === 0}
+                >
+                  <BookOpen className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Sblocca conoscenza base</TooltipContent>
             </Tooltip>
           </div>
         </div>
@@ -2151,6 +2224,84 @@ export default function InitiativeTracker() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={unlockKnowledgeOpen}
+        onOpenChange={(open) => {
+          setUnlockKnowledgeOpen(open);
+          if (!open) {
+            setUnlockSelection([]);
+            setUnlockingKnowledge(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Sblocca conoscenza base</DialogTitle>
+            <DialogDescription>
+              Seleziona i mostri del bestiario presenti nello scontro che vuoi rendere noti ai player al livello base.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {encounterUnknownBestiaryMonsters.length === 0 ? (
+              <div className="rounded-md border border-border/60 bg-background/50 px-3 py-4 text-sm text-muted-foreground">
+                Tutti i mostri del bestiario presenti in questo combattimento hanno già un livello di conoscenza diverso da sconosciuto.
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <div className="text-muted-foreground">{unlockSelection.length} selezionati</div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="h-7 rounded-full px-2.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground" onClick={() => setUnlockSelection(encounterUnknownBestiaryMonsters.map((monster) => monster.id))}>
+                      Tutti
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-7 rounded-full px-2.5 text-[11px] uppercase tracking-[0.14em] text-muted-foreground" onClick={() => setUnlockSelection([])}>
+                      Nessuno
+                    </Button>
+                  </div>
+                </div>
+                <div className="max-h-[340px] overflow-y-auto rounded-md border border-border/60 bg-background/40">
+                  {encounterUnknownBestiaryMonsters.map((monster) => {
+                    const checked = unlockSelection.includes(monster.id);
+                    return (
+                      <label
+                        key={monster.id}
+                        className="flex cursor-pointer items-center justify-between gap-3 border-b border-border/50 px-3 py-3 text-sm last:border-b-0"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-medium text-primary">{monster.name}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            GS {crLabel(monster.challengeRating)} · {monster.size || "-"} · {monster.typeLabel || monster.creatureType || "-"}
+                          </div>
+                        </div>
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(value) => toggleUnlockSelection(monster.id, value === true)}
+                          aria-label={`Seleziona ${monster.name}`}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground" onClick={() => setUnlockKnowledgeOpen(false)} aria-label="Annulla">
+              <X className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              onClick={() => void unlockSelectedMonsterKnowledge()}
+              disabled={unlockSelection.length === 0 || unlockingKnowledge || encounterUnknownBestiaryMonsters.length === 0}
+              aria-label="Sblocca livello base"
+            >
+              <Check className="h-4 w-4" />
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

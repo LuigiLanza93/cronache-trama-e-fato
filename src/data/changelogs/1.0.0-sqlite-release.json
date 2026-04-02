@@ -1,8 +1,8 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.7",
   "releaseName": "SQLite Release",
-  "releasedAt": "2026-04-01",
-  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione, e una trasformazione piu' profonda del bestiario con normalizzazione dei tipi, rarita', regole di discovery, ordinamento tabellare, archiviazione logica dei mostri e prime fondamenta del compendio lato player.",
+  "releasedAt": "2026-04-02",
+  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione, una trasformazione piu' profonda del bestiario con normalizzazione dei tipi, rarita', regole di discovery, ordinamento tabellare, archiviazione logica dei mostri e prime fondamenta del compendio lato player, e il primo compendio mostri realmente consultabile dai giocatori con gestione manuale della conoscenza dal lato DM.",
   "sections": [
     {
       "title": "Autenticazione e struttura app",
@@ -94,7 +94,10 @@
         "Intestazioni della tabella bestiario rese cliccabili per l'ordinamento per colonna.",
         "Introdotta l'archiviazione logica dei mostri, con eliminazione non distruttiva dal bestiario.",
         "Poste le basi dati del compendio mostri lato player, con stati Sconosciuto, Conoscenza base e Conoscenza completa.",
-        "Aggiunta anteprima DM della scheda player del mostro, con blur delle informazioni ignote e prima resa grafica delle conoscenze parziali."
+        "Aggiunta anteprima DM della scheda player del mostro, con blur delle informazioni ignote e prima resa grafica delle conoscenze parziali.",
+        "Creato il vero compendio mostri lato player come pagina dedicata apribile dalla scheda personaggio, con tabella filtrabile e dettaglio coerente con il livello di conoscenza.",
+        "Elenco del compendio adattato ai vincoli di conoscenza: dati base visibili solo da BASIC in su, caratteristiche complete solo a livello COMPLETE e colonne ignote rese blur.",
+        "Gestione della conoscenza estesa lato DM: selettore diretto nel dettaglio mostro del bestiario e sblocco manuale di massa dal tracker iniziativa per i mostri bestiario presenti nello scontro."
       ]
     },
     {

@@ -821,6 +821,101 @@ function listMonsters() {
     .map((monster) => enrichMonsterWithDiscovery(monster, discoveryRules));
 }
 
+function summarizeMonsterSpeed(speed = {}) {
+  const speedLabels = {
+    walk: "Camminare",
+    fly: "Volare",
+    swim: "Nuotare",
+    climb: "Scalare",
+    burrow: "Scavare",
+  };
+
+  return ["walk", "fly", "swim", "climb", "burrow"]
+    .filter((key) => speed[key])
+    .map((key) => `${speedLabels[key]} ${speed[key]}`)
+    .join(", ");
+}
+
+function qualitativeAbilityLabel(score) {
+  if (score <= 5) return "Molto bassa";
+  if (score <= 9) return "Bassa";
+  if (score <= 11) return "Nella media";
+  if (score <= 15) return "Alta";
+  if (score <= 19) return "Molto alta";
+  return "Eccezionale";
+}
+
+function signedAbilityModifier(score) {
+  const modifier = Math.floor((Number(score) - 10) / 2);
+  return modifier >= 0 ? `+${modifier}` : String(modifier);
+}
+
+function fullAbilityLabel(score) {
+  return `${score} (${signedAbilityModifier(score)})`;
+}
+
+function readKnownMonsterCompendiumStateById() {
+  if (!tableExists("MonsterCompendiumEntry")) {
+    return new Map();
+  }
+
+  return new Map(
+    sqlite
+      .prepare(`
+        SELECT monsterId, knowledgeState
+        FROM "MonsterCompendiumEntry"
+        WHERE knowledgeState IS NOT NULL
+          AND knowledgeState <> 'UNKNOWN'
+      `)
+      .all()
+      .map((row) => [row.monsterId, row.knowledgeState])
+  );
+}
+
+function buildPlayerCompendiumBasicSummary(monster, knowledgeState = "BASIC") {
+  const isComplete = knowledgeState === "COMPLETE";
+
+  return {
+    id: monster.id,
+    knowledgeState,
+    name: monster.general.name,
+    size: monster.general.size,
+    typeLabel: monster.general.typeLabel || monster.general.creatureType,
+    armorClass: monster.combat.armorClass.value,
+    hitPointsAverage: monster.combat.hitPoints.average,
+    speedLabel: summarizeMonsterSpeed(monster.combat.speed),
+    strengthScore: monster.abilities.strength,
+    dexterityScore: monster.abilities.dexterity,
+    constitutionScore: monster.abilities.constitution,
+    intelligenceScore: monster.abilities.intelligence,
+    wisdomScore: monster.abilities.wisdom,
+    charismaScore: monster.abilities.charisma,
+    strengthDisplay: isComplete ? fullAbilityLabel(monster.abilities.strength) : qualitativeAbilityLabel(monster.abilities.strength),
+    dexterityDisplay: isComplete ? fullAbilityLabel(monster.abilities.dexterity) : qualitativeAbilityLabel(monster.abilities.dexterity),
+    constitutionDisplay: isComplete ? fullAbilityLabel(monster.abilities.constitution) : qualitativeAbilityLabel(monster.abilities.constitution),
+    intelligenceDisplay: isComplete ? fullAbilityLabel(monster.abilities.intelligence) : null,
+    wisdomDisplay: isComplete ? fullAbilityLabel(monster.abilities.wisdom) : null,
+    charismaDisplay: isComplete ? fullAbilityLabel(monster.abilities.charisma) : null,
+  };
+}
+
+function readMonsterCompendiumKnowledgeState(monsterId) {
+  if (!tableExists("MonsterCompendiumEntry")) {
+    return "UNKNOWN";
+  }
+
+  return (
+    sqlite
+      .prepare(`
+        SELECT knowledgeState
+        FROM "MonsterCompendiumEntry"
+        WHERE monsterId = ?
+        LIMIT 1
+      `)
+      .get(monsterId)?.knowledgeState ?? "UNKNOWN"
+  );
+}
+
 function createEmptyMonster(name) {
   const safeName = String(name).trim() || "Nuovo Mostro";
   return normalizeMonsterRecord(
@@ -1594,6 +1689,7 @@ async function start() {
       id: monster.id,
       slug: monster.slug,
       name: monster.general.name,
+      compendiumKnowledgeState: readMonsterCompendiumKnowledgeState(monster.id),
       challengeRating: monster.general.challengeRating,
       size: monster.general.size,
       creatureType: monster.general.creatureType,
@@ -1622,7 +1718,62 @@ async function start() {
       return res.status(404).json({ error: "Monster not found" });
     }
 
-    return res.json(monster);
+    return res.json({
+      ...monster,
+      compendiumKnowledgeState: readMonsterCompendiumKnowledgeState(monster.id),
+    });
+  });
+
+  app.get("/api/player-compendium/monsters", requireAuth, (req, res) => {
+    const knownStates = readKnownMonsterCompendiumStateById();
+    const monsters = listMonsters()
+      .filter((monster) => knownStates.has(monster.id))
+      .map((monster) => buildPlayerCompendiumBasicSummary(monster, knownStates.get(monster.id)));
+
+    return res.json(monsters);
+  });
+
+  app.get("/api/player-compendium/monsters/:monsterId", requireAuth, (req, res) => {
+    const monsterId = req.params.monsterId;
+    const knowledgeStateRow = tableExists("MonsterCompendiumEntry")
+      ? sqlite
+          .prepare(`
+            SELECT knowledgeState
+            FROM "MonsterCompendiumEntry"
+            WHERE monsterId = ?
+            LIMIT 1
+          `)
+          .get(monsterId)
+      : null;
+
+    const knowledgeState = knowledgeStateRow?.knowledgeState ?? "UNKNOWN";
+    if (knowledgeState === "UNKNOWN") {
+      return res.status(404).json({ error: "Monster not available in compendium" });
+    }
+
+    const relativePath = decodeMonsterId(monsterId);
+    if (!relativePath) {
+      return res.status(400).json({ error: "Invalid monster id" });
+    }
+
+    const monster = readMonsterByRelativePath(relativePath);
+    if (!monster) {
+      return res.status(404).json({ error: "Monster not found" });
+    }
+
+    if (knowledgeState === "COMPLETE") {
+      return res.json({
+        id: monster.id,
+        knowledgeState,
+        monster,
+      });
+    }
+
+    return res.json({
+      id: monster.id,
+      knowledgeState: "BASIC",
+      monster,
+    });
   });
 
   app.get("/api/spells", requireAuth, (req, res) => {
@@ -1703,7 +1854,11 @@ async function start() {
       nextMonster.id
     );
 
-    return res.json(readMonsterByRelativePath(relativePath));
+    const savedMonster = readMonsterByRelativePath(relativePath);
+    return res.json({
+      ...savedMonster,
+      compendiumKnowledgeState: readMonsterCompendiumKnowledgeState(savedMonster.id),
+    });
   });
 
   app.post("/api/monsters", requireRole("dm"), (req, res) => {
@@ -1799,7 +1954,44 @@ async function start() {
       );
     }
 
-    return res.status(201).json(readMonsterByRelativePath(relativePath));
+    const createdMonster = readMonsterByRelativePath(relativePath);
+    return res.status(201).json({
+      ...createdMonster,
+      compendiumKnowledgeState: readMonsterCompendiumKnowledgeState(createdMonster.id),
+    });
+  });
+
+  app.put("/api/monsters/:monsterId/compendium-knowledge", requireRole("dm"), (req, res) => {
+    const relativePath = decodeMonsterId(req.params.monsterId);
+    if (!relativePath) {
+      return res.status(400).json({ error: "Invalid monster id" });
+    }
+
+    const monster = readMonsterByRelativePath(relativePath);
+    if (!monster) {
+      return res.status(404).json({ error: "Monster not found" });
+    }
+
+    if (!tableExists("MonsterCompendiumEntry")) {
+      return res.status(500).json({ error: "Monster compendium not available" });
+    }
+
+    const knowledgeState = String(req.body?.knowledgeState ?? "UNKNOWN").toUpperCase();
+    if (!["UNKNOWN", "BASIC", "COMPLETE"].includes(knowledgeState)) {
+      return res.status(400).json({ error: "Invalid knowledge state" });
+    }
+
+    const now = new Date().toISOString();
+    sqlite.prepare(`
+      INSERT INTO "MonsterCompendiumEntry" (
+        monsterId, knowledgeState, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?)
+      ON CONFLICT(monsterId) DO UPDATE SET
+        knowledgeState = excluded.knowledgeState,
+        updatedAt = excluded.updatedAt
+    `).run(monster.id, knowledgeState, now, now);
+
+    return res.json({ monsterId: monster.id, knowledgeState });
   });
 
   app.delete("/api/monsters/:monsterId", requireRole("dm"), (req, res) => {
