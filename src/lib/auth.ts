@@ -203,6 +203,118 @@ export type SkillsPayload = {
 
 export type SpellSlotTable = Record<string, Record<string, Record<string, number>>>;
 
+export type ItemDefinitionSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  rarity: string | null;
+  equippable: boolean;
+  attackCount: number;
+  slotRuleCount: number;
+  updatedAt: string;
+};
+
+export type ItemSlotRuleEntry = {
+  id: string;
+  groupKey: string;
+  selectionMode: string;
+  slot: string;
+  required: boolean;
+  sortOrder: number;
+};
+
+export type ItemAttackEntry = {
+  id: string;
+  name: string;
+  kind: string;
+  handRequirement: string;
+  ability: string | null;
+  attackBonus: number | null;
+  damageDice: string | null;
+  damageType: string | null;
+  rangeNormal: number | null;
+  rangeLong: number | null;
+  twoHandedOnly: boolean;
+  requiresEquipped: boolean;
+  conditionText: string | null;
+  sortOrder: number;
+};
+
+export type ItemModifierEntry = {
+  id: string;
+  target: string;
+  type: string;
+  value: number | null;
+  formula: string | null;
+  condition: string;
+  stackKey: string | null;
+  sortOrder: number;
+};
+
+export type ItemFeatureEntry = {
+  id: string;
+  name: string;
+  description: string | null;
+  resetOn: string | null;
+  customResetLabel: string | null;
+  maxUses: number | null;
+  condition: string;
+  sortOrder: number;
+};
+
+export type ItemAbilityRequirementEntry = {
+  id: string;
+  ability: string;
+  minScore: number;
+  sortOrder: number;
+};
+
+export type ItemUseEffectEntry = {
+  id: string;
+  effectType: string;
+  targetType: string;
+  diceExpression: string | null;
+  flatValue: number | null;
+  damageType: string | null;
+  savingThrowAbility: string | null;
+  savingThrowDc: number | null;
+  successOutcome: string | null;
+  durationText: string | null;
+  notes: string | null;
+  sortOrder: number;
+};
+
+export type ItemDefinitionEntry = {
+  id: string;
+  slug: string;
+  name: string;
+  category: string;
+  subcategory: string | null;
+  weaponHandling: string | null;
+  gloveWearMode: string | null;
+  armorCategory: string | null;
+  armorClassCalculation: string | null;
+  armorClassBase: number | null;
+  armorClassBonus: number | null;
+  rarity: string | null;
+  description: string | null;
+  stackable: boolean;
+  equippable: boolean;
+  attunement: boolean;
+  weight: number | null;
+  valueCp: number | null;
+  data: string | null;
+  createdAt: string;
+  updatedAt: string;
+  slotRules: ItemSlotRuleEntry[];
+  attacks: ItemAttackEntry[];
+  modifiers: ItemModifierEntry[];
+  features: ItemFeatureEntry[];
+  abilityRequirements: ItemAbilityRequirementEntry[];
+  useEffects: ItemUseEffectEntry[];
+};
+
 async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
@@ -214,7 +326,15 @@ async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    const error = new Error(res.status === 401 ? "Unauthorized" : "Request failed") as Error & {
+    let message = res.status === 401 ? "Unauthorized" : "Request failed";
+    try {
+      const payload = await res.clone().json();
+      if (typeof payload?.error === "string" && payload.error.trim()) {
+        message = payload.error.trim();
+      }
+    } catch {}
+
+    const error = new Error(message) as Error & {
       status?: number;
     };
     error.status = res.status;
@@ -388,6 +508,34 @@ export function createEncounterScenarioRequest(payload: {
 
 export function deleteEncounterScenarioRequest(scenarioId: string) {
   return authFetch<null>(`/api/encounter-scenarios/${scenarioId}`, {
+    method: "DELETE",
+  });
+}
+
+export function fetchItemDefinitions() {
+  return authFetch<ItemDefinitionSummary[]>("/api/items", { method: "GET" });
+}
+
+export function fetchItemDefinition(itemId: string) {
+  return authFetch<ItemDefinitionEntry>(`/api/items/${itemId}`, { method: "GET" });
+}
+
+export function createItemDefinitionRequest(payload: { name: string }) {
+  return authFetch<ItemDefinitionEntry>("/api/items", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateItemDefinitionRequest(itemId: string, item: ItemDefinitionEntry) {
+  return authFetch<ItemDefinitionEntry>(`/api/items/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify({ item }),
+  });
+}
+
+export function deleteItemDefinitionRequest(itemId: string) {
+  return authFetch<null>(`/api/items/${itemId}`, {
     method: "DELETE",
   });
 }

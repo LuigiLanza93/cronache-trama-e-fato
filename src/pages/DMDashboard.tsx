@@ -444,6 +444,16 @@ export default function DMDashboard() {
               </TooltipTrigger>
               <TooltipContent>Apri tracker iniziativa</TooltipContent>
             </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                  <a href="/dm/items" aria-label="Apri gestione oggetti">
+                    <Shield className="h-4 w-4" />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Apri gestione oggetti</TooltipContent>
+            </Tooltip>
           </div>
         </section>
 

@@ -267,6 +267,11 @@ const ABILITY_LABELS = {
   charisma: "Carisma",
 };
 
+const ITEM_ABILITY_SCORE_VALUES = ["STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA"];
+const ITEM_USE_EFFECT_TYPE_VALUES = ["HEAL", "DAMAGE", "TEMP_HP", "APPLY_CONDITION", "REMOVE_CONDITION", "RESTORE_RESOURCE", "CUSTOM"];
+const ITEM_USE_TARGET_TYPE_VALUES = ["SELF", "CREATURE", "OBJECT", "AREA", "CUSTOM"];
+const ITEM_USE_SUCCESS_OUTCOME_VALUES = ["NONE", "HALF", "NEGATES", "CUSTOM"];
+
 function tableExists(tableName) {
   return !!sqlite
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
@@ -394,6 +399,625 @@ function readSkills() {
     .map(normalizeSkillRow)
     .filter(Boolean);
   return { skills };
+}
+
+function normalizeNullableString(value) {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  return normalized ? normalized : null;
+}
+
+function normalizeNullableInt(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeNullableFloat(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function hasMeaningfulValue(value) {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "boolean") return value;
+  return value !== null && value !== undefined;
+}
+
+function assertNamedEntries(entries, label, fields = []) {
+  const invalidIndex = entries.findIndex((entry) => {
+    const name = String(entry?.name ?? "").trim();
+    if (name) return false;
+    return fields.some((field) => hasMeaningfulValue(entry?.[field]));
+  });
+
+  if (invalidIndex >= 0) {
+    throw new Error(`${label} #${invalidIndex + 1} richiede un nome.`);
+  }
+}
+
+function createUniqueItemSlug(baseSlug, excludeId = null) {
+  const safeBaseSlug = sanitizeSlug(baseSlug || "item");
+  const rows = tableExists("ItemDefinition")
+    ? sqlite.prepare('SELECT id, slug FROM "ItemDefinition"').all()
+    : [];
+  const used = new Set(
+    rows
+      .filter((row) => !excludeId || row.id !== excludeId)
+      .map((row) => String(row.slug ?? "").trim())
+      .filter(Boolean)
+  );
+
+  if (!used.has(safeBaseSlug)) return safeBaseSlug;
+
+  let counter = 2;
+  while (used.has(`${safeBaseSlug}-${counter}`)) {
+    counter += 1;
+  }
+  return `${safeBaseSlug}-${counter}`;
+}
+
+function createEmptyItemDefinition(name = "Nuovo oggetto") {
+  const safeName = String(name).trim() || "Nuovo oggetto";
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    slug: createUniqueItemSlug(safeName),
+    name: safeName,
+    category: "OTHER",
+    subcategory: null,
+    weaponHandling: null,
+    gloveWearMode: null,
+    armorCategory: null,
+    armorClassCalculation: null,
+    armorClassBase: null,
+    armorClassBonus: null,
+    rarity: null,
+    description: null,
+    stackable: false,
+    equippable: false,
+    attunement: false,
+    weight: null,
+    valueCp: null,
+    data: null,
+    createdAt: now,
+    updatedAt: now,
+    slotRules: [],
+    attacks: [],
+    modifiers: [],
+    features: [],
+    abilityRequirements: [],
+    useEffects: [],
+  };
+}
+
+function readItemDefinitions() {
+  if (!tableExists("ItemDefinition")) return [];
+
+  return sqlite.prepare(`
+    SELECT
+      d.id,
+      d.slug,
+      d.name,
+      d.category,
+      d.rarity,
+      d.equippable,
+      d.updatedAt,
+      (SELECT COUNT(*) FROM "ItemAttack" a WHERE a.itemDefinitionId = d.id) AS attackCount,
+      (SELECT COUNT(*) FROM "ItemSlotRule" s WHERE s.itemDefinitionId = d.id) AS slotRuleCount
+    FROM "ItemDefinition" d
+    ORDER BY d.name COLLATE NOCASE ASC
+  `).all().map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    category: row.category,
+    rarity: row.rarity ?? null,
+    equippable: !!row.equippable,
+    attackCount: Number(row.attackCount ?? 0),
+    slotRuleCount: Number(row.slotRuleCount ?? 0),
+    updatedAt: row.updatedAt,
+  }));
+}
+
+function readItemDefinition(itemId) {
+  if (!tableExists("ItemDefinition")) return null;
+
+  const base = sqlite.prepare('SELECT * FROM "ItemDefinition" WHERE id = ? LIMIT 1').get(itemId);
+  if (!base) return null;
+
+  const slotRules = sqlite
+    .prepare('SELECT * FROM "ItemSlotRule" WHERE itemDefinitionId = ? ORDER BY groupKey ASC, sortOrder ASC, slot ASC')
+    .all(itemId)
+    .map((row) => ({
+      id: row.id,
+      groupKey: row.groupKey,
+      selectionMode: row.selectionMode,
+      slot: row.slot,
+      required: !!row.required,
+      sortOrder: Number(row.sortOrder ?? 0),
+    }));
+
+  const attacks = sqlite
+    .prepare('SELECT * FROM "ItemAttack" WHERE itemDefinitionId = ? ORDER BY sortOrder ASC, name COLLATE NOCASE ASC')
+    .all(itemId)
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      kind: row.kind,
+      handRequirement: row.handRequirement,
+      ability: row.ability ?? null,
+      attackBonus: row.attackBonus ?? null,
+      damageDice: row.damageDice ?? null,
+      damageType: row.damageType ?? null,
+      rangeNormal: row.rangeNormal ?? null,
+      rangeLong: row.rangeLong ?? null,
+      twoHandedOnly: !!row.twoHandedOnly,
+      requiresEquipped: !!row.requiresEquipped,
+      conditionText: row.conditionText ?? null,
+      sortOrder: Number(row.sortOrder ?? 0),
+    }));
+
+  const modifiers = sqlite
+    .prepare('SELECT * FROM "ItemModifier" WHERE itemDefinitionId = ? ORDER BY sortOrder ASC, target ASC')
+    .all(itemId)
+    .map((row) => ({
+      id: row.id,
+      target: row.target,
+      type: row.type,
+      value: row.value ?? null,
+      formula: row.formula ?? null,
+      condition: row.condition,
+      stackKey: row.stackKey ?? null,
+      sortOrder: Number(row.sortOrder ?? 0),
+    }));
+
+  const features = sqlite
+    .prepare('SELECT * FROM "ItemFeature" WHERE itemDefinitionId = ? ORDER BY sortOrder ASC, name COLLATE NOCASE ASC')
+    .all(itemId)
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description ?? null,
+      resetOn: row.resetOn ?? null,
+      customResetLabel: row.customResetLabel ?? null,
+      maxUses: row.maxUses ?? null,
+      condition: row.condition,
+      sortOrder: Number(row.sortOrder ?? 0),
+    }));
+
+  const abilityRequirements = tableExists("ItemAbilityRequirement")
+    ? sqlite
+        .prepare('SELECT * FROM "ItemAbilityRequirement" WHERE itemDefinitionId = ? ORDER BY sortOrder ASC, ability ASC')
+        .all(itemId)
+        .map((row) => ({
+          id: row.id,
+          ability: row.ability,
+          minScore: Number(row.minScore ?? 0),
+          sortOrder: Number(row.sortOrder ?? 0),
+        }))
+    : [];
+
+  const useEffects = tableExists("ItemUseEffect")
+    ? sqlite
+        .prepare('SELECT * FROM "ItemUseEffect" WHERE itemDefinitionId = ? ORDER BY sortOrder ASC, effectType ASC')
+        .all(itemId)
+        .map((row) => ({
+          id: row.id,
+          effectType: row.effectType,
+          targetType: row.targetType,
+          diceExpression: row.diceExpression ?? null,
+          flatValue: row.flatValue ?? null,
+          damageType: row.damageType ?? null,
+          savingThrowAbility: row.savingThrowAbility ?? null,
+          savingThrowDc: row.savingThrowDc ?? null,
+          successOutcome: row.successOutcome ?? null,
+          durationText: row.durationText ?? null,
+          notes: row.notes ?? null,
+          sortOrder: Number(row.sortOrder ?? 0),
+        }))
+    : [];
+
+  return {
+    id: base.id,
+    slug: base.slug,
+    name: base.name,
+    category: base.category,
+    subcategory: base.subcategory ?? null,
+    weaponHandling: base.weaponHandling ?? null,
+    gloveWearMode: base.gloveWearMode ?? null,
+    armorCategory: base.armorCategory ?? null,
+    armorClassCalculation: base.armorClassCalculation ?? null,
+    armorClassBase: base.armorClassBase ?? null,
+    armorClassBonus: base.armorClassBonus ?? null,
+    rarity: base.rarity ?? null,
+    description: base.description ?? null,
+    stackable: !!base.stackable,
+    equippable: !!base.equippable,
+    attunement: !!base.attunement,
+    weight: base.weight ?? null,
+    valueCp: base.valueCp ?? null,
+    data: base.data ?? null,
+    createdAt: base.createdAt,
+    updatedAt: base.updatedAt,
+    slotRules,
+    attacks,
+    modifiers,
+    features,
+    abilityRequirements,
+    useEffects,
+  };
+}
+
+function normalizeItemDefinitionPayload(payload, existingId = null) {
+  const base = createEmptyItemDefinition(String(payload?.name ?? "Nuovo oggetto"));
+  const safeName = String(payload?.name ?? "").trim();
+  if (!safeName) {
+    throw new Error("Item name required");
+  }
+
+  const rawAttacks = Array.isArray(payload?.attacks) ? payload.attacks : [];
+  const rawFeatures = Array.isArray(payload?.features) ? payload.features : [];
+  const rawAbilityRequirements = Array.isArray(payload?.abilityRequirements) ? payload.abilityRequirements : [];
+  const rawUseEffects = Array.isArray(payload?.useEffects) ? payload.useEffects : [];
+
+  assertNamedEntries(rawAttacks, "Attacco", ["kind", "handRequirement", "ability", "attackBonus", "damageDice", "damageType", "rangeNormal", "rangeLong", "conditionText"]);
+  assertNamedEntries(rawFeatures, "Feature", ["description", "resetOn", "customResetLabel", "maxUses", "condition"]);
+
+  return {
+    ...base,
+    id: existingId ?? String(payload?.id ?? base.id),
+    slug: createUniqueItemSlug(String(payload?.slug ?? safeName), existingId),
+    name: safeName,
+    category: String(payload?.category ?? "OTHER").trim() || "OTHER",
+    subcategory: normalizeNullableString(payload?.subcategory),
+    weaponHandling: normalizeNullableString(payload?.weaponHandling),
+    gloveWearMode: normalizeNullableString(payload?.gloveWearMode),
+    armorCategory: normalizeNullableString(payload?.armorCategory),
+    armorClassCalculation: normalizeNullableString(payload?.armorClassCalculation),
+    armorClassBase: normalizeNullableInt(payload?.armorClassBase),
+    armorClassBonus: normalizeNullableInt(payload?.armorClassBonus),
+    rarity: normalizeNullableString(payload?.rarity),
+    description: normalizeNullableString(payload?.description),
+    stackable: !!payload?.stackable,
+    equippable: !!payload?.equippable,
+    attunement: !!payload?.attunement,
+    weight: normalizeNullableFloat(payload?.weight),
+    valueCp: normalizeNullableInt(payload?.valueCp),
+    data: typeof payload?.data === "string" ? payload.data : payload?.data ? JSON.stringify(payload.data) : null,
+    slotRules: Array.isArray(payload?.slotRules)
+      ? payload.slotRules.map((entry, index) => ({
+          id: String(entry?.id ?? crypto.randomUUID()),
+          groupKey: String(entry?.groupKey ?? "default").trim() || "default",
+          selectionMode: String(entry?.selectionMode ?? "ALL_REQUIRED").trim() || "ALL_REQUIRED",
+          slot: String(entry?.slot ?? "").trim(),
+          required: entry?.required !== false,
+          sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : index,
+        })).filter((entry) => entry.slot)
+      : [],
+    attacks: rawAttacks
+      ? rawAttacks.map((entry, index) => ({
+          id: String(entry?.id ?? crypto.randomUUID()),
+          name: String(entry?.name ?? "").trim(),
+          kind: String(entry?.kind ?? "MELEE_WEAPON").trim() || "MELEE_WEAPON",
+          handRequirement: String(entry?.handRequirement ?? "ANY").trim() || "ANY",
+          ability: normalizeNullableString(entry?.ability),
+          attackBonus: normalizeNullableInt(entry?.attackBonus),
+          damageDice: normalizeNullableString(entry?.damageDice),
+          damageType: normalizeNullableString(entry?.damageType),
+          rangeNormal: normalizeNullableInt(entry?.rangeNormal),
+          rangeLong: normalizeNullableInt(entry?.rangeLong),
+          twoHandedOnly: !!entry?.twoHandedOnly,
+          requiresEquipped: entry?.requiresEquipped !== false,
+          conditionText: normalizeNullableString(entry?.conditionText),
+          sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : index,
+        })).filter((entry) => entry.name)
+      : [],
+    modifiers: Array.isArray(payload?.modifiers)
+      ? payload.modifiers.map((entry, index) => ({
+          id: String(entry?.id ?? crypto.randomUUID()),
+          target: String(entry?.target ?? "").trim(),
+          type: String(entry?.type ?? "FLAT").trim() || "FLAT",
+          value: normalizeNullableInt(entry?.value),
+          formula: normalizeNullableString(entry?.formula),
+          condition: String(entry?.condition ?? "WHILE_EQUIPPED").trim() || "WHILE_EQUIPPED",
+          stackKey: normalizeNullableString(entry?.stackKey),
+          sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : index,
+        })).filter((entry) => entry.target)
+      : [],
+    features: rawFeatures
+      ? rawFeatures.map((entry, index) => ({
+          id: String(entry?.id ?? crypto.randomUUID()),
+          name: String(entry?.name ?? "").trim(),
+          description: normalizeNullableString(entry?.description),
+          resetOn: normalizeNullableString(entry?.resetOn),
+          customResetLabel: normalizeNullableString(entry?.customResetLabel),
+          maxUses: normalizeNullableInt(entry?.maxUses),
+          condition: String(entry?.condition ?? "WHILE_EQUIPPED").trim() || "WHILE_EQUIPPED",
+          sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : index,
+        })).filter((entry) => entry.name)
+      : [],
+    abilityRequirements: rawAbilityRequirements
+      ? rawAbilityRequirements.map((entry, index) => {
+          const ability = String(entry?.ability ?? "").trim().toUpperCase();
+          const minScore = normalizeNullableInt(entry?.minScore);
+          return {
+            id: String(entry?.id ?? crypto.randomUUID()),
+            ability,
+            minScore,
+            sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : index,
+          };
+        }).filter((entry) => ITEM_ABILITY_SCORE_VALUES.includes(entry.ability) && entry.minScore != null)
+      : [],
+    useEffects: rawUseEffects
+      ? rawUseEffects.map((entry, index) => {
+          const effectType = String(entry?.effectType ?? "").trim().toUpperCase();
+          const targetType = String(entry?.targetType ?? "").trim().toUpperCase();
+          const savingThrowAbility = normalizeNullableString(entry?.savingThrowAbility)?.toUpperCase() ?? null;
+          const successOutcome = normalizeNullableString(entry?.successOutcome)?.toUpperCase() ?? null;
+          return {
+            id: String(entry?.id ?? crypto.randomUUID()),
+            effectType,
+            targetType,
+            diceExpression: normalizeNullableString(entry?.diceExpression),
+            flatValue: normalizeNullableInt(entry?.flatValue),
+            damageType: normalizeNullableString(entry?.damageType),
+            savingThrowAbility,
+            savingThrowDc: normalizeNullableInt(entry?.savingThrowDc),
+            successOutcome,
+            durationText: normalizeNullableString(entry?.durationText),
+            notes: normalizeNullableString(entry?.notes),
+            sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : index,
+          };
+        }).filter((entry) => (
+          ITEM_USE_EFFECT_TYPE_VALUES.includes(entry.effectType) &&
+          ITEM_USE_TARGET_TYPE_VALUES.includes(entry.targetType) &&
+          (!entry.savingThrowAbility || ITEM_ABILITY_SCORE_VALUES.includes(entry.savingThrowAbility)) &&
+          (!entry.successOutcome || ITEM_USE_SUCCESS_OUTCOME_VALUES.includes(entry.successOutcome))
+        ))
+      : [],
+  };
+}
+
+function saveItemDefinition(payload, existingId = null) {
+  const normalized = normalizeItemDefinitionPayload(payload, existingId);
+  const now = new Date().toISOString();
+  const existing = tableExists("ItemDefinition")
+    ? sqlite.prepare('SELECT id, createdAt FROM "ItemDefinition" WHERE id = ? LIMIT 1').get(normalized.id)
+    : null;
+
+  runInTransaction(() => {
+    if (existing) {
+      sqlite.prepare(`
+        UPDATE "ItemDefinition"
+        SET
+          slug = ?,
+          name = ?,
+          category = ?,
+          subcategory = ?,
+          weaponHandling = ?,
+          gloveWearMode = ?,
+          armorCategory = ?,
+          armorClassCalculation = ?,
+          armorClassBase = ?,
+          armorClassBonus = ?,
+          rarity = ?,
+          description = ?,
+          stackable = ?,
+          equippable = ?,
+          attunement = ?,
+          weight = ?,
+          valueCp = ?,
+          data = ?,
+          updatedAt = ?
+        WHERE id = ?
+      `).run(
+        normalized.slug,
+        normalized.name,
+        normalized.category,
+        normalized.subcategory,
+        normalized.weaponHandling,
+        normalized.gloveWearMode,
+        normalized.armorCategory,
+        normalized.armorClassCalculation,
+        normalized.armorClassBase,
+        normalized.armorClassBonus,
+        normalized.rarity,
+        normalized.description,
+        normalized.stackable ? 1 : 0,
+        normalized.equippable ? 1 : 0,
+        normalized.attunement ? 1 : 0,
+        normalized.weight,
+        normalized.valueCp,
+        normalized.data,
+        now,
+        normalized.id
+      );
+    } else {
+      sqlite.prepare(`
+        INSERT INTO "ItemDefinition" (
+          id, slug, name, category, subcategory, weaponHandling, gloveWearMode, armorCategory,
+          armorClassCalculation, armorClassBase, armorClassBonus, rarity, description, stackable,
+          equippable, attunement, weight, valueCp, data, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        normalized.id,
+        normalized.slug,
+        normalized.name,
+        normalized.category,
+        normalized.subcategory,
+        normalized.weaponHandling,
+        normalized.gloveWearMode,
+        normalized.armorCategory,
+        normalized.armorClassCalculation,
+        normalized.armorClassBase,
+        normalized.armorClassBonus,
+        normalized.rarity,
+        normalized.description,
+        normalized.stackable ? 1 : 0,
+        normalized.equippable ? 1 : 0,
+        normalized.attunement ? 1 : 0,
+        normalized.weight,
+        normalized.valueCp,
+        normalized.data,
+        now,
+        now
+      );
+    }
+
+    sqlite.prepare('DELETE FROM "ItemSlotRule" WHERE itemDefinitionId = ?').run(normalized.id);
+    sqlite.prepare('DELETE FROM "ItemAttack" WHERE itemDefinitionId = ?').run(normalized.id);
+    sqlite.prepare('DELETE FROM "ItemModifier" WHERE itemDefinitionId = ?').run(normalized.id);
+    sqlite.prepare('DELETE FROM "ItemFeature" WHERE itemDefinitionId = ?').run(normalized.id);
+    if (tableExists("ItemAbilityRequirement")) {
+      sqlite.prepare('DELETE FROM "ItemAbilityRequirement" WHERE itemDefinitionId = ?').run(normalized.id);
+    }
+    if (tableExists("ItemUseEffect")) {
+      sqlite.prepare('DELETE FROM "ItemUseEffect" WHERE itemDefinitionId = ?').run(normalized.id);
+    }
+
+    const insertSlotRule = sqlite.prepare(`
+      INSERT INTO "ItemSlotRule" (id, itemDefinitionId, groupKey, selectionMode, slot, required, sortOrder)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertAttack = sqlite.prepare(`
+      INSERT INTO "ItemAttack" (
+        id, itemDefinitionId, name, kind, handRequirement, ability, attackBonus, damageDice,
+        damageType, rangeNormal, rangeLong, twoHandedOnly, requiresEquipped, conditionText,
+        sortOrder, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertModifier = sqlite.prepare(`
+      INSERT INTO "ItemModifier" (
+        id, itemDefinitionId, target, type, value, formula, condition, stackKey, sortOrder, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertFeature = sqlite.prepare(`
+      INSERT INTO "ItemFeature" (
+        id, itemDefinitionId, name, description, resetOn, customResetLabel, maxUses, condition, sortOrder, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const insertAbilityRequirement = tableExists("ItemAbilityRequirement")
+      ? sqlite.prepare(`
+          INSERT INTO "ItemAbilityRequirement" (
+            id, itemDefinitionId, ability, minScore, sortOrder, createdAt, updatedAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `)
+      : null;
+    const insertUseEffect = tableExists("ItemUseEffect")
+      ? sqlite.prepare(`
+          INSERT INTO "ItemUseEffect" (
+            id, itemDefinitionId, effectType, targetType, diceExpression, flatValue, damageType,
+            savingThrowAbility, savingThrowDc, successOutcome, durationText, notes, sortOrder, createdAt, updatedAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+      : null;
+
+    for (const entry of normalized.slotRules) {
+      insertSlotRule.run(
+        entry.id,
+        normalized.id,
+        entry.groupKey,
+        entry.selectionMode,
+        entry.slot,
+        entry.required ? 1 : 0,
+        entry.sortOrder
+      );
+    }
+
+    for (const entry of normalized.attacks) {
+      insertAttack.run(
+        entry.id,
+        normalized.id,
+        entry.name,
+        entry.kind,
+        entry.handRequirement,
+        entry.ability,
+        entry.attackBonus,
+        entry.damageDice,
+        entry.damageType,
+        entry.rangeNormal,
+        entry.rangeLong,
+        entry.twoHandedOnly ? 1 : 0,
+        entry.requiresEquipped ? 1 : 0,
+        entry.conditionText,
+        entry.sortOrder,
+        now,
+        now
+      );
+    }
+
+    for (const entry of normalized.modifiers) {
+      insertModifier.run(
+        entry.id,
+        normalized.id,
+        entry.target,
+        entry.type,
+        entry.value,
+        entry.formula,
+        entry.condition,
+        entry.stackKey,
+        entry.sortOrder,
+        now,
+        now
+      );
+    }
+
+    for (const entry of normalized.features) {
+      insertFeature.run(
+        entry.id,
+        normalized.id,
+        entry.name,
+        entry.description,
+        entry.resetOn,
+        entry.customResetLabel,
+        entry.maxUses,
+        entry.condition,
+        entry.sortOrder,
+        now,
+        now
+      );
+    }
+
+    if (insertAbilityRequirement) {
+      for (const entry of normalized.abilityRequirements) {
+        insertAbilityRequirement.run(
+          entry.id,
+          normalized.id,
+          entry.ability,
+          entry.minScore,
+          entry.sortOrder,
+          now,
+          now
+        );
+      }
+    }
+
+    if (insertUseEffect) {
+      for (const entry of normalized.useEffects) {
+        insertUseEffect.run(
+          entry.id,
+          normalized.id,
+          entry.effectType,
+          entry.targetType,
+          entry.diceExpression,
+          entry.flatValue,
+          entry.damageType,
+          entry.savingThrowAbility,
+          entry.savingThrowDc,
+          entry.successOutcome,
+          entry.durationText,
+          entry.notes,
+          entry.sortOrder,
+          now,
+          now
+        );
+      }
+    }
+  });
+
+  return readItemDefinition(normalized.id);
 }
 
 function readOwnership() {
@@ -1681,6 +2305,77 @@ async function start() {
 
     const chats = readChats();
     return res.json(Array.isArray(chats[slug]) ? chats[slug] : []);
+  });
+
+  // ===== Item definitions =====
+  app.get("/api/items", requireRole("dm"), (req, res) => {
+    return res.json(readItemDefinitions());
+  });
+
+  app.get("/api/items/:itemId", requireRole("dm"), (req, res) => {
+    const item = readItemDefinition(req.params.itemId);
+    if (!item) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+    return res.json(item);
+  });
+
+  app.post("/api/items", requireRole("dm"), (req, res) => {
+    const name = String(req.body?.name ?? "").trim();
+    if (!name) {
+      return res.status(400).json({ error: "Item name required" });
+    }
+
+    const created = saveItemDefinition(createEmptyItemDefinition(name));
+    return res.status(201).json(created);
+  });
+
+  app.put("/api/items/:itemId", requireRole("dm"), (req, res) => {
+    const current = readItemDefinition(req.params.itemId);
+    if (!current) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    const payload = req.body?.item;
+    if (!payload || typeof payload !== "object") {
+      return res.status(400).json({ error: "Item payload required" });
+    }
+
+    try {
+      const saved = saveItemDefinition({ ...payload, id: current.id }, current.id);
+      return res.json(saved);
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.delete("/api/items/:itemId", requireRole("dm"), (req, res) => {
+    const itemId = req.params.itemId;
+    const item = readItemDefinition(itemId);
+    if (!item) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    const linkedCount = tableExists("CharacterItem")
+      ? Number(
+          sqlite
+            .prepare('SELECT COUNT(*) AS count FROM "CharacterItem" WHERE itemDefinitionId = ?')
+            .get(itemId)?.count ?? 0
+        )
+      : 0;
+    if (linkedCount > 0) {
+      return res.status(409).json({ error: "Cannot delete item definition linked to character inventory" });
+    }
+
+    runInTransaction(() => {
+      sqlite.prepare('DELETE FROM "ItemSlotRule" WHERE itemDefinitionId = ?').run(itemId);
+      sqlite.prepare('DELETE FROM "ItemAttack" WHERE itemDefinitionId = ?').run(itemId);
+      sqlite.prepare('DELETE FROM "ItemModifier" WHERE itemDefinitionId = ?').run(itemId);
+      sqlite.prepare('DELETE FROM "ItemFeature" WHERE itemDefinitionId = ?').run(itemId);
+      sqlite.prepare('DELETE FROM "ItemDefinition" WHERE id = ?').run(itemId);
+    });
+
+    return res.status(204).end();
   });
 
   // ===== Bestiary =====
