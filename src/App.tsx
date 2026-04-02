@@ -17,6 +17,7 @@ import CharacterAssignments from "./pages/CharacterAssignments";
 import NewCharacter from "./pages/NewCharacter";
 import BestiaryManagement from "./pages/BestiaryManagement";
 import ItemManagement from "./pages/ItemManagement";
+import CharacterInventoryManagement from "./pages/CharacterInventoryManagement";
 import PlayerMonsterCompendium from "./pages/PlayerMonsterCompendium";
 import NotFound from "./pages/NotFound";
 
@@ -78,6 +79,14 @@ const App = () => (
                 element={
                   <RequireRole role="dm">
                     <ItemManagement />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/dm/inventory"
+                element={
+                  <RequireRole role="dm">
+                    <CharacterInventoryManagement />
                   </RequireRole>
                 }
               />

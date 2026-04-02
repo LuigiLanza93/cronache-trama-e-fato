@@ -1020,6 +1020,160 @@ function saveItemDefinition(payload, existingId = null) {
   return readItemDefinition(normalized.id);
 }
 
+function readCharacterInventoryItemsBySlug(slug) {
+  if (!tableExists("CharacterItem")) return [];
+
+  const character = sqlite
+    .prepare('SELECT id, slug, name FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(slug);
+  if (!character) return null;
+
+  return sqlite.prepare(`
+    SELECT
+      ci.id,
+      ci.characterId,
+      ci.itemDefinitionId,
+      ci.nameOverride,
+      ci.descriptionOverride,
+      ci.quantity,
+      ci.isEquipped,
+      ci.sortOrder,
+      ci.notes,
+      ci.createdAt,
+      ci.updatedAt,
+      d.name AS itemDefinitionName,
+      d.category AS itemDefinitionCategory
+    FROM "CharacterItem" ci
+    LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
+    WHERE ci.characterId = ?
+    ORDER BY ci.sortOrder ASC, ci.createdAt ASC
+  `).all(character.id).map((row) => ({
+    id: row.id,
+    characterId: character.id,
+    characterSlug: character.slug,
+    characterName: character.name,
+    itemDefinitionId: row.itemDefinitionId ?? null,
+    itemName: row.nameOverride ?? row.itemDefinitionName ?? "Oggetto senza nome",
+    itemCategory: row.itemDefinitionCategory ?? null,
+    quantity: Number(row.quantity ?? 1),
+    isEquipped: !!row.isEquipped,
+    nameOverride: row.nameOverride ?? null,
+    descriptionOverride: row.descriptionOverride ?? null,
+    notes: row.notes ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }));
+}
+
+function assignItemDefinitionToCharacter(characterSlug, payload, actorUserId = null) {
+  if (!tableExists("CharacterItem")) {
+    throw new Error("Character inventory not available");
+  }
+
+  const character = sqlite
+    .prepare('SELECT id, slug, name FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(characterSlug);
+  if (!character) {
+    throw new Error("Character not found");
+  }
+
+  const itemDefinitionId = String(payload?.itemDefinitionId ?? "").trim();
+  if (!itemDefinitionId) {
+    throw new Error("Item definition required");
+  }
+
+  const itemDefinition = sqlite
+    .prepare('SELECT id, name, category, stackable FROM "ItemDefinition" WHERE id = ? LIMIT 1')
+    .get(itemDefinitionId);
+  if (!itemDefinition) {
+    throw new Error("Item definition not found");
+  }
+
+  const requestedQuantity = Math.max(1, normalizeNullableInt(payload?.quantity) ?? 1);
+  const notes = normalizeNullableString(payload?.notes);
+  const currentMaxSortOrder = Number(
+    sqlite.prepare('SELECT MAX(sortOrder) AS maxSortOrder FROM "CharacterItem" WHERE characterId = ?').get(character.id)?.maxSortOrder ?? -1
+  );
+  const entriesToCreate = !!itemDefinition.stackable
+    ? [{ quantity: requestedQuantity }]
+    : Array.from({ length: requestedQuantity }, () => ({ quantity: 1 }));
+
+  runInTransaction(() => {
+    const now = new Date().toISOString();
+    const insertCharacterItem = sqlite.prepare(`
+      INSERT INTO "CharacterItem" (
+        id, characterId, itemDefinitionId, nameOverride, descriptionOverride, quantity, isEquipped,
+        sortOrder, notes, data, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertTransaction = tableExists("InventoryTransaction")
+      ? sqlite.prepare(`
+          INSERT INTO "InventoryTransaction" (
+            id, type, fromOwnerType, fromCharacterId, fromNpcName, toOwnerType, toCharacterId, toNpcName,
+            notes, createdByUserId, createdAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `)
+      : null;
+
+    const insertTransactionItem = tableExists("InventoryTransactionItem")
+      ? sqlite.prepare(`
+          INSERT INTO "InventoryTransactionItem" (
+            id, transactionId, characterItemId, itemDefinitionId, descriptionSnapshot, quantity
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `)
+      : null;
+
+    const transactionId = insertTransaction ? crypto.randomUUID() : null;
+    if (insertTransaction && transactionId) {
+      insertTransaction.run(
+        transactionId,
+        "INITIAL_GRANT",
+        "SYSTEM",
+        null,
+        null,
+        "CHARACTER",
+        character.id,
+        null,
+        `Assegnazione DM: ${itemDefinition.name}`,
+        actorUserId,
+        now
+      );
+    }
+
+    entriesToCreate.forEach((entry, index) => {
+      const characterItemId = crypto.randomUUID();
+      insertCharacterItem.run(
+        characterItemId,
+        character.id,
+        itemDefinition.id,
+        null,
+        null,
+        entry.quantity,
+        0,
+        currentMaxSortOrder + index + 1,
+        notes,
+        JSON.stringify({ assignedFromCatalog: true }),
+        now,
+        now
+      );
+
+      if (insertTransactionItem && transactionId) {
+        insertTransactionItem.run(
+          crypto.randomUUID(),
+          transactionId,
+          characterItemId,
+          itemDefinition.id,
+          itemDefinition.name,
+          entry.quantity
+        );
+      }
+    });
+  });
+
+  return readCharacterInventoryItemsBySlug(characterSlug);
+}
+
 function readOwnership() {
   const rows = sqlite
     .prepare('SELECT slug, ownerUserId FROM "Character" WHERE archivedAt IS NULL AND ownerUserId IS NOT NULL')
@@ -2375,6 +2529,48 @@ async function start() {
       sqlite.prepare('DELETE FROM "ItemDefinition" WHERE id = ?').run(itemId);
     });
 
+    return res.status(204).end();
+  });
+
+  app.get("/api/characters/:slug/inventory-items", requireRole("dm"), (req, res) => {
+    const items = readCharacterInventoryItemsBySlug(req.params.slug);
+    if (items === null) {
+      return res.status(404).json({ error: "Character not found" });
+    }
+    return res.json(items);
+  });
+
+  app.post("/api/characters/:slug/inventory-items", requireRole("dm"), (req, res) => {
+    try {
+      const items = assignItemDefinitionToCharacter(req.params.slug, req.body ?? {}, req.user?.id ?? null);
+      return res.status(201).json(items);
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      const status = /not found/i.test(message) ? 404 : 400;
+      return res.status(status).json({ error: message });
+    }
+  });
+
+  app.delete("/api/characters/:slug/inventory-items/:characterItemId", requireRole("dm"), (req, res) => {
+    if (!tableExists("CharacterItem")) {
+      return res.status(500).json({ error: "Character inventory not available" });
+    }
+
+    const character = sqlite
+      .prepare('SELECT id, slug FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+      .get(req.params.slug);
+    if (!character) {
+      return res.status(404).json({ error: "Character not found" });
+    }
+
+    const characterItem = sqlite
+      .prepare('SELECT id FROM "CharacterItem" WHERE id = ? AND characterId = ? LIMIT 1')
+      .get(req.params.characterItemId, character.id);
+    if (!characterItem) {
+      return res.status(404).json({ error: "Character item not found" });
+    }
+
+    sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
     return res.status(204).end();
   });
 

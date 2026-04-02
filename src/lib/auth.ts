@@ -315,6 +315,23 @@ export type ItemDefinitionEntry = {
   useEffects: ItemUseEffectEntry[];
 };
 
+export type CharacterInventoryItemEntry = {
+  id: string;
+  characterId: string;
+  characterSlug: string;
+  characterName: string;
+  itemDefinitionId: string | null;
+  itemName: string;
+  itemCategory: string | null;
+  quantity: number;
+  isEquipped: boolean;
+  nameOverride: string | null;
+  descriptionOverride: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
@@ -536,6 +553,28 @@ export function updateItemDefinitionRequest(itemId: string, item: ItemDefinition
 
 export function deleteItemDefinitionRequest(itemId: string) {
   return authFetch<null>(`/api/items/${itemId}`, {
+    method: "DELETE",
+  });
+}
+
+export function fetchCharacterInventoryItemsForDm(slug: string) {
+  return authFetch<CharacterInventoryItemEntry[]>(`/api/characters/${slug}/inventory-items`, {
+    method: "GET",
+  });
+}
+
+export function assignItemToCharacterRequest(
+  slug: string,
+  payload: { itemDefinitionId: string; quantity?: number; notes?: string | null }
+) {
+  return authFetch<CharacterInventoryItemEntry[]>(`/api/characters/${slug}/inventory-items`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteCharacterInventoryItemRequest(slug: string, characterItemId: string) {
+  return authFetch<null>(`/api/characters/${slug}/inventory-items/${characterItemId}`, {
     method: "DELETE",
   });
 }

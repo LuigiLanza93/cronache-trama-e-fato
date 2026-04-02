@@ -5,6 +5,7 @@ import {
   Home,
   ExternalLink,
   MessageSquareMore,
+  Package,
   Shield,
   Swords,
   Users,
@@ -453,6 +454,16 @@ export default function DMDashboard() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Apri gestione oggetti</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                  <a href="/dm/inventory" aria-label="Apri assegnazione oggetti">
+                    <Package className="h-4 w-4" />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Assegna oggetti ai personaggi</TooltipContent>
             </Tooltip>
           </div>
         </section>
