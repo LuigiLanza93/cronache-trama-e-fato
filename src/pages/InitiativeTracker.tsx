@@ -130,6 +130,7 @@ type BestiaryMonsterDraft = {
   monsterId: string;
   initiative: string;
   hitPoints: string;
+  quantity: string;
 };
 
 type PendingScenarioCombatant = {
@@ -141,6 +142,16 @@ type PendingScenarioCombatant = {
   hitPoints: number;
   initiative: string;
   powerTag?: MonsterPowerTag | null;
+};
+
+type PendingMonsterBatch = {
+  source: "custom" | "bestiary";
+  armorClass: number;
+  hitPoints: number;
+  sourceMonsterId: string | null;
+  powerTag?: MonsterPowerTag | null;
+  names: string[];
+  initiatives: string[];
 };
 
 type MonsterPowerTag = "debolissimo" | "debole" | "forte" | "fortissimo";
@@ -427,23 +438,57 @@ function isEligibleForTurn(combatant: Combatant) {
   return true;
 }
 
+function normalizeMonsterCopyBase(name: string) {
+  return name.replace(/\s+#\d+$/, "").replace(/\s+\d+$/, "").trim();
+}
+
 function nextMonsterCopyName(name: string, monsters: MonsterEncounterEntry[]) {
-  const normalizedBase = name.replace(/\s+\d+$/, "").trim();
-  let highest = 1;
+  const normalizedBase = normalizeMonsterCopyBase(name);
+  let highest = 0;
 
   monsters.forEach((monster) => {
-    const match = monster.name.match(/^(.*?)(?:\s+(\d+))?$/);
+    const match = monster.name.match(/^(.*?)(?:\s+#?(\d+))?$/);
     if (!match) return;
 
     const candidateBase = match[1].trim();
-    const candidateIndex = match[2] ? parseInt(match[2], 10) : 1;
+    const candidateIndex = match[2] ? parseInt(match[2], 10) : 0;
 
     if (candidateBase.toLowerCase() === normalizedBase.toLowerCase()) {
       highest = Math.max(highest, candidateIndex);
     }
   });
 
-  return `${normalizedBase} ${highest + 1}`;
+  return `${normalizedBase} #${highest + 1}`;
+}
+
+function hasMonsterWithSameBaseName(name: string, monsters: MonsterEncounterEntry[]) {
+  const normalizedBase = normalizeMonsterCopyBase(name).toLowerCase();
+  return monsters.some((monster) => normalizeMonsterCopyBase(monster.name).toLowerCase() === normalizedBase);
+}
+
+function buildSequentialMonsterNames(baseName: string, quantity: number, existingMonsters: MonsterEncounterEntry[]) {
+  const names: string[] = [];
+  const virtualMonsters = [...existingMonsters];
+
+  for (let index = 0; index < quantity; index += 1) {
+    const nextName = nextMonsterCopyName(baseName, virtualMonsters);
+    names.push(nextName);
+    virtualMonsters.push({
+      id: `virtual:${index}`,
+      type: "monster",
+      name: nextName,
+      initiative: 0,
+      armorClass: 0,
+      currentHitPoints: 0,
+      maxHitPoints: 0,
+      statuses: [],
+      sortOrder: 0,
+      source: "custom",
+      sourceMonsterId: null,
+    });
+  }
+
+  return names;
 }
 
 function sanitizeNameForId(value: string) {
@@ -721,17 +766,21 @@ export default function InitiativeTracker() {
     initiative: "",
     armorClass: "",
     hitPoints: "",
+    quantity: "1",
   });
   const [bestiaryMonsterDraft, setBestiaryMonsterDraft] = useState<BestiaryMonsterDraft>({
     monsterId: "",
     initiative: "",
     hitPoints: "",
+    quantity: "1",
   });
   const [monsterDetailOpen, setMonsterDetailOpen] = useState(false);
   const [monsterDetailLoading, setMonsterDetailLoading] = useState(false);
   const [selectedMonsterDetail, setSelectedMonsterDetail] = useState<MonsterEntry | null>(null);
   const [scenarioDialogOpen, setScenarioDialogOpen] = useState(false);
   const [scenarioSaveOpen, setScenarioSaveOpen] = useState(false);
+  const [initiativeBatchOpen, setInitiativeBatchOpen] = useState(false);
+  const [pendingMonsterBatch, setPendingMonsterBatch] = useState<PendingMonsterBatch | null>(null);
   const [unlockKnowledgeOpen, setUnlockKnowledgeOpen] = useState(false);
   const [unlockingKnowledge, setUnlockingKnowledge] = useState(false);
   const [unlockSelection, setUnlockSelection] = useState<string[]>([]);
@@ -1018,33 +1067,64 @@ export default function InitiativeTracker() {
     const hitPoints = Number.isFinite(parseInt(monsterForm.hitPoints, 10))
       ? Math.max(0, parseInt(monsterForm.hitPoints, 10))
       : 0;
+    const quantity = Number.isFinite(parseInt(monsterForm.quantity, 10))
+      ? Math.max(1, parseInt(monsterForm.quantity, 10))
+      : 1;
 
-    setEncounter((prev) => ({
-      ...prev,
-      monsters: [
-        ...prev.monsters,
-        {
-          id: `monster:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          type: "monster",
-          name,
-          initiative,
-          armorClass,
-          currentHitPoints: hitPoints,
-          maxHitPoints: hitPoints,
-          statuses: [],
-          sortOrder: prev.nextSortOrder,
-          source: "custom",
-          sourceMonsterId: null,
-        },
-      ],
-      nextSortOrder: prev.nextSortOrder + 1,
-    }));
+    if (quantity > 1) {
+      setPendingMonsterBatch({
+        source: "custom",
+        armorClass,
+        hitPoints,
+        sourceMonsterId: null,
+        powerTag: null,
+        names: buildSequentialMonsterNames(name, quantity, encounter.monsters),
+        initiatives: Array.from({ length: quantity }, () => ""),
+      });
+      setInitiativeBatchOpen(true);
+      setMonsterForm({
+        name: "",
+        initiative: "",
+        armorClass: "",
+        hitPoints: "",
+        quantity: "1",
+      });
+      return true;
+    }
+
+    setEncounter((prev) => {
+      const resolvedName = hasMonsterWithSameBaseName(name, prev.monsters)
+        ? nextMonsterCopyName(name, prev.monsters)
+        : name;
+
+      return {
+        ...prev,
+        monsters: [
+          ...prev.monsters,
+          {
+            id: `monster:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            type: "monster",
+            name: resolvedName,
+            initiative,
+            armorClass,
+            currentHitPoints: hitPoints,
+            maxHitPoints: hitPoints,
+            statuses: [],
+            sortOrder: prev.nextSortOrder,
+            source: "custom",
+            sourceMonsterId: null,
+          },
+        ],
+        nextSortOrder: prev.nextSortOrder + 1,
+      };
+    });
 
     setMonsterForm({
       name: "",
       initiative: "",
       armorClass: "",
       hitPoints: "",
+      quantity: "1",
     });
 
     return true;
@@ -1063,32 +1143,99 @@ export default function InitiativeTracker() {
     const hitPoints = Number.isFinite(parseInt(bestiaryMonsterDraft.hitPoints, 10))
       ? Math.max(0, parseInt(bestiaryMonsterDraft.hitPoints, 10))
       : sourceMonster.combat.hitPoints.average;
+    const quantity = Number.isFinite(parseInt(bestiaryMonsterDraft.quantity, 10))
+      ? Math.max(1, parseInt(bestiaryMonsterDraft.quantity, 10))
+      : 1;
     const powerTag = classifyMonsterPowerTag(hitPoints, bestiaryHitPointRange);
+
+    if (quantity > 1) {
+      setPendingMonsterBatch({
+        source: "bestiary",
+        armorClass: sourceMonster.combat.armorClass.value,
+        hitPoints,
+        sourceMonsterId: sourceMonster.id,
+        powerTag,
+        names: buildSequentialMonsterNames(sourceMonster.general.name, quantity, encounter.monsters),
+        initiatives: Array.from({ length: quantity }, () => ""),
+      });
+      setInitiativeBatchOpen(true);
+      setBestiaryMonsterDraft({ monsterId: "", initiative: "", hitPoints: "", quantity: "1" });
+      return true;
+    }
+
+    setEncounter((prev) => {
+      const resolvedName = hasMonsterWithSameBaseName(sourceMonster.general.name, prev.monsters)
+        ? nextMonsterCopyName(sourceMonster.general.name, prev.monsters)
+        : sourceMonster.general.name;
+
+      return {
+        ...prev,
+        monsters: [
+          ...prev.monsters,
+          {
+            id: `monster:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            type: "monster",
+            name: resolvedName,
+            initiative,
+            armorClass: sourceMonster.combat.armorClass.value,
+            currentHitPoints: hitPoints,
+            maxHitPoints: hitPoints,
+            statuses: [],
+            sortOrder: prev.nextSortOrder,
+            source: "bestiary",
+            sourceMonsterId: sourceMonster.id,
+            powerTag,
+          },
+        ],
+        nextSortOrder: prev.nextSortOrder + 1,
+      };
+    });
+    setBestiaryMonsterDraft({ monsterId: "", initiative: "", hitPoints: "", quantity: "1" });
+
+    return true;
+  };
+
+  const updatePendingMonsterInitiative = (index: number, value: string) => {
+    setPendingMonsterBatch((prev) =>
+      prev
+        ? {
+            ...prev,
+            initiatives: prev.initiatives.map((entry, entryIndex) => (entryIndex === index ? value : entry)),
+          }
+        : prev
+    );
+  };
+
+  const confirmPendingMonsterBatch = () => {
+    if (!pendingMonsterBatch) return;
+
+    const parsedInitiatives = pendingMonsterBatch.initiatives.map((value) => parseInt(value, 10));
+    if (parsedInitiatives.some((value) => !Number.isFinite(value))) return;
 
     setEncounter((prev) => ({
       ...prev,
       monsters: [
         ...prev.monsters,
-        {
+        ...pendingMonsterBatch.names.map((name, index) => ({
           id: `monster:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          type: "monster",
-          name: sourceMonster.general.name,
-          initiative,
-          armorClass: sourceMonster.combat.armorClass.value,
-          currentHitPoints: hitPoints,
-          maxHitPoints: hitPoints,
+          type: "monster" as const,
+          name,
+          initiative: parsedInitiatives[index],
+          armorClass: pendingMonsterBatch.armorClass,
+          currentHitPoints: pendingMonsterBatch.hitPoints,
+          maxHitPoints: pendingMonsterBatch.hitPoints,
           statuses: [],
-          sortOrder: prev.nextSortOrder,
-          source: "bestiary",
-          sourceMonsterId: sourceMonster.id,
-          powerTag,
-        },
+          sortOrder: prev.nextSortOrder + index,
+          source: pendingMonsterBatch.source,
+          sourceMonsterId: pendingMonsterBatch.sourceMonsterId,
+          powerTag: pendingMonsterBatch.powerTag ?? null,
+        })),
       ],
-      nextSortOrder: prev.nextSortOrder + 1,
+      nextSortOrder: prev.nextSortOrder + pendingMonsterBatch.names.length,
     }));
-    setBestiaryMonsterDraft({ monsterId: "", initiative: "", hitPoints: "" });
 
-    return true;
+    setPendingMonsterBatch(null);
+    setInitiativeBatchOpen(false);
   };
 
   const removeMonster = (id: string) => {
@@ -1622,16 +1769,17 @@ export default function InitiativeTracker() {
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4">
                 <div className="overflow-hidden rounded-md border border-border/70 bg-background/20">
-                <div className="grid grid-cols-[minmax(0,1.6fr)_90px_80px_90px_110px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                <div className="grid grid-cols-[minmax(0,1.55fr)_82px_72px_82px_64px_72px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
                   <span>Nome</span>
                   <span>Init</span>
                   <span>CA</span>
                   <span>PF</span>
+                  <span>Qtà</span>
                   <span className="text-right">Azione</span>
                 </div>
                 <form
                   onSubmit={handleMonsterFormSubmit}
-                  className="grid grid-cols-[minmax(0,1.6fr)_90px_80px_90px_110px] items-end gap-2 px-3 py-1.5"
+                  className="grid grid-cols-[minmax(0,1.55fr)_82px_72px_82px_64px_72px] items-end gap-2 px-3 py-1.5"
                 >
                   <div>
                     <Input
@@ -1679,6 +1827,14 @@ export default function InitiativeTracker() {
                       className="h-7 text-xs"
                     />
                   </div>
+                  <div>
+                    <Input
+                      value={monsterForm.quantity}
+                      onChange={(e) => setMonsterForm((prev) => ({ ...prev, quantity: e.target.value }))}
+                      inputMode="numeric"
+                      className="h-7 text-center text-xs"
+                    />
+                  </div>
                   <div className="flex justify-end">
                     <Button
                       type="submit"
@@ -1694,18 +1850,19 @@ export default function InitiativeTracker() {
                 </div>
 
                 <div className="overflow-hidden rounded-md border border-border/70 bg-background/20">
-                  <div className="grid grid-cols-[minmax(0,1.6fr)_90px_90px_90px_110px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <div className="grid grid-cols-[minmax(0,1.45fr)_70px_72px_82px_64px_110px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
                     <span>Bestiario</span>
                     <span>GS</span>
                     <span>CA</span>
                     <span>PF</span>
+                    <span>Qtà</span>
                     <span className="text-right">Azione</span>
                   </div>
-                  <form onSubmit={handleBestiaryMonsterSubmit} className="grid grid-cols-[minmax(0,1.6fr)_90px_90px_90px_110px] items-end gap-2 px-3 py-1.5">
+                  <form onSubmit={handleBestiaryMonsterSubmit} className="grid grid-cols-[minmax(0,1.45fr)_70px_72px_82px_64px_110px] items-end gap-2 px-3 py-1.5">
                     <div>
                       <Select
                         value={bestiaryMonsterDraft.monsterId || undefined}
-                        onValueChange={(value) => setBestiaryMonsterDraft({ monsterId: value, initiative: "", hitPoints: "" })}
+                        onValueChange={(value) => setBestiaryMonsterDraft({ monsterId: value, initiative: "", hitPoints: "", quantity: "1" })}
                       >
                         <SelectTrigger className="h-7 text-xs">
                           <SelectValue placeholder="Scegli dal bestiario" />
@@ -1734,6 +1891,14 @@ export default function InitiativeTracker() {
                         inputMode="numeric"
                         className="h-7 text-xs"
                         placeholder="PF medi"
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        value={bestiaryMonsterDraft.quantity}
+                        onChange={(e) => setBestiaryMonsterDraft((prev) => ({ ...prev, quantity: e.target.value }))}
+                        inputMode="numeric"
+                        className="h-7 text-center text-xs"
                       />
                     </div>
                     <div className="flex items-center justify-end gap-2">
@@ -2182,6 +2347,64 @@ export default function InitiativeTracker() {
             <Button variant="outline" onClick={() => setScenarioSaveOpen(false)}>Annulla</Button>
             <Button onClick={() => void saveCurrentMonstersAsScenario()} disabled={!scenarioName.trim() || encounter.monsters.length === 0}>
               Salva
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={initiativeBatchOpen}
+        onOpenChange={(open) => {
+          setInitiativeBatchOpen(open);
+          if (!open) {
+            setPendingMonsterBatch(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Iniziative multiple</DialogTitle>
+            <DialogDescription>
+              Inserisci l'iniziativa di ogni istanza prima di aggiungerla al tracker.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {pendingMonsterBatch?.names.map((name, index) => (
+              <div key={`${name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_88px_36px] items-center gap-2 rounded-md border border-border/60 bg-background/40 px-3 py-2">
+                <div className="truncate text-sm font-medium text-primary">{name}</div>
+                <Input
+                  value={pendingMonsterBatch.initiatives[index] ?? ""}
+                  onChange={(event) => updatePendingMonsterInitiative(index, event.target.value)}
+                  inputMode="numeric"
+                  className="h-8 text-center text-xs"
+                  placeholder="Init"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                  onClick={() => updatePendingMonsterInitiative(index, String(rollD20()))}
+                  title="Tira iniziativa"
+                  aria-label={`Tira iniziativa per ${name}`}
+                >
+                  <Dices className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground" onClick={() => setInitiativeBatchOpen(false)} aria-label="Annulla">
+              <X className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              onClick={confirmPendingMonsterBatch}
+              disabled={!pendingMonsterBatch || pendingMonsterBatch.initiatives.some((value) => !Number.isFinite(parseInt(value, 10)))}
+              aria-label="Conferma iniziative"
+            >
+              <Check className="h-4 w-4" />
             </Button>
           </DialogFooter>
         </DialogContent>

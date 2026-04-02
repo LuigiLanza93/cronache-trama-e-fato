@@ -1,8 +1,8 @@
 {
-  "version": "1.0.7",
+  "version": "1.0.8",
   "releaseName": "SQLite Release",
   "releasedAt": "2026-04-02",
-  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione, una trasformazione piu' profonda del bestiario con normalizzazione dei tipi, rarita', regole di discovery, ordinamento tabellare, archiviazione logica dei mostri e prime fondamenta del compendio lato player, e il primo compendio mostri realmente consultabile dai giocatori con gestione manuale della conoscenza dal lato DM.",
+  "summary": "Prima major release stabile dell'applicazione. Questa versione consolida il progetto come strumento completo per la gestione locale della campagna, con autenticazione a ruoli, strumenti DM dedicati, schede giocatore evolute, bestiario integrato, tracker iniziativa avanzato e nuova base dati SQLite. Include anche una rifinitura visiva continua del roster giocatori per migliorare la leggibilita' delle risorse durante la sessione live, una nuova coerenza grafica degli header DM con navigazione iconica e tooltip contestuali, un'evoluzione delle home master/giocatore con CTA piu' naturali e notifica locale delle novita' di versione, una trasformazione piu' profonda del bestiario con normalizzazione dei tipi, rarita', regole di discovery, ordinamento tabellare, archiviazione logica dei mostri e prime fondamenta del compendio lato player, il primo compendio mostri realmente consultabile dai giocatori con gestione manuale della conoscenza dal lato DM, e un tracker iniziativa piu' flessibile con inserimento multiplo dei mostri e iniziativa separata per ogni istanza.",
   "sections": [
     {
       "title": "Autenticazione e struttura app",
@@ -56,7 +56,9 @@
         "Pulsante d20 per tirare l'iniziativa dei mostri.",
         "Supporto agli scenari di combattimento salvabili e ricaricabili.",
         "Allineato il riepilogo delle risorse dei personaggi alla nuova UI grafica del roster, mantenendo coerenza visiva tra dashboard e tracker.",
-        "Azioni header alleggerite e uniformate con tooltip per home, caricamento e salvataggio scenario."
+        "Azioni header alleggerite e uniformate con tooltip per home, caricamento e salvataggio scenario.",
+        "Aggiunta la quantita' sia per l'inserimento manuale dei mostri sia per l'aggiunta dal bestiario, con default a 1 e numerazione coerente delle copie nel formato #1, #2, #3.",
+        "Quando vengono aggiunte piu' istanze dello stesso mostro, il tracker ora apre un dialog dedicato per impostare singolarmente l'iniziativa di ciascuna entita'."
       ]
     },
     {
