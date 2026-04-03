@@ -42,9 +42,15 @@ import {
   calculateSkillValues,
 } from "@/utils";
 import {
+  assignItemToCharacterRequest,
   fetchSkills,
   fetchSpellSlots,
   fetchSpells,
+  fetchItemDefinitions,
+  fetchCharacterInventoryItems,
+  updateCharacterInventoryItemRequest,
+  type CharacterInventoryItemEntry,
+  type ItemDefinitionSummary,
   type SkillEntry as SkillCatalogEntry,
   type SpellEntry as SpellFromApi,
   type SpellSlotTable,
@@ -358,6 +364,8 @@ const CharacterSheet = () => {
   const [spells, setSpells] = useState<SpellsByClass>({});
   const [skillsCatalog, setSkillsCatalog] = useState<SkillCatalogEntry[]>([]);
   const [spellSlotTable, setSpellSlotTable] = useState<SpellSlotTable>({});
+  const [relationalInventoryItems, setRelationalInventoryItems] = useState<CharacterInventoryItemEntry[]>([]);
+  const [itemDefinitions, setItemDefinitions] = useState<ItemDefinitionSummary[]>([]);
 
   useEffect(() => {
     const nextClass = characterData?.basicInfo?.class?.toLowerCase?.() ?? "";
@@ -609,6 +617,68 @@ const CharacterSheet = () => {
     const patch = { equipment: { items: nextItems } };
     setCharacterData((prev) => (prev ? { ...prev, equipment: { ...prev.equipment, items: nextItems } } : prev));
     if (character) updateCharacter(character, patch);
+  };
+
+  const toggleEquipRelationalItem = async (characterItemId: string) => {
+    if (!character) return;
+    const current = relationalInventoryItems.find((item) => item.id === characterItemId);
+    if (!current || !current.equippable) return;
+
+    try {
+      const updated = await updateCharacterInventoryItemRequest(character, characterItemId, {
+        isEquipped: !current.isEquipped,
+      });
+      setRelationalInventoryItems((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+    } catch {
+      // keep legacy UX quiet for now; failed command simply won't update the row
+    }
+  };
+
+  const decrementRelationalConsumable = async (characterItemId: string) => {
+    if (!character) return;
+    const current = relationalInventoryItems.find((item) => item.id === characterItemId);
+    if (!current || current.quantity <= 0) return;
+
+    try {
+      const updated = await updateCharacterInventoryItemRequest(character, characterItemId, {
+        quantity: Math.max(0, current.quantity - 1),
+      });
+      setRelationalInventoryItems((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+    } catch {
+      // keep legacy UX quiet for now; failed command simply won't update the row
+    }
+  };
+
+  const incrementRelationalConsumable = async (characterItemId: string) => {
+    if (!character) return;
+    const current = relationalInventoryItems.find((item) => item.id === characterItemId);
+    if (!current) return;
+
+    try {
+      const updated = await updateCharacterInventoryItemRequest(character, characterItemId, {
+        quantity: Math.max(0, current.quantity + 1),
+      });
+      setRelationalInventoryItems((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+    } catch {
+      // keep legacy UX quiet for now; failed command simply won't update the row
+    }
+  };
+
+  const assignRelationalInventoryItem = async (payload: {
+    itemDefinitionId?: string;
+    quantity?: number;
+    notes?: string | null;
+    quickCreateItem?: Record<string, unknown>;
+  }) => {
+    if (!character) throw new Error("Character slug mancante");
+    const nextInventory = await assignItemToCharacterRequest(character, payload);
+    setRelationalInventoryItems(Array.isArray(nextInventory) ? nextInventory : []);
   };
 
   /** === NUOVO: toggle checkbox “usata” per una skill categorizzata su ATTACCO === */
@@ -873,6 +943,23 @@ const CharacterSheet = () => {
   }, [character]);
 
   useEffect(() => {
+    const slug = character;
+    if (!slug) return;
+    let active = true;
+    void fetchCharacterInventoryItems(slug)
+      .then((items) => {
+        if (active) setRelationalInventoryItems(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (active) setRelationalInventoryItems([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [character]);
+
+  useEffect(() => {
     let active = true;
     (async () => {
       try {
@@ -894,6 +981,21 @@ const CharacterSheet = () => {
         }
       }
     })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void fetchItemDefinitions()
+      .then((items) => {
+        if (active) setItemDefinitions(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (active) setItemDefinitions([]);
+      });
+
     return () => {
       active = false;
     };
@@ -1093,6 +1195,12 @@ const CharacterSheet = () => {
               removeStructuredItem={removeStructuredItem}
               bumpConsumableQuantity={bumpConsumableQuantity}
               toggleEquipItem={toggleEquipItem}
+              relationalInventoryItems={relationalInventoryItems}
+              itemDefinitions={itemDefinitions}
+              assignRelationalInventoryItem={assignRelationalInventoryItem}
+              toggleEquipRelationalItem={toggleEquipRelationalItem}
+              decrementRelationalConsumable={decrementRelationalConsumable}
+              incrementRelationalConsumable={incrementRelationalConsumable}
             />
           </div>
         </div>

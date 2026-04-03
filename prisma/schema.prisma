@@ -388,6 +388,7 @@ model ItemDefinition {
   armorClassBonus Int?
   rarity        ItemRarity?
   description   String?
+  playerVisible Boolean      @default(true)
   stackable     Boolean      @default(false)
   equippable    Boolean      @default(false)
   attunement    Boolean      @default(false)

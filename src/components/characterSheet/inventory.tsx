@@ -23,8 +23,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { fetchItemDefinition, type ItemDefinitionEntry } from "@/lib/auth";
 
 /** Select minimale, senza dipendenze extra */
 function Select({
@@ -50,9 +51,199 @@ function Select({
       {children}
     </select>
   );
+  /*
+    const detail = selectedCatalogItemDetail;
+    const summary = selectedCatalogItem;
+    if (!summary) return null;
+
+    return (
+      <div className="space-y-3 rounded-xl border border-border/70 bg-background/70 p-3">
+        <div>
+          <div className="font-medium text-primary">{summary.name}</div>
+          {summary.description ? (
+            <div className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{summary.description}</div>
+          ) : null}
+          {renderCompactMetaChips([
+            summary.category,
+            summary.rarity ?? "",
+            summary.stackable ? "stack" : "istanza singola",
+            summary.equippable ? "equipaggiabile" : "",
+            detail?.weaponHandling === "ONE_HANDED" ? "1 mano" : "",
+            detail?.weaponHandling === "TWO_HANDED" ? "2 mani" : "",
+            detail?.weaponHandling === "VERSATILE" ? "versatile" : "",
+            detail?.armorCategory ?? "",
+            detail?.gloveWearMode === "SINGLE" ? "guanto singolo" : "",
+            detail?.gloveWearMode === "PAIR" ? "paio di guanti" : "",
+          ])}
+        </div>
+
+        {!!detail?.attacks?.length && (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attacchi</div>
+            {detail.attacks.map((attack) => (
+              <div key={attack.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
+                <div className="font-medium text-foreground">{attack.name}</div>
+                <div className="text-muted-foreground">
+                  {[
+                    attack.kind,
+                    attack.handRequirement === "ONE_HANDED" ? "1 mano" : attack.handRequirement === "TWO_HANDED" ? "2 mani" : "",
+                    attack.attackBonus != null ? `${attack.attackBonus >= 0 ? "+" : ""}${attack.attackBonus}` : "",
+                    [attack.damageDice, attack.damageType].filter(Boolean).join(" "),
+                    attack.rangeNormal != null || attack.rangeLong != null ? `gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}` : "",
+                  ].filter(Boolean).join(" • ")}
+                </div>
+                {attack.conditionText ? <div className="mt-1 text-muted-foreground">{attack.conditionText}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!!detail?.features?.length && (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Feature</div>
+            {detail.features.map((feature) => (
+              <div key={feature.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
+                <div className="font-medium text-foreground">{feature.name}</div>
+                <div className="text-muted-foreground">
+                  {[feature.resetOn, feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" • ")}
+                </div>
+                {feature.description ? <div className="mt-1 text-muted-foreground">{feature.description}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!!detail?.useEffects?.length && (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Effetti all'uso</div>
+            {detail.useEffects.map((effect) => (
+              <div key={effect.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs text-muted-foreground">
+                {[
+                  effect.effectType,
+                  effect.diceExpression ?? (effect.flatValue != null ? String(effect.flatValue) : ""),
+                  effect.damageType ?? "",
+                  effect.savingThrowAbility && effect.savingThrowDc != null ? `TS ${effect.savingThrowAbility} CD ${effect.savingThrowDc}` : "",
+                  effect.successOutcome ? `succ: ${effect.successOutcome}` : "",
+                ].filter(Boolean).join(" • ")}
+                {effect.notes ? <div className="mt-1">{effect.notes}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!!detail?.abilityRequirements?.length && (
+          <div className="text-xs text-muted-foreground">
+            Requisiti: {detail.abilityRequirements.map((req) => `${req.ability} ${req.minScore}+`).join(", ")}
+          </div>
+        )}
+      </div>
+    );
+  */
 }
 
-/** parser retro-compatibilità: "1d8+3 tagliente" -> { dice, type } */
+/* const unusedTopLevelCatalogPreview = () => {
+    const detail = selectedCatalogItemDetail;
+    const summary = selectedCatalogItem;
+    if (!summary) return null;
+
+    return (
+      <div className="space-y-3 rounded-xl border border-border/70 bg-background/70 p-3">
+        <div>
+          <div className="font-medium text-primary">{summary.name}</div>
+          {summary.description ? (
+            <div className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{summary.description}</div>
+          ) : null}
+          {renderCompactMetaChips([
+            summary.category,
+            summary.rarity ?? "",
+            summary.stackable ? "stack" : "istanza singola",
+            summary.equippable ? "equipaggiabile" : "",
+            detail?.weaponHandling === "ONE_HANDED" ? "1 mano" : "",
+            detail?.weaponHandling === "TWO_HANDED" ? "2 mani" : "",
+            detail?.weaponHandling === "VERSATILE" ? "versatile" : "",
+            detail?.armorCategory ?? "",
+            detail?.gloveWearMode === "SINGLE" ? "guanto singolo" : "",
+            detail?.gloveWearMode === "PAIR" ? "paio di guanti" : "",
+          ])}
+        </div>
+
+        {!!detail?.attacks?.length && (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attacchi</div>
+            {detail.attacks.map((attack) => (
+              <div key={attack.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
+                <div className="font-medium text-foreground">{attack.name}</div>
+                <div className="text-muted-foreground">
+                  {[
+                    attack.kind,
+                    attack.handRequirement === "ONE_HANDED" ? "1 mano" : attack.handRequirement === "TWO_HANDED" ? "2 mani" : "",
+                    attack.attackBonus != null ? `${attack.attackBonus >= 0 ? "+" : ""}${attack.attackBonus}` : "",
+                    [attack.damageDice, attack.damageType].filter(Boolean).join(" "),
+                    attack.rangeNormal != null || attack.rangeLong != null ? `gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}` : "",
+                  ].filter(Boolean).join(" • ")}
+                </div>
+                {attack.conditionText ? <div className="mt-1 text-muted-foreground">{attack.conditionText}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!!detail?.features?.length && (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Feature</div>
+            {detail.features.map((feature) => (
+              <div key={feature.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
+                <div className="font-medium text-foreground">{feature.name}</div>
+                <div className="text-muted-foreground">
+                  {[feature.resetOn, feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" • ")}
+                </div>
+                {feature.description ? <div className="mt-1 text-muted-foreground">{feature.description}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!!detail?.useEffects?.length && (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Effetti all'uso</div>
+            {detail.useEffects.map((effect) => (
+              <div key={effect.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs text-muted-foreground">
+                {[
+                  effect.effectType,
+                  effect.diceExpression ?? (effect.flatValue != null ? String(effect.flatValue) : ""),
+                  effect.damageType ?? "",
+                  effect.savingThrowAbility && effect.savingThrowDc != null ? `TS ${effect.savingThrowAbility} CD ${effect.savingThrowDc}` : "",
+                  effect.successOutcome ? `succ: ${effect.successOutcome}` : "",
+                ].filter(Boolean).join(" • ")}
+                {effect.notes ? <div className="mt-1">{effect.notes}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!!detail?.abilityRequirements?.length && (
+          <div className="text-xs text-muted-foreground">
+            Requisiti: {detail.abilityRequirements.map((req) => `${req.ability} ${req.minScore}+`).join(", ")}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <select
+      id={id}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={`w-full border rounded-md px-3 py-2 text-sm bg-background ${className}`}
+    >
+      {children}
+    </select>
+  );
+}
+
+*/
+/** parser retro-compatibilita: "1d8+3 tagliente" -> { dice, type } */
 function parseLegacyDamage(s: string | undefined): { dice?: string; type?: string } {
   const src = (s ?? "").trim();
   if (!src) return {};
@@ -126,6 +317,12 @@ const Inventory = ({
   removeStructuredItem,                 // (index: number) => void
   bumpConsumableQuantity,               // (index: number, delta: number) => void
   toggleEquipItem,                      // (index: number) => void   // NEW opzionale
+  relationalInventoryItems,
+  itemDefinitions,
+  assignRelationalInventoryItem,
+  toggleEquipRelationalItem,
+  decrementRelationalConsumable,
+  incrementRelationalConsumable,
 }: any) => {
   const COIN_KEYS = {
     mr: "cp",
@@ -233,6 +430,35 @@ const Inventory = ({
   const equippableVal: boolean = (typeof itemEquippable === "boolean" ? itemEquippable : fallbackEquippable);
   const setEquippable = (setItemEquippable ?? setFallbackEquippable);
   const lastOpenTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogMode, setCatalogMode] = useState<"catalog" | "custom">("catalog");
+  const [selectedCatalogItemId, setSelectedCatalogItemId] = useState("");
+  const [selectedCatalogItemDetail, setSelectedCatalogItemDetail] = useState<ItemDefinitionEntry | null>(null);
+  const [assignQuantity, setAssignQuantity] = useState("1");
+  const [assignNotes, setAssignNotes] = useState("");
+  const [assignError, setAssignError] = useState("");
+  const [assigningItem, setAssigningItem] = useState(false);
+  const [customItemName, setCustomItemName] = useState("");
+  const [customItemDescription, setCustomItemDescription] = useState("");
+  const [customObjectCategory, setCustomObjectCategory] = useState("OTHER");
+  const [customEquippable, setCustomEquippable] = useState(false);
+  const [customStackable, setCustomStackable] = useState(false);
+  const [customWeaponHandling, setCustomWeaponHandling] = useState("ONE_HANDED");
+  const [customAttackKind, setCustomAttackKind] = useState("MELEE_WEAPON");
+  const [customAttackBonus, setCustomAttackBonus] = useState("");
+  const [customDamageDice, setCustomDamageDice] = useState("");
+  const [customVersatileDamageDice, setCustomVersatileDamageDice] = useState("");
+  const [customDamageType, setCustomDamageType] = useState("tagliente");
+  const [customRangeNormal, setCustomRangeNormal] = useState("");
+  const [customRangeLong, setCustomRangeLong] = useState("");
+  const [customConsumableCategory, setCustomConsumableCategory] = useState("CONSUMABLE");
+  const [customEffectType, setCustomEffectType] = useState("");
+  const [customEffectDice, setCustomEffectDice] = useState("");
+  const [customEffectDamageType, setCustomEffectDamageType] = useState("");
+  const [customEffectSaveAbility, setCustomEffectSaveAbility] = useState("");
+  const [customEffectSaveDc, setCustomEffectSaveDc] = useState("");
+  const [customEffectSuccessOutcome, setCustomEffectSuccessOutcome] = useState("");
+  const [customEffectNotes, setCustomEffectNotes] = useState("");
   const [detailTarget, setDetailTarget] = useState<InventoryTarget | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editingTarget, setEditingTarget] = useState<InventoryTarget | null>(null);
@@ -296,9 +522,192 @@ const Inventory = ({
       | { type: "consumable"; name: string; quantity: number; subtype?: "generic" | "potion"; dice?: string; skillsByType?: Record<SkillType, { name: string; used: boolean }[]>; }
     >
     | undefined;
+  const relationalItems = Array.isArray(relationalInventoryItems) ? relationalInventoryItems : [];
+  const relationalWeapons = relationalItems.filter((item) => item?.itemCategory === "WEAPON");
+  const relationalConsumables = relationalItems.filter((item) =>
+    item?.itemCategory === "CONSUMABLE" || item?.itemCategory === "AMMUNITION"
+  );
+  const relationalObjects = relationalItems.filter((item) =>
+    !["WEAPON", "CONSUMABLE", "AMMUNITION"].includes(String(item?.itemCategory ?? ""))
+  );
+  const catalogItems = Array.isArray(itemDefinitions) ? itemDefinitions : [];
 
-  const hasStructuredObjects = !!structuredItems?.some((it) => it?.type === "object");
-  const hasStructuredConsumables = !!structuredItems?.some((it) => it?.type === "consumable");
+  const renderCompactMetaChips = (chips: string[]) => {
+    const visible = chips.filter(Boolean);
+    if (!visible.length) return null;
+    return (
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {visible.map((chip) => (
+          <span
+            key={chip}
+            className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+          >
+            {chip}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  const renderCatalogItemPreview = () => {
+    const detail = selectedCatalogItemDetail;
+    const summary = selectedCatalogItem;
+    if (!summary) return null;
+
+    return (
+      <div className="space-y-3 rounded-xl border border-border/70 bg-background/70 p-3">
+        <div>
+          <div className="font-medium text-primary">{summary.name}</div>
+          {summary.description ? (
+            <div className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{summary.description}</div>
+          ) : null}
+          {renderCompactMetaChips([
+            summary.category,
+            summary.rarity ?? "",
+            summary.stackable ? "stack" : "istanza singola",
+            summary.equippable ? "equipaggiabile" : "",
+            detail?.weaponHandling === "ONE_HANDED" ? "1 mano" : "",
+            detail?.weaponHandling === "TWO_HANDED" ? "2 mani" : "",
+            detail?.weaponHandling === "VERSATILE" ? "versatile" : "",
+            detail?.armorCategory ?? "",
+            detail?.gloveWearMode === "SINGLE" ? "guanto singolo" : "",
+            detail?.gloveWearMode === "PAIR" ? "paio di guanti" : "",
+          ])}
+        </div>
+
+        {!!detail?.attacks?.length && (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attacchi</div>
+            {detail.attacks.map((attack) => (
+              <div key={attack.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
+                <div className="font-medium text-foreground">{attack.name}</div>
+                <div className="text-muted-foreground">
+                  {[
+                    attack.kind,
+                    attack.handRequirement === "ONE_HANDED" ? "1 mano" : attack.handRequirement === "TWO_HANDED" ? "2 mani" : "",
+                    attack.attackBonus != null ? `${attack.attackBonus >= 0 ? "+" : ""}${attack.attackBonus}` : "",
+                    [attack.damageDice, attack.damageType].filter(Boolean).join(" "),
+                    attack.rangeNormal != null || attack.rangeLong != null ? `gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}` : "",
+                  ].filter(Boolean).join(" • ")}
+                </div>
+                {attack.conditionText ? <div className="mt-1 text-muted-foreground">{attack.conditionText}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!!detail?.features?.length && (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Feature</div>
+            {detail.features.map((feature) => (
+              <div key={feature.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
+                <div className="font-medium text-foreground">{feature.name}</div>
+                <div className="text-muted-foreground">
+                  {[feature.resetOn, feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" • ")}
+                </div>
+                {feature.description ? <div className="mt-1 text-muted-foreground">{feature.description}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!!detail?.useEffects?.length && (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Effetti all'uso</div>
+            {detail.useEffects.map((effect) => (
+              <div key={effect.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs text-muted-foreground">
+                {[
+                  effect.effectType,
+                  effect.diceExpression ?? (effect.flatValue != null ? String(effect.flatValue) : ""),
+                  effect.damageType ?? "",
+                  effect.savingThrowAbility && effect.savingThrowDc != null ? `TS ${effect.savingThrowAbility} CD ${effect.savingThrowDc}` : "",
+                  effect.successOutcome ? `succ: ${effect.successOutcome}` : "",
+                ].filter(Boolean).join(" • ")}
+                {effect.notes ? <div className="mt-1">{effect.notes}</div> : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!!detail?.abilityRequirements?.length && (
+          <div className="text-xs text-muted-foreground">
+            Requisiti: {detail.abilityRequirements.map((req) => `${req.ability} ${req.minScore}+`).join(", ")}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const getRelationalItemTitle = (item: any) => item?.nameOverride?.trim?.() || item?.itemName || "Oggetto";
+  const getRelationalItemDescription = (item: any) =>
+    item?.descriptionOverride?.trim?.() || item?.detailSummary || item?.description || "";
+  const matchesCatalogKind = (item: any, currentKind: "weapon" | "object" | "consumable") => {
+    const category = String(item?.category ?? "");
+    if (currentKind === "weapon") return category === "WEAPON";
+    if (currentKind === "consumable") return category === "CONSUMABLE" || category === "AMMUNITION";
+    return !["WEAPON", "CONSUMABLE", "AMMUNITION"].includes(category);
+  };
+  const filteredCatalogItems = catalogItems.filter((item: any) => {
+    if (!matchesCatalogKind(item, kind)) return false;
+    const query = catalogQuery.trim().toLowerCase();
+    if (!query) return true;
+    return (
+      String(item?.name ?? "").toLowerCase().includes(query) ||
+      String(item?.slug ?? "").toLowerCase().includes(query)
+    );
+  });
+  const selectedCatalogItem =
+    filteredCatalogItems.find((item: any) => item.id === selectedCatalogItemId) ??
+    catalogItems.find((item: any) => item.id === selectedCatalogItemId) ??
+    null;
+
+  const resetCustomItemForm = () => {
+    setCustomItemName("");
+    setCustomItemDescription("");
+    setCustomObjectCategory("OTHER");
+    setCustomEquippable(false);
+    setCustomStackable(false);
+    setCustomWeaponHandling("ONE_HANDED");
+    setCustomAttackKind("MELEE_WEAPON");
+    setCustomAttackBonus("");
+    setCustomDamageDice("");
+    setCustomVersatileDamageDice("");
+    setCustomDamageType("tagliente");
+    setCustomRangeNormal("");
+    setCustomRangeLong("");
+    setCustomConsumableCategory("CONSUMABLE");
+    setCustomEffectType("");
+    setCustomEffectDice("");
+    setCustomEffectDamageType("");
+    setCustomEffectSaveAbility("");
+    setCustomEffectSaveDc("");
+    setCustomEffectSuccessOutcome("");
+    setCustomEffectNotes("");
+  };
+
+  useEffect(() => {
+    if (!invOpen || mode !== "item") return;
+    if (filteredCatalogItems.some((item: any) => item.id === selectedCatalogItemId)) return;
+    setSelectedCatalogItemId(filteredCatalogItems[0]?.id ?? "");
+  }, [filteredCatalogItems, invOpen, mode, selectedCatalogItemId]);
+
+  useEffect(() => {
+    if (!invOpen || mode !== "item" || catalogMode !== "catalog" || !selectedCatalogItemId) {
+      setSelectedCatalogItemDetail(null);
+      return;
+    }
+    let active = true;
+    void fetchItemDefinition(selectedCatalogItemId)
+      .then((detail) => {
+        if (active) setSelectedCatalogItemDetail(detail);
+      })
+      .catch(() => {
+        if (active) setSelectedCatalogItemDetail(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [catalogMode, invOpen, mode, selectedCatalogItemId]);
 
   // ==== helper per render armi (retro-compat) ====
   const buildAttackDetail = (atk: any) => {
@@ -406,37 +815,40 @@ const Inventory = ({
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-        {characterData.equipment.attacks?.length > 0 ? (
-          characterData.equipment.attacks.map((atk: any, i: number) => (
-            <div key={`${atk.name}-${i}`} className="flex items-center justify-between gap-3 text-sm dnd-frame p-2">
-              <button
-                type="button"
-                onClick={() => openDetail({ kind: "weapon", index: i })}
-                className="min-w-0 flex-1 rounded-sm text-left transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
+        {relationalWeapons.length > 0 ? (
+          <>
+          {relationalWeapons.map((item: any) => (
+            <div key={`db-weapon-${item.id}`} className="flex items-center justify-between gap-3 text-sm dnd-frame p-2">
+              <div className="min-w-0 flex-1">
                 <div className="font-medium">
-                  {atk.name} {atk.equipped ? "(equipaggiata)" : ""}
+                  {getRelationalItemTitle(item)} {item.isEquipped ? "(equipaggiato)" : ""}
                 </div>
-                <div className="text-muted-foreground">
-                  {buildAttackDetail(atk)}
-                </div>
-              </button>
-              <div className="flex items-center gap-2">
-                {atk.name && (atk.damageDice || atk.damageType) && (
+                {getRelationalItemDescription(item) ? (
+                  <div className="text-muted-foreground">{getRelationalItemDescription(item)}</div>
+                ) : null}
+                {renderCompactMetaChips([
+                  item.itemCategory,
+                  item.stackable ? `qty ${item.quantity}` : "",
+                  item.isEquipped ? "equip" : "",
+                ])}
+              </div>
+              {item.equippable && !!toggleEquipRelationalItem ? (
+                <div className="flex items-center gap-2">
                   <Button
                     size="icon"
-                    variant={atk.equipped ? "default" : "outline"}
+                    variant={item.isEquipped ? "default" : "outline"}
                     className="h-8 w-8"
-                    onClick={() => toggleEquipAttack(i)}
-                    aria-label={atk.equipped ? "Disequipaggia arma" : "Equipaggia arma"}
-                    title={atk.equipped ? "Disequipaggia" : "Equipaggia"}
+                    onClick={() => toggleEquipRelationalItem(item.id)}
+                    aria-label={item.isEquipped ? "Disequipaggia arma" : "Equipaggia arma"}
+                    title={item.isEquipped ? "Disequipaggia" : "Equipaggia"}
                   >
-                    {atk.equipped ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+                    {item.isEquipped ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                   </Button>
-                )}
-              </div>
+                </div>
+              ) : null}
             </div>
-          ))
+          ))}
+          </>
         ) : (
           <div className="text-sm text-muted-foreground">Nessuna arma in inventario.</div>
         )}
@@ -461,159 +873,114 @@ const Inventory = ({
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-        {hasStructuredConsumables ? (
-          structuredItems!.map((it, idx) => {
-            if (it?.type !== "consumable") return null;
-            const qty = typeof it.quantity === "number" ? it.quantity : 0;
-            const isPotion = (it.subtype ?? "generic") === "potion";
-            const canDec = qty <= 0;
-            return (
-              <div key={`cons-${idx}`} className="text-sm dnd-frame p-2">
-                <div className="flex items-start justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => openDetail({ kind: "consumable", index: idx })}
-                    className="min-w-0 flex-1 rounded-sm text-left transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  >
-                    <div className="font-medium">{it.name}</div>
-                    {isPotion && it.dice && (
-                      <div className="text-muted-foreground text-sm mt-1">{it.dice}</div>
-                    )}
-                    {renderSkillsChips(it.skillsByType as any)}
-                  </button>
-
-                  {!!bumpConsumableQuantity && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1" aria-label={`Quantità di ${it.name}`}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 w-7 px-0 text-sm"
-                          disabled={canDec}
-                          onClick={() => bumpConsumableQuantity(idx, -1)}
-                          aria-disabled={canDec}
-                          aria-label="Diminuisci"
-                        >
-                          −
-                        </Button>
-                        <div className="w-10 text-center text-sm font-semibold select-none tabular-nums">
-                          {qty}
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 w-7 px-0 text-sm"
-                          onClick={() => bumpConsumableQuantity(idx, +1)}
-                          aria-label="Aumenta"
-                        >
-                          +
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+        {relationalConsumables.length > 0 ? (
+          <>
+          {relationalConsumables.map((item: any) => (
+            <div key={`db-cons-${item.id}`} className="text-sm dnd-frame p-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{getRelationalItemTitle(item)}</div>
+                  {getRelationalItemDescription(item) ? (
+                    <div className="text-muted-foreground">{getRelationalItemDescription(item)}</div>
+                  ) : null}
+                  {renderCompactMetaChips([
+                    item.itemCategory,
+                    item.stackable ? `qty ${item.quantity}` : "",
+                  ])}
                 </div>
+                {!!decrementRelationalConsumable && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 px-0 text-sm"
+                      onClick={() => incrementRelationalConsumable(item.id)}
+                      aria-label="Aumenta quantità"
+                      title="Aumenta quantità"
+                    >
+                      +
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 px-0 text-sm"
+                      disabled={item.quantity <= 0}
+                      onClick={() => decrementRelationalConsumable(item.id)}
+                      aria-label="Consuma una unità"
+                      title="Consuma una unità"
+                    >
+                      −
+                    </Button>
+                  </div>
+                )}
               </div>
-            );
-          })
+            </div>
+          ))}
+          </>
         ) : (
           <div className="text-sm text-muted-foreground">Nessun consumabile in inventario.</div>
         )}
       </div>
 
       {/* Oggetti (strutturati) */}
-      {hasStructuredObjects && (
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="font-semibold text-primary">Oggetti</div>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
-              aria-label="Aggiungi oggetto"
-              title="Aggiungi oggetto"
-              onClick={() => {
-                lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
-                openAddDialog("object");
-              }}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          {structuredItems!.map((it, idx) => {
-            if (it?.type !== "object") return null;
-            const equippable = !!it.equippable;
-            const equipped = !!it.equipped;
-            return (
-              <div key={`obj-${idx}`} className="text-sm dnd-frame p-2">
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-semibold text-primary">Oggetti</div>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+            aria-label="Aggiungi oggetto"
+            title="Aggiungi oggetto"
+            onClick={() => {
+              lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+              openAddDialog("object");
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {relationalObjects.length > 0 ? (
+          <>
+            {relationalObjects.map((item: any) => (
+              <div key={`db-obj-${item.id}`} className="text-sm dnd-frame p-2">
                 <div className="flex items-start justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openDetail({ kind: "object", index: idx })}
-                    className="min-w-0 flex-1 rounded-sm text-left transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  >
+                  <div className="min-w-0 flex-1">
                     <div className="font-medium">
-                      {it.name} {equippable && equipped ? "(equipaggiato)" : ""}
+                      {getRelationalItemTitle(item)} {item.isEquipped ? "(equipaggiato)" : ""}
                     </div>
-                    {it.description && (
-                      <div className="text-muted-foreground whitespace-pre-wrap">{it.description}</div>
-                    )}
-                    {renderSkillsChips(it.skillsByType as any)}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    {equippable && !!toggleEquipItem && (
+                    {getRelationalItemDescription(item) ? (
+                      <div className="text-muted-foreground line-clamp-2">{getRelationalItemDescription(item)}</div>
+                    ) : null}
+                    {renderCompactMetaChips([
+                      item.itemCategory ?? "Senza categoria",
+                      item.stackable ? `qty ${item.quantity}` : "",
+                      item.isEquipped ? "equip" : "",
+                    ])}
+                  </div>
+                  {item.equippable && !!toggleEquipRelationalItem ? (
+                    <div className="flex items-center gap-2">
                       <Button
                         size="icon"
-                        variant={equipped ? "default" : "outline"}
+                        variant={item.isEquipped ? "default" : "outline"}
                         className="h-8 w-8"
-                        onClick={() => toggleEquipItem(idx)}
-                        aria-label={equipped ? "Disequipaggia oggetto" : "Equipaggia oggetto"}
-                        title={equipped ? "Disequipaggia" : "Equipaggia"}
+                        onClick={() => toggleEquipRelationalItem(item.id)}
+                        aria-label={item.isEquipped ? "Disequipaggia oggetto" : "Equipaggia oggetto"}
+                        title={item.isEquipped ? "Disequipaggia" : "Equipaggia"}
                       >
-                        {equipped ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+                        {item.isEquipped ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Oggetti (legacy) – solo se NON ci sono oggetti strutturati */}
-      {!hasStructuredObjects && (
-        <div>
-          <div className="flex items-center justify-between gap-2">
-            <div className="font-semibold text-primary">Oggetti</div>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
-              aria-label="Aggiungi oggetto"
-              title="Aggiungi oggetto"
-              onClick={() => {
-                lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
-                openAddDialog("object");
-              }}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-          {characterData.equipment.equipment.map((item: string, index: number) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => openDetail({ kind: "legacyObject", index })}
-              className="flex w-full items-center justify-between rounded-sm py-1 text-left text-sm transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <span>• {item}</span>
-              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-            </button>
-          ))}
-        </div>
-      )}
+            ))}
+          </>
+        ) : (
+          <div className="text-sm text-muted-foreground">Nessun oggetto in inventario.</div>
+        )}
+      </div>
 
       {/* Modale Aggiungi */}
       <Dialog
@@ -622,7 +989,14 @@ const Inventory = ({
           setInvOpen(v);
           if (!v) {
             resetInvForm();
+            resetCustomItemForm();
             setEditingTarget(null);
+            setCatalogMode("catalog");
+            setCatalogQuery("");
+            setAssignQuantity("1");
+            setAssignNotes("");
+            setAssignError("");
+            setSelectedCatalogItemId("");
           }
         }}
       >
@@ -656,38 +1030,31 @@ const Inventory = ({
           <div className="space-y-4">
             <div>
               <Label className="mb-2 block">Tipo</Label>
-              {editingTarget ? (
+              {mode === "coins" ? (
                 <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                  {kind === "weapon" ? "Arma" : kind === "object" ? "Oggetto" : "Consumabile"}
+                  Monete
                 </div>
               ) : (
                 <RadioGroup
-                  value={formType}
+                  value={kind}
                   onValueChange={(v) => {
-                    if (v === "coins") {
-                      setMode("coins");
-                    } else {
-                      setMode("item");
-                      const k = v.replace("item-", "") as "weapon" | "object" | "consumable";
-                      setKind(k);
-                    }
+                    setKind(v as "weapon" | "object" | "consumable");
+                    setSelectedCatalogItemId("");
+                    setCatalogQuery("");
+                    setAssignError("");
                   }}
-                  className="grid grid-cols-2 gap-2"
+                  className="grid grid-cols-3 gap-2"
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="coins" id="r-coins" />
-                    <Label htmlFor="r-coins">Monete</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="item-weapon" id="r-weapon" />
+                    <RadioGroupItem value="weapon" id="r-weapon" />
                     <Label htmlFor="r-weapon">Armi</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="item-object" id="r-object" />
+                    <RadioGroupItem value="object" id="r-object" />
                     <Label htmlFor="r-object">Oggetti</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="item-consumable" id="r-consumable" />
+                    <RadioGroupItem value="consumable" id="r-consumable" />
                     <Label htmlFor="r-consumable">Consumabili</Label>
                   </div>
                 </RadioGroup>
@@ -755,369 +1122,248 @@ const Inventory = ({
                 )}
               </div>
             ) : (
-              <>
-                {kind === "weapon" && (
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="mb-1 block">Nome *</Label>
-                      <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Es. Spada lunga" />
-                    </div>
+              <div className="space-y-4">
+                <div className="rounded-xl border border-border/70 bg-muted/15 p-3 text-xs text-muted-foreground">
+                  Seleziona un oggetto censito nel catalogo. L'aggiunta creerà una vera istanza nell'inventario del personaggio.
+                </div>
 
-                    {/* Categoria arma */}
-                    <div>
-                      <Label className="mb-1 block">Categoria</Label>
-                      <RadioGroup
-                        value={weaponCategory}
-                        onValueChange={(v) => setWeaponCategory(v as "melee" | "ranged")}
-                        className="grid grid-cols-2 gap-2"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="melee" id="w-melee" />
-                          <Label htmlFor="w-melee">Mischia</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="ranged" id="w-ranged" />
-                          <Label htmlFor="w-ranged">Distanza</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    {/* Bonus + Dado + Tipo danno */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <Label className="mb-1 block">Bonus attacco</Label>
-                        <Input
-                          inputMode="numeric"
-                          value={itemAtkBonus}
-                          onChange={(e) => setItemAtkBonus(e.target.value)}
-                          placeholder="Es. 5"
-                        />
-                      </div>
-                      <div>
-                        <Label className="mb-1 block">Dado del danno</Label>
-                        <Input
-                          value={itemDmgType}
-                          onChange={(e) => setItemDmgType(e.target.value)}
-                          placeholder="Es. 1d8+3"
-                        />
-                      </div>
-                      <div>
-                        <Label className="mb-1 block">Tipo di danno</Label>
-                        <Select value={damageKind} onChange={(v) => setDamageKind(v as any)} id="damage-kind">
-                          <option value="tagliente">Tagliente</option>
-                          <option value="perforante">Perforante</option>
-                          <option value="contundente">Contundente</option>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Specifici per categoria */}
-                    {weaponCategory === "ranged" ? (
-                      <div>
-                        <Label className="mb-1 block">Gittata</Label>
-                        <Input
-                          value={weaponRange}
-                          onChange={(e) => setWeaponRange(e.target.value)}
-                          placeholder="Es. 80/320"
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <Label className="mb-1 block">Mani</Label>
-                        <Select value={weaponHands} onChange={(v) => setWeaponHands(v as any)} id="weapon-hands" className="w-full">
-                          <option value="1">Una mano</option>
-                          <option value="2">Due mani</option>
-                          <option value="versatile">Versatile</option>
-                        </Select>
-                      </div>
-                    )}
-
-                    {/* SKILL CATEGORIZZATE */}
-                    <div className="space-y-2">
-                      <Label className="block">Skill (per categoria)</Label>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {SKILL_TYPES.map((t) => (
-                          <Button
-                            key={t}
-                            type="button"
-                            size="sm"
-                            variant={itemSkillType === t ? "default" : "outline"}
-                            onClick={() => setItemSkillType(t)}
-                          >
-                            {LABELS[t]}
-                          </Button>
-                        ))}
-                      </div>
-                      <Input
-                        className="mt-2"
-                        value={itemSkillInput}
-                        onChange={(e) => setItemSkillInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === ",") {
-                            e.preventDefault();
-                            addSkillToCurrentType(itemSkillInput);
-                          }
-                        }}
-                        placeholder="Digita una skill e premi Invio (o ,)"
-                      />
-                      <div className="space-y-2 mt-2">
-                        {SKILL_TYPES.map((t) => {
-                          const arr = (itemSkillsByType?.[t] ?? []) as Array<{ name: string; used: boolean }>;
-                          if (!arr.length) return null;
-                          return (
-                            <div key={t}>
-                              <div className="text-xs font-medium text-muted-foreground">{LABELS[t]}</div>
-                              <div className="mt-1 flex flex-wrap gap-2">
-                                {arr.map((s, idx) => (
-                                  <div key={`${t}-${idx}`} className="px-2 py-1 rounded bg-muted text-xs flex items-center gap-1">
-                                    <span className="italic">{s.name}</span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-5 px-1"
-                                      onClick={() => removeSkillFromType(t as SkillType, idx)}
-                                      aria-label={`Rimuovi ${s.name}`}
-                                    >
-                                      ×
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                <RadioGroup
+                  value={catalogMode}
+                  onValueChange={(v) => {
+                    setCatalogMode(v as "catalog" | "custom");
+                    setAssignError("");
+                  }}
+                  className="grid grid-cols-2 gap-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="catalog" id="catalog-mode-catalog" />
+                    <Label htmlFor="catalog-mode-catalog">Da catalogo</Label>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="custom" id="catalog-mode-custom" />
+                    <Label htmlFor="catalog-mode-custom">Nuovo oggetto</Label>
+                  </div>
+                </RadioGroup>
+
+                {catalogMode === "catalog" && (
+                  <>
+                <div className="space-y-2">
+                  <Label className="mb-1 block">Cerca nel catalogo</Label>
+                  <Input
+                    value={catalogQuery}
+                    onChange={(e) => setCatalogQuery(e.target.value)}
+                    placeholder={
+                      kind === "weapon"
+                        ? "Cerca arma"
+                        : kind === "consumable"
+                          ? "Cerca consumabile"
+                          : "Cerca oggetto"
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="mb-1 block">
+                    {kind === "weapon" ? "Arma" : kind === "consumable" ? "Consumabile" : "Oggetto"}
+                  </Label>
+                  <Select value={selectedCatalogItemId} onChange={setSelectedCatalogItemId}>
+                    <option value="">Seleziona dal catalogo</option>
+                    {filteredCatalogItems.map((item: any) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                        {item.rarity ? ` • ${item.rarity}` : ""}
+                      </option>
+                    ))}
+                  </Select>
+                  {!filteredCatalogItems.length ? (
+                    <div className="text-xs text-muted-foreground">
+                      Nessun elemento del catalogo compatibile con questo tipo.
+                    </div>
+                  ) : null}
+                </div>
+
+                {renderCatalogItemPreview()}
+                  </>
                 )}
 
-                {kind === "object" && (
-                  <div className="space-y-3">
-                    <div>
+                {catalogMode === "custom" && (
+                  <div className="space-y-3 rounded-xl border border-border/70 bg-background/70 p-3">
+                    <div className="space-y-2">
                       <Label className="mb-1 block">Nome *</Label>
-                      <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Es. Corda di canapa" />
+                      <Input value={customItemName} onChange={(e) => setCustomItemName(e.target.value)} placeholder="Es. Lama ricurva di bronzo" />
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label className="mb-1 block">Descrizione</Label>
-                      <Textarea
-                        value={descriptionVal}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Dettagli, effetti narrativi, condizioni d'uso…"
-                        rows={4}
-                      />
+                      <Textarea rows={3} value={customItemDescription} onChange={(e) => setCustomItemDescription(e.target.value)} placeholder="Dettagli rapidi sull'oggetto" />
                     </div>
-
-                    {/* NEW: Equipaggiabile */}
-                    <div className="flex items-center gap-2">
-                      <input
-                        id="obj-equippable"
-                        type="checkbox"
-                        checked={!!equippableVal}
-                        onChange={(e) => setEquippable(e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      <Label htmlFor="obj-equippable">Equipaggiabile</Label>
-                    </div>
-
-                    {/* SKILL come per armi */}
-                    <div className="space-y-2">
-                      <Label className="block">Skill (per categoria)</Label>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {SKILL_TYPES.map((t) => (
-                          <Button
-                            key={t}
-                            type="button"
-                            size="sm"
-                            variant={itemSkillType === t ? "default" : "outline"}
-                            onClick={() => setItemSkillType(t)}
-                          >
-                            {LABELS[t]}
-                          </Button>
-                        ))}
-                      </div>
-                      <Input
-                        className="mt-2"
-                        value={itemSkillInput}
-                        onChange={(e) => setItemSkillInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === ",") {
-                            e.preventDefault();
-                            addSkillToCurrentType(itemSkillInput);
-                          }
-                        }}
-                        placeholder="Digita una skill e premi Invio (o ,)"
-                      />
-                      <div className="space-y-2 mt-2">
-                        {SKILL_TYPES.map((t) => {
-                          const arr = (itemSkillsByType?.[t] ?? []) as Array<{ name: string; used: boolean }>;
-                          if (!arr.length) return null;
-                          return (
-                            <div key={t}>
-                              <div className="text-xs font-medium text-muted-foreground">{LABELS[t]}</div>
-                              <div className="mt-1 flex flex-wrap gap-2">
-                                {arr.map((s, idx) => (
-                                  <div key={`${t}-${idx}`} className="px-2 py-1 rounded bg-muted text-xs flex items-center gap-1">
-                                    <span className="italic">{s.name}</span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-5 px-1"
-                                      onClick={() => removeSkillFromType(t as SkillType, idx)}
-                                      aria-label={`Rimuovi ${s.name}`}
-                                    >
-                                      ×
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    {kind === "weapon" && (
+                      <>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label className="mb-1 block">Impugnatura</Label>
+                            <Select value={customWeaponHandling} onChange={setCustomWeaponHandling}>
+                              <option value="ONE_HANDED">1 mano</option>
+                              <option value="TWO_HANDED">2 mani</option>
+                              <option value="VERSATILE">Versatile</option>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="mb-1 block">Tipo attacco</Label>
+                            <Select value={customAttackKind} onChange={setCustomAttackKind}>
+                              <option value="MELEE_WEAPON">Mischia</option>
+                              <option value="RANGED_WEAPON">Distanza</option>
+                              <option value="THROWN">Lancio</option>
+                              <option value="SPECIAL">Speciale</option>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label className="mb-1 block">Bonus attacco</Label>
+                            <Input value={customAttackBonus} onChange={(e) => setCustomAttackBonus(e.target.value)} placeholder="Es. 5" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="mb-1 block">Dado danno</Label>
+                            <Input value={customDamageDice} onChange={(e) => setCustomDamageDice(e.target.value)} placeholder="Es. 1d8" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="mb-1 block">Tipo danno</Label>
+                            <Select value={customDamageType} onChange={setCustomDamageType}>
+                              <option value="tagliente">Tagliente</option>
+                              <option value="perforante">Perforante</option>
+                              <option value="contundente">Contundente</option>
+                            </Select>
+                          </div>
+                        </div>
+                        {customWeaponHandling === "VERSATILE" && (
+                          <div className="space-y-2">
+                            <Label className="mb-1 block">Danno a 2 mani</Label>
+                            <Input value={customVersatileDamageDice} onChange={(e) => setCustomVersatileDamageDice(e.target.value)} placeholder="Es. 1d10" />
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {kind === "object" && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="mb-1 block">Categoria</Label>
+                          <Select value={customObjectCategory} onChange={setCustomObjectCategory}>
+                            <option value="OTHER">Altro</option>
+                            <option value="GEAR">Equipaggiamento</option>
+                            <option value="TOOL">Strumento</option>
+                            <option value="WONDROUS_ITEM">Oggetto meraviglioso</option>
+                            <option value="RING">Anello</option>
+                            <option value="AMULET">Amuleto</option>
+                          </Select>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="flex items-center gap-2 text-sm">
+                            <input type="checkbox" checked={customEquippable} onChange={(e) => setCustomEquippable(e.target.checked)} className="h-4 w-4" />
+                            Equipaggiabile
+                          </label>
+                          <label className="flex items-center gap-2 text-sm">
+                            <input type="checkbox" checked={customStackable} onChange={(e) => setCustomStackable(e.target.checked)} className="h-4 w-4" />
+                            Stackabile
+                          </label>
+                        </div>
+                      </>
+                    )}
+                    {kind === "consumable" && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="mb-1 block">Categoria</Label>
+                          <Select value={customConsumableCategory} onChange={setCustomConsumableCategory}>
+                            <option value="CONSUMABLE">Consumabile</option>
+                            <option value="AMMUNITION">Munizione</option>
+                          </Select>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label className="mb-1 block">Effetto principale</Label>
+                            <Select value={customEffectType} onChange={setCustomEffectType}>
+                              <option value="">Nessun effetto strutturato</option>
+                              <option value="HEAL">Cura</option>
+                              <option value="DAMAGE">Danno</option>
+                              <option value="TEMP_HP">PF temporanei</option>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="mb-1 block">Valore / dadi</Label>
+                            <Input value={customEffectDice} onChange={(e) => setCustomEffectDice(e.target.value)} placeholder="Es. 2d4+2" />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
-                {kind === "consumable" && (
-                  <div className="space-y-3">
-                    <div>
-                      <Label className="mb-1 block">Nome *</Label>
-                      <Input value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Es. Razioni" />
-                    </div>
-
-                    <div>
-                      <Label className="mb-1 block">Sottotipo</Label>
-                      <RadioGroup
-                        value={consumableSubtype}
-                        onValueChange={(v) => setConsumableSubtype(v as "generic" | "potion")}
-                        className="grid grid-cols-2 gap-2"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="generic" id="sub-generic" />
-                          <Label htmlFor="sub-generic">Generico</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="potion" id="sub-potion" />
-                          <Label htmlFor="sub-potion">Pozione</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="mb-1 block">Quantità</Label>
-                        <Input
-                          inputMode="numeric"
-                          value={quantityVal}
-                          onChange={(e) => setQuantity(e.target.value)}
-                          placeholder="Es. 3"
-                        />
-                      </div>
-
-                      {consumableSubtype === "potion" && (
-                        <div>
-                          <Label className="mb-1 block">Tiro di dado (effetto)</Label>
-                          <Input
-                            value={potionDiceVal}
-                            onChange={(e) => setPotionDiceVal(e.target.value)}
-                            placeholder="Es. 2d4+2"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SKILL come per armi */}
-                    <div className="space-y-2">
-                      <Label className="block">Skill (per categoria)</Label>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {SKILL_TYPES.map((t) => (
-                          <Button
-                            key={t}
-                            type="button"
-                            size="sm"
-                            variant={itemSkillType === t ? "default" : "outline"}
-                            onClick={() => setItemSkillType(t)}
-                          >
-                            {LABELS[t]}
-                          </Button>
-                        ))}
-                      </div>
-                      <Input
-                        className="mt-2"
-                        value={itemSkillInput}
-                        onChange={(e) => setItemSkillInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === ",") {
-                            e.preventDefault();
-                            addSkillToCurrentType(itemSkillInput);
-                          }
-                        }}
-                        placeholder="Digita una skill e premi Invio (o ,)"
-                      />
-                      <div className="space-y-2 mt-2">
-                        {SKILL_TYPES.map((t) => {
-                          const arr = (itemSkillsByType?.[t] ?? []) as Array<{ name: string; used: boolean }>;
-                          if (!arr.length) return null;
-                          return (
-                            <div key={t}>
-                              <div className="text-xs font-medium text-muted-foreground">{LABELS[t]}</div>
-                              <div className="mt-1 flex flex-wrap gap-2">
-                                {arr.map((s, idx) => (
-                                  <div key={`${t}-${idx}`} className="px-2 py-1 rounded bg-muted text-xs flex items-center gap-1">
-                                    <span className="italic">{s.name}</span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-5 px-1"
-                                      onClick={() => removeSkillFromType(t as SkillType, idx)}
-                                      aria-label={`Rimuovi ${s.name}`}
-                                    >
-                                      ×
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="mb-1 block">
+                      Quantità
+                    </Label>
+                    <Input
+                      inputMode="numeric"
+                      value={assignQuantity}
+                      onChange={(e) => setAssignQuantity(e.target.value)}
+                      placeholder="Es. 1"
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      {selectedCatalogItem?.stackable
+                        ? "Per gli oggetti stackabili aggiorna la quantità iniziale dello stack."
+                        : "Per gli oggetti non stackabili verranno create istanze separate."}
                     </div>
                   </div>
-                )}
-              </>
+                  <div className="space-y-2">
+                    <Label className="mb-1 block">Note</Label>
+                    <Textarea
+                      rows={3}
+                      value={assignNotes}
+                      onChange={(e) => setAssignNotes(e.target.value)}
+                      placeholder="Annotazioni opzionali sull'istanza"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
 
-            {invError && <div className="text-sm text-red-600">{invError}</div>}
+            {(mode === "coins" ? invError : assignError) && (
+              <div className="text-sm text-red-600">{mode === "coins" ? invError : assignError}</div>
+            )}
           </div>
 
           <DialogFooter className="mt-2">
             <DialogClose asChild>
               <Button variant="outline">Annulla</Button>
             </DialogClose>
-            <Button
-              onClick={() =>
-                handleInventorySubmit({
-                  editTarget: editingTarget ?? undefined,
-                  kind,
-                  // nuovi campi arma:
-                  weaponCategory,
-                  weaponHands: weaponCategory === "melee" ? weaponHands : undefined,
-                  weaponRange: weaponCategory === "ranged" ? weaponRange?.trim() || undefined : undefined,
-                  damageKind, // "tagliente" | "perforante" | "contundente"
-                  // campi oggetti/consumabili:
-                  description: (kind === "object" ? (descriptionVal?.trim() || undefined) : (descriptionVal?.trim() || undefined)),
-                  equippable: (kind === "object" ? !!equippableVal : undefined), // NEW
-                  consumableSubtype,
-                  quantity: Number.isNaN(parseInt(quantityVal)) ? 0 : parseInt(quantityVal, 10),
-                  potionDice: potionDiceVal?.trim() || undefined,
-                })
-              }
-            >
-              {editingTarget ? "Salva modifiche" : "Salva"}
-            </Button>
+            {mode === "coins" ? (
+              <Button
+                onClick={() =>
+                  handleInventorySubmit({
+                    editTarget: editingTarget ?? undefined,
+                    kind,
+                    weaponCategory,
+                    weaponHands: weaponCategory === "melee" ? weaponHands : undefined,
+                    weaponRange: weaponCategory === "ranged" ? weaponRange?.trim() || undefined : undefined,
+                    damageKind,
+                    description: descriptionVal?.trim() || undefined,
+                    equippable: kind === "object" ? !!equippableVal : undefined,
+                    consumableSubtype,
+                    quantity: Number.isNaN(parseInt(quantityVal)) ? 0 : parseInt(quantityVal, 10),
+                    potionDice: potionDiceVal?.trim() || undefined,
+                  })
+                }
+              >
+                Salva
+              </Button>
+            ) : (
+              <Button
+                onClick={() => void (catalogMode === "catalog" ? handleAssignCatalogItem() : handleQuickCreateItem())}
+                disabled={assigningItem || (catalogMode === "catalog" ? !selectedCatalogItemId : !customItemName.trim())}
+              >
+                {assigningItem ? "Aggiungo..." : catalogMode === "catalog" ? "Aggiungi all'inventario" : "Censisci e aggiungi"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1217,10 +1463,105 @@ const Inventory = ({
   function openAddDialog(nextKind?: "weapon" | "object" | "consumable") {
     setEditingTarget(null);
     resetInvForm();
+    resetCustomItemForm();
+    setCatalogMode("catalog");
+    setCatalogQuery("");
+    setAssignQuantity("1");
+    setAssignNotes("");
+    setAssignError("");
+    setSelectedCatalogItemId("");
     setMode("item");
     setCoinFlow(null);
     if (nextKind) setKind(nextKind);
     setInvOpen(true);
+  }
+
+  async function handleAssignCatalogItem() {
+    if (!assignRelationalInventoryItem) return;
+    if (!selectedCatalogItemId) {
+      setAssignError("Seleziona un oggetto dal catalogo.");
+      return;
+    }
+
+    const numericQuantity = Math.max(1, parseInt(assignQuantity, 10) || 1);
+    setAssigningItem(true);
+    setAssignError("");
+    try {
+      await assignRelationalInventoryItem({
+        itemDefinitionId: selectedCatalogItemId,
+        quantity: numericQuantity,
+        notes: assignNotes.trim() || null,
+      });
+      setInvOpen(false);
+      setCatalogQuery("");
+      setAssignQuantity("1");
+      setAssignNotes("");
+      setSelectedCatalogItemId("");
+    } catch (error: any) {
+      setAssignError(String(error?.message ?? "Non sono riuscito ad aggiungere l'oggetto all'inventario."));
+    } finally {
+      setAssigningItem(false);
+    }
+  }
+
+  async function handleQuickCreateItem() {
+    if (!assignRelationalInventoryItem) return;
+    if (!customItemName.trim()) {
+      setAssignError("Inserisci almeno un nome per il nuovo oggetto.");
+      return;
+    }
+
+    const numericQuantity = Math.max(1, parseInt(assignQuantity, 10) || 1);
+    const quickPayload: Record<string, unknown> = {
+      kind,
+      name: customItemName.trim(),
+      description: customItemDescription.trim() || null,
+      notes: assignNotes.trim() || null,
+    };
+
+    if (kind === "weapon") {
+      quickPayload.weaponHandling = customWeaponHandling;
+      quickPayload.attackKind = customAttackKind;
+      quickPayload.attackBonus = customAttackBonus.trim() || null;
+      quickPayload.damageDice = customDamageDice.trim() || null;
+      quickPayload.versatileDamageDice = customVersatileDamageDice.trim() || null;
+      quickPayload.damageType = customDamageType;
+      quickPayload.rangeNormal = customRangeNormal.trim() || null;
+      quickPayload.rangeLong = customRangeLong.trim() || null;
+    } else if (kind === "consumable") {
+      quickPayload.consumableCategory = customConsumableCategory;
+      quickPayload.effectType = customEffectType || null;
+      quickPayload.effectDice = customEffectDice.trim() || null;
+      quickPayload.effectDamageType = customEffectDamageType.trim() || null;
+      quickPayload.savingThrowAbility = customEffectSaveAbility || null;
+      quickPayload.savingThrowDc = customEffectSaveDc.trim() || null;
+      quickPayload.successOutcome = customEffectSuccessOutcome || null;
+      quickPayload.effectNotes = customEffectNotes.trim() || null;
+    } else {
+      quickPayload.objectCategory = customObjectCategory;
+      quickPayload.equippable = customEquippable;
+      quickPayload.stackable = customStackable;
+    }
+
+    setAssigningItem(true);
+    setAssignError("");
+    try {
+      await assignRelationalInventoryItem({
+        quantity: numericQuantity,
+        notes: assignNotes.trim() || null,
+        quickCreateItem: quickPayload,
+      });
+      setInvOpen(false);
+      setCatalogQuery("");
+      setAssignQuantity("1");
+      setAssignNotes("");
+      setSelectedCatalogItemId("");
+      resetCustomItemForm();
+    } catch (error: any) {
+      setAssignError(String(error?.message ?? "Non sono riuscito a censire e assegnare l'oggetto."));
+    } finally {
+      setAssigningItem(false);
+    }
   }
 
   function openDetail(target: InventoryTarget) {

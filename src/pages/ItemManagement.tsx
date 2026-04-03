@@ -183,6 +183,9 @@ export default function ItemManagement() {
         name: created.name,
         category: created.category,
         rarity: created.rarity,
+        description: created.description,
+        playerVisible: created.playerVisible,
+        stackable: created.stackable,
         equippable: created.equippable,
         attackCount: created.attacks.length,
         slotRuleCount: created.slotRules.length,
@@ -212,6 +215,9 @@ export default function ItemManagement() {
         name: saved.name,
         category: saved.category,
         rarity: saved.rarity,
+        description: saved.description,
+        playerVisible: saved.playerVisible,
+        stackable: saved.stackable,
         equippable: saved.equippable,
         attackCount: saved.attacks.length,
         slotRuleCount: saved.slotRules.length,
@@ -289,8 +295,12 @@ export default function ItemManagement() {
                     onClick={() => void openItem(item.id)}
                   >
                     <div className="font-medium text-primary">{item.name}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{item.category} · {item.slug}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">slot {item.slotRuleCount} · attacchi {item.attackCount}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{item.category} / {item.slug}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {item.playerVisible ? "visibile ai player" : "nascosto ai player"}
+                      {item.rarity === "UNIQUE" ? " / unico" : ""}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">slot {item.slotRuleCount} / attacchi {item.attackCount}</div>
                   </button>
                 ))}
               </div>
@@ -335,7 +345,16 @@ export default function ItemManagement() {
                     </div>
                     <div className="space-y-2">
                       <Label>Rarità</Label>
-                      <Select value={draftItem.rarity ?? "__none__"} onValueChange={(value) => setDraftItem({ ...draftItem, rarity: value === "__none__" ? null : value })}>
+                      <Select
+                        value={draftItem.rarity ?? "__none__"}
+                        onValueChange={(value) =>
+                          setDraftItem({
+                            ...draftItem,
+                            rarity: value === "__none__" ? null : value,
+                            stackable: value === "UNIQUE" ? false : draftItem.stackable,
+                          })
+                        }
+                      >
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">Nessuna</SelectItem>
@@ -352,9 +371,19 @@ export default function ItemManagement() {
                     </div>
                     <div className="flex flex-wrap gap-4 md:col-span-2">
                       <ToggleRow label="Equipaggiabile" checked={draftItem.equippable} onChange={(value) => setDraftItem({ ...draftItem, equippable: value })} />
-                      <ToggleRow label="Stackabile" checked={draftItem.stackable} onChange={(value) => setDraftItem({ ...draftItem, stackable: value })} />
+                      <ToggleRow
+                        label="Stackabile"
+                        checked={draftItem.stackable}
+                        onChange={(value) => setDraftItem({ ...draftItem, stackable: draftItem.rarity === "UNIQUE" ? false : value })}
+                      />
                       <ToggleRow label="Richiede attunement" checked={draftItem.attunement} onChange={(value) => setDraftItem({ ...draftItem, attunement: value })} />
+                      <ToggleRow label="Visibile ai player" checked={draftItem.playerVisible} onChange={(value) => setDraftItem({ ...draftItem, playerVisible: value })} />
                     </div>
+                    {draftItem.rarity === "UNIQUE" ? (
+                      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 md:col-span-2">
+                        Gli oggetti UNIQUE non possono avere piu istanze e non vengono trattati come stackabili.
+                      </div>
+                    ) : null}
                   </section>
 
                   <section className="grid gap-3 md:grid-cols-2">
@@ -921,3 +950,4 @@ export default function ItemManagement() {
     </div>
   );
 }
+

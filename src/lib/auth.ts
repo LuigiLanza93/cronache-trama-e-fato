@@ -209,6 +209,9 @@ export type ItemDefinitionSummary = {
   name: string;
   category: string;
   rarity: string | null;
+  description: string | null;
+  playerVisible: boolean;
+  stackable: boolean;
   equippable: boolean;
   attackCount: number;
   slotRuleCount: number;
@@ -299,6 +302,7 @@ export type ItemDefinitionEntry = {
   armorClassBonus: number | null;
   rarity: string | null;
   description: string | null;
+  playerVisible: boolean;
   stackable: boolean;
   equippable: boolean;
   attunement: boolean;
@@ -323,6 +327,10 @@ export type CharacterInventoryItemEntry = {
   itemDefinitionId: string | null;
   itemName: string;
   itemCategory: string | null;
+  description: string | null;
+  detailSummary: string | null;
+  equippable: boolean;
+  stackable: boolean;
   quantity: number;
   isEquipped: boolean;
   nameOverride: string | null;
@@ -563,9 +571,20 @@ export function fetchCharacterInventoryItemsForDm(slug: string) {
   });
 }
 
+export function fetchCharacterInventoryItems(slug: string) {
+  return authFetch<CharacterInventoryItemEntry[]>(`/api/characters/${slug}/inventory-items`, {
+    method: "GET",
+  });
+}
+
 export function assignItemToCharacterRequest(
   slug: string,
-  payload: { itemDefinitionId: string; quantity?: number; notes?: string | null }
+  payload: {
+    itemDefinitionId?: string;
+    quantity?: number;
+    notes?: string | null;
+    quickCreateItem?: Record<string, unknown>;
+  }
 ) {
   return authFetch<CharacterInventoryItemEntry[]>(`/api/characters/${slug}/inventory-items`, {
     method: "POST",
@@ -576,5 +595,16 @@ export function assignItemToCharacterRequest(
 export function deleteCharacterInventoryItemRequest(slug: string, characterItemId: string) {
   return authFetch<null>(`/api/characters/${slug}/inventory-items/${characterItemId}`, {
     method: "DELETE",
+  });
+}
+
+export function updateCharacterInventoryItemRequest(
+  slug: string,
+  characterItemId: string,
+  payload: { quantity?: number; isEquipped?: boolean }
+) {
+  return authFetch<CharacterInventoryItemEntry>(`/api/characters/${slug}/inventory-items/${characterItemId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
   });
 }

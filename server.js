@@ -475,6 +475,7 @@ function createEmptyItemDefinition(name = "Nuovo oggetto") {
     armorClassBonus: null,
     rarity: null,
     description: null,
+    playerVisible: true,
     stackable: false,
     equippable: false,
     attunement: false,
@@ -494,6 +495,7 @@ function createEmptyItemDefinition(name = "Nuovo oggetto") {
 
 function readItemDefinitions() {
   if (!tableExists("ItemDefinition")) return [];
+  const hasPlayerVisible = columnExists("ItemDefinition", "playerVisible");
 
   return sqlite.prepare(`
     SELECT
@@ -502,6 +504,9 @@ function readItemDefinitions() {
       d.name,
       d.category,
       d.rarity,
+      d.description,
+      ${hasPlayerVisible ? "d.playerVisible" : "1 AS playerVisible"},
+      d.stackable,
       d.equippable,
       d.updatedAt,
       (SELECT COUNT(*) FROM "ItemAttack" a WHERE a.itemDefinitionId = d.id) AS attackCount,
@@ -514,6 +519,9 @@ function readItemDefinitions() {
     name: row.name,
     category: row.category,
     rarity: row.rarity ?? null,
+    description: row.description ?? null,
+    playerVisible: !!row.playerVisible,
+    stackable: !!row.stackable,
     equippable: !!row.equippable,
     attackCount: Number(row.attackCount ?? 0),
     slotRuleCount: Number(row.slotRuleCount ?? 0),
@@ -633,6 +641,7 @@ function readItemDefinition(itemId) {
     armorClassBonus: base.armorClassBonus ?? null,
     rarity: base.rarity ?? null,
     description: base.description ?? null,
+    playerVisible: columnExists("ItemDefinition", "playerVisible") ? !!base.playerVisible : true,
     stackable: !!base.stackable,
     equippable: !!base.equippable,
     attunement: !!base.attunement,
@@ -661,6 +670,7 @@ function normalizeItemDefinitionPayload(payload, existingId = null) {
   const rawFeatures = Array.isArray(payload?.features) ? payload.features : [];
   const rawAbilityRequirements = Array.isArray(payload?.abilityRequirements) ? payload.abilityRequirements : [];
   const rawUseEffects = Array.isArray(payload?.useEffects) ? payload.useEffects : [];
+  const normalizedRarity = normalizeNullableString(payload?.rarity);
 
   assertNamedEntries(rawAttacks, "Attacco", ["kind", "handRequirement", "ability", "attackBonus", "damageDice", "damageType", "rangeNormal", "rangeLong", "conditionText"]);
   assertNamedEntries(rawFeatures, "Feature", ["description", "resetOn", "customResetLabel", "maxUses", "condition"]);
@@ -678,9 +688,10 @@ function normalizeItemDefinitionPayload(payload, existingId = null) {
     armorClassCalculation: normalizeNullableString(payload?.armorClassCalculation),
     armorClassBase: normalizeNullableInt(payload?.armorClassBase),
     armorClassBonus: normalizeNullableInt(payload?.armorClassBonus),
-    rarity: normalizeNullableString(payload?.rarity),
+    rarity: normalizedRarity,
     description: normalizeNullableString(payload?.description),
-    stackable: !!payload?.stackable,
+    playerVisible: payload?.playerVisible !== false,
+    stackable: normalizedRarity === "UNIQUE" ? false : !!payload?.stackable,
     equippable: !!payload?.equippable,
     attunement: !!payload?.attunement,
     weight: normalizeNullableFloat(payload?.weight),
@@ -786,6 +797,7 @@ function saveItemDefinition(payload, existingId = null) {
   const existing = tableExists("ItemDefinition")
     ? sqlite.prepare('SELECT id, createdAt FROM "ItemDefinition" WHERE id = ? LIMIT 1').get(normalized.id)
     : null;
+  const hasPlayerVisible = columnExists("ItemDefinition", "playerVisible");
 
   runInTransaction(() => {
     if (existing) {
@@ -804,6 +816,7 @@ function saveItemDefinition(payload, existingId = null) {
           armorClassBonus = ?,
           rarity = ?,
           description = ?,
+          ${hasPlayerVisible ? "playerVisible = ?," : ""}
           stackable = ?,
           equippable = ?,
           attunement = ?,
@@ -825,6 +838,7 @@ function saveItemDefinition(payload, existingId = null) {
         normalized.armorClassBonus,
         normalized.rarity,
         normalized.description,
+        ...(hasPlayerVisible ? [normalized.playerVisible ? 1 : 0] : []),
         normalized.stackable ? 1 : 0,
         normalized.equippable ? 1 : 0,
         normalized.attunement ? 1 : 0,
@@ -838,9 +852,10 @@ function saveItemDefinition(payload, existingId = null) {
       sqlite.prepare(`
         INSERT INTO "ItemDefinition" (
           id, slug, name, category, subcategory, weaponHandling, gloveWearMode, armorCategory,
-          armorClassCalculation, armorClassBase, armorClassBonus, rarity, description, stackable,
-          equippable, attunement, weight, valueCp, data, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          armorClassCalculation, armorClassBase, armorClassBonus, rarity, description,
+          ${hasPlayerVisible ? "playerVisible," : ""}
+          stackable, equippable, attunement, weight, valueCp, data, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${hasPlayerVisible ? "?, " : ""}?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         normalized.id,
         normalized.slug,
@@ -855,6 +870,7 @@ function saveItemDefinition(payload, existingId = null) {
         normalized.armorClassBonus,
         normalized.rarity,
         normalized.description,
+        ...(hasPlayerVisible ? [normalized.playerVisible ? 1 : 0] : []),
         normalized.stackable ? 1 : 0,
         normalized.equippable ? 1 : 0,
         normalized.attunement ? 1 : 0,
@@ -1020,6 +1036,75 @@ function saveItemDefinition(payload, existingId = null) {
   return readItemDefinition(normalized.id);
 }
 
+function buildCharacterInventoryDetailSummary(itemDefinitionId, itemCategory) {
+  if (!itemDefinitionId) return { description: null, detailSummary: null };
+
+  const definition = sqlite
+    .prepare('SELECT description FROM "ItemDefinition" WHERE id = ? LIMIT 1')
+    .get(itemDefinitionId);
+
+  let detailSummary = null;
+
+  if (itemCategory === "WEAPON" && tableExists("ItemAttack")) {
+    const attack = sqlite
+      .prepare(`
+        SELECT name, attackBonus, damageDice, damageType, rangeNormal, rangeLong
+        FROM "ItemAttack"
+        WHERE itemDefinitionId = ?
+        ORDER BY sortOrder ASC, name COLLATE NOCASE ASC
+        LIMIT 1
+      `)
+      .get(itemDefinitionId);
+
+    if (attack) {
+      const parts = [];
+      if (attack.attackBonus !== null && attack.attackBonus !== undefined) {
+        parts.push(`${Number(attack.attackBonus) >= 0 ? "+" : ""}${attack.attackBonus}`);
+      }
+      if (attack.damageDice || attack.damageType) {
+        parts.push([attack.damageDice, attack.damageType].filter(Boolean).join(" "));
+      }
+      if (attack.rangeNormal != null || attack.rangeLong != null) {
+        parts.push(`gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}`);
+      }
+      detailSummary = parts.filter(Boolean).join(" · ") || null;
+    }
+  } else if ((itemCategory === "CONSUMABLE" || itemCategory === "AMMUNITION") && tableExists("ItemUseEffect")) {
+    const effect = sqlite
+      .prepare(`
+        SELECT effectType, diceExpression, flatValue, damageType, savingThrowAbility, savingThrowDc, successOutcome
+        FROM "ItemUseEffect"
+        WHERE itemDefinitionId = ?
+        ORDER BY sortOrder ASC
+        LIMIT 1
+      `)
+      .get(itemDefinitionId);
+
+    if (effect) {
+      const parts = [];
+      if (effect.effectType === "HEAL") {
+        parts.push(`cura ${effect.diceExpression ?? effect.flatValue ?? ""}`.trim());
+      } else if (effect.effectType === "DAMAGE") {
+        parts.push([effect.diceExpression ?? effect.flatValue, effect.damageType].filter(Boolean).join(" "));
+      } else {
+        parts.push(String(effect.effectType ?? "").toLowerCase());
+      }
+      if (effect.savingThrowAbility && effect.savingThrowDc != null) {
+        parts.push(`TS ${effect.savingThrowAbility} CD ${effect.savingThrowDc}`);
+      }
+      if (effect.successOutcome) {
+        parts.push(`succ: ${String(effect.successOutcome).toLowerCase()}`);
+      }
+      detailSummary = parts.filter(Boolean).join(" · ") || null;
+    }
+  }
+
+  return {
+    description: definition?.description ?? null,
+    detailSummary,
+  };
+}
+
 function readCharacterInventoryItemsBySlug(slug) {
   if (!tableExists("CharacterItem")) return [];
 
@@ -1042,27 +1127,38 @@ function readCharacterInventoryItemsBySlug(slug) {
       ci.createdAt,
       ci.updatedAt,
       d.name AS itemDefinitionName,
-      d.category AS itemDefinitionCategory
+      d.category AS itemDefinitionCategory,
+      d.equippable AS itemDefinitionEquippable,
+      d.stackable AS itemDefinitionStackable
     FROM "CharacterItem" ci
     LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
     WHERE ci.characterId = ?
     ORDER BY ci.sortOrder ASC, ci.createdAt ASC
-  `).all(character.id).map((row) => ({
-    id: row.id,
-    characterId: character.id,
-    characterSlug: character.slug,
-    characterName: character.name,
-    itemDefinitionId: row.itemDefinitionId ?? null,
-    itemName: row.nameOverride ?? row.itemDefinitionName ?? "Oggetto senza nome",
-    itemCategory: row.itemDefinitionCategory ?? null,
-    quantity: Number(row.quantity ?? 1),
-    isEquipped: !!row.isEquipped,
-    nameOverride: row.nameOverride ?? null,
-    descriptionOverride: row.descriptionOverride ?? null,
-    notes: row.notes ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  }));
+  `).all(character.id).map((row) => {
+    const category = row.itemDefinitionCategory ?? null;
+    const details = buildCharacterInventoryDetailSummary(row.itemDefinitionId ?? null, category);
+
+    return {
+      id: row.id,
+      characterId: character.id,
+      characterSlug: character.slug,
+      characterName: character.name,
+      itemDefinitionId: row.itemDefinitionId ?? null,
+      itemName: row.nameOverride ?? row.itemDefinitionName ?? "Oggetto senza nome",
+      itemCategory: category,
+      description: row.descriptionOverride ?? details.description ?? null,
+      detailSummary: details.detailSummary,
+      equippable: !!row.itemDefinitionEquippable,
+      stackable: !!row.itemDefinitionStackable,
+      quantity: Number(row.quantity ?? 1),
+      isEquipped: !!row.isEquipped,
+      nameOverride: row.nameOverride ?? null,
+      descriptionOverride: row.descriptionOverride ?? null,
+      notes: row.notes ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+  });
 }
 
 function assignItemDefinitionToCharacter(characterSlug, payload, actorUserId = null) {
@@ -1077,16 +1173,41 @@ function assignItemDefinitionToCharacter(characterSlug, payload, actorUserId = n
     throw new Error("Character not found");
   }
 
+  let itemDefinition = null;
   const itemDefinitionId = String(payload?.itemDefinitionId ?? "").trim();
-  if (!itemDefinitionId) {
+  const quickCreateItem = payload?.quickCreateItem && typeof payload.quickCreateItem === "object"
+    ? payload.quickCreateItem
+    : null;
+
+  if (itemDefinitionId) {
+    itemDefinition = sqlite
+      .prepare('SELECT id, name, category, stackable, rarity FROM "ItemDefinition" WHERE id = ? LIMIT 1')
+      .get(itemDefinitionId);
+    if (!itemDefinition) {
+      throw new Error("Item definition not found");
+    }
+  } else if (quickCreateItem) {
+    const created = saveItemDefinition(buildQuickCreateItemDefinitionPayload(quickCreateItem));
+    itemDefinition = {
+      id: created.id,
+      name: created.name,
+      category: created.category,
+      stackable: created.stackable ? 1 : 0,
+      rarity: created.rarity ?? null,
+    };
+  } else {
     throw new Error("Item definition required");
   }
 
-  const itemDefinition = sqlite
-    .prepare('SELECT id, name, category, stackable FROM "ItemDefinition" WHERE id = ? LIMIT 1')
-    .get(itemDefinitionId);
-  if (!itemDefinition) {
-    throw new Error("Item definition not found");
+  if (String(itemDefinition.rarity ?? "").toUpperCase() === "UNIQUE") {
+    const existingInstances = Number(
+      sqlite
+        .prepare('SELECT COUNT(*) AS count FROM "CharacterItem" WHERE itemDefinitionId = ?')
+        .get(itemDefinition.id)?.count ?? 0
+    );
+    if (existingInstances > 0) {
+      throw new Error("Questo oggetto unico esiste gia e non puo avere piu istanze.");
+    }
   }
 
   const requestedQuantity = Math.max(1, normalizeNullableInt(payload?.quantity) ?? 1);
@@ -1172,6 +1293,181 @@ function assignItemDefinitionToCharacter(characterSlug, payload, actorUserId = n
   });
 
   return readCharacterInventoryItemsBySlug(characterSlug);
+}
+
+function buildQuickCreateWeaponSlotRules(weaponHandling) {
+  if (weaponHandling === "TWO_HANDED") {
+    return [
+      { groupKey: "hands", selectionMode: "ALL_REQUIRED", slot: "WEAPON_HAND_LEFT", required: true, sortOrder: 0 },
+      { groupKey: "hands", selectionMode: "ALL_REQUIRED", slot: "WEAPON_HAND_RIGHT", required: true, sortOrder: 1 },
+    ];
+  }
+
+  if (weaponHandling === "VERSATILE") {
+    return [
+      { groupKey: "one-hand", selectionMode: "ANY_ONE", slot: "WEAPON_HAND_LEFT", required: true, sortOrder: 0 },
+      { groupKey: "one-hand", selectionMode: "ANY_ONE", slot: "WEAPON_HAND_RIGHT", required: true, sortOrder: 1 },
+      { groupKey: "two-hand", selectionMode: "ALL_REQUIRED", slot: "WEAPON_HAND_LEFT", required: true, sortOrder: 2 },
+      { groupKey: "two-hand", selectionMode: "ALL_REQUIRED", slot: "WEAPON_HAND_RIGHT", required: true, sortOrder: 3 },
+    ];
+  }
+
+  return [
+    { groupKey: "hands", selectionMode: "ANY_ONE", slot: "WEAPON_HAND_LEFT", required: true, sortOrder: 0 },
+    { groupKey: "hands", selectionMode: "ANY_ONE", slot: "WEAPON_HAND_RIGHT", required: true, sortOrder: 1 },
+  ];
+}
+
+function buildQuickCreateItemDefinitionPayload(raw) {
+  const mode = String(raw?.kind ?? "object").trim();
+  const name = String(raw?.name ?? "").trim();
+  if (!name) {
+    throw new Error("Item name required");
+  }
+
+  const base = createEmptyItemDefinition(name);
+  const description = normalizeNullableString(raw?.description);
+  const notes = normalizeNullableString(raw?.notes);
+  const mergedDescription = [description, notes].filter(Boolean).join("\n\n") || null;
+
+  if (mode === "weapon") {
+    const weaponHandling = String(raw?.weaponHandling ?? "ONE_HANDED").trim() || "ONE_HANDED";
+    const attackKind = String(raw?.attackKind ?? "MELEE_WEAPON").trim() || "MELEE_WEAPON";
+    const damageDice = normalizeNullableString(raw?.damageDice);
+    const damageType = normalizeNullableString(raw?.damageType);
+    const attackBonus = normalizeNullableInt(raw?.attackBonus);
+    const rangeNormal = normalizeNullableInt(raw?.rangeNormal);
+    const rangeLong = normalizeNullableInt(raw?.rangeLong);
+    const versatileDamageDice = normalizeNullableString(raw?.versatileDamageDice);
+
+    const attacks = [];
+    if (damageDice || damageType || attackBonus != null) {
+      attacks.push({
+        name,
+        kind: attackKind,
+        handRequirement: weaponHandling === "TWO_HANDED" ? "TWO_HANDED" : weaponHandling === "VERSATILE" ? "ONE_HANDED" : "ANY",
+        attackBonus,
+        damageDice,
+        damageType,
+        rangeNormal,
+        rangeLong,
+        requiresEquipped: true,
+        sortOrder: 0,
+      });
+    }
+    if (weaponHandling === "VERSATILE" && versatileDamageDice) {
+      attacks.push({
+        name: `${name} (2 mani)`,
+        kind: attackKind,
+        handRequirement: "TWO_HANDED",
+        attackBonus,
+        damageDice: versatileDamageDice,
+        damageType,
+        rangeNormal,
+        rangeLong,
+        requiresEquipped: true,
+        sortOrder: 1,
+      });
+    }
+
+    return {
+      ...base,
+      category: "WEAPON",
+      description: mergedDescription,
+      equippable: true,
+      stackable: false,
+      weaponHandling,
+      slotRules: buildQuickCreateWeaponSlotRules(weaponHandling),
+      attacks,
+    };
+  }
+
+  if (mode === "consumable") {
+    const consumableCategory = String(raw?.consumableCategory ?? "CONSUMABLE").trim() || "CONSUMABLE";
+    const effectType = normalizeNullableString(raw?.effectType)?.toUpperCase() ?? null;
+    const effectDice = normalizeNullableString(raw?.effectDice);
+    const effectFlatValue = normalizeNullableInt(raw?.effectFlatValue);
+    const useEffects = effectType
+      ? [{
+          effectType,
+          targetType: "CREATURE",
+          diceExpression: effectDice,
+          flatValue: effectFlatValue,
+          damageType: normalizeNullableString(raw?.effectDamageType),
+          savingThrowAbility: normalizeNullableString(raw?.savingThrowAbility)?.toUpperCase() ?? null,
+          savingThrowDc: normalizeNullableInt(raw?.savingThrowDc),
+          successOutcome: normalizeNullableString(raw?.successOutcome)?.toUpperCase() ?? null,
+          notes: normalizeNullableString(raw?.effectNotes),
+          sortOrder: 0,
+        }]
+      : [];
+
+    return {
+      ...base,
+      category: consumableCategory,
+      description: mergedDescription,
+      equippable: false,
+      stackable: true,
+      useEffects,
+    };
+  }
+
+  return {
+    ...base,
+    category: String(raw?.objectCategory ?? "OTHER").trim() || "OTHER",
+    description: mergedDescription,
+    equippable: !!raw?.equippable,
+    stackable: !!raw?.stackable,
+  };
+}
+
+function updateCharacterInventoryItem(characterSlug, characterItemId, payload) {
+  if (!tableExists("CharacterItem")) {
+    throw new Error("Character inventory not available");
+  }
+
+  const character = sqlite
+    .prepare('SELECT id, slug FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(characterSlug);
+  if (!character) {
+    throw new Error("Character not found");
+  }
+
+  const existing = sqlite.prepare(`
+    SELECT
+      ci.id,
+      ci.characterId,
+      ci.quantity,
+      ci.isEquipped,
+      d.equippable AS itemDefinitionEquippable
+    FROM "CharacterItem" ci
+    LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
+    WHERE ci.id = ? AND ci.characterId = ?
+    LIMIT 1
+  `).get(characterItemId, character.id);
+  if (!existing) {
+    throw new Error("Character item not found");
+  }
+
+  const quantity = payload?.quantity === undefined ? Number(existing.quantity ?? 1) : Math.max(0, normalizeNullableInt(payload?.quantity) ?? 0);
+  const isEquipped = payload?.isEquipped === undefined ? !!existing.isEquipped : !!payload.isEquipped;
+  if (isEquipped && !existing.itemDefinitionEquippable) {
+    throw new Error("Item is not equippable");
+  }
+
+  sqlite.prepare(`
+    UPDATE "CharacterItem"
+    SET quantity = ?, isEquipped = ?, updatedAt = ?
+    WHERE id = ? AND characterId = ?
+  `).run(
+    quantity,
+    isEquipped ? 1 : 0,
+    new Date().toISOString(),
+    existing.id,
+    character.id
+  );
+
+  return readCharacterInventoryItemsBySlug(characterSlug)?.find((item) => item.id === existing.id) ?? null;
 }
 
 function readOwnership() {
@@ -2462,13 +2758,28 @@ async function start() {
   });
 
   // ===== Item definitions =====
-  app.get("/api/items", requireRole("dm"), (req, res) => {
-    return res.json(readItemDefinitions());
+  app.get("/api/items", requireAuth, (req, res) => {
+    const items = readItemDefinitions();
+    if (req.user?.role === "dm") {
+      return res.json(items);
+    }
+    return res.json(
+      items.filter((item) => item.playerVisible && String(item.rarity ?? "").toUpperCase() !== "UNIQUE")
+    );
   });
 
-  app.get("/api/items/:itemId", requireRole("dm"), (req, res) => {
+  app.get("/api/items/:itemId", requireAuth, (req, res) => {
     const item = readItemDefinition(req.params.itemId);
     if (!item) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+    if (
+      req.user?.role !== "dm" &&
+      (
+        !item.playerVisible ||
+        String(item.rarity ?? "").toUpperCase() === "UNIQUE"
+      )
+    ) {
       return res.status(404).json({ error: "Item not found" });
     }
     return res.json(item);
@@ -2532,17 +2843,29 @@ async function start() {
     return res.status(204).end();
   });
 
-  app.get("/api/characters/:slug/inventory-items", requireRole("dm"), (req, res) => {
-    const items = readCharacterInventoryItemsBySlug(req.params.slug);
+  app.get("/api/characters/:slug/inventory-items", requireAuth, (req, res) => {
+    const slug = req.params.slug;
+    const ownership = readOwnership();
+    if (!canAccessCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const items = readCharacterInventoryItemsBySlug(slug);
     if (items === null) {
       return res.status(404).json({ error: "Character not found" });
     }
     return res.json(items);
   });
 
-  app.post("/api/characters/:slug/inventory-items", requireRole("dm"), (req, res) => {
+  app.post("/api/characters/:slug/inventory-items", requireAuth, (req, res) => {
+    const slug = req.params.slug;
+    const ownership = readOwnership();
+    if (!canEditCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     try {
-      const items = assignItemDefinitionToCharacter(req.params.slug, req.body ?? {}, req.user?.id ?? null);
+      const items = assignItemDefinitionToCharacter(slug, req.body ?? {}, req.user?.id ?? null);
       return res.status(201).json(items);
     } catch (error) {
       const message = String(error?.message ?? error);
@@ -2572,6 +2895,26 @@ async function start() {
 
     sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
     return res.status(204).end();
+  });
+
+  app.patch("/api/characters/:slug/inventory-items/:characterItemId", requireAuth, (req, res) => {
+    const slug = req.params.slug;
+    const ownership = readOwnership();
+    if (!canEditCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    try {
+      const item = updateCharacterInventoryItem(slug, req.params.characterItemId, req.body ?? {});
+      if (!item) {
+        return res.status(404).json({ error: "Character item not found" });
+      }
+      return res.json(item);
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      const status = /not found/i.test(message) ? 404 : /forbidden/i.test(message) ? 403 : 400;
+      return res.status(status).json({ error: message });
+    }
   });
 
   // ===== Bestiary =====
