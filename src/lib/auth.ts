@@ -213,6 +213,17 @@ export type RaceSpeedsPayload = {
   entries: RaceSpeedEntry[];
 };
 
+export type CharacterSheetLayoutEntry = {
+  cardId: string;
+  column: number;
+  order: number;
+};
+
+export type CharacterSheetLayoutPayload = {
+  layoutKey: string;
+  entries: CharacterSheetLayoutEntry[];
+};
+
 export type SpellSlotTable = Record<string, Record<string, Record<string, number>>>;
 
 export type ItemDefinitionSummary = {
@@ -607,6 +618,19 @@ export function deleteEncounterScenarioRequest(scenarioId: string) {
 
 export function fetchItemDefinitions() {
   return authFetch<ItemDefinitionSummary[]>("/api/items", { method: "GET" });
+}
+
+export function fetchCharacterSheetLayout() {
+  return authFetch<CharacterSheetLayoutPayload>("/api/preferences/character-sheet-layout", {
+    method: "GET",
+  });
+}
+
+export function saveCharacterSheetLayout(entries: CharacterSheetLayoutEntry[]) {
+  return authFetch<CharacterSheetLayoutPayload>("/api/preferences/character-sheet-layout", {
+    method: "PUT",
+    body: JSON.stringify({ entries }),
+  });
 }
 
 export function fetchItemDefinition(itemId: string) {

@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { updateCharacter } from "@/realtime";
 import { Check, Eye, Settings2, X } from "lucide-react";
+import SectionCard from "@/components/characterSheet/section-card";
 
 const SAVING_THROW_ORDER = [
     { key: "strength", short: "For", matches: ["strength", "forza", "for"] },
@@ -134,8 +135,7 @@ const Proficiencies = ({
     });
 
     return (
-        <Card className="character-section">
-            <div className="character-section-title">Competenze & AbilitÃ </div>
+        <SectionCard cardId="proficiencies" title="Competenze & AbilitÃ ">
             <div className="space-y-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="flex min-h-[3.5rem] flex-col justify-between">
@@ -376,7 +376,7 @@ const Proficiencies = ({
                     </div>
                 </div>
             </div>
-        </Card>
+        </SectionCard>
     );
 };
 

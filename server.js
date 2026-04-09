@@ -46,6 +46,19 @@ const DEFAULT_RACE_SPEED_REFERENCES = [
   { id: "race-speed-tiefling", raceName: "Tiefling", subraceName: null, speedMeters: 9, notes: null },
 ];
 
+const CHARACTER_SHEET_LAYOUT_KEY = "character-sheet";
+const ALLOWED_CHARACTER_SHEET_CARD_IDS = new Set([
+  "abilityScores",
+  "proficiencies",
+  "languages",
+  "combatStats",
+  "hitPoints",
+  "capabilities",
+  "attacksAndEquipment",
+  "features",
+  "inventory",
+]);
+
 // ---- Utilities ----
 function ensureDir(p) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
@@ -99,6 +112,7 @@ function runInTransaction(work) {
 }
 
 ensureRaceSpeedReferenceTable();
+ensureUserLayoutPreferenceTable();
 
 function normalizeUserRow(row) {
   if (!row) return null;
@@ -523,6 +537,94 @@ function ensureRaceSpeedReferenceTable() {
       );
     }
   });
+}
+
+function ensureUserLayoutPreferenceTable() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "UserLayoutPreference" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "userId" TEXT NOT NULL,
+      "layoutKey" TEXT NOT NULL,
+      "layoutJson" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    );
+  `);
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "UserLayoutPreference_userId_layoutKey_key"
+    ON "UserLayoutPreference"("userId", "layoutKey");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "UserLayoutPreference_userId_idx"
+    ON "UserLayoutPreference"("userId");
+  `);
+}
+
+function normalizeCharacterSheetLayoutEntries(entries) {
+  if (!Array.isArray(entries)) return [];
+
+  const seen = new Set();
+  const normalized = [];
+
+  for (const rawEntry of entries) {
+    const cardId = String(rawEntry?.cardId ?? "").trim();
+    const column = Number(rawEntry?.column);
+    const order = Number(rawEntry?.order);
+
+    if (!ALLOWED_CHARACTER_SHEET_CARD_IDS.has(cardId)) continue;
+    if (seen.has(cardId)) continue;
+    if (!Number.isInteger(column) || column < 0 || column > 2) continue;
+    if (!Number.isInteger(order) || order < 0) continue;
+
+    seen.add(cardId);
+    normalized.push({ cardId, column, order });
+  }
+
+  return normalized;
+}
+
+function readUserLayoutPreference(userId, layoutKey) {
+  if (!userId) return null;
+  const row = sqlite
+    .prepare('SELECT * FROM "UserLayoutPreference" WHERE userId = ? AND layoutKey = ? LIMIT 1')
+    .get(userId, layoutKey);
+
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    userId: row.userId,
+    layoutKey: row.layoutKey,
+    entries: normalizeCharacterSheetLayoutEntries(parseJsonString(row.layoutJson, [])),
+    createdAt: row.createdAt ?? null,
+    updatedAt: row.updatedAt ?? null,
+  };
+}
+
+function upsertUserLayoutPreference(userId, layoutKey, entries) {
+  const now = new Date().toISOString();
+  const normalizedEntries = normalizeCharacterSheetLayoutEntries(entries);
+  const existing = sqlite
+    .prepare('SELECT id FROM "UserLayoutPreference" WHERE userId = ? AND layoutKey = ? LIMIT 1')
+    .get(userId, layoutKey);
+
+  if (existing?.id) {
+    sqlite.prepare(`
+      UPDATE "UserLayoutPreference"
+      SET layoutJson = ?, updatedAt = ?
+      WHERE id = ?
+    `).run(JSON.stringify(normalizedEntries), now, existing.id);
+    return readUserLayoutPreference(userId, layoutKey);
+  }
+
+  const id = `layout_${sanitizeSlug(layoutKey)}_${crypto.randomBytes(4).toString("hex")}`;
+  sqlite.prepare(`
+    INSERT INTO "UserLayoutPreference" (
+      id, userId, layoutKey, layoutJson, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?)
+  `).run(id, userId, layoutKey, JSON.stringify(normalizedEntries), now, now);
+  return readUserLayoutPreference(userId, layoutKey);
 }
 
 function createUniqueItemSlug(baseSlug, excludeId = null) {
@@ -3489,6 +3591,23 @@ async function start() {
     }
 
     return res.json(sanitizeUser(req.user, readOwnership()));
+  });
+
+  app.get("/api/preferences/character-sheet-layout", requireAuth, (req, res) => {
+    const preference = readUserLayoutPreference(req.user.id, CHARACTER_SHEET_LAYOUT_KEY);
+    return res.json({
+      layoutKey: CHARACTER_SHEET_LAYOUT_KEY,
+      entries: preference?.entries ?? [],
+    });
+  });
+
+  app.put("/api/preferences/character-sheet-layout", requireAuth, (req, res) => {
+    const entries = normalizeCharacterSheetLayoutEntries(req.body?.entries);
+    const preference = upsertUserLayoutPreference(req.user.id, CHARACTER_SHEET_LAYOUT_KEY, entries);
+    return res.json({
+      layoutKey: CHARACTER_SHEET_LAYOUT_KEY,
+      entries: preference?.entries ?? [],
+    });
   });
 
   app.post("/api/auth/login", (req, res) => {

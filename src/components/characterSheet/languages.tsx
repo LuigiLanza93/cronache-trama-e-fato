@@ -1,9 +1,8 @@
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import SectionCard from "@/components/characterSheet/section-card";
 
 const Languages = ({ characterData }: any) => (
-    <Card className="character-section">
-        <div className="character-section-title">Linguaggi</div>
+    <SectionCard cardId="languages" title="Linguaggi">
         <div className="flex flex-wrap gap-1">
             {characterData.proficiencies.languages.map((language: string) => (
                 <Badge key={language} variant="outline">
@@ -11,7 +10,7 @@ const Languages = ({ characterData }: any) => (
                 </Badge>
             ))}
         </div>
-    </Card>
+    </SectionCard>
 );
 
 export default Languages;

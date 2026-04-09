@@ -41,6 +41,7 @@ import { useEffect, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import SectionCard from "@/components/characterSheet/section-card";
 import {
   fetchItemDefinition,
   type EquipResolutionDetails,
@@ -1220,8 +1221,7 @@ const Inventory = ({
   };
 
   return (
-    <Card className="character-section">
-      <div className="character-section-title">Inventario</div>
+    <SectionCard cardId="inventory" title="Inventario">
 
       {/* Monete */}
       <div className="mb-4 text-sm">
@@ -2154,7 +2154,7 @@ const Inventory = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </SectionCard>
   )
 
   function getDetailEntry() {

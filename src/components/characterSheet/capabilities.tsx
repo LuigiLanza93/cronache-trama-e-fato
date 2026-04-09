@@ -18,6 +18,7 @@ import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogT
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import SectionCard from "@/components/characterSheet/section-card";
 
 type CapabilityKind = "passive" | "active";
 type CapabilityReset = "atWill" | "encounter" | "shortRest" | "longRest" | "custom";
@@ -496,12 +497,15 @@ export default function Capabilities({
   };
 
   return (
-    <Card className="character-section">
-      <div className="character-section-title flex items-center justify-between gap-2">
+    <SectionCard
+      cardId="capabilities"
+      title={
         <span className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
           Skills
         </span>
+      }
+      actions={
         <Button
           type="button"
           variant="ghost"
@@ -513,7 +517,8 @@ export default function Capabilities({
         >
           <Plus className="h-4 w-4" />
         </Button>
-      </div>
+      }
+    >
 
       <div className="space-y-4">
         <div className="space-y-2">
@@ -1137,6 +1142,6 @@ export default function Capabilities({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </SectionCard>
   );
 }

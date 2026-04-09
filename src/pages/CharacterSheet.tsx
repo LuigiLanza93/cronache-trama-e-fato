@@ -1,5 +1,25 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
+import { Check, GripVertical, LayoutTemplate, RotateCcw } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  closestCenter,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragOverEvent,
+  type DragEndEvent,
+  type DragCancelEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -50,8 +70,11 @@ import {
   fetchSpells,
   fetchItemDefinitions,
   fetchCharacterInventoryItems,
+  fetchCharacterSheetLayout,
+  saveCharacterSheetLayout,
   transferCharacterInventoryItemRequest,
   updateCharacterInventoryItemRequest,
+  type CharacterSheetLayoutEntry,
   type CharacterInventoryItemEntry,
   type ItemDefinitionEntry,
   type ItemDefinitionSummary,
@@ -60,6 +83,7 @@ import {
   type SpellSlotTable,
   type SpellsByClass as SpellsByClassFromApi,
 } from "@/lib/auth";
+import { toast } from "@/components/ui/sonner";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
 import AbilityScores from "@/components/characterSheet/ability-scores";
@@ -72,6 +96,7 @@ import Features from "@/components/characterSheet/features";
 import Inventory from "@/components/characterSheet/inventory";
 import Languages from "@/components/characterSheet/languages";
 import FloatingCharacterChat from "@/components/chat/floating-character-chat";
+import { SheetCardStateProvider } from "@/components/characterSheet/sheet-card-state";
 
 type InputEl = HTMLInputElement | HTMLTextAreaElement;
 type Coins = { cp: number; sp: number; ep: number; gp: number; pp: number };
@@ -368,6 +393,265 @@ function compactCoinsAtTier(baseCoins: Partial<Coins> | undefined, coinKey: keyo
 
 const SKILL_TYPES: SkillType[] = ["volonta", "incontro", "riposoBreve", "riposoLungo"];
 
+type CharacterSheetCardId =
+  | "abilityScores"
+  | "proficiencies"
+  | "languages"
+  | "combatStats"
+  | "hitPoints"
+  | "capabilities"
+  | "attacksAndEquipment"
+  | "features"
+  | "inventory";
+
+type CharacterSheetLayoutCardEntry = {
+  cardId: CharacterSheetCardId;
+  column: 0 | 1 | 2;
+  order: number;
+};
+
+const DEFAULT_CHARACTER_SHEET_LAYOUT: CharacterSheetLayoutCardEntry[] = [
+  { cardId: "abilityScores", column: 0, order: 0 },
+  { cardId: "proficiencies", column: 0, order: 1 },
+  { cardId: "languages", column: 0, order: 2 },
+  { cardId: "combatStats", column: 1, order: 0 },
+  { cardId: "hitPoints", column: 1, order: 1 },
+  { cardId: "capabilities", column: 1, order: 2 },
+  { cardId: "attacksAndEquipment", column: 1, order: 3 },
+  { cardId: "features", column: 2, order: 0 },
+  { cardId: "inventory", column: 2, order: 1 },
+];
+
+function normalizeCharacterSheetLayout(
+  entries: CharacterSheetLayoutEntry[] | CharacterSheetLayoutCardEntry[] | undefined | null
+): CharacterSheetLayoutCardEntry[] {
+  const fallbackMap = new Map(
+    DEFAULT_CHARACTER_SHEET_LAYOUT.map((entry) => [entry.cardId, entry])
+  );
+
+  const filtered = Array.isArray(entries)
+    ? entries
+        .map((entry) => ({
+          cardId: entry.cardId as CharacterSheetCardId,
+          column: entry.column as 0 | 1 | 2,
+          order: entry.order,
+        }))
+        .filter(
+          (entry) =>
+            fallbackMap.has(entry.cardId) &&
+            Number.isInteger(entry.column) &&
+            entry.column >= 0 &&
+            entry.column <= 2 &&
+            Number.isInteger(entry.order) &&
+            entry.order >= 0
+        )
+    : [];
+
+  const uniqueEntries = Array.from(
+    new Map(filtered.map((entry) => [entry.cardId, entry])).values()
+  );
+
+  const completed = [...uniqueEntries];
+  for (const fallbackEntry of DEFAULT_CHARACTER_SHEET_LAYOUT) {
+    if (!completed.some((entry) => entry.cardId === fallbackEntry.cardId)) {
+      completed.push(fallbackEntry);
+    }
+  }
+
+  const byColumn = [0, 1, 2].map((column) =>
+    completed
+      .filter((entry) => entry.column === column)
+      .sort((a, b) => a.order - b.order)
+      .map((entry, index) => ({ ...entry, order: index }))
+  );
+
+  return byColumn.flat();
+}
+
+function moveCharacterSheetCard(
+  layout: CharacterSheetLayoutCardEntry[],
+  cardId: CharacterSheetCardId,
+  direction: "up" | "down" | "left" | "right"
+): CharacterSheetLayoutCardEntry[] {
+  const columns = [0, 1, 2].map((column) =>
+    layout
+      .filter((entry) => entry.column === column)
+      .sort((a, b) => a.order - b.order)
+      .map((entry) => ({ ...entry }))
+  );
+
+  const sourceColumnIndex = columns.findIndex((columnEntries) =>
+    columnEntries.some((entry) => entry.cardId === cardId)
+  );
+  if (sourceColumnIndex < 0) return layout;
+
+  const sourceEntries = columns[sourceColumnIndex];
+  const sourceIndex = sourceEntries.findIndex((entry) => entry.cardId === cardId);
+  if (sourceIndex < 0) return layout;
+
+  const [entry] = sourceEntries.splice(sourceIndex, 1);
+
+  const rebuildLayoutFromColumns = () =>
+    normalizeCharacterSheetLayout(
+      columns.flatMap((columnEntries, columnIndex) =>
+        columnEntries.map((columnEntry, orderIndex) => ({
+          ...columnEntry,
+          column: columnIndex as 0 | 1 | 2,
+          order: orderIndex,
+        }))
+      )
+    );
+
+  if (direction === "up" || direction === "down") {
+    const nextIndex = direction === "up" ? sourceIndex - 1 : sourceIndex + 1;
+    if (nextIndex < 0 || nextIndex > sourceEntries.length) {
+      sourceEntries.splice(sourceIndex, 0, entry);
+      return rebuildLayoutFromColumns();
+    }
+    sourceEntries.splice(nextIndex, 0, entry);
+    return rebuildLayoutFromColumns();
+  }
+
+  const targetColumnIndex = direction === "left" ? sourceColumnIndex - 1 : sourceColumnIndex + 1;
+  if (targetColumnIndex < 0 || targetColumnIndex > 2) {
+    sourceEntries.splice(sourceIndex, 0, entry);
+    return rebuildLayoutFromColumns();
+  }
+
+  const targetEntries = columns[targetColumnIndex];
+  const insertIndex = Math.min(sourceIndex, targetEntries.length);
+  targetEntries.splice(insertIndex, 0, { ...entry, column: targetColumnIndex as 0 | 1 | 2 });
+
+  return rebuildLayoutFromColumns();
+}
+
+function buildCharacterSheetLayoutColumns(layout: CharacterSheetLayoutCardEntry[]) {
+  return [0, 1, 2].map((column) =>
+    layout
+      .filter((entry) => entry.column === column)
+      .sort((a, b) => a.order - b.order)
+  );
+}
+
+function moveCharacterSheetCardToPosition(
+  layout: CharacterSheetLayoutCardEntry[],
+  cardId: CharacterSheetCardId,
+  targetColumn: 0 | 1 | 2,
+  targetIndex: number
+) {
+  const columns = buildCharacterSheetLayoutColumns(layout).map((columnEntries) =>
+    columnEntries.map((entry) => ({ ...entry }))
+  );
+
+  const sourceColumnIndex = columns.findIndex((columnEntries) =>
+    columnEntries.some((entry) => entry.cardId === cardId)
+  );
+  if (sourceColumnIndex < 0) return layout;
+
+  const sourceEntries = columns[sourceColumnIndex];
+  const sourceIndex = sourceEntries.findIndex((entry) => entry.cardId === cardId);
+  if (sourceIndex < 0) return layout;
+
+  const [entry] = sourceEntries.splice(sourceIndex, 1);
+  const destinationEntries = columns[targetColumn];
+
+  const normalizedTargetIndex = Math.max(
+    0,
+    Math.min(targetIndex, destinationEntries.length)
+  );
+
+  destinationEntries.splice(normalizedTargetIndex, 0, {
+    ...entry,
+    column: targetColumn,
+  });
+
+  return normalizeCharacterSheetLayout(
+    columns.flatMap((columnEntries, columnIndex) =>
+      columnEntries.map((columnEntry, orderIndex) => ({
+        ...columnEntry,
+        column: columnIndex as 0 | 1 | 2,
+        order: orderIndex,
+      }))
+    )
+  );
+}
+
+function LayoutColumnDropZone({
+  columnId,
+  children,
+}: {
+  columnId: string;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: columnId,
+    data: {
+      type: "column",
+      columnId,
+    },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`space-y-6 rounded-xl transition ${
+        isOver ? "border-primary/70 bg-primary/5" : "border-border/60"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SortableLayoutCard({
+  cardId,
+  layoutEditMode,
+  children,
+}: {
+  cardId: CharacterSheetCardId;
+  layoutEditMode: boolean;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: cardId,
+    data: {
+      type: "card",
+      cardId,
+    },
+    disabled: !layoutEditMode,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative transition ${
+        layoutEditMode ? "cursor-grab active:cursor-grabbing" : ""
+      } ${isDragging ? "opacity-40" : ""}`}
+      {...(layoutEditMode ? attributes : {})}
+      {...(layoutEditMode ? listeners : {})}
+    >
+      <div
+        className={`transition ${layoutEditMode ? "pointer-events-none select-none" : ""}`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 const CharacterSheet = () => {
   const { character } = useParams();
   const [characterData, setCharacterData] = useState<Character | null>(null);
@@ -436,6 +720,14 @@ const CharacterSheet = () => {
   const [itemDefinitions, setItemDefinitions] = useState<ItemDefinitionSummary[]>([]);
   const [itemDefinitionDetailsById, setItemDefinitionDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [transferTargets, setTransferTargets] = useState<TransferTarget[]>([]);
+  const [layoutEditMode, setLayoutEditMode] = useState(false);
+  const [characterSheetLayout, setCharacterSheetLayout] = useState<CharacterSheetLayoutCardEntry[]>(
+    DEFAULT_CHARACTER_SHEET_LAYOUT
+  );
+  const [draggedCardId, setDraggedCardId] = useState<CharacterSheetCardId | null>(null);
+  const [dragStartLayout, setDragStartLayout] = useState<CharacterSheetLayoutCardEntry[] | null>(null);
+  const [collapsedLayoutCards, setCollapsedLayoutCards] = useState<Record<string, boolean>>({});
+  const [preEditCollapsedCards, setPreEditCollapsedCards] = useState<Record<string, boolean> | null>(null);
 
   const refreshRelationalInventory = useCallback(async (slug: string) => {
     const items = await fetchCharacterInventoryItems(slug);
@@ -448,6 +740,24 @@ const CharacterSheet = () => {
     const nextClass = characterData?.basicInfo?.class?.toLowerCase?.() ?? "";
     setSelectedClass((current) => current || nextClass);
   }, [characterData?.basicInfo?.class]);
+
+  useEffect(() => {
+    let active = true;
+
+    void fetchCharacterSheetLayout()
+      .then((payload) => {
+        if (!active) return;
+        setCharacterSheetLayout(normalizeCharacterSheetLayout(payload?.entries));
+      })
+      .catch(() => {
+        if (!active) return;
+        setCharacterSheetLayout(DEFAULT_CHARACTER_SHEET_LAYOUT);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const classOptions = useMemo(() => Object.keys(spells).sort(), [spells]);
   const filteredSpells = useMemo(() => {
@@ -1271,6 +1581,373 @@ const CharacterSheet = () => {
     };
   }, [characterData]);
 
+  const persistCharacterSheetLayout = useCallback(
+    async (nextLayout: CharacterSheetLayoutCardEntry[]) => {
+      const normalized = normalizeCharacterSheetLayout(nextLayout);
+      await saveCharacterSheetLayout(normalized);
+      setCharacterSheetLayout(normalized);
+    },
+    []
+  );
+
+  const resetCharacterSheetLayout = async () => {
+    try {
+      await persistCharacterSheetLayout(DEFAULT_CHARACTER_SHEET_LAYOUT);
+      toast.success("Layout ripristinato.");
+    } catch {
+      toast.error("Non sono riuscito a ripristinare il layout.");
+    }
+  };
+
+  const cardRegistry = useMemo(
+    () =>
+      ({
+        abilityScores: {
+          label: "Punti abilità",
+          render: (
+            <AbilityScores
+              characterData={characterData}
+              makeChangeHandler={makeChangeHandler}
+              abilityModifier={abilityModifier}
+            />
+          ),
+        },
+        proficiencies: {
+          label: "Competenze & Abilità",
+          render: (
+            <Proficiencies
+              characterData={characterData}
+              proficiencyBonus={proficiencyBonus}
+              abilityModifier={abilityModifier}
+              deathSaves={deathSaves}
+              setDeathSaves={setDeathSaves}
+              calculateSkillValues={calculateSkillValues}
+              skillsCatalog={skillsCatalog}
+            />
+          ),
+        },
+        languages: {
+          label: "Linguaggi",
+          render: <Languages characterData={characterData} />,
+        },
+        combatStats: {
+          label: "Combattimento",
+          render: (
+            <CombatStats
+              characterData={characterData}
+              makeChangeHandler={makeChangeHandler}
+              abilityModifier={abilityModifier}
+              relationalInventoryItems={relationalInventoryItems}
+            />
+          ),
+        },
+        hitPoints: {
+          label: "Punti ferita",
+          render: (
+            <HitPoints
+              characterData={characterData}
+              setCharacterData={setCharacterData}
+              abilityModifier={abilityModifier}
+            />
+          ),
+        },
+        capabilities: {
+          label: "Skills",
+          render: (
+            <Capabilities
+              characterData={characterData}
+              addCapability={addCapability}
+              updateCapability={updateCapability}
+              removeCapability={removeCapability}
+              toggleCapabilityUse={toggleCapabilityUse}
+              toggleDerivedCapabilityUse={toggleDerivedCapabilityUse}
+              derivedCapabilities={derivedItemCapabilities}
+            />
+          ),
+        },
+        attacksAndEquipment: {
+          label: "Attack & Equipment",
+          render: (
+            <AttacksAndSpells
+              characterData={characterData}
+              toggleEquipAttack={toggleEquipAttack}
+              toggleAttackSkillUsed={toggleAttackSkillUsed}
+              toggleEquipItem={toggleEquipItem}
+              toggleItemSkillUsed={toggleItemSkillUsed}
+              relationalInventoryItems={relationalInventoryItems}
+              toggleEquipRelationalItem={toggleEquipRelationalItem}
+            />
+          ),
+        },
+        features: {
+          label: "Tratti e Abilità",
+          render: (
+            <Features
+              characterData={characterData}
+              stripName={stripName}
+              parseClassFromFeatureTitle={parseClassFromFeatureTitle}
+              parseLevelFromFeatureTitle={parseLevelFromFeatureTitle}
+              findSpell={findSpell}
+              openFeatureModal={openFeatureModal}
+              setAddSpellOpen={setAddSpellOpen}
+              spellSlotTable={spellSlotTable}
+            />
+          ),
+        },
+        inventory: {
+          label: "Inventario",
+          render: (
+            <Inventory
+              coins={coins}
+              characterData={characterData}
+              setMode={setMode}
+              setCoinFlow={setCoinFlow}
+              setInvOpen={setInvOpen}
+              invOpen={invOpen}
+              mode={mode}
+              coinType={coinType}
+              setCoinType={setCoinType}
+              coinQty={coinQty}
+              setCoinQty={setCoinQty}
+              coinFlow={coinFlow}
+              compactCoinsOnAdd={compactCoinsOnAdd}
+              setCompactCoinsOnAdd={setCompactCoinsOnAdd}
+              handleInventorySubmit={handleInventorySubmit}
+              resetInvForm={resetInvForm}
+              itemName={itemName}
+              setItemName={setItemName}
+              itemAtkBonus={itemAtkBonus}
+              setItemAtkBonus={setItemAtkBonus}
+              itemDmgType={itemDmgType}
+              setItemDmgType={setItemDmgType}
+              itemSkill={itemSkill}
+              setItemSkill={setItemSkill}
+              itemSkillType={itemSkillType}
+              setItemSkillType={setItemSkillType}
+              itemSkillInput={itemSkillInput}
+              setItemSkillInput={setItemSkillInput}
+              itemSkillsByType={itemSkillsByType}
+              setItemSkillsByType={setItemSkillsByType}
+              invError={invError}
+              removeAttack={removeAttack}
+              removeItem={removeItem}
+              updateLegacyItem={updateLegacyItem}
+              toggleEquipAttack={toggleEquipAttack}
+              itemDescription={itemDescription}
+              setItemDescription={setItemDescription}
+              itemQuantity={itemQuantity}
+              setItemQuantity={setItemQuantity}
+              itemConsumableSubtype={itemConsumableSubtype}
+              setItemConsumableSubtype={setItemConsumableSubtype}
+              itemKind={itemKind}
+              setItemKind={setItemKind}
+              potionDice={potionDice}
+              setPotionDice={setPotionDice}
+              itemEquippable={itemEquippable}
+              setItemEquippable={setItemEquippable}
+              removeStructuredItem={removeStructuredItem}
+              bumpConsumableQuantity={bumpConsumableQuantity}
+              toggleEquipItem={toggleEquipItem}
+              relationalInventoryItems={relationalInventoryItems}
+              itemDefinitions={itemDefinitions}
+              assignRelationalInventoryItem={assignRelationalInventoryItem}
+              toggleEquipRelationalItem={toggleEquipRelationalItem}
+              decrementRelationalConsumable={decrementRelationalConsumable}
+              incrementRelationalConsumable={incrementRelationalConsumable}
+              transferTargets={transferTargets}
+              transferRelationalInventoryItem={transferRelationalInventoryItem}
+            />
+          ),
+        },
+      }) satisfies Record<CharacterSheetCardId, { label: string; render: React.ReactNode }>,
+    [
+      abilityModifier,
+      characterData,
+      coinFlow,
+      coinQty,
+      coinType,
+      coins,
+      compactCoinsOnAdd,
+      deathSaves,
+      decrementRelationalConsumable,
+      derivedItemCapabilities,
+      handleInventorySubmit,
+      incrementRelationalConsumable,
+      invError,
+      invOpen,
+      itemAtkBonus,
+      itemConsumableSubtype,
+      itemDefinitions,
+      itemDescription,
+      itemDmgType,
+      itemEquippable,
+      itemKind,
+      itemName,
+      itemQuantity,
+      itemSkill,
+      itemSkillInput,
+      itemSkillType,
+      itemSkillsByType,
+      mode,
+      potionDice,
+      relationalInventoryItems,
+      removeAttack,
+      removeItem,
+      resetInvForm,
+      setCoinFlow,
+      setCoinQty,
+      setCoinType,
+      setCompactCoinsOnAdd,
+      setDeathSaves,
+      setInvOpen,
+      setItemAtkBonus,
+      setItemConsumableSubtype,
+      setItemDescription,
+      setItemDmgType,
+      setItemEquippable,
+      setItemKind,
+      setItemName,
+      setItemQuantity,
+      setItemSkill,
+      setItemSkillInput,
+      setItemSkillType,
+      setItemSkillsByType,
+      setMode,
+      setPotionDice,
+      setCharacterData,
+      skillsCatalog,
+      spellSlotTable,
+      toggleAttackSkillUsed,
+      toggleCapabilityUse,
+      toggleDerivedCapabilityUse,
+      toggleEquipAttack,
+      toggleEquipItem,
+      toggleEquipRelationalItem,
+      toggleItemSkillUsed,
+      transferRelationalInventoryItem,
+      transferTargets,
+      updateCapability,
+      removeCapability,
+      addCapability,
+      assignRelationalInventoryItem,
+      updateLegacyItem,
+      bumpConsumableQuantity,
+      stripName,
+      parseClassFromFeatureTitle,
+      parseLevelFromFeatureTitle,
+      findSpell,
+      openFeatureModal,
+      setAddSpellOpen,
+    ]
+  );
+
+  const layoutColumns = useMemo(
+    () => buildCharacterSheetLayoutColumns(characterSheetLayout),
+    [characterSheetLayout]
+  );
+
+  const layoutSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  useEffect(() => {
+    if (layoutEditMode) {
+      setPreEditCollapsedCards(collapsedLayoutCards);
+      setCollapsedLayoutCards(
+        Object.fromEntries(
+          DEFAULT_CHARACTER_SHEET_LAYOUT.map((entry) => [entry.cardId, true])
+        )
+      );
+      return;
+    }
+
+    if (preEditCollapsedCards) {
+      setCollapsedLayoutCards(preEditCollapsedCards);
+      setPreEditCollapsedCards(null);
+    }
+  }, [layoutEditMode]);
+
+  const handleLayoutDragStart = (event: DragStartEvent) => {
+    const cardId = String(event.active.id) as CharacterSheetCardId;
+    setDraggedCardId(cardId);
+    setDragStartLayout(characterSheetLayout);
+  };
+
+  const persistLayoutAfterDrag = async (nextLayout: CharacterSheetLayoutCardEntry[], previousLayout: CharacterSheetLayoutCardEntry[] | null) => {
+    if (!previousLayout) return;
+    if (JSON.stringify(previousLayout) === JSON.stringify(nextLayout)) return;
+
+    try {
+      await persistCharacterSheetLayout(nextLayout);
+    } catch {
+      setCharacterSheetLayout(previousLayout);
+      toast.error("Non sono riuscito a salvare il layout.");
+    }
+  };
+
+  const handleLayoutDragOver = (event: DragOverEvent) => {
+    const activeId = String(event.active.id ?? "") as CharacterSheetCardId;
+    const overId = String(event.over?.id ?? "");
+    if (!activeId || !overId || activeId === overId) return;
+
+    let targetColumn: 0 | 1 | 2 | null = null;
+    let targetIndex = 0;
+
+    if (overId.startsWith("column-")) {
+      const parsedColumn = Number(overId.replace("column-", ""));
+      if (![0, 1, 2].includes(parsedColumn)) return;
+      targetColumn = parsedColumn as 0 | 1 | 2;
+      targetIndex = layoutColumns[targetColumn].length;
+    } else {
+      const overCardId = overId as CharacterSheetCardId;
+      const overEntry = characterSheetLayout.find((entry) => entry.cardId === overCardId);
+      if (!overEntry) return;
+      targetColumn = overEntry.column;
+      targetIndex = layoutColumns[targetColumn].findIndex((entry) => entry.cardId === overCardId);
+      if (targetIndex < 0) return;
+    }
+
+    const nextLayout = moveCharacterSheetCardToPosition(
+      characterSheetLayout,
+      activeId,
+      targetColumn,
+      targetIndex
+    );
+
+    if (JSON.stringify(nextLayout) !== JSON.stringify(characterSheetLayout)) {
+      setCharacterSheetLayout(nextLayout);
+    }
+  };
+
+  const handleLayoutDragCancel = () => {
+    const previousLayout = dragStartLayout;
+    setDraggedCardId(null);
+    setDragStartLayout(null);
+    if (previousLayout) {
+      setCharacterSheetLayout(previousLayout);
+    }
+  };
+
+  const handleLayoutDragEnd = async (event: DragEndEvent) => {
+    const previousLayout = dragStartLayout;
+    const nextLayout = characterSheetLayout;
+    const overId = String(event.over?.id ?? "");
+
+    setDraggedCardId(null);
+    setDragStartLayout(null);
+
+    if (!overId && previousLayout) {
+      setCharacterSheetLayout(previousLayout);
+      return;
+    }
+
+    await persistLayoutAfterDrag(nextLayout, previousLayout);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center parchment">
@@ -1316,132 +1993,102 @@ const CharacterSheet = () => {
             avatarUrl={characterData.basicInfo.portraitUrl}
           />
         ) : null}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="space-y-6">
-            <AbilityScores
-              characterData={characterData}
-              makeChangeHandler={makeChangeHandler}
-              abilityModifier={abilityModifier}
-            />
-            <Proficiencies
-              characterData={characterData}
-              proficiencyBonus={proficiencyBonus}
-              abilityModifier={abilityModifier}
-              deathSaves={deathSaves}
-              setDeathSaves={setDeathSaves}
-              calculateSkillValues={calculateSkillValues}
-              skillsCatalog={skillsCatalog}
-            />
-            <Languages characterData={characterData} />
-          </div>
-          <div className="space-y-6">
-            <CombatStats
-              characterData={characterData}
-              makeChangeHandler={makeChangeHandler}
-              abilityModifier={abilityModifier}
-              relationalInventoryItems={relationalInventoryItems}
-            />
-            <HitPoints
-              characterData={characterData}
-              setCharacterData={setCharacterData}
-              abilityModifier={abilityModifier}
-            />
-            <Capabilities
-              characterData={characterData}
-              addCapability={addCapability}
-              updateCapability={updateCapability}
-              removeCapability={removeCapability}
-              toggleCapabilityUse={toggleCapabilityUse}
-              toggleDerivedCapabilityUse={toggleDerivedCapabilityUse}
-              derivedCapabilities={derivedItemCapabilities}
-            />
-            <AttacksAndSpells
-              characterData={characterData}
-              toggleEquipAttack={toggleEquipAttack}
-              toggleAttackSkillUsed={toggleAttackSkillUsed}
-              toggleEquipItem={toggleEquipItem}
-              toggleItemSkillUsed={toggleItemSkillUsed}
-              relationalInventoryItems={relationalInventoryItems}
-              toggleEquipRelationalItem={toggleEquipRelationalItem}
-            />
-          </div>
-          <div className="space-y-6">
-            <Features
-              characterData={characterData}
-              stripName={stripName}
-              parseClassFromFeatureTitle={parseClassFromFeatureTitle}
-              parseLevelFromFeatureTitle={parseLevelFromFeatureTitle}
-              findSpell={findSpell}
-              openFeatureModal={openFeatureModal}
-              setAddSpellOpen={setAddSpellOpen}
-              spellSlotTable={spellSlotTable}
-            />
-            <Inventory
-              coins={coins}
-              characterData={characterData}
-              setMode={setMode}
-              setCoinFlow={setCoinFlow}
-              setInvOpen={setInvOpen}
-              invOpen={invOpen}
-              mode={mode}
-              coinType={coinType}
-              setCoinType={setCoinType}
-              coinQty={coinQty}
-              setCoinQty={setCoinQty}
-              coinFlow={coinFlow}
-              compactCoinsOnAdd={compactCoinsOnAdd}
-              setCompactCoinsOnAdd={setCompactCoinsOnAdd}
-              handleInventorySubmit={handleInventorySubmit} // payload-aware
-              resetInvForm={resetInvForm}
-              itemName={itemName}
-              setItemName={setItemName}
-              itemAtkBonus={itemAtkBonus}
-              setItemAtkBonus={setItemAtkBonus}
-              itemDmgType={itemDmgType}
-              setItemDmgType={setItemDmgType}
-              /** legacy singolo campo */
-              itemSkill={itemSkill}
-              setItemSkill={setItemSkill}
-              /** nuove props per skills categorizzate */
-              itemSkillType={itemSkillType}
-              setItemSkillType={setItemSkillType}
-              itemSkillInput={itemSkillInput}
-              setItemSkillInput={setItemSkillInput}
-              itemSkillsByType={itemSkillsByType}
-              setItemSkillsByType={setItemSkillsByType}
-              invError={invError}
-              removeAttack={removeAttack}
-              removeItem={removeItem}
-              updateLegacyItem={updateLegacyItem}
-              toggleEquipAttack={toggleEquipAttack}
-              /** oggetti/consumabili */
-              itemDescription={itemDescription}
-              setItemDescription={setItemDescription}
-              itemQuantity={itemQuantity}
-              setItemQuantity={setItemQuantity}
-              itemConsumableSubtype={itemConsumableSubtype}
-              setItemConsumableSubtype={setItemConsumableSubtype}
-              itemKind={itemKind}
-              setItemKind={setItemKind}
-              potionDice={potionDice}
-              setPotionDice={setPotionDice}
-              itemEquippable={itemEquippable}
-              setItemEquippable={setItemEquippable}
-              /** handlers elenco strutturato */
-              removeStructuredItem={removeStructuredItem}
-              bumpConsumableQuantity={bumpConsumableQuantity}
-              toggleEquipItem={toggleEquipItem}
-              relationalInventoryItems={relationalInventoryItems}
-              itemDefinitions={itemDefinitions}
-              assignRelationalInventoryItem={assignRelationalInventoryItem}
-              toggleEquipRelationalItem={toggleEquipRelationalItem}
-              decrementRelationalConsumable={decrementRelationalConsumable}
-              incrementRelationalConsumable={incrementRelationalConsumable}
-              transferTargets={transferTargets}
-              transferRelationalInventoryItem={transferRelationalInventoryItem}
-            />
-          </div>
+        <div className="flex items-center justify-end gap-2">
+          {layoutEditMode ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void resetCharacterSheetLayout()}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reset layout
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setLayoutEditMode(false)}
+              >
+                <Check className="mr-2 h-4 w-4" />
+                Fine
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setLayoutEditMode(true)}
+            >
+              <LayoutTemplate className="mr-2 h-4 w-4" />
+              Modifica layout
+            </Button>
+          )}
         </div>
+        <SheetCardStateProvider
+          value={{
+            collapsedCards: collapsedLayoutCards,
+            setCardCollapsed: (cardId, collapsed) =>
+              setCollapsedLayoutCards((prev) => ({ ...prev, [cardId]: collapsed })),
+          }}
+        >
+          <DndContext
+            sensors={layoutSensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleLayoutDragStart}
+            onDragOver={handleLayoutDragOver}
+            onDragEnd={handleLayoutDragEnd}
+            onDragCancel={handleLayoutDragCancel}
+          >
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              {layoutColumns.map((columnEntries, columnIndex) => (
+                <LayoutColumnDropZone key={`layout-column-${columnIndex}`} columnId={`column-${columnIndex}`}>
+                  <SortableContext
+                    items={columnEntries.map((entry) => entry.cardId)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div
+                      className={`space-y-6 rounded-xl transition ${
+                        layoutEditMode ? "min-h-[10rem] border border-dashed border-border/60 p-3" : ""
+                      }`}
+                    >
+                      {layoutEditMode && columnEntries.length === 0 ? (
+                        <div className="rounded-lg border border-border/40 bg-background/30 px-3 py-6 text-center text-xs text-muted-foreground">
+                          Trascina qui una card
+                        </div>
+                      ) : null}
+                      {columnEntries.map((entry) => {
+                        const card = cardRegistry[entry.cardId];
+                        if (!card) return null;
+
+                        return (
+                          <SortableLayoutCard
+                            key={entry.cardId}
+                            cardId={entry.cardId}
+                            layoutEditMode={layoutEditMode}
+                          >
+                            {card.render}
+                          </SortableLayoutCard>
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                </LayoutColumnDropZone>
+              ))}
+            </div>
+            <DragOverlay>
+              {draggedCardId ? (
+                <div className="rounded-lg border border-border/70 bg-background/95 px-3 py-2 text-xs shadow-xl">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <GripVertical className="h-4 w-4" />
+                    <span>{cardRegistry[draggedCardId]?.label ?? "Card"}</span>
+                  </div>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </SheetCardStateProvider>
       </div>
 
       {/* ===== Dialog: Aggiungi incantesimo ===== */}

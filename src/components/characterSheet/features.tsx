@@ -4,6 +4,7 @@ import { Plus, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import SectionCard from "@/components/characterSheet/section-card";
 import { cn } from "@/lib/utils";
 import { updateCharacter } from "@/realtime";
 
@@ -133,9 +134,10 @@ const Features = ({
     const spellLevels = Object.keys(spellGroups).map(Number).sort((a, b) => a - b);
 
     return (
-        <Card className="character-section">
-            <div className="character-section-title flex items-center justify-between">
-                <span>Tratti e Abilità</span>
+        <SectionCard
+            cardId="features"
+            title={<span>Tratti e Abilità</span>}
+            actions={
                 <Button
                     type="button"
                     size="icon"
@@ -147,7 +149,8 @@ const Features = ({
                 >
                     <Plus className="h-4 w-4" />
                 </Button>
-            </div>
+            }
+        >
             <div className="space-y-3">
                 {nonSpellFeatures.map(({ feature, index, baseName }) => (
                     <div key={index} className="dnd-frame rounded p-3">
@@ -271,7 +274,7 @@ const Features = ({
                     })}
                 </div>
             </div>
-        </Card>
+        </SectionCard>
     );
 };
 

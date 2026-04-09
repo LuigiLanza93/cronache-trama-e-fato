@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Heart, ShieldPlus, ShieldX, Sword, Plus, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import SectionCard from "@/components/characterSheet/section-card";
 import { updateCharacter } from "@/realtime";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -152,11 +152,15 @@ const HitPoints = ({
     };
 
     return (
-        <Card className="character-section">
-            <div className="character-section-title flex items-center gap-2">
-                <Heart className="w-5 h-5 text-primary" />
-                Punti ferita
-            </div>
+        <SectionCard
+            cardId="hitPoints"
+            title={
+                <span className="flex items-center gap-2">
+                    <Heart className="w-5 h-5 text-primary" />
+                    Punti ferita
+                </span>
+            }
+        >
             <div className="space-y-4">
                 <Collapsible open={combatToolsOpen} onOpenChange={setCombatToolsOpen}>
                     <CollapsibleTrigger asChild>
@@ -244,7 +248,7 @@ const HitPoints = ({
                     <span className="font-bold text-primary">{derivedHitDice}</span>
                 </div>
             </div>
-        </Card>
+        </SectionCard>
     )
 };
 

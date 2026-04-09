@@ -265,6 +265,7 @@ model User {
   scenarios         EncounterScenario[] @relation("ScenarioCreator")
   sessions          Session[]
   inventoryTransactionsCreated InventoryTransaction[] @relation("InventoryTransactionCreatedBy")
+  layoutPreferences UserLayoutPreference[]
 
   @@index([role])
 }
@@ -714,6 +715,21 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model UserLayoutPreference {
+  id         String   @id
+  userId     String
+  layoutKey  String
+  layoutJson String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, layoutKey])
+  @@index([userId])
+  @@index([layoutKey])
 }
 
 model ChatMessage {

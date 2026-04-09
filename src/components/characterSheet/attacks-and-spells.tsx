@@ -16,6 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import SectionCard from "@/components/characterSheet/section-card";
 import {
   Dialog,
   DialogContent,
@@ -722,11 +723,15 @@ const AttacksAndSpells = ({
 
   return (
     <>
-      <Card className="character-section">
-        <div className="character-section-title flex items-center gap-2">
-          <Sword className="w-5 h-5 text-primary" />
-          Attack & Equipment
-        </div>
+      <SectionCard
+        cardId="attacksAndEquipment"
+        title={
+          <span className="flex items-center gap-2">
+            <Sword className="w-5 h-5 text-primary" />
+            Attack & Equipment
+          </span>
+        }
+      >
 
         <div className="space-y-5">
           {relationalAttacks.length > 0 && (
@@ -852,7 +857,7 @@ const AttacksAndSpells = ({
               </div>
             )}
         </div>
-      </Card>
+      </SectionCard>
 
       <Dialog open={equipResolutionOpen} onOpenChange={setEquipResolutionOpen}>
         <DialogContent className="max-w-lg">
