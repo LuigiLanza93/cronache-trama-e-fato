@@ -201,6 +201,18 @@ export type SkillsPayload = {
   skills: SkillEntry[];
 };
 
+export type RaceSpeedEntry = {
+  id: string;
+  raceName: string;
+  subraceName: string | null;
+  speedMeters: number;
+  notes: string | null;
+};
+
+export type RaceSpeedsPayload = {
+  entries: RaceSpeedEntry[];
+};
+
 export type SpellSlotTable = Record<string, Record<string, Record<string, number>>>;
 
 export type ItemDefinitionSummary = {
@@ -213,6 +225,7 @@ export type ItemDefinitionSummary = {
   playerVisible: boolean;
   stackable: boolean;
   equippable: boolean;
+  assignedCharacterItemCount: number;
   attackCount: number;
   slotRuleCount: number;
   updatedAt: string;
@@ -466,6 +479,10 @@ export function fetchSpells() {
 
 export function fetchSkills() {
   return authFetch<SkillsPayload>("/api/rules/skills", { method: "GET" });
+}
+
+export function fetchRaceSpeeds() {
+  return authFetch<RaceSpeedsPayload>("/api/rules/race-speeds", { method: "GET" });
 }
 
 export function fetchSpellSlots() {

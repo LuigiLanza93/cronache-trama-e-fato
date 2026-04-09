@@ -107,12 +107,67 @@ type InventoryEditTarget =
   | { kind: "legacyObject"; index: number };
 type CapabilityKind = "passive" | "active";
 type CapabilityReset = "atWill" | "encounter" | "shortRest" | "longRest" | "custom";
+type PassiveEffectTarget =
+  | "ARMOR_CLASS"
+  | "INITIATIVE"
+  | "SPEED"
+  | "HIT_POINT_MAX"
+  | "STRENGTH_SCORE"
+  | "DEXTERITY_SCORE"
+  | "CONSTITUTION_SCORE"
+  | "INTELLIGENCE_SCORE"
+  | "WISDOM_SCORE"
+  | "CHARISMA_SCORE"
+  | "ATTACK_ROLL"
+  | "DAMAGE_ROLL"
+  | "MELEE_ATTACK_ROLL"
+  | "MELEE_DAMAGE_ROLL"
+  | "RANGED_ATTACK_ROLL"
+  | "RANGED_DAMAGE_ROLL"
+  | "OFF_HAND_DAMAGE_ROLL"
+  | "CUSTOM";
+type PassiveEffectTrigger =
+  | "ALWAYS"
+  | "WHILE_ARMORED"
+  | "WHILE_SHIELD_EQUIPPED"
+  | "WHILE_WIELDING_SINGLE_MELEE_WEAPON"
+  | "WHILE_DUAL_WIELDING"
+  | "WHILE_WIELDING_TWO_HANDED_WEAPON"
+  | "CUSTOM";
+type PassiveEffectValueMode =
+  | "FLAT"
+  | "ABILITY_MODIFIER"
+  | "ABILITY_SCORE"
+  | "PROFICIENCY_BONUS"
+  | "CHARACTER_LEVEL";
+type PassiveEffectRounding = "FLOOR" | "CEIL";
+type PassiveEffectSourceAbility =
+  | "STRENGTH"
+  | "DEXTERITY"
+  | "CONSTITUTION"
+  | "INTELLIGENCE"
+  | "WISDOM"
+  | "CHARISMA";
+type PassiveEffectEntry = {
+  target: PassiveEffectTarget;
+  valueMode?: PassiveEffectValueMode;
+  value: number;
+  sourceAbility?: PassiveEffectSourceAbility;
+  multiplierNumerator?: number;
+  multiplierDenominator?: number;
+  rounding?: PassiveEffectRounding;
+  trigger: PassiveEffectTrigger;
+  customTargetLabel?: string;
+  customTriggerLabel?: string;
+  notes?: string;
+};
 type CapabilityEntry = {
   name: string;
   category?: string;
   kind: CapabilityKind;
   shortDescription: string;
   description?: string;
+  passiveEffects?: PassiveEffectEntry[];
   usage?: {
     resetOn: CapabilityReset;
     customLabel?: string;
@@ -1108,6 +1163,7 @@ const CharacterSheet = () => {
               characterData={characterData}
               makeChangeHandler={makeChangeHandler}
               abilityModifier={abilityModifier}
+              relationalInventoryItems={relationalInventoryItems}
             />
             <HitPoints
               characterData={characterData}
@@ -1127,6 +1183,8 @@ const CharacterSheet = () => {
               toggleAttackSkillUsed={toggleAttackSkillUsed}
               toggleEquipItem={toggleEquipItem}
               toggleItemSkillUsed={toggleItemSkillUsed}
+              relationalInventoryItems={relationalInventoryItems}
+              toggleEquipRelationalItem={toggleEquipRelationalItem}
             />
           </div>
           <div className="space-y-6">

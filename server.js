@@ -29,6 +29,23 @@ const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
 const sqlite = new DatabaseSync(SQLITE_DB_FILE);
 sqlite.exec("PRAGMA foreign_keys = ON;");
 
+const DEFAULT_RACE_SPEED_REFERENCES = [
+  { id: "race-speed-umano", raceName: "Umano", subraceName: null, speedMeters: 9, notes: null },
+  { id: "race-speed-nano-colline", raceName: "Nano", subraceName: "delle colline", speedMeters: 7.5, notes: "Armatura pesante non riduce la velocita" },
+  { id: "race-speed-nano-montagne", raceName: "Nano", subraceName: "delle montagne", speedMeters: 7.5, notes: "Armatura pesante non riduce la velocita" },
+  { id: "race-speed-elfo-alto", raceName: "Elfo", subraceName: "alto", speedMeters: 9, notes: null },
+  { id: "race-speed-elfo-boschi", raceName: "Elfo", subraceName: "dei boschi", speedMeters: 10.5, notes: "Piu rapido degli altri elfi" },
+  { id: "race-speed-elfo-drow", raceName: "Elfo", subraceName: "drow", speedMeters: 9, notes: null },
+  { id: "race-speed-halfling-piedelesto", raceName: "Halfling", subraceName: "piedelesto", speedMeters: 7.5, notes: null },
+  { id: "race-speed-halfling-tozzo", raceName: "Halfling", subraceName: "tozzo", speedMeters: 7.5, notes: null },
+  { id: "race-speed-dragonide", raceName: "Dragonide", subraceName: null, speedMeters: 9, notes: null },
+  { id: "race-speed-gnomo-foreste", raceName: "Gnomo", subraceName: "delle foreste", speedMeters: 7.5, notes: null },
+  { id: "race-speed-gnomo-rocce", raceName: "Gnomo", subraceName: "delle rocce", speedMeters: 7.5, notes: null },
+  { id: "race-speed-mezzelfo", raceName: "Mezzelfo", subraceName: null, speedMeters: 9, notes: null },
+  { id: "race-speed-mezzorco", raceName: "Mezzorco", subraceName: null, speedMeters: 9, notes: null },
+  { id: "race-speed-tiefling", raceName: "Tiefling", subraceName: null, speedMeters: 9, notes: null },
+];
+
 // ---- Utilities ----
 function ensureDir(p) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
@@ -80,6 +97,8 @@ function runInTransaction(work) {
     throw error;
   }
 }
+
+ensureRaceSpeedReferenceTable();
 
 function normalizeUserRow(row) {
   if (!row) return null;
@@ -258,6 +277,17 @@ function normalizeSkillRow(row) {
   };
 }
 
+function normalizeRaceSpeedReferenceRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    raceName: row.raceName,
+    subraceName: row.subraceName ?? null,
+    speedMeters: Number(row.speedMeters ?? 0),
+    notes: row.notes ?? null,
+  };
+}
+
 const ABILITY_LABELS = {
   strength: "Forza",
   dexterity: "Destrezza",
@@ -401,6 +431,18 @@ function readSkills() {
   return { skills };
 }
 
+function readRaceSpeedReferences() {
+  const entries = sqlite
+    .prepare(`
+      SELECT * FROM "RaceSpeedReference"
+      ORDER BY raceName COLLATE NOCASE, subraceName COLLATE NOCASE
+    `)
+    .all()
+    .map(normalizeRaceSpeedReferenceRow)
+    .filter(Boolean);
+  return { entries };
+}
+
 function normalizeNullableString(value) {
   const normalized = typeof value === "string" ? value.trim() : "";
   return normalized ? normalized : null;
@@ -435,6 +477,52 @@ function assertNamedEntries(entries, label, fields = []) {
   if (invalidIndex >= 0) {
     throw new Error(`${label} #${invalidIndex + 1} richiede un nome.`);
   }
+}
+
+function ensureRaceSpeedReferenceTable() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "RaceSpeedReference" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "raceName" TEXT NOT NULL,
+      "subraceName" TEXT,
+      "speedMeters" REAL NOT NULL,
+      "notes" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "RaceSpeedReference_raceName_subraceName_key"
+    ON "RaceSpeedReference"("raceName", "subraceName");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "RaceSpeedReference_raceName_subraceName_idx"
+    ON "RaceSpeedReference"("raceName", "subraceName");
+  `);
+
+  const countRow = sqlite.prepare('SELECT COUNT(*) as count FROM "RaceSpeedReference"').get();
+  if (Number(countRow?.count ?? 0) > 0) return;
+
+  const insertReference = sqlite.prepare(`
+    INSERT INTO "RaceSpeedReference" (
+      id, raceName, subraceName, speedMeters, notes, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  const now = new Date().toISOString();
+
+  runInTransaction(() => {
+    for (const entry of DEFAULT_RACE_SPEED_REFERENCES) {
+      insertReference.run(
+        entry.id,
+        entry.raceName,
+        entry.subraceName,
+        entry.speedMeters,
+        entry.notes,
+        now,
+        now
+      );
+    }
+  });
 }
 
 function createUniqueItemSlug(baseSlug, excludeId = null) {
@@ -509,6 +597,7 @@ function readItemDefinitions() {
       d.stackable,
       d.equippable,
       d.updatedAt,
+      (SELECT COUNT(*) FROM "CharacterItem" ci WHERE ci.itemDefinitionId = d.id) AS assignedCharacterItemCount,
       (SELECT COUNT(*) FROM "ItemAttack" a WHERE a.itemDefinitionId = d.id) AS attackCount,
       (SELECT COUNT(*) FROM "ItemSlotRule" s WHERE s.itemDefinitionId = d.id) AS slotRuleCount
     FROM "ItemDefinition" d
@@ -523,6 +612,7 @@ function readItemDefinitions() {
     playerVisible: !!row.playerVisible,
     stackable: !!row.stackable,
     equippable: !!row.equippable,
+    assignedCharacterItemCount: Number(row.assignedCharacterItemCount ?? 0),
     attackCount: Number(row.attackCount ?? 0),
     slotRuleCount: Number(row.slotRuleCount ?? 0),
     updatedAt: row.updatedAt,
@@ -1044,6 +1134,29 @@ function buildCharacterInventoryDetailSummary(itemDefinitionId, itemCategory) {
     .get(itemDefinitionId);
 
   let detailSummary = null;
+  const abilityLabels = {
+    STRENGTH: "Forza",
+    DEXTERITY: "Destrezza",
+    CONSTITUTION: "Costituzione",
+    INTELLIGENCE: "Intelligenza",
+    WISDOM: "Saggezza",
+    CHARISMA: "Carisma",
+  };
+  const successOutcomeLabels = {
+    NONE: "Nessun effetto al successo",
+    HALF: "Effetto dimezzato al successo",
+    NEGATES: "Nessun effetto con successo",
+    CUSTOM: "Effetto personalizzato al successo",
+  };
+  const effectTypeLabels = {
+    HEAL: "Cura",
+    DAMAGE: "Danno",
+    TEMP_HP: "Punti ferita temporanei",
+    APPLY_CONDITION: "Applica condizione",
+    REMOVE_CONDITION: "Rimuove condizione",
+    RESTORE_RESOURCE: "Recupero risorsa",
+    CUSTOM: "Effetto speciale",
+  };
 
   if (itemCategory === "WEAPON" && tableExists("ItemAttack")) {
     const attack = sqlite
@@ -1067,7 +1180,7 @@ function buildCharacterInventoryDetailSummary(itemDefinitionId, itemCategory) {
       if (attack.rangeNormal != null || attack.rangeLong != null) {
         parts.push(`gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}`);
       }
-      detailSummary = parts.filter(Boolean).join(" · ") || null;
+      detailSummary = parts.filter(Boolean).join(" - ") || null;
     }
   } else if ((itemCategory === "CONSUMABLE" || itemCategory === "AMMUNITION") && tableExists("ItemUseEffect")) {
     const effect = sqlite
@@ -1082,20 +1195,24 @@ function buildCharacterInventoryDetailSummary(itemDefinitionId, itemCategory) {
 
     if (effect) {
       const parts = [];
-      if (effect.effectType === "HEAL") {
-        parts.push(`cura ${effect.diceExpression ?? effect.flatValue ?? ""}`.trim());
-      } else if (effect.effectType === "DAMAGE") {
-        parts.push([effect.diceExpression ?? effect.flatValue, effect.damageType].filter(Boolean).join(" "));
-      } else {
-        parts.push(String(effect.effectType ?? "").toLowerCase());
-      }
+      const baseLabel = effectTypeLabels[effect.effectType] ?? String(effect.effectType ?? "");
+      const amount = effect.diceExpression ?? effect.flatValue ?? "";
+      const damageType = typeof effect.damageType === "string" && effect.damageType
+        ? effect.damageType.charAt(0).toUpperCase() + effect.damageType.slice(1)
+        : "";
+      const headline = effect.effectType === "DAMAGE"
+        ? [amount, damageType].filter(Boolean).join(" ")
+        : effect.effectType === "HEAL"
+          ? [baseLabel, amount].filter(Boolean).join(" ")
+          : [baseLabel, amount, damageType].filter(Boolean).join(" ").trim();
+      parts.push(headline);
       if (effect.savingThrowAbility && effect.savingThrowDc != null) {
-        parts.push(`TS ${effect.savingThrowAbility} CD ${effect.savingThrowDc}`);
+        parts.push(`TS ${abilityLabels[effect.savingThrowAbility] ?? effect.savingThrowAbility} CD ${effect.savingThrowDc}`);
       }
       if (effect.successOutcome) {
-        parts.push(`succ: ${String(effect.successOutcome).toLowerCase()}`);
+        parts.push(successOutcomeLabels[effect.successOutcome] ?? String(effect.successOutcome).toLowerCase());
       }
-      detailSummary = parts.filter(Boolean).join(" · ") || null;
+      detailSummary = parts.filter(Boolean).join(" - ") || null;
     }
   }
 
@@ -2763,8 +2880,24 @@ async function start() {
     if (req.user?.role === "dm") {
       return res.json(items);
     }
+    const assignedUniqueIds = tableExists("CharacterItem")
+      ? new Set(
+          sqlite
+            .prepare(`
+              SELECT DISTINCT itemDefinitionId
+              FROM "CharacterItem"
+              WHERE itemDefinitionId IS NOT NULL
+            `)
+            .all()
+            .map((row) => String(row.itemDefinitionId))
+        )
+      : new Set();
     return res.json(
-      items.filter((item) => item.playerVisible && String(item.rarity ?? "").toUpperCase() !== "UNIQUE")
+      items.filter((item) => {
+        if (!item.playerVisible) return false;
+        if (String(item.rarity ?? "").toUpperCase() !== "UNIQUE") return true;
+        return !assignedUniqueIds.has(String(item.id));
+      })
     );
   });
 
@@ -2777,7 +2910,15 @@ async function start() {
       req.user?.role !== "dm" &&
       (
         !item.playerVisible ||
-        String(item.rarity ?? "").toUpperCase() === "UNIQUE"
+        (
+          String(item.rarity ?? "").toUpperCase() === "UNIQUE" &&
+          tableExists("CharacterItem") &&
+          Number(
+            sqlite
+              .prepare('SELECT COUNT(*) AS count FROM "CharacterItem" WHERE itemDefinitionId = ?')
+              .get(item.id)?.count ?? 0
+          ) > 0
+        )
       )
     ) {
       return res.status(404).json({ error: "Item not found" });
@@ -3016,6 +3157,10 @@ async function start() {
 
   app.get("/api/rules/skills", requireAuth, (req, res) => {
     return res.json(readSkills());
+  });
+
+  app.get("/api/rules/race-speeds", requireAuth, (req, res) => {
+    return res.json(readRaceSpeedReferences());
   });
 
   app.get("/api/rules/spell-slots", requireAuth, (req, res) => {
@@ -3704,3 +3849,6 @@ async function start() {
 }
 
 start();
+
+
+

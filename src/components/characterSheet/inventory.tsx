@@ -2,11 +2,25 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import {
+  Backpack,
+  Circle,
+  Crosshair,
+  Feather,
+  FlaskConical,
+  Gem,
+  Hammer,
+  Hand,
   Pencil,
+  Package,
   Plus,
+  Repeat,
+  ScrollText,
   Shield,
   ShieldOff,
+  Sparkles,
+  Swords,
   Trash2,
+  WandSparkles,
   X,
 } from "lucide-react";
 import {
@@ -25,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fetchItemDefinition, type ItemDefinitionEntry } from "@/lib/auth";
 
 /** Select minimale, senza dipendenze extra */
@@ -63,18 +78,10 @@ function Select({
           {summary.description ? (
             <div className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{summary.description}</div>
           ) : null}
-          {renderCompactMetaChips([
-            summary.category,
-            summary.rarity ?? "",
-            summary.stackable ? "stack" : "istanza singola",
-            summary.equippable ? "equipaggiabile" : "",
-            detail?.weaponHandling === "ONE_HANDED" ? "1 mano" : "",
-            detail?.weaponHandling === "TWO_HANDED" ? "2 mani" : "",
-            detail?.weaponHandling === "VERSATILE" ? "versatile" : "",
-            detail?.armorCategory ?? "",
-            detail?.gloveWearMode === "SINGLE" ? "guanto singolo" : "",
-            detail?.gloveWearMode === "PAIR" ? "paio di guanti" : "",
-          ])}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {renderRarityBadge(summary.rarity)}
+            {renderMetaIcons(buildCatalogMetaIcons(summary, detail))}
+          </div>
         </div>
 
         {!!detail?.attacks?.length && (
@@ -83,14 +90,13 @@ function Select({
             {detail.attacks.map((attack) => (
               <div key={attack.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
                 <div className="font-medium text-foreground">{attack.name}</div>
+                {renderMetaIcons(buildAttackMetaIcons(attack))}
                 <div className="text-muted-foreground">
                   {[
-                    attack.kind,
-                    attack.handRequirement === "ONE_HANDED" ? "1 mano" : attack.handRequirement === "TWO_HANDED" ? "2 mani" : "",
                     attack.attackBonus != null ? `${attack.attackBonus >= 0 ? "+" : ""}${attack.attackBonus}` : "",
                     [attack.damageDice, attack.damageType].filter(Boolean).join(" "),
                     attack.rangeNormal != null || attack.rangeLong != null ? `gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}` : "",
-                  ].filter(Boolean).join(" • ")}
+                  ].filter(Boolean).join(" - ")}
                 </div>
                 {attack.conditionText ? <div className="mt-1 text-muted-foreground">{attack.conditionText}</div> : null}
               </div>
@@ -105,7 +111,7 @@ function Select({
               <div key={feature.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
                 <div className="font-medium text-foreground">{feature.name}</div>
                 <div className="text-muted-foreground">
-                  {[feature.resetOn, feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" • ")}
+                  {[getFeatureResetLabel(feature), feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" - ")}
                 </div>
                 {feature.description ? <div className="mt-1 text-muted-foreground">{feature.description}</div> : null}
               </div>
@@ -119,12 +125,12 @@ function Select({
             {detail.useEffects.map((effect) => (
               <div key={effect.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs text-muted-foreground">
                 {[
-                  effect.effectType,
+                  getUseEffectTypeLabel(effect.effectType),
                   effect.diceExpression ?? (effect.flatValue != null ? String(effect.flatValue) : ""),
                   effect.damageType ?? "",
                   effect.savingThrowAbility && effect.savingThrowDc != null ? `TS ${effect.savingThrowAbility} CD ${effect.savingThrowDc}` : "",
-                  effect.successOutcome ? `succ: ${effect.successOutcome}` : "",
-                ].filter(Boolean).join(" • ")}
+                  effect.successOutcome ? getSuccessOutcomeLabel(effect.successOutcome) : "",
+                ].filter(Boolean).join(" - ")}
                 {effect.notes ? <div className="mt-1">{effect.notes}</div> : null}
               </div>
             ))}
@@ -153,18 +159,10 @@ function Select({
           {summary.description ? (
             <div className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{summary.description}</div>
           ) : null}
-          {renderCompactMetaChips([
-            summary.category,
-            summary.rarity ?? "",
-            summary.stackable ? "stack" : "istanza singola",
-            summary.equippable ? "equipaggiabile" : "",
-            detail?.weaponHandling === "ONE_HANDED" ? "1 mano" : "",
-            detail?.weaponHandling === "TWO_HANDED" ? "2 mani" : "",
-            detail?.weaponHandling === "VERSATILE" ? "versatile" : "",
-            detail?.armorCategory ?? "",
-            detail?.gloveWearMode === "SINGLE" ? "guanto singolo" : "",
-            detail?.gloveWearMode === "PAIR" ? "paio di guanti" : "",
-          ])}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {renderRarityBadge(summary.rarity)}
+            {renderMetaIcons(buildCatalogMetaIcons(summary, detail))}
+          </div>
         </div>
 
         {!!detail?.attacks?.length && (
@@ -173,14 +171,13 @@ function Select({
             {detail.attacks.map((attack) => (
               <div key={attack.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
                 <div className="font-medium text-foreground">{attack.name}</div>
+                {renderMetaIcons(buildAttackMetaIcons(attack))}
                 <div className="text-muted-foreground">
                   {[
-                    attack.kind,
-                    attack.handRequirement === "ONE_HANDED" ? "1 mano" : attack.handRequirement === "TWO_HANDED" ? "2 mani" : "",
                     attack.attackBonus != null ? `${attack.attackBonus >= 0 ? "+" : ""}${attack.attackBonus}` : "",
                     [attack.damageDice, attack.damageType].filter(Boolean).join(" "),
                     attack.rangeNormal != null || attack.rangeLong != null ? `gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}` : "",
-                  ].filter(Boolean).join(" • ")}
+                  ].filter(Boolean).join(" - ")}
                 </div>
                 {attack.conditionText ? <div className="mt-1 text-muted-foreground">{attack.conditionText}</div> : null}
               </div>
@@ -195,7 +192,7 @@ function Select({
               <div key={feature.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
                 <div className="font-medium text-foreground">{feature.name}</div>
                 <div className="text-muted-foreground">
-                  {[feature.resetOn, feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" • ")}
+                  {[getFeatureResetLabel(feature), feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" - ")}
                 </div>
                 {feature.description ? <div className="mt-1 text-muted-foreground">{feature.description}</div> : null}
               </div>
@@ -209,12 +206,12 @@ function Select({
             {detail.useEffects.map((effect) => (
               <div key={effect.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs text-muted-foreground">
                 {[
-                  effect.effectType,
+                  getUseEffectTypeLabel(effect.effectType),
                   effect.diceExpression ?? (effect.flatValue != null ? String(effect.flatValue) : ""),
                   effect.damageType ?? "",
                   effect.savingThrowAbility && effect.savingThrowDc != null ? `TS ${effect.savingThrowAbility} CD ${effect.savingThrowDc}` : "",
-                  effect.successOutcome ? `succ: ${effect.successOutcome}` : "",
-                ].filter(Boolean).join(" • ")}
+                  effect.successOutcome ? getSuccessOutcomeLabel(effect.successOutcome) : "",
+                ].filter(Boolean).join(" - ")}
                 {effect.notes ? <div className="mt-1">{effect.notes}</div> : null}
               </div>
             ))}
@@ -256,7 +253,10 @@ type InventoryTarget =
   | { kind: "weapon"; index: number }
   | { kind: "object"; index: number }
   | { kind: "consumable"; index: number }
-  | { kind: "legacyObject"; index: number };
+  | { kind: "legacyObject"; index: number }
+  | { kind: "relationalWeapon"; id: string }
+  | { kind: "relationalObject"; id: string }
+  | { kind: "relationalConsumable"; id: string };
 
 const Inventory = ({
   coins,
@@ -461,6 +461,7 @@ const Inventory = ({
   const [customEffectNotes, setCustomEffectNotes] = useState("");
   const [detailTarget, setDetailTarget] = useState<InventoryTarget | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailDefinition, setDetailDefinition] = useState<ItemDefinitionEntry | null>(null);
   const [editingTarget, setEditingTarget] = useState<InventoryTarget | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -532,21 +533,444 @@ const Inventory = ({
   );
   const catalogItems = Array.isArray(itemDefinitions) ? itemDefinitions : [];
 
-  const renderCompactMetaChips = (chips: string[]) => {
-    const visible = chips.filter(Boolean);
+  type MetaIconSpec = {
+    key: string;
+    label: string;
+    Icon: any;
+    text?: string;
+  };
+
+  const renderRarityBadge = (rarity: string | null | undefined) => {
+    if (!rarity) return null;
+    return (
+      <span className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {rarity.replaceAll("_", " ")}
+      </span>
+    );
+  };
+
+  const renderMetaIcons = (specs: MetaIconSpec[]) => {
+    const visible = specs.filter(Boolean);
     if (!visible.length) return null;
     return (
-      <div className="mt-1 flex flex-wrap gap-1.5">
-        {visible.map((chip) => (
-          <span
-            key={chip}
-            className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-          >
-            {chip}
-          </span>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        {visible.map(({ key, label, Icon, text }) => (
+          <Tooltip key={key}>
+            <TooltipTrigger asChild>
+              <span className="inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-full border border-border/70 bg-background/60 px-2 text-[11px] font-medium text-muted-foreground">
+                <Icon className="h-3.5 w-3.5" />
+                {text ? <span className="leading-none">{text}</span> : null}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>{label}</TooltipContent>
+          </Tooltip>
         ))}
       </div>
     );
+  };
+
+  const renderCompactMetaChips = (chips: string[]) => {
+    const visible = chips.filter(Boolean);
+    if (!visible.length) return null;
+
+    const iconSpecs: MetaIconSpec[] = [];
+    const textBadges: string[] = [];
+
+    visible.forEach((chip) => {
+      switch (chip) {
+        case "stack":
+          iconSpecs.push({
+            key: `meta-${chip}`,
+            label: "Oggetto accumulabile nello stesso stack",
+            Icon: Package,
+            text: "+",
+          });
+          break;
+        case "1 mano":
+          iconSpecs.push({ key: "meta-one-hand", label: "Uso a una mano", Icon: Hand, text: "1" });
+          break;
+        case "2 mani":
+          iconSpecs.push({ key: "meta-two-hand", label: "Uso a due mani", Icon: Hand, text: "2" });
+          break;
+        case "versatile":
+          iconSpecs.push({ key: "meta-versatile", label: "Uso versatile", Icon: Repeat });
+          break;
+        case "LIGHT":
+        case "MEDIUM":
+        case "HEAVY":
+        case "SHIELD": {
+          const armorSpec = getArmorCategoryMetaIcon(chip);
+          if (armorSpec) iconSpecs.push(armorSpec);
+          break;
+        }
+        case "SINGLE":
+        case "PAIR": {
+          const gloveSpec = getGloveModeMetaIcon(chip);
+          if (gloveSpec) iconSpecs.push(gloveSpec);
+          break;
+        }
+        default:
+          if (/^qty\s+/i.test(chip)) {
+            iconSpecs.push({
+              key: `meta-${chip}`,
+              label: `Quantita nello stack: ${chip.replace(/^qty\s+/i, "")}`,
+              Icon: Package,
+              text: chip.replace(/^qty\s+/i, ""),
+            });
+          } else if (["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY", "ARTIFACT", "UNIQUE"].includes(chip)) {
+            textBadges.push(chip.replaceAll("_", " "));
+          } else {
+            const categorySpec = getCategoryMetaIcon(chip);
+            if (categorySpec && chip === String(chip).toUpperCase()) {
+              iconSpecs.push(categorySpec);
+            } else {
+              textBadges.push(chip);
+            }
+          }
+      }
+    });
+
+    return (
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        {textBadges.map((badge) => (
+          <span key={badge} className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {badge}
+          </span>
+        ))}
+        {renderMetaIcons(iconSpecs)}
+      </div>
+    );
+  };
+
+  const getCategoryMetaIcon = (category: string | null | undefined): MetaIconSpec | null => {
+    switch (String(category ?? "").toUpperCase()) {
+      case "WEAPON":
+        return { key: "category-weapon", label: "Arma", Icon: Swords };
+      case "ARMOR":
+        return { key: "category-armor", label: "Armatura", Icon: Shield };
+      case "SHIELD":
+        return { key: "category-shield", label: "Scudo", Icon: Shield };
+      case "WONDROUS_ITEM":
+        return { key: "category-wondrous", label: "Oggetto meraviglioso", Icon: Sparkles };
+      case "RING":
+        return { key: "category-ring", label: "Anello", Icon: Circle };
+      case "AMULET":
+        return { key: "category-amulet", label: "Amuleto o collana", Icon: Gem };
+      case "ROD":
+        return { key: "category-rod", label: "Verga", Icon: WandSparkles };
+      case "STAFF":
+        return { key: "category-staff", label: "Bastone", Icon: WandSparkles };
+      case "WAND":
+        return { key: "category-wand", label: "Bacchetta", Icon: WandSparkles };
+      case "TOOL":
+        return { key: "category-tool", label: "Strumento", Icon: Hammer };
+      case "CONSUMABLE":
+        return { key: "category-consumable", label: "Consumabile", Icon: FlaskConical };
+      case "AMMUNITION":
+        return { key: "category-ammunition", label: "Munizione", Icon: Crosshair };
+      case "GEAR":
+        return { key: "category-gear", label: "Equipaggiamento", Icon: Backpack };
+      case "QUEST":
+        return { key: "category-quest", label: "Oggetto di trama o missione", Icon: ScrollText };
+      default:
+        return { key: `category-${String(category ?? "other").toLowerCase()}`, label: "Oggetto generico", Icon: Package };
+    }
+  };
+
+  const getWeaponHandlingMetaIcon = (weaponHandling: string | null | undefined): MetaIconSpec | null => {
+    switch (weaponHandling) {
+      case "ONE_HANDED":
+        return { key: "handling-one-handed", label: "Impugnatura a una mano", Icon: Hand, text: "1" };
+      case "TWO_HANDED":
+        return { key: "handling-two-handed", label: "Impugnatura a due mani", Icon: Hand, text: "2" };
+      case "VERSATILE":
+        return { key: "handling-versatile", label: "Arma versatile: una o due mani", Icon: Repeat };
+      default:
+        return null;
+    }
+  };
+
+  const getArmorCategoryMetaIcon = (armorCategory: string | null | undefined): MetaIconSpec | null => {
+    switch (armorCategory) {
+      case "LIGHT":
+        return { key: "armor-light", label: "Armatura leggera", Icon: Feather };
+      case "MEDIUM":
+        return { key: "armor-medium", label: "Armatura media", Icon: Shield, text: "M" };
+      case "HEAVY":
+        return { key: "armor-heavy", label: "Armatura pesante", Icon: Shield, text: "H" };
+      case "SHIELD":
+        return { key: "armor-shield", label: "Scudo", Icon: Shield, text: "+" };
+      default:
+        return null;
+    }
+  };
+
+  const getGloveModeMetaIcon = (gloveWearMode: string | null | undefined): MetaIconSpec | null => {
+    switch (gloveWearMode) {
+      case "SINGLE":
+        return { key: "glove-single", label: "Guanto singolo", Icon: Hand, text: "1" };
+      case "PAIR":
+        return { key: "glove-pair", label: "Paio di guanti", Icon: Hand, text: "2" };
+      default:
+        return null;
+    }
+  };
+
+  const getAttackKindMetaIcon = (attackKind: string | null | undefined): MetaIconSpec | null => {
+    switch (attackKind) {
+      case "MELEE_WEAPON":
+        return { key: "attack-melee", label: "Attacco in mischia", Icon: Swords };
+      case "RANGED_WEAPON":
+        return { key: "attack-ranged", label: "Attacco a distanza", Icon: Crosshair };
+      case "THROWN":
+        return { key: "attack-thrown", label: "Attacco da lancio", Icon: Repeat };
+      case "SPECIAL":
+        return { key: "attack-special", label: "Attacco speciale", Icon: Sparkles };
+      default:
+        return null;
+    }
+  };
+
+  const getHandRequirementMetaIcon = (handRequirement: string | null | undefined): MetaIconSpec | null => {
+    switch (handRequirement) {
+      case "ONE_HANDED":
+        return { key: "hand-one", label: "Usabile a una mano", Icon: Hand, text: "1" };
+      case "TWO_HANDED":
+        return { key: "hand-two", label: "Usabile a due mani", Icon: Hand, text: "2" };
+      default:
+        return null;
+    }
+  };
+
+  const buildCatalogMetaIcons = (summary: any, detail: ItemDefinitionEntry | null) => {
+    return [
+      getCategoryMetaIcon(summary?.category),
+      summary?.stackable ? { key: "stackable", label: "Oggetto accumulabile nello stesso stack", Icon: Package, text: "+" } : null,
+      getWeaponHandlingMetaIcon(detail?.weaponHandling),
+      getArmorCategoryMetaIcon(detail?.armorCategory),
+      getGloveModeMetaIcon(detail?.gloveWearMode),
+    ].filter(Boolean) as MetaIconSpec[];
+  };
+
+  const buildAttackMetaIcons = (attack: any) => {
+    return [
+      getAttackKindMetaIcon(attack?.kind),
+      getHandRequirementMetaIcon(attack?.handRequirement),
+    ].filter(Boolean) as MetaIconSpec[];
+  };
+
+  const buildRelationalItemMetaIcons = (item: any) => {
+    return [
+      getCategoryMetaIcon(item?.itemCategory),
+      item?.stackable ? { key: `qty-${item.id}`, label: `Quantita nello stack: ${item.quantity}`, Icon: Package, text: String(item.quantity) } : null,
+    ].filter(Boolean) as MetaIconSpec[];
+  };
+
+  const getCategoryLabel = (category: string | null | undefined) => {
+    switch (String(category ?? "").toUpperCase()) {
+      case "WEAPON":
+        return "Arma";
+      case "ARMOR":
+        return "Armatura";
+      case "SHIELD":
+        return "Scudo";
+      case "WONDROUS_ITEM":
+        return "Oggetto meraviglioso";
+      case "RING":
+        return "Anello";
+      case "AMULET":
+        return "Amuleto";
+      case "ROD":
+        return "Verga";
+      case "STAFF":
+        return "Bastone";
+      case "WAND":
+        return "Bacchetta";
+      case "TOOL":
+        return "Strumento";
+      case "CONSUMABLE":
+        return "Consumabile";
+      case "AMMUNITION":
+        return "Munizione";
+      case "GEAR":
+        return "Equipaggiamento";
+      case "QUEST":
+        return "Oggetto di trama";
+      case "OTHER":
+        return "Altro";
+      default:
+        return category ?? "Altro";
+    }
+  };
+
+  const getWeaponHandlingLabel = (weaponHandling: string | null | undefined) => {
+    switch (weaponHandling) {
+      case "ONE_HANDED":
+        return "A una mano";
+      case "TWO_HANDED":
+        return "A due mani";
+      case "VERSATILE":
+        return "Versatile";
+      default:
+        return null;
+    }
+  };
+
+  const getArmorCategoryLabel = (armorCategory: string | null | undefined) => {
+    switch (armorCategory) {
+      case "LIGHT":
+        return "Armatura leggera";
+      case "MEDIUM":
+        return "Armatura media";
+      case "HEAVY":
+        return "Armatura pesante";
+      case "SHIELD":
+        return "Scudo";
+      default:
+        return null;
+    }
+  };
+
+  const getGloveModeLabel = (gloveWearMode: string | null | undefined) => {
+    switch (gloveWearMode) {
+      case "SINGLE":
+        return "Guanto singolo";
+      case "PAIR":
+        return "Paio di guanti";
+      default:
+        return null;
+    }
+  };
+
+  const getAttackKindLabel = (attackKind: string | null | undefined) => {
+    switch (attackKind) {
+      case "MELEE_WEAPON":
+        return "Mischia";
+      case "RANGED_WEAPON":
+        return "Distanza";
+      case "THROWN":
+        return "Lancio";
+      case "SPECIAL":
+        return "Speciale";
+      default:
+        return attackKind ?? null;
+    }
+  };
+
+  const getHandRequirementLabel = (handRequirement: string | null | undefined) => {
+    switch (handRequirement) {
+      case "ONE_HANDED":
+        return "Una mano";
+      case "TWO_HANDED":
+        return "Due mani";
+      case "ANY":
+        return "Qualsiasi impugnatura";
+      default:
+        return null;
+    }
+  };
+
+  const getAbilityLabel = (ability: string | null | undefined) => {
+    switch (ability) {
+      case "STRENGTH":
+        return "Forza";
+      case "DEXTERITY":
+        return "Destrezza";
+      case "CONSTITUTION":
+        return "Costituzione";
+      case "INTELLIGENCE":
+        return "Intelligenza";
+      case "WISDOM":
+        return "Saggezza";
+      case "CHARISMA":
+        return "Carisma";
+      default:
+        return ability ?? null;
+    }
+  };
+
+  const getUseEffectTypeLabel = (effectType: string | null | undefined) => {
+    switch (effectType) {
+      case "HEAL":
+        return "Cura";
+      case "DAMAGE":
+        return "Danno";
+      case "TEMP_HP":
+        return "Punti ferita temporanei";
+      case "APPLY_CONDITION":
+        return "Applica condizione";
+      case "REMOVE_CONDITION":
+        return "Rimuove condizione";
+      case "RESTORE_RESOURCE":
+        return "Recupero risorsa";
+      case "CUSTOM":
+        return "Effetto speciale";
+      default:
+        return effectType ?? null;
+    }
+  };
+
+  const getSuccessOutcomeLabel = (successOutcome: string | null | undefined) => {
+    switch (successOutcome) {
+      case "NONE":
+        return "Nessun effetto al successo";
+      case "HALF":
+        return "Effetto dimezzato al successo";
+      case "NEGATES":
+        return "Nessun effetto con successo";
+      case "CUSTOM":
+        return "Effetto personalizzato al successo";
+      default:
+        return successOutcome ?? null;
+    }
+  };
+
+  const capitalizeLabel = (value: string | null | undefined) => {
+    if (!value) return "";
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  };
+
+  const getUseEffectSummaryParts = (effect: any) => {
+    const amount = effect?.diceExpression ?? (effect?.flatValue != null ? String(effect.flatValue) : "");
+    const damageType = capitalizeLabel(effect?.damageType ?? "");
+    let headline = "";
+
+    if (effect?.effectType === "DAMAGE") {
+      headline = [amount, damageType].filter(Boolean).join(" ");
+    } else if (effect?.effectType === "HEAL") {
+      headline = ["Cura", amount].filter(Boolean).join(" ");
+    } else if (effect?.effectType === "TEMP_HP") {
+      headline = ["Punti ferita temporanei", amount].filter(Boolean).join(": ");
+    } else {
+      headline = [getUseEffectTypeLabel(effect?.effectType), amount, damageType].filter(Boolean).join(" ");
+    }
+
+    return [
+      headline,
+      effect?.savingThrowAbility && effect?.savingThrowDc != null
+        ? `Tiro salvezza su ${getAbilityLabel(effect.savingThrowAbility)} CD ${effect.savingThrowDc}`
+        : "",
+      effect?.successOutcome ? getSuccessOutcomeLabel(effect.successOutcome) : "",
+    ].filter(Boolean);
+  };
+
+  const getFeatureResetLabel = (feature: any) => {
+    if (!feature?.resetOn) return null;
+    if (feature.resetOn === "CUSTOM") return feature.customResetLabel ?? "Reset personalizzato";
+    switch (feature.resetOn) {
+      case "AT_WILL":
+        return "A volontà";
+      case "ENCOUNTER":
+        return "A incontro";
+      case "SHORT_REST":
+        return "Riposo breve";
+      case "LONG_REST":
+        return "Riposo lungo";
+      case "DAILY":
+        return "Giornaliera";
+      default:
+        return feature.resetOn;
+    }
   };
 
   const renderCatalogItemPreview = () => {
@@ -561,18 +985,10 @@ const Inventory = ({
           {summary.description ? (
             <div className="mt-1 text-sm text-muted-foreground whitespace-pre-wrap">{summary.description}</div>
           ) : null}
-          {renderCompactMetaChips([
-            summary.category,
-            summary.rarity ?? "",
-            summary.stackable ? "stack" : "istanza singola",
-            summary.equippable ? "equipaggiabile" : "",
-            detail?.weaponHandling === "ONE_HANDED" ? "1 mano" : "",
-            detail?.weaponHandling === "TWO_HANDED" ? "2 mani" : "",
-            detail?.weaponHandling === "VERSATILE" ? "versatile" : "",
-            detail?.armorCategory ?? "",
-            detail?.gloveWearMode === "SINGLE" ? "guanto singolo" : "",
-            detail?.gloveWearMode === "PAIR" ? "paio di guanti" : "",
-          ])}
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {renderRarityBadge(summary.rarity)}
+            {renderMetaIcons(buildCatalogMetaIcons(summary, detail))}
+          </div>
         </div>
 
         {!!detail?.attacks?.length && (
@@ -583,12 +999,10 @@ const Inventory = ({
                 <div className="font-medium text-foreground">{attack.name}</div>
                 <div className="text-muted-foreground">
                   {[
-                    attack.kind,
-                    attack.handRequirement === "ONE_HANDED" ? "1 mano" : attack.handRequirement === "TWO_HANDED" ? "2 mani" : "",
                     attack.attackBonus != null ? `${attack.attackBonus >= 0 ? "+" : ""}${attack.attackBonus}` : "",
                     [attack.damageDice, attack.damageType].filter(Boolean).join(" "),
                     attack.rangeNormal != null || attack.rangeLong != null ? `gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}` : "",
-                  ].filter(Boolean).join(" • ")}
+                  ].filter(Boolean).join(" - ")}
                 </div>
                 {attack.conditionText ? <div className="mt-1 text-muted-foreground">{attack.conditionText}</div> : null}
               </div>
@@ -603,7 +1017,7 @@ const Inventory = ({
               <div key={feature.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs">
                 <div className="font-medium text-foreground">{feature.name}</div>
                 <div className="text-muted-foreground">
-                  {[feature.resetOn, feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" • ")}
+                  {[getFeatureResetLabel(feature), feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" - ")}
                 </div>
                 {feature.description ? <div className="mt-1 text-muted-foreground">{feature.description}</div> : null}
               </div>
@@ -617,12 +1031,12 @@ const Inventory = ({
             {detail.useEffects.map((effect) => (
               <div key={effect.id} className="rounded-md border border-border/60 bg-muted/20 px-2 py-1.5 text-xs text-muted-foreground">
                 {[
-                  effect.effectType,
+                  getUseEffectTypeLabel(effect.effectType),
                   effect.diceExpression ?? (effect.flatValue != null ? String(effect.flatValue) : ""),
                   effect.damageType ?? "",
                   effect.savingThrowAbility && effect.savingThrowDc != null ? `TS ${effect.savingThrowAbility} CD ${effect.savingThrowDc}` : "",
-                  effect.successOutcome ? `succ: ${effect.successOutcome}` : "",
-                ].filter(Boolean).join(" • ")}
+                  effect.successOutcome ? getSuccessOutcomeLabel(effect.successOutcome) : "",
+                ].filter(Boolean).join(" - ")}
                 {effect.notes ? <div className="mt-1">{effect.notes}</div> : null}
               </div>
             ))}
@@ -648,6 +1062,7 @@ const Inventory = ({
     return !["WEAPON", "CONSUMABLE", "AMMUNITION"].includes(category);
   };
   const filteredCatalogItems = catalogItems.filter((item: any) => {
+    if (item?.rarity === "UNIQUE" && Number(item?.assignedCharacterItemCount ?? 0) > 0) return false;
     if (!matchesCatalogKind(item, kind)) return false;
     const query = catalogQuery.trim().toLowerCase();
     if (!query) return true;
@@ -660,6 +1075,10 @@ const Inventory = ({
     filteredCatalogItems.find((item: any) => item.id === selectedCatalogItemId) ??
     catalogItems.find((item: any) => item.id === selectedCatalogItemId) ??
     null;
+  const isRelationalDetail =
+    detailTarget?.kind === "relationalWeapon" ||
+    detailTarget?.kind === "relationalObject" ||
+    detailTarget?.kind === "relationalConsumable";
 
   const resetCustomItemForm = () => {
     setCustomItemName("");
@@ -709,6 +1128,34 @@ const Inventory = ({
     };
   }, [catalogMode, invOpen, mode, selectedCatalogItemId]);
 
+  useEffect(() => {
+    const relationalKinds = ["relationalWeapon", "relationalObject", "relationalConsumable"];
+    if (!detailTarget || !relationalKinds.includes(detailTarget.kind)) {
+      setDetailDefinition(null);
+      return;
+    }
+
+    const relationalItem = relationalItems.find((item: any) => item?.id === (detailTarget as any).id);
+    const itemDefinitionId = relationalItem?.itemDefinitionId;
+    if (!itemDefinitionId) {
+      setDetailDefinition(null);
+      return;
+    }
+
+    let active = true;
+    void fetchItemDefinition(itemDefinitionId)
+      .then((detail) => {
+        if (active) setDetailDefinition(detail);
+      })
+      .catch(() => {
+        if (active) setDetailDefinition(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [detailTarget, relationalItems]);
+
   // ==== helper per render armi (retro-compat) ====
   const buildAttackDetail = (atk: any) => {
     const bonus = `+${atk.attackBonus}`;
@@ -717,11 +1164,11 @@ const Inventory = ({
     const cat = atk.category as "melee" | "ranged" | undefined;
     const hands =
       cat === "melee" && atk.hands
-        ? (atk.hands === "1" ? " • 1 mano" : atk.hands === "2" ? " • 2 mani" : " • versatile")
+        ? (atk.hands === "1" ? " - 1 mano" : atk.hands === "2" ? " - 2 mani" : " - versatile")
         : "";
-    const range = cat === "ranged" && atk.range ? ` • gittata: ${atk.range}` : "";
+    const range = cat === "ranged" && atk.range ? ` - gittata: ${atk.range}` : "";
     const dmg = [dice, dtype].filter(Boolean).join(" ");
-    return `${bonus} • ${dmg}${hands}${range}`;
+    return `${bonus} - ${dmg}${hands}${range}`;
   };
 
   return (
@@ -818,7 +1265,11 @@ const Inventory = ({
         {relationalWeapons.length > 0 ? (
           <>
           {relationalWeapons.map((item: any) => (
-            <div key={`db-weapon-${item.id}`} className="flex items-center justify-between gap-3 text-sm dnd-frame p-2">
+            <div
+              key={`db-weapon-${item.id}`}
+              className="flex cursor-pointer items-center justify-between gap-3 text-sm dnd-frame p-2 transition hover:bg-accent/10"
+              onClick={() => openDetail({ kind: "relationalWeapon", id: item.id })}
+            >
               <div className="min-w-0 flex-1">
                 <div className="font-medium">
                   {getRelationalItemTitle(item)} {item.isEquipped ? "(equipaggiato)" : ""}
@@ -826,11 +1277,7 @@ const Inventory = ({
                 {getRelationalItemDescription(item) ? (
                   <div className="text-muted-foreground">{getRelationalItemDescription(item)}</div>
                 ) : null}
-                {renderCompactMetaChips([
-                  item.itemCategory,
-                  item.stackable ? `qty ${item.quantity}` : "",
-                  item.isEquipped ? "equip" : "",
-                ])}
+                {renderMetaIcons(buildRelationalItemMetaIcons(item))}
               </div>
               {item.equippable && !!toggleEquipRelationalItem ? (
                 <div className="flex items-center gap-2">
@@ -838,7 +1285,10 @@ const Inventory = ({
                     size="icon"
                     variant={item.isEquipped ? "default" : "outline"}
                     className="h-8 w-8"
-                    onClick={() => toggleEquipRelationalItem(item.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleEquipRelationalItem(item.id);
+                    }}
                     aria-label={item.isEquipped ? "Disequipaggia arma" : "Equipaggia arma"}
                     title={item.isEquipped ? "Disequipaggia" : "Equipaggia"}
                   >
@@ -876,17 +1326,18 @@ const Inventory = ({
         {relationalConsumables.length > 0 ? (
           <>
           {relationalConsumables.map((item: any) => (
-            <div key={`db-cons-${item.id}`} className="text-sm dnd-frame p-2">
+            <div
+              key={`db-cons-${item.id}`}
+              className="cursor-pointer text-sm dnd-frame p-2 transition hover:bg-accent/10"
+              onClick={() => openDetail({ kind: "relationalConsumable", id: item.id })}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{getRelationalItemTitle(item)}</div>
                   {getRelationalItemDescription(item) ? (
                     <div className="text-muted-foreground">{getRelationalItemDescription(item)}</div>
                   ) : null}
-                  {renderCompactMetaChips([
-                    item.itemCategory,
-                    item.stackable ? `qty ${item.quantity}` : "",
-                  ])}
+                  {renderMetaIcons(buildRelationalItemMetaIcons(item))}
                 </div>
                 {!!decrementRelationalConsumable && (
                   <div className="flex items-center gap-2">
@@ -894,7 +1345,10 @@ const Inventory = ({
                       size="sm"
                       variant="outline"
                       className="h-7 w-7 px-0 text-sm"
-                      onClick={() => incrementRelationalConsumable(item.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        incrementRelationalConsumable(item.id);
+                      }}
                       aria-label="Aumenta quantità"
                       title="Aumenta quantità"
                     >
@@ -905,7 +1359,10 @@ const Inventory = ({
                       variant="outline"
                       className="h-7 w-7 px-0 text-sm"
                       disabled={item.quantity <= 0}
-                      onClick={() => decrementRelationalConsumable(item.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        decrementRelationalConsumable(item.id);
+                      }}
                       aria-label="Consuma una unità"
                       title="Consuma una unità"
                     >
@@ -944,7 +1401,11 @@ const Inventory = ({
         {relationalObjects.length > 0 ? (
           <>
             {relationalObjects.map((item: any) => (
-              <div key={`db-obj-${item.id}`} className="text-sm dnd-frame p-2">
+              <div
+                key={`db-obj-${item.id}`}
+                className="cursor-pointer text-sm dnd-frame p-2 transition hover:bg-accent/10"
+                onClick={() => openDetail({ kind: "relationalObject", id: item.id })}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="font-medium">
@@ -953,11 +1414,7 @@ const Inventory = ({
                     {getRelationalItemDescription(item) ? (
                       <div className="text-muted-foreground line-clamp-2">{getRelationalItemDescription(item)}</div>
                     ) : null}
-                    {renderCompactMetaChips([
-                      item.itemCategory ?? "Senza categoria",
-                      item.stackable ? `qty ${item.quantity}` : "",
-                      item.isEquipped ? "equip" : "",
-                    ])}
+                    {renderMetaIcons(buildRelationalItemMetaIcons(item))}
                   </div>
                   {item.equippable && !!toggleEquipRelationalItem ? (
                     <div className="flex items-center gap-2">
@@ -965,7 +1422,10 @@ const Inventory = ({
                         size="icon"
                         variant={item.isEquipped ? "default" : "outline"}
                         className="h-8 w-8"
-                        onClick={() => toggleEquipRelationalItem(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleEquipRelationalItem(item.id);
+                        }}
                         aria-label={item.isEquipped ? "Disequipaggia oggetto" : "Equipaggia oggetto"}
                         title={item.isEquipped ? "Disequipaggia" : "Equipaggia"}
                       >
@@ -1171,7 +1631,7 @@ const Inventory = ({
                     {filteredCatalogItems.map((item: any) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
-                        {item.rarity ? ` • ${item.rarity}` : ""}
+                        {item.rarity ? ` - ${item.rarity}` : ""}
                       </option>
                     ))}
                   </Select>
@@ -1378,11 +1838,15 @@ const Inventory = ({
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {detailTarget?.kind === "weapon"
-                ? "Dettaglio arma"
-                : detailTarget?.kind === "consumable"
-                  ? "Dettaglio consumabile"
-                  : "Dettaglio oggetto"}
+              {isRelationalDetail
+                ? getRelationalItemTitle(getDetailEntry())
+                : detailTarget?.kind === "weapon"
+                  ? (getDetailEntry() as any)?.name ?? "Dettaglio oggetto"
+                  : detailTarget?.kind === "consumable"
+                    ? (getDetailEntry() as any)?.name ?? "Dettaglio oggetto"
+                    : typeof getDetailEntry() === "string"
+                      ? getDetailEntry()
+                      : (getDetailEntry() as any)?.name ?? "Dettaglio oggetto"}
             </DialogTitle>
           </DialogHeader>
 
@@ -1415,18 +1879,111 @@ const Inventory = ({
             </div>
           )}
 
+          {isRelationalDetail && getDetailEntry() && (
+            <div className="space-y-4 text-sm">
+              <div>
+                {getRelationalItemDescription(getDetailEntry()) ? (
+                  <div className="mt-1 whitespace-pre-wrap text-muted-foreground">{getRelationalItemDescription(getDetailEntry())}</div>
+                ) : null}
+              </div>
+
+              <div className="grid gap-2 rounded-md border border-border/60 bg-muted/15 px-3 py-3 text-muted-foreground">
+                <div><span className="font-medium text-foreground">Categoria:</span> {getCategoryLabel((getDetailEntry() as any)?.itemCategory)}</div>
+                {detailDefinition?.rarity ? <div><span className="font-medium text-foreground">Rarità:</span> {detailDefinition.rarity.replaceAll("_", " ")}</div> : null}
+                {(getDetailEntry() as any)?.stackable ? <div><span className="font-medium text-foreground">Quantità:</span> {(getDetailEntry() as any)?.quantity ?? 0}</div> : null}
+                {(getDetailEntry() as any)?.isEquipped ? <div><span className="font-medium text-foreground">Stato:</span> Equipaggiato</div> : null}
+                {detailDefinition?.weaponHandling ? <div><span className="font-medium text-foreground">Impugnatura:</span> {getWeaponHandlingLabel(detailDefinition.weaponHandling)}</div> : null}
+                {detailDefinition?.armorCategory ? <div><span className="font-medium text-foreground">Tipo armatura:</span> {getArmorCategoryLabel(detailDefinition.armorCategory)}</div> : null}
+                {detailDefinition?.gloveWearMode ? <div><span className="font-medium text-foreground">Modalità guanti:</span> {getGloveModeLabel(detailDefinition.gloveWearMode)}</div> : null}
+              </div>
+
+              {!!(getDetailEntry() as any)?.notes && (
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Note istanza</div>
+                  <div className="whitespace-pre-wrap text-muted-foreground">{(getDetailEntry() as any).notes}</div>
+                </div>
+              )}
+
+              {detailDefinition ? (
+                <>
+                  {!!detailDefinition.attacks?.length && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attacchi</div>
+                      {detailDefinition.attacks.map((attack) => (
+                        <div key={attack.id} className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                          <div className="font-medium text-foreground">{attack.name}</div>
+                          <div className="mt-1 text-muted-foreground">
+                            {[getAttackKindLabel(attack.kind), getHandRequirementLabel(attack.handRequirement)].filter(Boolean).join(" - ")}
+                          </div>
+                          <div className="mt-1 text-muted-foreground">
+                            {[
+                              attack.attackBonus != null ? `${attack.attackBonus >= 0 ? "+" : ""}${attack.attackBonus}` : "",
+                              [attack.damageDice, attack.damageType].filter(Boolean).join(" "),
+                              attack.rangeNormal != null || attack.rangeLong != null ? `gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}` : "",
+                            ].filter(Boolean).join(" - ")}
+                          </div>
+                          {attack.conditionText ? <div className="mt-1 text-muted-foreground">{attack.conditionText}</div> : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!!detailDefinition.features?.length && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Feature</div>
+                      {detailDefinition.features.map((feature) => (
+                        <div key={feature.id} className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                          <div className="font-medium text-foreground">{feature.name}</div>
+                          <div className="mt-1 text-muted-foreground">
+                            {[getFeatureResetLabel(feature), feature.maxUses != null ? `${feature.maxUses} usi` : ""].filter(Boolean).join(" - ")}
+                          </div>
+                          {feature.description ? <div className="mt-1 whitespace-pre-wrap text-muted-foreground">{feature.description}</div> : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!!detailDefinition.useEffects?.length && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Effetti all'uso</div>
+                      {detailDefinition.useEffects.map((effect) => (
+                        <div key={effect.id} className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-muted-foreground">
+                          {getUseEffectSummaryParts(effect).join(" - ")}
+                          {effect.durationText ? <div className="mt-1">Durata: {effect.durationText}</div> : null}
+                          {effect.notes ? <div className="mt-1 whitespace-pre-wrap">{effect.notes}</div> : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!!detailDefinition.abilityRequirements?.length && (
+                    <div className="space-y-1">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Requisiti</div>
+                      <div className="text-muted-foreground">
+                        {detailDefinition.abilityRequirements.map((req) => `${req.ability} ${req.minScore}+`).join(", ")}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">Carico i dettagli della definizione oggetto...</div>
+              )}
+            </div>
+          )}
+
           <DialogFooter className="mt-2">
-            <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Elimina
-            </Button>
-            <Button variant="outline" onClick={startEditing}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Modifica
-            </Button>
-            <DialogClose asChild>
-              <Button variant="outline">Chiudi</Button>
-            </DialogClose>
+            {!isRelationalDetail && (
+              <>
+                <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Elimina
+                </Button>
+                <Button variant="outline" onClick={startEditing}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Modifica
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1457,6 +2014,9 @@ const Inventory = ({
     if (!detailTarget) return null;
     if (detailTarget.kind === "weapon") return characterData?.equipment?.attacks?.[detailTarget.index] ?? null;
     if (detailTarget.kind === "legacyObject") return characterData?.equipment?.equipment?.[detailTarget.index] ?? null;
+    if (detailTarget.kind === "relationalWeapon" || detailTarget.kind === "relationalObject" || detailTarget.kind === "relationalConsumable") {
+      return relationalItems.find((item: any) => item?.id === detailTarget.id) ?? null;
+    }
     return structuredItems?.[detailTarget.index] ?? null;
   }
 
@@ -1631,3 +2191,10 @@ const Inventory = ({
 }
 
 export default Inventory;
+
+
+
+
+
+
+

@@ -25,20 +25,88 @@ Il rework deve preparare il terreno per:
 
 ## Stato attuale
 
-L'inventario oggi e' ibrido:
+L'inventario e' in una fase avanzata di transizione:
 
-- `equipment.attacks`
-- `equipment.items`
-- `equipment.equipment` legacy
+- il modello dati relazionale e' stato introdotto
+- il catalogo oggetti esiste ed e' gestibile lato DM
+- il possesso e' modellato tramite `CharacterItem`
+- la scheda personaggio legge gia' l'inventario DB per armi, oggetti e consumabili
+- le monete restano ancora nel JSON legacy
+
+Il sistema quindi non e' piu' solo "ibrido legacy", ma non e' ancora completo sul piano delle regole.
+
+### Legacy ancora presente
+
 - `equipment.coins`
+- eventuali superfici residue che dipendono ancora dal JSON storico
 
-Problemi principali:
+### Gap ancora aperti
 
-- convivenza di formati legacy e nuovi
-- armi e oggetti gestiti in strutture diverse
-- equipaggiamento espresso come booleano, non come occupazione di slot
-- attacchi in parte descrittivi e in parte strutturati
-- bonus e CA non derivati dagli oggetti in modo sistematico
+- equipaggiamento ancora espresso in pratica come `isEquipped`, non come occupazione reale di slot
+- `CharacterItemEquip` non governa ancora il flusso applicativo
+- attacchi strutturati presenti, ma non ancora risolti in funzione degli slot effettivi
+- bonus e CA non ancora derivati automaticamente in modo sistematico
+- storico transazionale presente come modello, ma non ancora usato per tutti i movimenti
+
+## Stato implementazione
+
+### Completato
+
+- schema Prisma relazionale introdotto e sincronizzato
+- catalogo oggetti DM in pagina dedicata
+- CRUD definizioni oggetto
+- supporto a:
+  - `ItemAttack`
+  - `ItemModifier`
+  - `ItemFeature`
+  - `ItemAbilityRequirement`
+  - `ItemUseEffect`
+  - `CharacterItemFeatureState`
+- workflow DM di assegnazione oggetti ai personaggi
+- creazione di vere istanze `CharacterItem`
+- prime transazioni `InventoryTransaction` su assegnazione
+- migrazione iniziale del catalogo con script di backfill
+- inventario scheda personaggio letto da DB per:
+  - armi
+  - oggetti
+  - consumabili
+- modale inventario giocatore collegata al catalogo DB
+- inserimento rapido di oggetti custom dal punto di ingresso inventario
+- equip / disequip DB senza regole slot ancora attive
+- incremento / decremento consumabili DB
+- supporto a `playerVisible`
+- regola di unicita' per gli oggetti `UNIQUE`
+- filtro degli oggetti `UNIQUE` gia' assegnati nei flussi di assegnazione
+
+### Parzialmente completato
+
+- migrazione dati dagli inventari JSON:
+  - il catalogo e' stato popolato
+  - la bonifica e classificazione e' stata avviata
+  - la migrazione completa del possesso/storico non e' ancora conclusa in senso definitivo
+- storico transazionale:
+  - modello presente
+  - uso iniziale presente
+  - non ancora motore unico di tutti i movimenti
+- UI inventario:
+  - nuova base DB attiva
+  - linguaggio visivo e preview migliorati
+  - regole slot ancora assenti
+
+### Non ancora completato
+
+- `canEquip` reale basato su slot liberi/occupati
+- uso applicativo di `CharacterItemEquip`
+- scelta e risoluzione slot per:
+  - anelli
+  - armi a una mano
+  - armi versatili
+  - guanti singoli / coppia
+- `resolveEquippedAttacks` basato su equipaggiamento effettivo
+- calcolo automatico CA da armatura, scudo e modifier
+- applicazione automatica dei bonus oggetto alle caratteristiche/statistiche
+- passaggio completo delle monete al modello transazionale
+- rimozione finale delle dipendenze legacy dal JSON
 
 ## Modello dati approvato
 
@@ -566,36 +634,58 @@ Con `ItemUseEffect` il sistema diventa pronto a gestire in modo coerente:
 
 ## Ordine di lavoro consigliato
 
-### Fase A: Consolidamento modello dati
+### Fase A: Modello dati
 
-- completare e validare lo schema Prisma
-- fissare il contratto dati di ogni categoria item
+Completata la base del modello relazionale.
 
-### Fase B: Strategia di migrazione
+Restano solo eventuali estensioni puntuali, non una rifondazione.
 
-- mappare `equipment.attacks` -> `ItemDefinition` / `CharacterItem` / `ItemAttack`
-- mappare `equipment.items` -> `ItemDefinition` / `CharacterItem`
-- decidere come migrare `equipment.equipment` legacy
-- decidere come inizializzare o meno lo storico per i dati gia' esistenti
+### Fase B: Migrazione e catalogo
 
-### Fase C: Seed / backfill
+Avviata.
 
-- creare definizioni base per armi, armature, scudi, anelli, ecc.
-- normalizzare i dati esistenti
-- legare i personaggi alle istanze corrette
+Gia' presenti:
 
-### Fase D: Logica applicativa
+- backfill del catalogo
+- bonifica manuale via gestione oggetti
+- assegnazione DM -> `CharacterItem`
+
+Restano:
+
+- pulizia finale dei casi legacy sporchi
+- eventuale strategia definitiva di migrazione dello storico pregresso
+
+### Fase C: Inventario giocabile su DB
+
+Gia' avviata e in buona parte completata.
+
+Gia' presenti:
+
+- lettura inventario scheda da DB
+- modale di aggiunta da catalogo
+- quick create item
+- equip / disequip base
+- consumo base stackabili
+
+### Fase D: Regole applicative vere
+
+Prossima fase prioritaria.
+
+Obiettivi:
 
 - implementare `canEquip`
-- implementare risoluzione attacchi disponibili
-- implementare calcolo CA da equipaggiamento
+- attivare `CharacterItemEquip` come fonte di verita'
+- gestire conflitti di slot
+- risolvere attacchi disponibili in base a come l'oggetto e' equipaggiato
+- calcolare bonus e CA dagli oggetti
 
-### Fase E: UI
+### Fase E: Pulizia legacy
 
-- sostituire gradualmente la UI attuale inventory
-- mostrare slot occupati
-- mostrare scelta slot dove serve
-- mostrare attacchi derivati dall'equip
+Dopo l'attivazione delle regole:
+
+- rimuovere le ultime dipendenze dal JSON
+- migrare le monete
+- allineare lo storico dei movimenti
 
 ## Decisioni ancora aperte
 
@@ -607,10 +697,21 @@ Con `ItemUseEffect` il sistema diventa pronto a gestire in modo coerente:
 
 ## Prossimo passo
 
-Prima di toccare la UI, serve sistemare i dati.
+Il prossimo step consigliato non e' piu' "toccare i dati", ma attivare le regole del sistema di equipaggiamento.
 
-Il prossimo step consigliato e':
+Priorita' suggerita:
 
-- definire il mapping preciso dai dati attuali alle nuove entita'
-- decidere le regole di deduplicazione per `ItemDefinition`
-- preparare la migrazione iniziale dell'inventario
+1. introdurre `canEquip` reale con controllo slot
+2. iniziare a scrivere `CharacterItemEquip` quando un oggetto viene equipaggiato
+3. bloccare i conflitti:
+   - seconda armatura
+   - arma a 2 mani + scudo
+   - oggetti che richiedono slot gia' occupati
+4. derivare gli attacchi disponibili in base agli slot usati
+5. derivare bonus e CA da equipaggiamento
+
+In parallelo, tenere la roadmap aggiornata su:
+
+- cosa e' ancora legacy
+- cosa e' gia' in produzione sul DB
+- quali regole sono solo modellate e quali sono davvero attive

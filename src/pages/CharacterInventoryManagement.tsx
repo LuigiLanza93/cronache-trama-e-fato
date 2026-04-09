@@ -40,6 +40,10 @@ function normalizeCharacter(state: any): CharacterSummary | null {
   };
 }
 
+function isAvailableForAssignment(item: ItemDefinitionSummary) {
+  return !(item.rarity === "UNIQUE" && item.assignedCharacterItemCount > 0);
+}
+
 export default function CharacterInventoryManagement() {
   const [characters, setCharacters] = useState<CharacterSummary[]>([]);
   const [items, setItems] = useState<ItemDefinitionSummary[]>([]);
@@ -69,6 +73,7 @@ export default function CharacterInventoryManagement() {
           .sort((a, b) => a.name.localeCompare(b.name, "it", { sensitivity: "base" }));
 
         const nextItems = (Array.isArray(itemDefinitions) ? itemDefinitions : [])
+          .filter(isAvailableForAssignment)
           .slice()
           .sort((a, b) => a.name.localeCompare(b.name, "it", { sensitivity: "base" }));
 
@@ -92,6 +97,7 @@ export default function CharacterInventoryManagement() {
   const filteredItems = useMemo(() => {
     const query = itemQuery.trim().toLowerCase();
     return items.filter((item) => {
+      if (!isAvailableForAssignment(item)) return false;
       if (!query) return true;
       return item.name.toLowerCase().includes(query) || item.slug.toLowerCase().includes(query);
     });
