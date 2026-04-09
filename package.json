@@ -16,6 +16,7 @@
     "bestiary:sync-discovery-dc-rules": "node scripts/sync-monster-discovery-dc-rules.mjs",
     "items:backfill-definitions": "node scripts/backfill-item-definitions.mjs",
     "items:backfill-features": "node scripts/backfill-item-features.mjs",
+    "items:backfill-srd-equipment": "node scripts/backfill-srd-equipment.mjs",
     "db:import-json": "node scripts/import-json-to-sqlite.mjs",
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
