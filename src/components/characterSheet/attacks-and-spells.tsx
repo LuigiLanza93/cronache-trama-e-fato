@@ -3,6 +3,7 @@ import {
   Circle,
   ChevronDown,
   ChevronUp,
+  Repeat,
   Hand,
   Shirt,
   ShieldOff,
@@ -16,8 +17,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { toast } from "@/components/ui/sonner";
+import {
   fetchItemDefinition,
   type CharacterInventoryItemEntry,
+  type EquipResolutionDetails,
+  type EquipResolutionOption,
   type ItemAttackEntry,
   type ItemDefinitionEntry,
 } from "@/lib/auth";
@@ -69,6 +82,17 @@ const SLOT_ORDER = [
 
 function normalizeDisplaySlot(slot: string) {
   return slot.startsWith("RING_") ? "RINGS" : slot;
+}
+
+function getEquipOptionLabel(option: EquipResolutionOption) {
+  const slotLabel = option.slots
+    .map((slot) => SLOT_LABELS[normalizeDisplaySlot(slot)] ?? slot)
+    .join(" + ");
+  const conflictLabel =
+    option.conflicts.length > 0
+      ? ` - sostituisce ${option.conflicts.map((conflict) => conflict.itemName).join(", ")}`
+      : "";
+  return `${slotLabel}${conflictLabel}`;
 }
 
 function parseLegacyDamage(s: string | undefined): { dice?: string; type?: string } {
@@ -455,6 +479,19 @@ type RelationalAttackRow = {
   damageLine: string | null;
 };
 
+function canRepositionEquippedItem(detail?: ItemDefinitionEntry) {
+  if (!detail?.slotRules?.length) return false;
+
+  const distinctGroups = new Set(detail.slotRules.map((rule) => rule.groupKey));
+  if (distinctGroups.size > 1) return true;
+
+  return detail.slotRules.some((rule, _, rules) => {
+    if (rule.selectionMode !== "ANY_ONE") return false;
+    const sameGroupRules = rules.filter((candidate) => candidate.groupKey === rule.groupKey);
+    return new Set(sameGroupRules.map((candidate) => candidate.slot)).size > 1;
+  });
+}
+
 const AttacksAndSpells = ({
   characterData,
   toggleEquipAttack,
@@ -470,10 +507,26 @@ const AttacksAndSpells = ({
   toggleEquipItem?: (i: number) => void;
   toggleItemSkillUsed?: (itemIndex: number, type: SkillType, skillIndex: number) => void;
   relationalInventoryItems?: CharacterInventoryItemEntry[];
-  toggleEquipRelationalItem?: (characterItemId: string) => void;
+  toggleEquipRelationalItem?: (
+    characterItemId: string,
+    payload?: {
+      isEquipped?: boolean;
+      equipConfig?: {
+        optionId?: string;
+        slots?: string[];
+        swapItemIds?: string[];
+      };
+    }
+  ) => Promise<unknown> | unknown;
 }) => {
   const [itemDetailsById, setItemDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [expandedAttackKeys, setExpandedAttackKeys] = useState<string[]>([]);
+  const [equipResolutionOpen, setEquipResolutionOpen] = useState(false);
+  const [equipResolutionItemId, setEquipResolutionItemId] = useState("");
+  const [equipResolutionItemName, setEquipResolutionItemName] = useState("");
+  const [equipResolutionOptions, setEquipResolutionOptions] = useState<EquipResolutionOption[]>([]);
+  const [equipResolutionSelectedOptionId, setEquipResolutionSelectedOptionId] = useState("");
+  const [equipResolutionError, setEquipResolutionError] = useState("");
 
   const equippedRelationalItems = useMemo(
     () =>
@@ -608,124 +661,245 @@ const AttacksAndSpells = ({
     );
   };
 
+  function openEquipResolutionDialog(item: CharacterInventoryItemEntry, details: EquipResolutionDetails) {
+    const options = Array.isArray(details?.options) ? details.options : [];
+    setEquipResolutionItemId(item.id);
+    setEquipResolutionItemName(item.itemName ?? "Oggetto senza nome");
+    setEquipResolutionOptions(options);
+    setEquipResolutionSelectedOptionId(options[0]?.optionId ?? "");
+    setEquipResolutionError("");
+    setEquipResolutionOpen(true);
+  }
+
+  async function handleRepositionEquippedItem(item: CharacterInventoryItemEntry) {
+    if (!toggleEquipRelationalItem) return;
+
+    try {
+      await toggleEquipRelationalItem(item.id, { isEquipped: true });
+    } catch (error: any) {
+      const details = error?.details as EquipResolutionDetails | undefined;
+      if (details?.code === "EQUIP_RESOLUTION_REQUIRED") {
+        openEquipResolutionDialog(item, details);
+        return;
+      }
+
+      toast.error(String(error?.message ?? "Non sono riuscito a cambiare impugnatura."));
+    }
+  }
+
+  async function confirmEquipResolution() {
+    if (!toggleEquipRelationalItem || !equipResolutionItemId || !equipResolutionSelectedOptionId) {
+      return;
+    }
+
+    const selectedOption = equipResolutionOptions.find(
+      (option) => option.optionId === equipResolutionSelectedOptionId
+    );
+    if (!selectedOption) {
+      setEquipResolutionError("Seleziona una configurazione valida.");
+      return;
+    }
+
+    try {
+      await toggleEquipRelationalItem(equipResolutionItemId, {
+        isEquipped: true,
+        equipConfig: {
+          optionId: selectedOption.optionId,
+          slots: selectedOption.slots,
+          swapItemIds: selectedOption.conflicts.map((conflict) => conflict.itemId),
+        },
+      });
+      setEquipResolutionOpen(false);
+      setEquipResolutionItemId("");
+      setEquipResolutionItemName("");
+      setEquipResolutionOptions([]);
+      setEquipResolutionSelectedOptionId("");
+      setEquipResolutionError("");
+    } catch (error: any) {
+      setEquipResolutionError(String(error?.message ?? "Non sono riuscito a completare il cambio impugnatura."));
+    }
+  }
+
   return (
-    <Card className="character-section">
-      <div className="character-section-title flex items-center gap-2">
-        <Sword className="w-5 h-5 text-primary" />
-        Attack & Equipment
-      </div>
+    <>
+      <Card className="character-section">
+        <div className="character-section-title flex items-center gap-2">
+          <Sword className="w-5 h-5 text-primary" />
+          Attack & Equipment
+        </div>
 
-      <div className="space-y-5">
-        {relationalAttacks.length > 0 && (
-          <div className="space-y-2">
-            <div className="font-semibold text-primary">Attacchi equipaggiati</div>
-            {relationalAttacks.map((attack) => {
-              const isExpanded = expandedAttackKeys.includes(attack.rowKey);
+        <div className="space-y-5">
+          {relationalAttacks.length > 0 && (
+            <div className="space-y-2">
+              <div className="font-semibold text-primary">Attacchi equipaggiati</div>
+              {relationalAttacks.map((attack) => {
+                const isExpanded = expandedAttackKeys.includes(attack.rowKey);
 
-              return (
-                <div key={attack.rowKey} className="dnd-frame p-3 text-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-medium">{attack.attackName}</div>
-                      {attack.showSourceName && (
-                        <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                          {attack.sourceName}
-                        </div>
-                      )}
-                      <div className="mt-1 text-muted-foreground">{attack.detailLine}</div>
-                      {attack.secondaryLine && (
-                        <div className="text-muted-foreground">{attack.secondaryLine}</div>
-                      )}
-                      <div className="mt-2 text-muted-foreground">
-                        {attack.hitSummaryLine}
-                        {isExpanded && attack.formulaLine ? (
-                          <span className="text-xs text-muted-foreground/90">
-                            {" "}
-                            ({attack.formulaLine.replace(/^Tiro per colpire:\s*/i, "")})
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="text-muted-foreground">
-                        {attack.damageSummaryLine}
-                        {isExpanded && attack.damageLine ? (
-                          <span className="text-xs text-muted-foreground/90">
-                            {" "}
-                            ({attack.damageLine.replace(/^Danni:\s*/i, "")})
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 shrink-0"
-                      onClick={() => toggleAttackFormula(attack.rowKey)}
-                      aria-label={isExpanded ? "Nascondi formula" : "Mostra formula"}
-                      title={isExpanded ? "Nascondi formula" : "Mostra formula"}
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {equipmentBySlot.length > 0 && (
-          <div className="space-y-2">
-            <div className="font-semibold text-primary">Equipaggiamento</div>
-            {equipmentBySlot.map(([slot, entries]) => (
-              <div key={slot} className="dnd-frame p-3 text-sm">
-                <div className="font-medium text-primary">
-                  {SLOT_LABELS[slot] ?? "Slot non definito"}
-                </div>
-                <div className="mt-2 space-y-2">
-                  {entries.map(({ item, detail }) => (
-                    <div key={`${slot}-${item.id}`} className="flex items-start justify-between gap-3">
+                return (
+                  <div key={attack.rowKey} className="dnd-frame p-3 text-sm">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="font-medium">{item.itemName}</div>
-                        <EquipmentSymbols detail={detail} />
-                        {getArmorClassSummary(detail) && (
-                          <div className="mt-1 text-muted-foreground">
-                            {getArmorClassSummary(detail)}
+                        <div className="font-medium">{attack.attackName}</div>
+                        {attack.showSourceName && (
+                          <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {attack.sourceName}
                           </div>
                         )}
+                        <div className="mt-1 text-muted-foreground">{attack.detailLine}</div>
+                        {attack.secondaryLine && (
+                          <div className="text-muted-foreground">{attack.secondaryLine}</div>
+                        )}
+                        <div className="mt-2 text-muted-foreground">
+                          {attack.hitSummaryLine}
+                          {isExpanded && attack.formulaLine ? (
+                            <span className="text-xs text-muted-foreground/90">
+                              {" "}
+                              ({attack.formulaLine.replace(/^Tiro per colpire:\s*/i, "")})
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {attack.damageSummaryLine}
+                          {isExpanded && attack.damageLine ? (
+                            <span className="text-xs text-muted-foreground/90">
+                              {" "}
+                              ({attack.damageLine.replace(/^Danni:\s*/i, "")})
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
-                      {toggleEquipRelationalItem && item.equippable ? (
-                        <Button
-                          size="icon"
-                          variant="default"
-                          className="h-8 w-8 shrink-0"
-                          onClick={() => toggleEquipRelationalItem(item.id)}
-                          aria-label="Disequipaggia oggetto"
-                          title="Disequipaggia"
-                        >
-                          <ShieldOff className="h-4 w-4" />
-                        </Button>
-                      ) : null}
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => toggleAttackFormula(attack.rowKey)}
+                        aria-label={isExpanded ? "Nascondi formula" : "Mostra formula"}
+                        title={isExpanded ? "Nascondi formula" : "Mostra formula"}
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {relationalAttacks.length === 0 &&
-          equipmentBySlot.length === 0 && (
-            <div className="dnd-frame p-4 text-sm text-muted-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Nessun attacco o equipaggiamento attivo.
+                  </div>
+                );
+              })}
             </div>
           )}
-      </div>
-    </Card>
+
+          {equipmentBySlot.length > 0 && (
+            <div className="space-y-2">
+              <div className="font-semibold text-primary">Equipaggiamento</div>
+              {equipmentBySlot.map(([slot, entries]) => (
+                <div key={slot} className="dnd-frame p-3 text-sm">
+                  <div className="font-medium text-primary">
+                    {SLOT_LABELS[slot] ?? "Slot non definito"}
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {entries.map(({ item, detail }) => (
+                      <div key={`${slot}-${item.id}`} className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-medium">{item.itemName}</div>
+                          <EquipmentSymbols detail={detail} />
+                          {getArmorClassSummary(detail) && (
+                            <div className="mt-1 text-muted-foreground">
+                              {getArmorClassSummary(detail)}
+                            </div>
+                          )}
+                        </div>
+                        {toggleEquipRelationalItem && item.equippable ? (
+                          <div className="flex shrink-0 items-center gap-2">
+                            {canRepositionEquippedItem(detail) ? (
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8"
+                                onClick={() => void handleRepositionEquippedItem(item)}
+                                aria-label="Cambia impugnatura"
+                                title="Cambia impugnatura"
+                              >
+                                <Repeat className="h-4 w-4" />
+                              </Button>
+                            ) : null}
+                            <Button
+                              size="icon"
+                              variant="default"
+                              className="h-8 w-8"
+                              onClick={() => void toggleEquipRelationalItem(item.id, { isEquipped: false })}
+                              aria-label="Disequipaggia oggetto"
+                              title="Disequipaggia"
+                            >
+                              <ShieldOff className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {relationalAttacks.length === 0 &&
+            equipmentBySlot.length === 0 && (
+              <div className="dnd-frame p-4 text-sm text-muted-foreground flex items-center gap-2">
+                <Sparkles className="h-4 w-4" />
+                Nessun attacco o equipaggiamento attivo.
+              </div>
+            )}
+        </div>
+      </Card>
+
+      <Dialog open={equipResolutionOpen} onOpenChange={setEquipResolutionOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cambia impugnatura</DialogTitle>
+            <DialogDescription>
+              Scegli come tenere equipaggiato {equipResolutionItemName}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <RadioGroup
+              value={equipResolutionSelectedOptionId}
+              onValueChange={setEquipResolutionSelectedOptionId}
+              className="space-y-2"
+            >
+              {equipResolutionOptions.map((option) => (
+                <label
+                  key={option.optionId}
+                  className="flex cursor-pointer items-start gap-3 rounded-md border border-border/60 p-3 text-sm"
+                >
+                  <RadioGroupItem value={option.optionId} className="mt-0.5" />
+                  <div className="space-y-1">
+                    <div className="font-medium">{getEquipOptionLabel(option)}</div>
+                    {option.conflicts.length > 0 ? (
+                      <div className="text-xs text-muted-foreground">
+                        Libera: {option.conflicts.map((conflict) => conflict.itemName).join(", ")}
+                      </div>
+                    ) : null}
+                  </div>
+                </label>
+              ))}
+            </RadioGroup>
+            {equipResolutionError ? (
+              <div className="text-sm text-destructive">{equipResolutionError}</div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEquipResolutionOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={() => void confirmEquipResolution()} disabled={!equipResolutionSelectedOptionId}>
+              Conferma
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
