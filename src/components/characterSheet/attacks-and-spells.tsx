@@ -56,6 +56,7 @@ const ABILITY_LABELS: Record<string, string> = {
 };
 
 const SLOT_LABELS: Record<string, string> = {
+  HANDS: "Mani",
   HEAD: "Testa",
   BACK: "Schiena",
   ARMOR: "Armatura",
@@ -69,8 +70,7 @@ const SLOT_LABELS: Record<string, string> = {
 };
 
 const SLOT_ORDER = [
-  "WEAPON_HAND_RIGHT",
-  "WEAPON_HAND_LEFT",
+  "HANDS",
   "HEAD",
   "ARMOR",
   "BACK",
@@ -82,6 +82,7 @@ const SLOT_ORDER = [
 ] as const;
 
 function normalizeDisplaySlot(slot: string) {
+  if (slot.startsWith("WEAPON_HAND_")) return "HANDS";
   return slot.startsWith("RING_") ? "RINGS" : slot;
 }
 
@@ -528,6 +529,8 @@ const AttacksAndSpells = ({
   const [equipResolutionOptions, setEquipResolutionOptions] = useState<EquipResolutionOption[]>([]);
   const [equipResolutionSelectedOptionId, setEquipResolutionSelectedOptionId] = useState("");
   const [equipResolutionError, setEquipResolutionError] = useState("");
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailItemId, setDetailItemId] = useState("");
 
   const equippedRelationalItems = useMemo(
     () =>
@@ -644,6 +647,10 @@ const AttacksAndSpells = ({
       slots.forEach((slot) => {
         const normalizedSlot = normalizeDisplaySlot(slot);
         const current = bucket.get(normalizedSlot) ?? [];
+        if (current.some((entry) => entry.item.id === item.id)) {
+          bucket.set(normalizedSlot, current);
+          return;
+        }
         current.push({ item, detail });
         bucket.set(normalizedSlot, current);
       });
@@ -661,6 +668,38 @@ const AttacksAndSpells = ({
       prev.includes(rowKey) ? prev.filter((key) => key !== rowKey) : [...prev, rowKey]
     );
   };
+
+  const detailItem = useMemo(
+    () => equippedRelationalItems.find((item) => item.id === detailItemId) ?? null,
+    [detailItemId, equippedRelationalItems]
+  );
+
+  const detailDefinition = detailItem?.itemDefinitionId
+    ? itemDetailsById[detailItem.itemDefinitionId] ?? null
+    : null;
+
+  function openItemDetail(item: CharacterInventoryItemEntry) {
+    setDetailItemId(item.id);
+    setDetailOpen(true);
+  }
+
+  function buildUseEffectSummary(effect: ItemDefinitionEntry["useEffects"][number]) {
+    return [
+      effect.diceExpression ?? (effect.flatValue != null ? String(effect.flatValue) : ""),
+      effect.damageType ?? "",
+      effect.savingThrowAbility && effect.savingThrowDc != null
+        ? `Tiro salvezza su ${ABILITY_LABELS[normalizeAbilityKey(effect.savingThrowAbility) ?? effect.savingThrowAbility] ?? effect.savingThrowAbility} CD ${effect.savingThrowDc}`
+        : "",
+      effect.successOutcome === "NEGATES"
+        ? "Nessun effetto con successo"
+        : effect.successOutcome === "HALF"
+          ? "Effetto ridotto con successo"
+          : effect.successOutcome === "PARTIAL"
+            ? "Effetto parziale con successo"
+            : "",
+      effect.notes ?? "",
+    ].filter(Boolean).join(" - ");
+  }
 
   function openEquipResolutionDialog(item: CharacterInventoryItemEntry, details: EquipResolutionDetails) {
     const options = Array.isArray(details?.options) ? details.options : [];
@@ -806,7 +845,11 @@ const AttacksAndSpells = ({
                   <div className="mt-2 space-y-2">
                     {entries.map(({ item, detail }) => (
                       <div key={`${slot}-${item.id}`} className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 text-left transition hover:opacity-90"
+                          onClick={() => openItemDetail(item)}
+                        >
                           <div className="font-medium">{item.itemName}</div>
                           <EquipmentSymbols detail={detail} />
                           {getArmorClassSummary(detail) && (
@@ -814,7 +857,7 @@ const AttacksAndSpells = ({
                               {getArmorClassSummary(detail)}
                             </div>
                           )}
-                        </div>
+                        </button>
                         {toggleEquipRelationalItem && item.equippable ? (
                           <div className="flex shrink-0 items-center gap-2">
                             {canRepositionEquippedItem(detail) ? (
@@ -822,7 +865,10 @@ const AttacksAndSpells = ({
                                 size="icon"
                                 variant="outline"
                                 className="h-8 w-8"
-                                onClick={() => void handleRepositionEquippedItem(item)}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void handleRepositionEquippedItem(item);
+                                }}
                                 aria-label="Cambia impugnatura"
                                 title="Cambia impugnatura"
                               >
@@ -833,7 +879,10 @@ const AttacksAndSpells = ({
                               size="icon"
                               variant="default"
                               className="h-8 w-8"
-                              onClick={() => void toggleEquipRelationalItem(item.id, { isEquipped: false })}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void toggleEquipRelationalItem(item.id, { isEquipped: false });
+                              }}
                               aria-label="Disequipaggia oggetto"
                               title="Disequipaggia"
                             >
@@ -900,6 +949,112 @@ const AttacksAndSpells = ({
             </Button>
             <Button onClick={() => void confirmEquipResolution()} disabled={!equipResolutionSelectedOptionId}>
               Conferma
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{detailItem?.itemName ?? "Dettaglio oggetto"}</DialogTitle>
+          </DialogHeader>
+          {detailItem ? (
+            <div className="space-y-4 text-sm">
+              <div className="space-y-1 rounded-lg border border-border/60 bg-muted/15 px-3 py-3">
+                {detailDefinition?.category ? (
+                  <div>
+                    <span className="font-medium text-foreground">Categoria:</span>{" "}
+                    {detailDefinition.category.replaceAll("_", " ")}
+                  </div>
+                ) : null}
+                {detailDefinition?.rarity ? (
+                  <div>
+                    <span className="font-medium text-foreground">Rarità:</span>{" "}
+                    {detailDefinition.rarity.replaceAll("_", " ")}
+                  </div>
+                ) : null}
+                {detailDefinition?.weaponHandling ? (
+                  <div>
+                    <span className="font-medium text-foreground">Impugnatura:</span>{" "}
+                    {getWeaponHandlingLabel(detailDefinition.weaponHandling)}
+                  </div>
+                ) : null}
+                {detailItem.equippedSlots?.length ? (
+                  <div>
+                    <span className="font-medium text-foreground">Equipaggiato in:</span>{" "}
+                    {Array.from(new Set(detailItem.equippedSlots.map((slot) => SLOT_LABELS[normalizeDisplaySlot(slot)] ?? slot))).join(", ")}
+                  </div>
+                ) : null}
+                {detailDefinition?.description ? (
+                  <div className="whitespace-pre-wrap text-muted-foreground">
+                    {detailDefinition.description}
+                  </div>
+                ) : null}
+              </div>
+
+              {detailDefinition?.attacks?.length ? (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attacchi</div>
+                  {detailDefinition.attacks.map((attack) => (
+                    <div key={attack.id} className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                      <div className="font-medium text-foreground">{attack.name}</div>
+                      <div className="mt-1 text-muted-foreground">
+                        {[getAttackKindLabel(attack.kind), getHandRequirementLabel(attack.handRequirement)].filter(Boolean).join(" - ")}
+                      </div>
+                      <div className="mt-1 text-muted-foreground">
+                        {[
+                          attack.attackBonus != null ? `${attack.attackBonus >= 0 ? "+" : ""}${attack.attackBonus}` : "",
+                          [attack.damageDice, attack.damageType].filter(Boolean).join(" "),
+                          attack.rangeNormal != null || attack.rangeLong != null ? `gittata ${attack.rangeNormal ?? "?"}/${attack.rangeLong ?? "?"}` : "",
+                        ].filter(Boolean).join(" - ")}
+                      </div>
+                      {attack.conditionText ? <div className="mt-1 text-muted-foreground">{attack.conditionText}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {detailDefinition?.features?.length ? (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Feature</div>
+                  {detailDefinition.features.map((feature) => (
+                    <div key={feature.id} className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                      <div className="font-medium text-foreground">{feature.name}</div>
+                      {feature.description ? (
+                        <div className="mt-1 whitespace-pre-wrap text-muted-foreground">{feature.description}</div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {detailDefinition?.useEffects?.length ? (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Effetti all'uso</div>
+                  {detailDefinition.useEffects.map((effect) => (
+                    <div key={effect.id} className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-muted-foreground">
+                      {buildUseEffectSummary(effect)}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {detailDefinition?.abilityRequirements?.length ? (
+                <div className="space-y-1">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Requisiti</div>
+                  <div className="text-muted-foreground">
+                    {detailDefinition.abilityRequirements.map((req) => `${req.ability} ${req.minScore}+`).join(", ")}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">Dettaglio non disponibile.</div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailOpen(false)}>
+              Chiudi
             </Button>
           </DialogFooter>
         </DialogContent>

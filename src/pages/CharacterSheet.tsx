@@ -1985,6 +1985,46 @@ const CharacterSheet = () => {
           setEditMode={setEditMode}
           monsterCompendiumHref="/compendium/monsters"
           makeChangeHandler={makeChangeHandler}
+          layoutActions={
+            layoutEditMode ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
+                  onClick={() => void resetCharacterSheetLayout()}
+                  title="Ripristina layout"
+                  aria-label="Ripristina layout"
+                >
+                  <RotateCcw className="h-4 w-4 text-primary" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
+                  onClick={() => setLayoutEditMode(false)}
+                  title="Fine modifica layout"
+                  aria-label="Fine modifica layout"
+                >
+                  <Check className="h-4 w-4 text-primary" />
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
+                onClick={() => setLayoutEditMode(true)}
+                title="Modifica layout"
+                aria-label="Modifica layout"
+              >
+                <LayoutTemplate className="h-4 w-4 text-primary" />
+              </Button>
+            )
+          }
         />
         {characterData.characterType !== "png" ? (
           <FloatingCharacterChat
@@ -1993,39 +2033,6 @@ const CharacterSheet = () => {
             avatarUrl={characterData.basicInfo.portraitUrl}
           />
         ) : null}
-        <div className="flex items-center justify-end gap-2">
-          {layoutEditMode ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void resetCharacterSheetLayout()}
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Reset layout
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setLayoutEditMode(false)}
-              >
-                <Check className="mr-2 h-4 w-4" />
-                Fine
-              </Button>
-            </>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setLayoutEditMode(true)}
-            >
-              <LayoutTemplate className="mr-2 h-4 w-4" />
-              Modifica layout
-            </Button>
-          )}
-        </div>
         <SheetCardStateProvider
           value={{
             collapsedCards: collapsedLayoutCards,

@@ -39,6 +39,7 @@ const CharacterHeader = ({
     editMode,
     setEditMode,
     monsterCompendiumHref,
+    layoutActions,
 }: any) => {
     const [portraitUrl, setPortraitUrl] = useState(characterData.basicInfo.portraitUrl ?? "");
     const [isUploadingPortrait, setIsUploadingPortrait] = useState(false);
@@ -174,7 +175,7 @@ const CharacterHeader = ({
                                 variant="ghost"
                                 size="icon"
                                 className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
-                                onMouseDown={() => setEditMode(true)}
+                                onClick={() => setEditMode(true)}
                                 aria-label="Modifica intestazione"
                                 title="Modifica intestazione"
                             >
@@ -358,6 +359,12 @@ const CharacterHeader = ({
                         </div>
                     </div>
                 </div>
+
+                {layoutActions ? (
+                    <div className="absolute bottom-4 right-4">
+                        {layoutActions}
+                    </div>
+                ) : null}
 
             </form>
 

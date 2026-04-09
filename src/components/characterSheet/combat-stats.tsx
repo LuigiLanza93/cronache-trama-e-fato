@@ -55,6 +55,52 @@ function formatSpeedValue(
   }
 }
 
+function StatDetailPanel({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mt-2 w-full rounded-lg border border-border/50 bg-background/25 px-3 py-2 text-left">
+      {children}
+    </div>
+  );
+}
+
+function StatDetailRows({
+  rows,
+}: {
+  rows: Array<{ label: string; value?: string }>;
+}) {
+  return (
+    <div className="space-y-1.5 text-[11px] leading-snug text-muted-foreground">
+      {rows.map((row, index) => (
+        <div key={`${row.label}-${index}`} className="flex items-start justify-between gap-3">
+          <span className="min-w-0 flex-1 font-medium text-foreground/90">{row.label}</span>
+          {row.value ? <span className="shrink-0 text-right">{row.value}</span> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function StatDetailList({
+  rows,
+}: {
+  rows: Array<{ label: string; value?: string }>;
+}) {
+  return (
+    <div className="space-y-1.5 text-[11px] leading-snug text-muted-foreground">
+      {rows.map((row, index) => (
+        <div key={`${row.label}-${index}`}>
+          <span className="font-medium text-foreground/90">{row.label}</span>
+          {row.value ? <span>: {row.value}</span> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function normalizeRaceLabel(value: string | undefined) {
   return String(value ?? "")
     .trim()
@@ -290,9 +336,10 @@ const CombatStats = ({
   const [itemDetailsById, setItemDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [raceSpeedEntries, setRaceSpeedEntries] = useState<RaceSpeedEntry[]>([]);
   const [speedUnit, setSpeedUnit] = useState<"meters" | "feet" | "squares">("meters");
-  const [armorDetailsOpen, setArmorDetailsOpen] = useState(false);
-  const [initiativeDetailsOpen, setInitiativeDetailsOpen] = useState(false);
-  const [speedDetailsOpen, setSpeedDetailsOpen] = useState(false);
+  const [activeDetail, setActiveDetail] = useState<"armor" | "initiative" | "speed" | null>(null);
+  const armorDetailsOpen = activeDetail === "armor";
+  const initiativeDetailsOpen = activeDetail === "initiative";
+  const speedDetailsOpen = activeDetail === "speed";
 
   const equippedRelationalItems = useMemo(
     () =>
@@ -504,14 +551,14 @@ const CombatStats = ({
   return (
     <div className="grid grid-cols-3 gap-4">
       <Card className="flex flex-col dnd-frame p-4 text-center">
-        <Shield className="w-6 h-6 mx-auto text-primary mb-1" />
-        <div className="text-xs text-muted-foreground">Classe armatura</div>
-        <div className="text-2xl font-bold text-primary mt-auto">
+        <Shield className="w-6 h-6 mx-auto text-primary mb-2" />
+          <div className="text-xs text-muted-foreground">CA</div>
+        <div className="mt-3 text-2xl font-bold text-primary">
           {armorClassData.totalArmorClass}
         </div>
         <button
           type="button"
-          onClick={() => setArmorDetailsOpen((prev) => !prev)}
+          onClick={() => setActiveDetail((prev) => (prev === "armor" ? null : "armor"))}
           className="mt-2 inline-flex items-center justify-center text-muted-foreground transition hover:text-foreground"
           aria-expanded={armorDetailsOpen}
           aria-label={armorDetailsOpen ? "Nascondi dettaglio CA" : "Mostra dettaglio CA"}
@@ -523,26 +570,23 @@ const CombatStats = ({
             <ChevronDown className="h-4 w-4" />
           )}
         </button>
-        {armorDetailsOpen && (
-          <div className="mt-1 space-y-1 text-[11px] leading-snug text-muted-foreground">
-            {armorClassData.breakdown.map((entry: string, index: number) => (
-              <div key={`ac-breakdown-${index}`} className="flex items-start justify-center gap-1">
-                <span className="mt-[2px] text-[9px]">•</span>
-                <span>{entry}</span>
-              </div>
-            ))}
-          </div>
+        {false && armorDetailsOpen && (
+          <StatDetailPanel>
+            <StatDetailRows
+              rows={armorClassData.breakdown.map((entry: string) => ({ label: entry }))}
+            />
+          </StatDetailPanel>
         )}
       </Card>
       <Card className="flex flex-col dnd-frame p-4 text-center">
-        <Zap className="w-6 h-6 mx-auto text-primary mb-1" />
+        <Zap className="w-6 h-6 mx-auto text-primary mb-2" />
         <div className="text-xs text-muted-foreground">Iniziativa</div>
-        <div className="text-2xl font-bold text-primary mt-auto">
+        <div className="mt-3 text-2xl font-bold text-primary">
           {initiativeData.totalInitiative >= 0 ? `+${initiativeData.totalInitiative}` : initiativeData.totalInitiative}
         </div>
         <button
           type="button"
-          onClick={() => setInitiativeDetailsOpen((prev) => !prev)}
+          onClick={() => setActiveDetail((prev) => (prev === "initiative" ? null : "initiative"))}
           className="mt-2 inline-flex items-center justify-center text-muted-foreground transition hover:text-foreground"
           aria-expanded={initiativeDetailsOpen}
           aria-label={initiativeDetailsOpen ? "Nascondi dettaglio iniziativa" : "Mostra dettaglio iniziativa"}
@@ -554,26 +598,23 @@ const CombatStats = ({
             <ChevronDown className="h-4 w-4" />
           )}
         </button>
-        {initiativeDetailsOpen && (
-          <div className="mt-1 space-y-1 text-[11px] leading-snug text-muted-foreground">
-            {initiativeData.breakdown.map((entry: string, index: number) => (
-              <div key={`initiative-breakdown-${index}`} className="flex items-start justify-center gap-1">
-                <span className="mt-[2px] text-[9px]">•</span>
-                <span>{entry}</span>
-              </div>
-            ))}
-          </div>
+        {false && initiativeDetailsOpen && (
+          <StatDetailPanel>
+            <StatDetailRows
+              rows={initiativeData.breakdown.map((entry: string) => ({ label: entry }))}
+            />
+          </StatDetailPanel>
         )}
       </Card>
       <Card className="flex flex-col dnd-frame p-4 text-center">
-        <FastForward className="w-6 h-6 mx-auto text-primary mb-1" />
+        <FastForward className="w-6 h-6 mx-auto text-primary mb-2" />
         <div className="text-xs text-muted-foreground">Velocità</div>
-        <div className="text-2xl font-bold text-primary mt-auto">
+        <div className="mt-3 text-2xl font-bold text-primary">
           {formatSpeedValue(speedData.totalSpeed, speedUnit, "compact")}
         </div>
         <button
           type="button"
-          onClick={() => setSpeedDetailsOpen((prev) => !prev)}
+          onClick={() => setActiveDetail((prev) => (prev === "speed" ? null : "speed"))}
           className="mt-2 inline-flex items-center justify-center text-muted-foreground transition hover:text-foreground"
           aria-expanded={speedDetailsOpen}
           aria-label={speedDetailsOpen ? "Nascondi dettaglio velocità" : "Mostra dettaglio velocità"}
@@ -643,14 +684,15 @@ const CombatStats = ({
             </div>
           </div>
         )}
-        {speedDetailsOpen && (
-          <div className="mt-2 w-full space-y-2">
-            <div className="flex items-center justify-center gap-1.5 text-[10px]">
+        {false && speedDetailsOpen && (
+          <StatDetailPanel>
+            <div className="space-y-2">
+            <div className="grid w-full grid-cols-3 gap-1 rounded-md border border-border/40 bg-background/30 p-1 text-[10px]">
               <label
-                className={`cursor-pointer rounded px-2 py-1 transition ${
+                className={`inline-flex w-full items-center justify-center cursor-pointer rounded px-2 py-1 transition ${
                   speedUnit === "meters"
                     ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                 }`}
               >
                 <input
@@ -663,10 +705,10 @@ const CombatStats = ({
                 <span>m</span>
               </label>
               <label
-                className={`cursor-pointer rounded px-2 py-1 transition ${
+                className={`inline-flex w-full items-center justify-center cursor-pointer rounded px-2 py-1 transition ${
                   speedUnit === "feet"
                     ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                 }`}
               >
                 <input
@@ -679,10 +721,10 @@ const CombatStats = ({
                 <span>ft</span>
               </label>
               <label
-                className={`cursor-pointer rounded px-2 py-1 transition ${
+                className={`inline-flex w-full items-center justify-center cursor-pointer rounded px-2 py-1 transition ${
                   speedUnit === "squares"
                     ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                 }`}
               >
                 <input
@@ -695,22 +737,117 @@ const CombatStats = ({
                 <span>sq</span>
               </label>
             </div>
-            <div className="space-y-1 text-left text-[11px] leading-snug text-muted-foreground">
-              {speedData.contributions.map((entry: { label: string; value: number }, index: number) => (
-                <div key={`speed-breakdown-clean-${index}`}>
-                  <span className="font-medium text-foreground/90">{entry.label}</span>
-                  <span>: {formatSpeedValue(entry.value, speedUnit)}</span>
-                </div>
-              ))}
-              {speedData.note && (
-                <div className="pt-1 text-[10px] italic text-muted-foreground/90">
-                  {speedData.note}
-                </div>
-              )}
+            <StatDetailList
+              rows={speedData.contributions.map((entry: { label: string; value: number }) => ({
+                label: entry.label,
+                value: formatSpeedValue(entry.value, speedUnit),
+              }))}
+            />
+            {speedData.note && (
+              <div className="border-t border-border/40 pt-2 text-[10px] italic text-muted-foreground/90">
+                {speedData.note}
+              </div>
+            )}
             </div>
-          </div>
+          </StatDetailPanel>
         )}
       </Card>
+
+      {armorDetailsOpen && (
+        <Card className="col-span-3 dnd-frame p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-primary">
+            <Shield className="h-4 w-4" />
+            Dettaglio Classe armatura
+          </div>
+          <StatDetailRows
+            rows={armorClassData.breakdown.map((entry: string) => ({ label: entry }))}
+          />
+        </Card>
+      )}
+
+      {initiativeDetailsOpen && (
+        <Card className="col-span-3 dnd-frame p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-primary">
+            <Zap className="h-4 w-4" />
+            Dettaglio Iniziativa
+          </div>
+          <StatDetailRows
+            rows={initiativeData.breakdown.map((entry: string) => ({ label: entry }))}
+          />
+        </Card>
+      )}
+
+      {speedDetailsOpen && (
+        <Card className="col-span-3 dnd-frame p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-primary">
+            <FastForward className="h-4 w-4" />
+            Dettaglio Velocità
+          </div>
+          <div className="space-y-3">
+            <div className="grid w-full max-w-xs grid-cols-3 gap-1 rounded-md border border-border/40 bg-background/30 p-1 text-[11px]">
+              <label
+                className={`inline-flex w-full items-center justify-center cursor-pointer rounded px-2 py-1 transition ${
+                  speedUnit === "meters"
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="speed-unit-panel"
+                  className="sr-only"
+                  checked={speedUnit === "meters"}
+                  onChange={() => setSpeedUnit("meters")}
+                />
+                <span>m</span>
+              </label>
+              <label
+                className={`inline-flex w-full items-center justify-center cursor-pointer rounded px-2 py-1 transition ${
+                  speedUnit === "feet"
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="speed-unit-panel"
+                  className="sr-only"
+                  checked={speedUnit === "feet"}
+                  onChange={() => setSpeedUnit("feet")}
+                />
+                <span>ft</span>
+              </label>
+              <label
+                className={`inline-flex w-full items-center justify-center cursor-pointer rounded px-2 py-1 transition ${
+                  speedUnit === "squares"
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="speed-unit-panel"
+                  className="sr-only"
+                  checked={speedUnit === "squares"}
+                  onChange={() => setSpeedUnit("squares")}
+                />
+                <span>sq</span>
+              </label>
+            </div>
+            <StatDetailList
+              rows={speedData.contributions.map((entry: { label: string; value: number }) => ({
+                label: entry.label,
+                value: formatSpeedValue(entry.value, speedUnit),
+              }))}
+            />
+            {speedData.note && (
+              <div className="border-t border-border/40 pt-2 text-[10px] italic text-muted-foreground/90">
+                {speedData.note}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
