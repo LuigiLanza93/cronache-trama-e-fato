@@ -27,5 +27,4 @@ dist-ssr
 .env
 prisma/dev.db
 prisma/dev.db-journal
-prisma/migration.db
 prisma/migration.db-journal
