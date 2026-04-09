@@ -190,9 +190,11 @@ Esito:
 
 ## Prossimo Passo
 
-La migrazione core e' conclusa. I prossimi passi consigliati sono:
+La migrazione core e' conclusa e il DB SQLite principale e' ora versionato nel repository.
+
+I prossimi passi consigliati sono:
 
 - manutenzione e hardening del codice migrato
 - cleanup dei residui legacy non piu' necessari
-- valutazione del merge del branch `migration` in `main`
+- definizione di una strategia chiara di backup / restore del file DB locale
 - evoluzione funzionale dell'app su base SQLite

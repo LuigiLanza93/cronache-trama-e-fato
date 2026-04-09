@@ -29,23 +29,6 @@ const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
 const sqlite = new DatabaseSync(SQLITE_DB_FILE);
 sqlite.exec("PRAGMA foreign_keys = ON;");
 
-const DEFAULT_RACE_SPEED_REFERENCES = [
-  { id: "race-speed-umano", raceName: "Umano", subraceName: null, speedMeters: 9, notes: null },
-  { id: "race-speed-nano-colline", raceName: "Nano", subraceName: "delle colline", speedMeters: 7.5, notes: "Armatura pesante non riduce la velocita" },
-  { id: "race-speed-nano-montagne", raceName: "Nano", subraceName: "delle montagne", speedMeters: 7.5, notes: "Armatura pesante non riduce la velocita" },
-  { id: "race-speed-elfo-alto", raceName: "Elfo", subraceName: "alto", speedMeters: 9, notes: null },
-  { id: "race-speed-elfo-boschi", raceName: "Elfo", subraceName: "dei boschi", speedMeters: 10.5, notes: "Piu rapido degli altri elfi" },
-  { id: "race-speed-elfo-drow", raceName: "Elfo", subraceName: "drow", speedMeters: 9, notes: null },
-  { id: "race-speed-halfling-piedelesto", raceName: "Halfling", subraceName: "piedelesto", speedMeters: 7.5, notes: null },
-  { id: "race-speed-halfling-tozzo", raceName: "Halfling", subraceName: "tozzo", speedMeters: 7.5, notes: null },
-  { id: "race-speed-dragonide", raceName: "Dragonide", subraceName: null, speedMeters: 9, notes: null },
-  { id: "race-speed-gnomo-foreste", raceName: "Gnomo", subraceName: "delle foreste", speedMeters: 7.5, notes: null },
-  { id: "race-speed-gnomo-rocce", raceName: "Gnomo", subraceName: "delle rocce", speedMeters: 7.5, notes: null },
-  { id: "race-speed-mezzelfo", raceName: "Mezzelfo", subraceName: null, speedMeters: 9, notes: null },
-  { id: "race-speed-mezzorco", raceName: "Mezzorco", subraceName: null, speedMeters: 9, notes: null },
-  { id: "race-speed-tiefling", raceName: "Tiefling", subraceName: null, speedMeters: 9, notes: null },
-];
-
 const CHARACTER_SHEET_LAYOUT_KEY = "character-sheet";
 const ALLOWED_CHARACTER_SHEET_CARD_IDS = new Set([
   "abilityScores",
@@ -514,29 +497,6 @@ function ensureRaceSpeedReferenceTable() {
     ON "RaceSpeedReference"("raceName", "subraceName");
   `);
 
-  const countRow = sqlite.prepare('SELECT COUNT(*) as count FROM "RaceSpeedReference"').get();
-  if (Number(countRow?.count ?? 0) > 0) return;
-
-  const insertReference = sqlite.prepare(`
-    INSERT INTO "RaceSpeedReference" (
-      id, raceName, subraceName, speedMeters, notes, createdAt, updatedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-  const now = new Date().toISOString();
-
-  runInTransaction(() => {
-    for (const entry of DEFAULT_RACE_SPEED_REFERENCES) {
-      insertReference.run(
-        entry.id,
-        entry.raceName,
-        entry.subraceName,
-        entry.speedMeters,
-        entry.notes,
-        now,
-        now
-      );
-    }
-  });
 }
 
 function ensureUserLayoutPreferenceTable() {
@@ -1407,6 +1367,7 @@ function readCharacterSlotOccupancy(characterId, excludedItemIds = []) {
     JOIN "CharacterItem" ci ON ci.id = cie.characterItemId
     LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
     WHERE ci.characterId = ?
+      AND ci.isEquipped = 1
   `).all(characterId);
 
   const excluded = new Set((Array.isArray(excludedItemIds) ? excludedItemIds : []).filter(Boolean));
@@ -1887,6 +1848,7 @@ function transferCharacterItemBetweenCharacters(fromCharacterSlug, characterItem
     );
 
       if (transferMode === "move") {
+        sqlite.prepare('DELETE FROM "CharacterItemEquip" WHERE characterItemId = ?').run(existing.id);
         sqlite.prepare(`
           UPDATE "CharacterItem"
           SET characterId = ?, sortOrder = ?, isEquipped = 0, updatedAt = ?
@@ -2058,6 +2020,7 @@ function undoInventoryTransfer(transactionId, actorUserId = null) {
           throw new Error("Cannot undo this transfer anymore");
       }
 
+      sqlite.prepare('DELETE FROM "CharacterItemEquip" WHERE characterItemId = ?').run(snapshot.destinationItemId);
       sqlite.prepare(`
         UPDATE "CharacterItem"
         SET characterId = ?, sortOrder = ?, isEquipped = 0, updatedAt = ?

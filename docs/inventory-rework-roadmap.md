@@ -42,11 +42,10 @@ Il sistema quindi non e' piu' solo "ibrido legacy", ma non e' ancora completo su
 
 ### Gap ancora aperti
 
-- equipaggiamento ancora espresso in pratica come `isEquipped`, non come occupazione reale di slot
-- `CharacterItemEquip` non governa ancora il flusso applicativo
-- attacchi strutturati presenti, ma non ancora risolti in funzione degli slot effettivi
-- bonus e CA non ancora derivati automaticamente in modo sistematico
-- storico transazionale presente come modello, ma non ancora usato per tutti i movimenti
+- rifinitura dei trigger passivi che dipendono dall'assetto reale di mani/slot
+- consolidamento definitivo dei residui legacy ancora presenti nel frontend della scheda
+- passaggio completo delle monete al modello transazionale
+- manutenzione del ledger e dello storico transazioni su tutti i flussi futuri
 
 ## Stato implementazione
 
@@ -72,11 +71,19 @@ Il sistema quindi non e' piu' solo "ibrido legacy", ma non e' ancora completo su
   - consumabili
 - modale inventario giocatore collegata al catalogo DB
 - inserimento rapido di oggetti custom dal punto di ingresso inventario
-- equip / disequip DB senza regole slot ancora attive
+- equip / disequip DB
 - incremento / decremento consumabili DB
 - supporto a `playerVisible`
 - regola di unicita' per gli oggetti `UNIQUE`
 - filtro degli oggetti `UNIQUE` gia' assegnati nei flussi di assegnazione
+- gestione reale degli slot con `CharacterItemEquip`
+- risoluzione slot, scelte e swap in equipaggiamento
+- cambio impugnatura per oggetti equipaggiati
+- attacchi derivati dagli slot reali
+- calcolo automatico di CA, iniziativa e velocita'
+- trasferimento oggetti tra PG con storico transazioni
+- annullamento dei trasferimenti PG
+- feature degli oggetti equipaggiati ricondotte nella sezione `Skills`
 
 ### Parzialmente completato
 
@@ -95,18 +102,10 @@ Il sistema quindi non e' piu' solo "ibrido legacy", ma non e' ancora completo su
 
 ### Non ancora completato
 
-- `canEquip` reale basato su slot liberi/occupati
-- uso applicativo di `CharacterItemEquip`
-- scelta e risoluzione slot per:
-  - anelli
-  - armi a una mano
-  - armi versatili
-  - guanti singoli / coppia
-- `resolveEquippedAttacks` basato su equipaggiamento effettivo
-- calcolo automatico CA da armatura, scudo e modifier
-- applicazione automatica dei bonus oggetto alle caratteristiche/statistiche
+- applicazione sistematica dei trigger passivi basati sull'assetto reale degli slot
+- estensione dei bonus automatici anche agli altri calcoli derivati piu' avanzati
 - passaggio completo delle monete al modello transazionale
-- rimozione finale delle dipendenze legacy dal JSON
+- rimozione finale delle dipendenze legacy residue dal JSON
 
 ## Modello dati approvato
 

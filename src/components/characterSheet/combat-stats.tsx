@@ -55,18 +55,6 @@ function formatSpeedValue(
   }
 }
 
-function StatDetailPanel({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mt-2 w-full rounded-lg border border-border/50 bg-background/25 px-3 py-2 text-left">
-      {children}
-    </div>
-  );
-}
-
 function StatDetailRows({
   rows,
 }: {
@@ -570,13 +558,6 @@ const CombatStats = ({
             <ChevronDown className="h-4 w-4" />
           )}
         </button>
-        {false && armorDetailsOpen && (
-          <StatDetailPanel>
-            <StatDetailRows
-              rows={armorClassData.breakdown.map((entry: string) => ({ label: entry }))}
-            />
-          </StatDetailPanel>
-        )}
       </Card>
       <Card className="flex flex-col dnd-frame p-4 text-center">
         <Zap className="w-6 h-6 mx-auto text-primary mb-2" />
@@ -598,13 +579,6 @@ const CombatStats = ({
             <ChevronDown className="h-4 w-4" />
           )}
         </button>
-        {false && initiativeDetailsOpen && (
-          <StatDetailPanel>
-            <StatDetailRows
-              rows={initiativeData.breakdown.map((entry: string) => ({ label: entry }))}
-            />
-          </StatDetailPanel>
-        )}
       </Card>
       <Card className="flex flex-col dnd-frame p-4 text-center">
         <FastForward className="w-6 h-6 mx-auto text-primary mb-2" />
@@ -626,131 +600,6 @@ const CombatStats = ({
             <ChevronDown className="h-4 w-4" />
           )}
         </button>
-        {false && speedDetailsOpen && (
-          <div className="mt-1 space-y-1 text-[11px] leading-snug text-muted-foreground">
-            {speedData.breakdown.map((entry: string, index: number) => (
-              <div key={`speed-breakdown-${index}`} className="flex items-start justify-center gap-1">
-                <span className="mt-[2px] text-[9px]">•</span>
-                <span>{entry}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {false && speedDetailsOpen && (
-          <div className="mt-2 w-full rounded-md border border-border/60 bg-background/20 p-2">
-            <div className="grid grid-cols-3 gap-1.5 text-[10px] text-muted-foreground">
-              <label className="inline-flex items-center justify-center gap-1 rounded border border-border/50 px-1 py-1 cursor-pointer">
-                <input
-                  type="radio"
-                  name="speed-unit"
-                  checked={speedUnit === "meters"}
-                  onChange={() => setSpeedUnit("meters")}
-                />
-                <span>m</span>
-              </label>
-              <label className="inline-flex items-center justify-center gap-1 rounded border border-border/50 px-1 py-1 cursor-pointer">
-                <input
-                  type="radio"
-                  name="speed-unit"
-                  checked={speedUnit === "feet"}
-                  onChange={() => setSpeedUnit("feet")}
-                />
-                <span>ft</span>
-              </label>
-              <label className="inline-flex items-center justify-center gap-1 rounded border border-border/50 px-1 py-1 cursor-pointer">
-                <input
-                  type="radio"
-                  name="speed-unit"
-                  checked={speedUnit === "squares"}
-                  onChange={() => setSpeedUnit("squares")}
-                />
-                <span>Q</span>
-              </label>
-            </div>
-            <div className="mt-2 space-y-1.5">
-            {speedData.contributions.map((entry: { label: string; value: number }, index: number) => (
-              <div key={`speed-breakdown-modern-${index}`} className="text-left text-[11px] leading-snug text-muted-foreground">
-                <span className="mt-[2px] text-[9px]">•</span>
-                <span className="font-medium text-foreground/90">{entry.label}</span>
-                <span>: {formatSpeedValue(entry.value, speedUnit)}</span>
-              </div>
-            ))}
-            {speedData.note && (
-              <div className="text-left text-[10px] italic text-muted-foreground/90">
-                <span className="mt-[2px] text-[9px]">•</span>
-                <span>Nota: {speedData.note}</span>
-              </div>
-            )}
-            </div>
-          </div>
-        )}
-        {false && speedDetailsOpen && (
-          <StatDetailPanel>
-            <div className="space-y-2">
-            <div className="grid w-full grid-cols-3 gap-1 rounded-md border border-border/40 bg-background/30 p-1 text-[10px]">
-              <label
-                className={`inline-flex w-full items-center justify-center cursor-pointer rounded px-2 py-1 transition ${
-                  speedUnit === "meters"
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="speed-unit-clean"
-                  className="sr-only"
-                  checked={speedUnit === "meters"}
-                  onChange={() => setSpeedUnit("meters")}
-                />
-                <span>m</span>
-              </label>
-              <label
-                className={`inline-flex w-full items-center justify-center cursor-pointer rounded px-2 py-1 transition ${
-                  speedUnit === "feet"
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="speed-unit-clean"
-                  className="sr-only"
-                  checked={speedUnit === "feet"}
-                  onChange={() => setSpeedUnit("feet")}
-                />
-                <span>ft</span>
-              </label>
-              <label
-                className={`inline-flex w-full items-center justify-center cursor-pointer rounded px-2 py-1 transition ${
-                  speedUnit === "squares"
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="speed-unit-clean"
-                  className="sr-only"
-                  checked={speedUnit === "squares"}
-                  onChange={() => setSpeedUnit("squares")}
-                />
-                <span>sq</span>
-              </label>
-            </div>
-            <StatDetailList
-              rows={speedData.contributions.map((entry: { label: string; value: number }) => ({
-                label: entry.label,
-                value: formatSpeedValue(entry.value, speedUnit),
-              }))}
-            />
-            {speedData.note && (
-              <div className="border-t border-border/40 pt-2 text-[10px] italic text-muted-foreground/90">
-                {speedData.note}
-              </div>
-            )}
-            </div>
-          </StatDetailPanel>
-        )}
       </Card>
 
       {armorDetailsOpen && (
