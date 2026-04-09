@@ -14,8 +14,11 @@ import {
   assignItemToCharacterRequest,
   deleteCharacterInventoryItemRequest,
   fetchCharacterInventoryItemsForDm,
+  fetchInventoryTransfers,
   fetchItemDefinitions,
+  undoInventoryTransactionRequest,
   type CharacterInventoryItemEntry,
+  type InventoryTransferEntry,
   type ItemDefinitionSummary,
 } from "@/lib/auth";
 
@@ -53,8 +56,10 @@ export default function CharacterInventoryManagement() {
   const [quantity, setQuantity] = useState("1");
   const [notes, setNotes] = useState("");
   const [inventoryItems, setInventoryItems] = useState<CharacterInventoryItemEntry[]>([]);
+  const [transfers, setTransfers] = useState<InventoryTransferEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [transfersLoading, setTransfersLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
@@ -62,10 +67,25 @@ export default function CharacterInventoryManagement() {
   }, []);
 
   useEffect(() => {
+    const scrollToHashTarget = () => {
+      if (window.location.hash !== "#transazioni") return;
+      const target = document.getElementById("transazioni");
+      if (!target) return;
+      window.requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    };
+
+    scrollToHashTarget();
+    window.addEventListener("hashchange", scrollToHashTarget);
+    return () => window.removeEventListener("hashchange", scrollToHashTarget);
+  }, []);
+
+  useEffect(() => {
     let active = true;
 
-    void Promise.all([fetchCharacters(), fetchItemDefinitions()])
-      .then(([characterStates, itemDefinitions]) => {
+    void Promise.all([fetchCharacters(), fetchItemDefinitions(), fetchInventoryTransfers()])
+      .then(([characterStates, itemDefinitions, transferEntries]) => {
         if (!active) return;
         const nextCharacters = (Array.isArray(characterStates) ? characterStates : [])
           .map(normalizeCharacter)
@@ -79,6 +99,7 @@ export default function CharacterInventoryManagement() {
 
         setCharacters(nextCharacters);
         setItems(nextItems);
+        setTransfers(Array.isArray(transferEntries) ? transferEntries : []);
         setSelectedCharacterSlug((prev) => prev || nextCharacters[0]?.slug || "");
         setSelectedItemId((prev) => prev || nextItems[0]?.id || "");
       })
@@ -128,6 +149,18 @@ export default function CharacterInventoryManagement() {
     }
   };
 
+  const refreshTransfers = async () => {
+    setTransfersLoading(true);
+    try {
+      const nextTransfers = await fetchInventoryTransfers();
+      setTransfers(Array.isArray(nextTransfers) ? nextTransfers : []);
+    } catch {
+      toast.error("Non sono riuscito a caricare le transazioni oggetto.");
+    } finally {
+      setTransfersLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!selectedCharacterSlug) {
       setInventoryItems([]);
@@ -148,6 +181,7 @@ export default function CharacterInventoryManagement() {
       setInventoryItems(Array.isArray(nextInventory) ? nextInventory : []);
       setQuantity("1");
       setNotes("");
+      await refreshTransfers();
       toast.success("Oggetto assegnato al personaggio.");
     } catch (error: any) {
       toast.error(error?.message || "Non sono riuscito ad assegnare l'oggetto.");
@@ -167,6 +201,30 @@ export default function CharacterInventoryManagement() {
     }
   };
 
+  const undoTransfer = async (transactionId: string) => {
+    try {
+      await undoInventoryTransactionRequest(transactionId);
+      await refreshTransfers();
+      if (selectedCharacterSlug) {
+        await refreshInventory(selectedCharacterSlug);
+      }
+      const [characterStates, itemDefinitions] = await Promise.all([fetchCharacters(), fetchItemDefinitions()]);
+      const nextCharacters = (Array.isArray(characterStates) ? characterStates : [])
+        .map(normalizeCharacter)
+        .filter((entry): entry is CharacterSummary => !!entry)
+        .sort((a, b) => a.name.localeCompare(b.name, "it", { sensitivity: "base" }));
+      const nextItems = (Array.isArray(itemDefinitions) ? itemDefinitions : [])
+        .filter(isAvailableForAssignment)
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name, "it", { sensitivity: "base" }));
+      setCharacters(nextCharacters);
+      setItems(nextItems);
+      toast.success("Trasferimento annullato.");
+    } catch (error: any) {
+      toast.error(error?.message || "Non sono riuscito ad annullare il trasferimento.");
+    }
+  };
+
   return (
     <div className="min-h-screen parchment px-6 py-12">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -179,7 +237,7 @@ export default function CharacterInventoryManagement() {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
-              <Link to="/dm" aria-label="Torna alla home DM">
+              <Link to="/" aria-label="Torna alla home DM">
                 <Home className="h-4 w-4" />
               </Link>
             </Button>
@@ -320,6 +378,56 @@ export default function CharacterInventoryManagement() {
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </Card>
+
+            <Card id="transazioni" className="character-section space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-primary">Transazioni oggetti</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Storico di assegnazioni, rimozioni DM e trasferimenti tra PG, con possibilita di annullare gli scambi.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => void refreshTransfers()} disabled={transfersLoading}>
+                  Ricarica
+                </Button>
+              </div>
+
+              <ScrollArea className="h-[34vh] rounded-2xl border border-border/60 bg-background/45">
+                <div className="divide-y divide-border/50">
+                  {transfersLoading ? (
+                    <div className="px-4 py-4 text-sm text-muted-foreground">Carico transazioni...</div>
+                  ) : transfers.length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-muted-foreground">Nessuna transazione registrata.</div>
+                  ) : (
+                    transfers.map((entry) => (
+                      <div key={entry.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                        <div className="min-w-0">
+                          <div className="font-medium text-primary">
+                            {entry.actionLabel} - {entry.itemName} - qty {entry.quantity}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {entry.type === "INITIAL_GRANT"
+                              ? `DM -> ${entry.toCharacterName ?? "?"}`
+                              : entry.type === "REMOVAL"
+                                ? `${entry.fromCharacterName ?? "?"} -> DM`
+                                : `${entry.fromCharacterName ?? "?"} -> ${entry.toCharacterName ?? "?"}`}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {new Date(entry.createdAt).toLocaleString("it-IT")}
+                            {entry.undone ? " - annullata" : ""}
+                          </div>
+                        </div>
+                        {entry.canUndo ? (
+                          <Button variant="outline" size="sm" onClick={() => void undoTransfer(entry.id)}>
+                            Annulla
+                          </Button>
+                        ) : null}
                       </div>
                     ))
                   )}

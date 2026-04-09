@@ -40,10 +40,71 @@ const MODIFIER_TARGET_OPTIONS = ["ARMOR_CLASS", "STRENGTH", "DEXTERITY", "CONSTI
 const MODIFIER_TYPE_OPTIONS = ["FLAT", "FORMULA", "SET_MIN", "OVERRIDE"];
 const EFFECT_CONDITION_OPTIONS = ["ALWAYS", "WHILE_EQUIPPED"];
 const FEATURE_RESET_OPTIONS = ["AT_WILL", "ENCOUNTER", "SHORT_REST", "LONG_REST", "DAILY", "CUSTOM"];
+const FEATURE_KIND_OPTIONS = ["ACTIVE", "PASSIVE"];
 const ABILITY_SCORE_OPTIONS = ["STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA"];
 const USE_EFFECT_TYPE_OPTIONS = ["HEAL", "DAMAGE", "TEMP_HP", "APPLY_CONDITION", "REMOVE_CONDITION", "RESTORE_RESOURCE", "CUSTOM"];
 const USE_TARGET_TYPE_OPTIONS = ["SELF", "CREATURE", "OBJECT", "AREA", "CUSTOM"];
 const USE_SUCCESS_OUTCOME_OPTIONS = ["NONE", "HALF", "NEGATES", "CUSTOM"];
+const PASSIVE_EFFECT_TARGET_OPTIONS = ["ARMOR_CLASS", "INITIATIVE", "SPEED", "HIT_POINT_MAX", "STRENGTH_SCORE", "DEXTERITY_SCORE", "CONSTITUTION_SCORE", "INTELLIGENCE_SCORE", "WISDOM_SCORE", "CHARISMA_SCORE", "ATTACK_ROLL", "DAMAGE_ROLL", "MELEE_ATTACK_ROLL", "MELEE_DAMAGE_ROLL", "RANGED_ATTACK_ROLL", "RANGED_DAMAGE_ROLL", "OFF_HAND_DAMAGE_ROLL", "CUSTOM"];
+const PASSIVE_EFFECT_TRIGGER_OPTIONS = ["ALWAYS", "WHILE_ARMORED", "WHILE_SHIELD_EQUIPPED", "WHILE_WIELDING_SINGLE_MELEE_WEAPON", "WHILE_DUAL_WIELDING", "WHILE_WIELDING_TWO_HANDED_WEAPON", "CUSTOM"];
+const PASSIVE_EFFECT_VALUE_MODE_OPTIONS = ["FLAT", "ABILITY_MODIFIER", "ABILITY_SCORE", "PROFICIENCY_BONUS", "CHARACTER_LEVEL"];
+const PASSIVE_EFFECT_ROUNDING_OPTIONS = ["FLOOR", "CEIL"];
+
+type PassiveEffectTarget =
+  | "ARMOR_CLASS"
+  | "INITIATIVE"
+  | "SPEED"
+  | "HIT_POINT_MAX"
+  | "STRENGTH_SCORE"
+  | "DEXTERITY_SCORE"
+  | "CONSTITUTION_SCORE"
+  | "INTELLIGENCE_SCORE"
+  | "WISDOM_SCORE"
+  | "CHARISMA_SCORE"
+  | "ATTACK_ROLL"
+  | "DAMAGE_ROLL"
+  | "MELEE_ATTACK_ROLL"
+  | "MELEE_DAMAGE_ROLL"
+  | "RANGED_ATTACK_ROLL"
+  | "RANGED_DAMAGE_ROLL"
+  | "OFF_HAND_DAMAGE_ROLL"
+  | "CUSTOM";
+type PassiveEffectTrigger =
+  | "ALWAYS"
+  | "WHILE_ARMORED"
+  | "WHILE_SHIELD_EQUIPPED"
+  | "WHILE_WIELDING_SINGLE_MELEE_WEAPON"
+  | "WHILE_DUAL_WIELDING"
+  | "WHILE_WIELDING_TWO_HANDED_WEAPON"
+  | "CUSTOM";
+type PassiveEffectValueMode =
+  | "FLAT"
+  | "ABILITY_MODIFIER"
+  | "ABILITY_SCORE"
+  | "PROFICIENCY_BONUS"
+  | "CHARACTER_LEVEL";
+type PassiveEffectRounding = "FLOOR" | "CEIL";
+type PassiveEffectSourceAbility =
+  | "STRENGTH"
+  | "DEXTERITY"
+  | "CONSTITUTION"
+  | "INTELLIGENCE"
+  | "WISDOM"
+  | "CHARISMA";
+
+type PassiveEffectEntry = {
+  target: PassiveEffectTarget;
+  valueMode?: PassiveEffectValueMode;
+  value: number;
+  sourceAbility?: PassiveEffectSourceAbility;
+  multiplierNumerator?: number;
+  multiplierDenominator?: number;
+  rounding?: PassiveEffectRounding;
+  trigger: PassiveEffectTrigger;
+  customTargetLabel?: string;
+  customTriggerLabel?: string;
+  notes?: string;
+};
 
 function cloneItem(item: ItemDefinitionEntry) {
   return structuredClone(item);
@@ -77,7 +138,34 @@ function newModifier(): ItemModifierEntry {
 }
 
 function newFeature(): ItemFeatureEntry {
-  return { id: crypto.randomUUID(), name: "", description: null, resetOn: null, customResetLabel: null, maxUses: null, condition: "WHILE_EQUIPPED", sortOrder: 0 };
+  return {
+    id: crypto.randomUUID(),
+    name: "",
+    kind: "ACTIVE",
+    description: null,
+    resetOn: null,
+    customResetLabel: null,
+    maxUses: null,
+    passiveEffects: [],
+    condition: "WHILE_EQUIPPED",
+    sortOrder: 0,
+  };
+}
+
+function newPassiveEffect(): PassiveEffectEntry {
+  return {
+    target: "ARMOR_CLASS",
+    valueMode: "FLAT",
+    value: 1,
+    sourceAbility: "DEXTERITY",
+    multiplierNumerator: 1,
+    multiplierDenominator: 1,
+    rounding: "FLOOR",
+    trigger: "ALWAYS",
+    customTargetLabel: "",
+    customTriggerLabel: "",
+    notes: "",
+  };
 }
 
 function newAbilityRequirement(): ItemAbilityRequirementEntry {
@@ -255,7 +343,7 @@ export default function ItemManagement() {
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
-              <Link to="/dm" aria-label="Torna alla home DM">
+              <Link to="/" aria-label="Torna alla home DM">
                 <Home className="h-4 w-4" />
               </Link>
             </Button>
@@ -874,42 +962,394 @@ export default function ItemManagement() {
                         <div key={entry.id} className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-3">
                           <TextRow label="Nome" value={entry.name} onChange={(value) => setDraftItem({ ...draftItem, features: draftItem.features.map((row, rowIndex) => rowIndex === index ? { ...row, name: value } : row) })} />
                           <div className="space-y-2">
+                            <Label>Tipo feature</Label>
+                            <Select
+                              value={entry.kind ?? "ACTIVE"}
+                              onValueChange={(value) =>
+                                setDraftItem({
+                                  ...draftItem,
+                                  features: draftItem.features.map((row, rowIndex) =>
+                                    rowIndex === index
+                                      ? {
+                                          ...row,
+                                          kind: value,
+                                          resetOn: value === "ACTIVE" ? row.resetOn : null,
+                                          customResetLabel: value === "ACTIVE" ? row.customResetLabel : null,
+                                          maxUses: value === "ACTIVE" ? row.maxUses : null,
+                                          passiveEffects: value === "PASSIVE" ? (Array.isArray(row.passiveEffects) ? row.passiveEffects : []) : [],
+                                        }
+                                      : row
+                                  ),
+                                })
+                              }
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {FEATURE_KIND_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
                             <Label>Description</Label>
                             <Textarea rows={3} value={entry.description ?? ""} onChange={(event) => setDraftItem({ ...draftItem, features: draftItem.features.map((row, rowIndex) => rowIndex === index ? { ...row, description: event.target.value || null } : row) })} />
                           </div>
-                          <div className="grid gap-3 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <Label>Reset on</Label>
-                              <Select value={entry.resetOn ?? "__none__"} onValueChange={(value) => setDraftItem({
-                                ...draftItem,
-                                features: draftItem.features.map((row, rowIndex) =>
-                                  rowIndex === index
-                                    ? {
-                                        ...row,
-                                        resetOn: value === "__none__" ? null : value,
-                                        customResetLabel: value === "CUSTOM" ? row.customResetLabel : null,
+                          {entry.kind === "ACTIVE" ? (
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <Label>Reset on</Label>
+                                <Select value={entry.resetOn ?? "__none__"} onValueChange={(value) => setDraftItem({
+                                  ...draftItem,
+                                  features: draftItem.features.map((row, rowIndex) =>
+                                    rowIndex === index
+                                      ? {
+                                          ...row,
+                                          resetOn: value === "__none__" ? null : value,
+                                          customResetLabel: value === "CUSTOM" ? row.customResetLabel : null,
+                                        }
+                                      : row
+                                  ),
+                                })}>
+                                  <SelectTrigger><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__none__">Nessuno</SelectItem>
+                                    {FEATURE_RESET_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <TextRow label="Max uses" value={entry.maxUses != null ? String(entry.maxUses) : ""} onChange={(value) => setDraftItem({ ...draftItem, features: draftItem.features.map((row, rowIndex) => rowIndex === index ? { ...row, maxUses: value ? Number(value) : null } : row) })} />
+                              {entry.resetOn === "CUSTOM" ? (
+                                <TextRow label="Custom reset label" value={entry.customResetLabel} onChange={(value) => setDraftItem({ ...draftItem, features: draftItem.features.map((row, rowIndex) => rowIndex === index ? { ...row, customResetLabel: value || null } : row) })} />
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="space-y-3 rounded-2xl border border-border/60 bg-background/35 p-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <div className="font-medium text-primary">Effetti passivi</div>
+                                  <div className="text-xs text-muted-foreground">Bonus modulari applicati quando la feature è attiva.</div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    setDraftItem({
+                                      ...draftItem,
+                                      features: draftItem.features.map((row, rowIndex) =>
+                                        rowIndex === index
+                                          ? {
+                                              ...row,
+                                              passiveEffects: [...(Array.isArray(row.passiveEffects) ? row.passiveEffects : []), newPassiveEffect()],
+                                            }
+                                          : row
+                                      ),
+                                    })
+                                  }
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Aggiungi effetto
+                                </Button>
+                              </div>
+
+                              {(Array.isArray(entry.passiveEffects) ? entry.passiveEffects : []).length === 0 ? (
+                                <div className="text-sm text-muted-foreground">Nessun effetto passivo configurato.</div>
+                              ) : null}
+
+                              {(Array.isArray(entry.passiveEffects) ? entry.passiveEffects : []).map((effect, effectIndex) => (
+                                <div key={`${entry.id}-effect-${effectIndex}`} className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-3">
+                                  <div className="grid gap-3 md:grid-cols-3">
+                                    <div className="space-y-2">
+                                      <Label>Bersaglio</Label>
+                                      <Select
+                                        value={effect.target}
+                                        onValueChange={(value) =>
+                                          setDraftItem({
+                                            ...draftItem,
+                                            features: draftItem.features.map((row, rowIndex) =>
+                                              rowIndex === index
+                                                ? {
+                                                    ...row,
+                                                    passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                      currentIndex === effectIndex ? { ...currentEffect, target: value } : currentEffect
+                                                    ),
+                                                  }
+                                                : row
+                                            ),
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>{PASSIVE_EFFECT_TARGET_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Valore</Label>
+                                      <Select
+                                        value={effect.valueMode ?? "FLAT"}
+                                        onValueChange={(value) =>
+                                          setDraftItem({
+                                            ...draftItem,
+                                            features: draftItem.features.map((row, rowIndex) =>
+                                              rowIndex === index
+                                                ? {
+                                                    ...row,
+                                                    passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                      currentIndex === effectIndex ? { ...currentEffect, valueMode: value } : currentEffect
+                                                    ),
+                                                  }
+                                                : row
+                                            ),
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>{PASSIVE_EFFECT_VALUE_MODE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <Label>Trigger</Label>
+                                      <Select
+                                        value={effect.trigger}
+                                        onValueChange={(value) =>
+                                          setDraftItem({
+                                            ...draftItem,
+                                            features: draftItem.features.map((row, rowIndex) =>
+                                              rowIndex === index
+                                                ? {
+                                                    ...row,
+                                                    passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                      currentIndex === effectIndex ? { ...currentEffect, trigger: value } : currentEffect
+                                                    ),
+                                                  }
+                                                : row
+                                            ),
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>{PASSIVE_EFFECT_TRIGGER_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+
+                                  {(effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE") ? (
+                                    <div className="space-y-2">
+                                      <Label>Caratteristica sorgente</Label>
+                                      <Select
+                                        value={effect.sourceAbility ?? "DEXTERITY"}
+                                        onValueChange={(value) =>
+                                          setDraftItem({
+                                            ...draftItem,
+                                            features: draftItem.features.map((row, rowIndex) =>
+                                              rowIndex === index
+                                                ? {
+                                                    ...row,
+                                                    passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                      currentIndex === effectIndex ? { ...currentEffect, sourceAbility: value } : currentEffect
+                                                    ),
+                                                  }
+                                                : row
+                                            ),
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>{ABILITY_SCORE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                                      </Select>
+                                    </div>
+                                  ) : null}
+
+                                  {(effect.valueMode ?? "FLAT") !== "FLAT" ? (
+                                    <div className="grid gap-3 md:grid-cols-3">
+                                      <TextRow
+                                        label="Rapporto num."
+                                        value={String(effect.multiplierNumerator ?? 1)}
+                                        onChange={(value) =>
+                                          setDraftItem({
+                                            ...draftItem,
+                                            features: draftItem.features.map((row, rowIndex) =>
+                                              rowIndex === index
+                                                ? {
+                                                    ...row,
+                                                    passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                      currentIndex === effectIndex ? { ...currentEffect, multiplierNumerator: Math.max(1, Number(value || 1)) } : currentEffect
+                                                    ),
+                                                  }
+                                                : row
+                                            ),
+                                          })
+                                        }
+                                      />
+                                      <TextRow
+                                        label="Rapporto den."
+                                        value={String(effect.multiplierDenominator ?? 1)}
+                                        onChange={(value) =>
+                                          setDraftItem({
+                                            ...draftItem,
+                                            features: draftItem.features.map((row, rowIndex) =>
+                                              rowIndex === index
+                                                ? {
+                                                    ...row,
+                                                    passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                      currentIndex === effectIndex ? { ...currentEffect, multiplierDenominator: Math.max(1, Number(value || 1)) } : currentEffect
+                                                    ),
+                                                  }
+                                                : row
+                                            ),
+                                          })
+                                        }
+                                      />
+                                      {(effect.multiplierDenominator ?? 1) !== 1 ? (
+                                        <div className="space-y-2">
+                                          <Label>Arrotondamento</Label>
+                                          <Select
+                                            value={effect.rounding ?? "FLOOR"}
+                                            onValueChange={(value) =>
+                                              setDraftItem({
+                                                ...draftItem,
+                                                features: draftItem.features.map((row, rowIndex) =>
+                                                  rowIndex === index
+                                                    ? {
+                                                        ...row,
+                                                        passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                          currentIndex === effectIndex ? { ...currentEffect, rounding: value } : currentEffect
+                                                        ),
+                                                      }
+                                                    : row
+                                                ),
+                                              })
+                                            }
+                                          >
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>{PASSIVE_EFFECT_ROUNDING_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                                          </Select>
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
+
+                                  <TextRow
+                                    label={(effect.valueMode ?? "FLAT") === "FLAT" ? "Bonus fisso" : "Offset opzionale"}
+                                    value={String(effect.value ?? 0)}
+                                    onChange={(value) =>
+                                      setDraftItem({
+                                        ...draftItem,
+                                        features: draftItem.features.map((row, rowIndex) =>
+                                          rowIndex === index
+                                            ? {
+                                                ...row,
+                                                passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                  currentIndex === effectIndex ? { ...currentEffect, value: Number(value || 0) } : currentEffect
+                                                ),
+                                              }
+                                            : row
+                                        ),
+                                      })
+                                    }
+                                  />
+
+                                  {effect.target === "CUSTOM" ? (
+                                    <TextRow
+                                      label="Etichetta bersaglio"
+                                      value={effect.customTargetLabel ?? ""}
+                                      onChange={(value) =>
+                                        setDraftItem({
+                                          ...draftItem,
+                                          features: draftItem.features.map((row, rowIndex) =>
+                                            rowIndex === index
+                                              ? {
+                                                  ...row,
+                                                  passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                    currentIndex === effectIndex ? { ...currentEffect, customTargetLabel: value } : currentEffect
+                                                  ),
+                                                }
+                                              : row
+                                          ),
+                                        })
                                       }
-                                    : row
-                                ),
-                              })}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="__none__">Nessuno</SelectItem>
-                                  {FEATURE_RESET_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
+                                    />
+                                  ) : null}
+
+                                  {effect.trigger === "CUSTOM" ? (
+                                    <TextRow
+                                      label="Etichetta trigger"
+                                      value={effect.customTriggerLabel ?? ""}
+                                      onChange={(value) =>
+                                        setDraftItem({
+                                          ...draftItem,
+                                          features: draftItem.features.map((row, rowIndex) =>
+                                            rowIndex === index
+                                              ? {
+                                                  ...row,
+                                                  passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                    currentIndex === effectIndex ? { ...currentEffect, customTriggerLabel: value } : currentEffect
+                                                  ),
+                                                }
+                                              : row
+                                          ),
+                                        })
+                                      }
+                                    />
+                                  ) : null}
+
+                                  <div className="space-y-2">
+                                    <Label>Note</Label>
+                                    <Textarea
+                                      rows={2}
+                                      value={effect.notes ?? ""}
+                                      onChange={(event) =>
+                                        setDraftItem({
+                                          ...draftItem,
+                                          features: draftItem.features.map((row, rowIndex) =>
+                                            rowIndex === index
+                                              ? {
+                                                  ...row,
+                                                  passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                    currentIndex === effectIndex ? { ...currentEffect, notes: event.target.value } : currentEffect
+                                                  ),
+                                                }
+                                              : row
+                                          ),
+                                        })
+                                      }
+                                    />
+                                  </div>
+
+                                  <div className="flex justify-end">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() =>
+                                        setDraftItem({
+                                          ...draftItem,
+                                          features: draftItem.features.map((row, rowIndex) =>
+                                            rowIndex === index
+                                              ? {
+                                                  ...row,
+                                                  passiveEffects: (row.passiveEffects ?? []).filter((_: unknown, currentIndex: number) => currentIndex !== effectIndex),
+                                                }
+                                              : row
+                                          ),
+                                        })
+                                      }
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Rimuovi effetto
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <TextRow label="Max uses" value={entry.maxUses != null ? String(entry.maxUses) : ""} onChange={(value) => setDraftItem({ ...draftItem, features: draftItem.features.map((row, rowIndex) => rowIndex === index ? { ...row, maxUses: value ? Number(value) : null } : row) })} />
-                            {entry.resetOn === "CUSTOM" ? (
-                              <TextRow label="Custom reset label" value={entry.customResetLabel} onChange={(value) => setDraftItem({ ...draftItem, features: draftItem.features.map((row, rowIndex) => rowIndex === index ? { ...row, customResetLabel: value || null } : row) })} />
-                            ) : null}
-                            <div className="space-y-2 md:col-span-2">
-                              <Label>Condition</Label>
-                              <Select value={entry.condition} onValueChange={(value) => setDraftItem({ ...draftItem, features: draftItem.features.map((row, rowIndex) => rowIndex === index ? { ...row, condition: value } : row) })}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>{EFFECT_CONDITION_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
-                              </Select>
-                            </div>
+                          )}
+
+                          <div className="space-y-2">
+                            <Label>Condition</Label>
+                            <Select value={entry.condition} onValueChange={(value) => setDraftItem({ ...draftItem, features: draftItem.features.map((row, rowIndex) => rowIndex === index ? { ...row, condition: value } : row) })}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>{EFFECT_CONDITION_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                            </Select>
                           </div>
                           <div className="flex justify-end">
                             <Button type="button" variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDraftItem({ ...draftItem, features: draftItem.features.filter((_, rowIndex) => rowIndex !== index).map((row, rowIndex) => ({ ...row, sortOrder: rowIndex })) })}>

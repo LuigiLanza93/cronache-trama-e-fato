@@ -478,6 +478,61 @@ Questo evita di confondere:
 - "cosa puo' fare questo tipo di oggetto"
 - "quante volte questa specifica copia e' gia' stata usata"
 
+## Fase finale
+
+La fase finale del rework si concentra su tre blocchi applicativi.
+
+### 1. Feature oggetto ricondotte alle Skills
+
+Obiettivo:
+
+- le feature degli oggetti equipaggiati devono comparire nella sezione `Skills`
+- le skill derivate da oggetto devono essere distinguibili da quelle native del personaggio
+- il sistema deve poter convergere verso una maggiore compatibilita' tra `ItemFeature` e `CapabilityEntry`
+
+Sottostep:
+
+- v1: mostrare in `Skills` le feature degli oggetti equipaggiati come skill derivate readonly
+- v2: allineare il piu' possibile metadati, reset e categorie tra feature oggetto e capability
+- v3: valutare supporto strutturato ai `passiveEffects` anche sulle feature oggetto
+- v4: collegare lo stato d'uso reale delle feature oggetto a `CharacterItemFeatureState`
+
+Stato:
+
+- in corso
+
+### 2. Trasferimento oggetti tra PG
+
+Obiettivo:
+
+- permettere al DM di trasferire un oggetto da un personaggio a un altro
+- supportare sia stack sia istanze singole
+- registrare sempre lo storico in `InventoryTransaction`
+
+Stato:
+
+- non iniziato
+
+### 3. Occupazione reale degli slot
+
+Obiettivo:
+
+- fare governare l'equipaggiamento da `CharacterItemEquip`
+- chiedere input solo quando la scelta non e' ovvia
+- mostrare conflitti e proporre eventuali sostituzioni
+
+Regole guida finali:
+
+- se lo slot e' ovvio, niente dialog
+- gli anelli usano automaticamente il primo slot libero
+- scudo e arma a una mano vanno automaticamente nella mano libera quando non c'e' ambiguita'
+- le armi versatili chiedono la modalita' solo se entrambe sono possibili
+- se gli slot sono occupati, il sistema deve spiegare il conflitto e proporre cosa togliere
+
+Stato:
+
+- non iniziato
+
 ## Estensione proposta per consumabili e pozioni
 
 La struttura attuale permette gia' di censire una pozione come:

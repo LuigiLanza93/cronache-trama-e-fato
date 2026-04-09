@@ -51,39 +51,25 @@ const SLOT_LABELS: Record<string, string> = {
   FEET: "Scarpe",
   WEAPON_HAND_RIGHT: "Mano destra",
   WEAPON_HAND_LEFT: "Mano sinistra",
-  RING_1: "Anello 1",
-  RING_2: "Anello 2",
-  RING_3: "Anello 3",
-  RING_4: "Anello 4",
-  RING_5: "Anello 5",
-  RING_6: "Anello 6",
-  RING_7: "Anello 7",
-  RING_8: "Anello 8",
-  RING_9: "Anello 9",
-  RING_10: "Anello 10",
+  RINGS: "Anelli",
 };
 
 const SLOT_ORDER = [
-  "HEAD",
-  "BACK",
-  "ARMOR",
-  "GLOVE_LEFT",
-  "GLOVE_RIGHT",
-  "NECK",
-  "FEET",
   "WEAPON_HAND_RIGHT",
   "WEAPON_HAND_LEFT",
-  "RING_1",
-  "RING_2",
-  "RING_3",
-  "RING_4",
-  "RING_5",
-  "RING_6",
-  "RING_7",
-  "RING_8",
-  "RING_9",
-  "RING_10",
+  "HEAD",
+  "ARMOR",
+  "BACK",
+  "NECK",
+  "RINGS",
+  "GLOVE_LEFT",
+  "GLOVE_RIGHT",
+  "FEET",
 ] as const;
+
+function normalizeDisplaySlot(slot: string) {
+  return slot.startsWith("RING_") ? "RINGS" : slot;
+}
 
 function parseLegacyDamage(s: string | undefined): { dice?: string; type?: string } {
   const src = (s ?? "").trim();
@@ -546,6 +532,14 @@ const AttacksAndSpells = ({
       return detail.attacks
         .slice()
         .sort((a, b) => a.sortOrder - b.sortOrder)
+        .filter((attack) => {
+          const weaponHandSlots = (item.equippedSlots ?? []).filter((slot) => slot.startsWith("WEAPON_HAND_"));
+          const isTwoHanded = weaponHandSlots.length >= 2;
+          const isOneHanded = weaponHandSlots.length === 1;
+          if (attack.handRequirement === "TWO_HANDED") return isTwoHanded;
+          if (attack.handRequirement === "ONE_HANDED") return isOneHanded;
+          return true;
+        })
         .map((attack) => {
           const detailParts = [getAttackKindLabel(attack.kind)];
           const handLabel = getHandRequirementLabel(attack.handRequirement);
@@ -583,7 +577,9 @@ const AttacksAndSpells = ({
 
     equippedRelationalItems.forEach((item) => {
       const detail = item.itemDefinitionId ? itemDetailsById[item.itemDefinitionId] : undefined;
-      const slots = getDisplaySlots(detail);
+      const slots = Array.isArray(item.equippedSlots) && item.equippedSlots.length > 0
+        ? item.equippedSlots
+        : getDisplaySlots(detail);
       if (slots.length === 0) {
         const fallback = bucket.get("UNASSIGNED") ?? [];
         fallback.push({ item, detail });
@@ -592,9 +588,10 @@ const AttacksAndSpells = ({
       }
 
       slots.forEach((slot) => {
-        const current = bucket.get(slot) ?? [];
+        const normalizedSlot = normalizeDisplaySlot(slot);
+        const current = bucket.get(normalizedSlot) ?? [];
         current.push({ item, detail });
-        bucket.set(slot, current);
+        bucket.set(normalizedSlot, current);
       });
     });
 
@@ -604,25 +601,6 @@ const AttacksAndSpells = ({
       return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
     });
   }, [equippedRelationalItems, itemDetailsById]);
-
-  const attacks = Array.isArray(characterData?.equipment?.attacks)
-    ? characterData.equipment.attacks
-    : [];
-  const items = Array.isArray(characterData?.equipment?.items)
-    ? characterData.equipment.items
-    : [];
-
-  const equippedAttacks = attacks
-    .map((a: any, i: number) => ({ a, i }))
-    .filter(({ a }) => !!a.equipped);
-
-  const equippedObjects = items
-    .map((it: any, i: number) => ({ it, i }))
-    .filter(
-      ({ it }) => it?.type === "object" && it?.equippable === true && it?.equipped === true
-    );
-
-  const showLegacyFallback = relationalAttacks.length === 0 && equipmentBySlot.length === 0;
 
   const toggleAttackFormula = (rowKey: string) => {
     setExpandedAttackKeys((prev) =>
@@ -739,200 +717,8 @@ const AttacksAndSpells = ({
           </div>
         )}
 
-        {showLegacyFallback && (
-          <>
-            {equippedAttacks.length > 0 && (
-              <div className="space-y-2">
-                <div className="font-semibold text-primary">Armi</div>
-                {equippedAttacks.map(({ a: attack, i: originalIndex }) => {
-                  const byType = (attack.skillsByType ?? {}) as Partial<
-                    Record<SkillType, { name: string; used: boolean }[]>
-                  >;
-                  const hasAnyTyped =
-                    (byType.volonta?.length ?? 0) +
-                      (byType.incontro?.length ?? 0) +
-                      (byType.riposoBreve?.length ?? 0) +
-                      (byType.riposoLungo?.length ?? 0) >
-                    0;
-
-                  const legacyFlat = Array.isArray(attack.skills) ? attack.skills : [];
-                  const legacySingle = attack.skill ? [attack.skill] : [];
-                  const hasLegacy = legacyFlat.length > 0 || legacySingle.length > 0;
-
-                  return (
-                    <div
-                      key={`atk-${attack.name}-${originalIndex}`}
-                      className="flex items-center justify-between text-sm dnd-frame p-2"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{attack.name}</div>
-                        <div className="text-muted-foreground">{buildLegacyAttackDetail(attack)}</div>
-
-                        {hasAnyTyped && (
-                          <div className="mt-2 space-y-1">
-                            {(Object.keys(LABELS) as SkillType[]).map((t) => {
-                              const arr = byType[t] ?? [];
-                              if (arr.length === 0) return null;
-
-                              return (
-                                <div key={t} className="text-xs">
-                                  <div className="font-medium text-muted-foreground">{LABELS[t]}</div>
-                                  {t === "volonta" ? (
-                                    <div className="mt-1 flex flex-wrap gap-2">
-                                      {arr.map((s, si) => (
-                                        <span key={`${t}-${si}`} className="italic">
-                                          {s.name}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="mt-1 flex flex-wrap gap-3">
-                                      {arr.map((s, si) => (
-                                        <label
-                                          key={`${t}-${si}`}
-                                          className="inline-flex items-center gap-1 cursor-pointer select-none"
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            checked={!!s.used}
-                                            onChange={() => toggleAttackSkillUsed(originalIndex, t, si)}
-                                            className="h-3 w-3"
-                                            aria-label={`${LABELS[t]}: ${s.name}`}
-                                          />
-                                          <span className="italic">{s.name}</span>
-                                        </label>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {hasLegacy && (
-                          <div className="mt-2 text-muted-foreground text-xs italic">
-                            Altro: {[...legacySingle, ...legacyFlat].join(", ")}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="icon"
-                          variant="default"
-                          className="h-8 w-8"
-                          onClick={() => toggleEquipAttack(originalIndex)}
-                          aria-label="Disequipaggia arma"
-                          title="Disequipaggia"
-                        >
-                          <ShieldOff className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {equippedObjects.length > 0 && (
-              <div className="space-y-2">
-                <div className="font-semibold text-primary">Equipaggiamento</div>
-                {equippedObjects.map(({ it, i }) => {
-                  const byType = (it.skillsByType ?? {}) as Partial<
-                    Record<SkillType, { name: string; used: boolean }[]>
-                  >;
-                  const hasAnyTyped =
-                    (byType.volonta?.length ?? 0) +
-                      (byType.incontro?.length ?? 0) +
-                      (byType.riposoBreve?.length ?? 0) +
-                      (byType.riposoLungo?.length ?? 0) >
-                    0;
-
-                  return (
-                    <div
-                      key={`obj-${it.name}-${i}`}
-                      className="flex items-center justify-between text-sm dnd-frame p-2"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{it.name}</div>
-                        {it.description && (
-                          <div className="text-muted-foreground whitespace-pre-wrap">
-                            {it.description}
-                          </div>
-                        )}
-
-                        {hasAnyTyped && (
-                          <div className="mt-2 space-y-1">
-                            {(Object.keys(LABELS) as SkillType[]).map((t) => {
-                              const arr = byType[t] ?? [];
-                              if (arr.length === 0) return null;
-
-                              return (
-                                <div key={`obj-${t}`} className="text-xs">
-                                  <div className="font-medium text-muted-foreground">
-                                    {LABELS[t]}
-                                  </div>
-
-                                  {t === "volonta" ? (
-                                    <div className="mt-1 flex flex-wrap gap-2">
-                                      {arr.map((s, si) => (
-                                        <span key={`obj-${t}-${si}`} className="italic">
-                                          {s.name}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="mt-1 flex flex-wrap gap-3">
-                                      {arr.map((s, si) => (
-                                        <label
-                                          key={`obj-${t}-${si}`}
-                                          className="inline-flex items-center gap-1 cursor-pointer select-none"
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            checked={!!s.used}
-                                            onChange={() => toggleItemSkillUsed?.(i, t, si)}
-                                            className="h-3 w-3"
-                                            aria-label={`${LABELS[t]}: ${s.name}`}
-                                          />
-                                          <span className="italic">{s.name}</span>
-                                        </label>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      {!!toggleEquipItem && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="icon"
-                            variant="default"
-                            className="h-8 w-8"
-                            onClick={() => toggleEquipItem(i)}
-                            aria-label="Disequipaggia oggetto"
-                            title="Disequipaggia"
-                          >
-                            <ShieldOff className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-
         {relationalAttacks.length === 0 &&
-          equipmentBySlot.length === 0 &&
-          equippedAttacks.length === 0 &&
-          equippedObjects.length === 0 && (
+          equipmentBySlot.length === 0 && (
             <div className="dnd-frame p-4 text-sm text-muted-foreground flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
               Nessun attacco o equipaggiamento attivo.

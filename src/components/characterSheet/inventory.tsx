@@ -39,8 +39,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { fetchItemDefinition, type ItemDefinitionEntry } from "@/lib/auth";
+import {
+  fetchItemDefinition,
+  type EquipResolutionDetails,
+  type EquipResolutionOption,
+  type ItemDefinitionEntry,
+} from "@/lib/auth";
 
 /** Select minimale, senza dipendenze extra */
 function Select({
@@ -249,6 +255,34 @@ function parseLegacyDamage(s: string | undefined): { dice?: string; type?: strin
   return { dice: src };
 }
 
+const EQUIPMENT_SLOT_LABELS: Record<string, string> = {
+  HEAD: "Testa",
+  BACK: "Schiena",
+  ARMOR: "Armatura",
+  GLOVE_LEFT: "Guanto sinistro",
+  GLOVE_RIGHT: "Guanto destro",
+  RING_1: "Anello",
+  RING_2: "Anello",
+  RING_3: "Anello",
+  RING_4: "Anello",
+  RING_5: "Anello",
+  RING_6: "Anello",
+  RING_7: "Anello",
+  RING_8: "Anello",
+  RING_9: "Anello",
+  RING_10: "Anello",
+  NECK: "Collana",
+  FEET: "Scarpe",
+  WEAPON_HAND_LEFT: "Mano sinistra",
+  WEAPON_HAND_RIGHT: "Mano destra",
+};
+
+function formatEquipOptionLabel(option: EquipResolutionOption) {
+  const slots = option.slots.map((slot) => EQUIPMENT_SLOT_LABELS[slot] ?? slot);
+  if (option.selectionMode === "ANY_ONE" && slots.length === 1) return slots[0];
+  return slots.join(" + ");
+}
+
 type InventoryTarget =
   | { kind: "weapon"; index: number }
   | { kind: "object"; index: number }
@@ -323,6 +357,8 @@ const Inventory = ({
   toggleEquipRelationalItem,
   decrementRelationalConsumable,
   incrementRelationalConsumable,
+  transferTargets,
+  transferRelationalInventoryItem,
 }: any) => {
   const COIN_KEYS = {
     mr: "cp",
@@ -462,6 +498,18 @@ const Inventory = ({
   const [detailTarget, setDetailTarget] = useState<InventoryTarget | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailDefinition, setDetailDefinition] = useState<ItemDefinitionEntry | null>(null);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferTargetSlug, setTransferTargetSlug] = useState("");
+  const [transferQuantity, setTransferQuantity] = useState("1");
+  const [transferError, setTransferError] = useState("");
+  const [transferringItem, setTransferringItem] = useState(false);
+  const [equipResolutionOpen, setEquipResolutionOpen] = useState(false);
+  const [equipResolutionItemId, setEquipResolutionItemId] = useState<string>("");
+  const [equipResolutionItemName, setEquipResolutionItemName] = useState("");
+  const [equipResolutionMode, setEquipResolutionMode] = useState<"choice" | "swap">("choice");
+  const [equipResolutionOptions, setEquipResolutionOptions] = useState<EquipResolutionOption[]>([]);
+  const [equipResolutionSelectedOptionId, setEquipResolutionSelectedOptionId] = useState("");
+  const [equipResolutionError, setEquipResolutionError] = useState("");
   const [editingTarget, setEditingTarget] = useState<InventoryTarget | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -524,12 +572,12 @@ const Inventory = ({
     >
     | undefined;
   const relationalItems = Array.isArray(relationalInventoryItems) ? relationalInventoryItems : [];
-  const relationalWeapons = relationalItems.filter((item) => item?.itemCategory === "WEAPON");
+  const relationalWeapons = relationalItems.filter((item) => item?.itemCategory === "WEAPON" && !item?.isEquipped);
   const relationalConsumables = relationalItems.filter((item) =>
     item?.itemCategory === "CONSUMABLE" || item?.itemCategory === "AMMUNITION"
   );
   const relationalObjects = relationalItems.filter((item) =>
-    !["WEAPON", "CONSUMABLE", "AMMUNITION"].includes(String(item?.itemCategory ?? ""))
+    !item?.isEquipped && !["WEAPON", "CONSUMABLE", "AMMUNITION"].includes(String(item?.itemCategory ?? ""))
   );
   const catalogItems = Array.isArray(itemDefinitions) ? itemDefinitions : [];
 
@@ -1287,7 +1335,7 @@ const Inventory = ({
                     className="h-8 w-8"
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleEquipRelationalItem(item.id);
+                      void handleToggleRelationalEquip(item);
                     }}
                     aria-label={item.isEquipped ? "Disequipaggia arma" : "Equipaggia arma"}
                     title={item.isEquipped ? "Disequipaggia" : "Equipaggia"}
@@ -1424,7 +1472,7 @@ const Inventory = ({
                         className="h-8 w-8"
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleEquipRelationalItem(item.id);
+                          void handleToggleRelationalEquip(item);
                         }}
                         aria-label={item.isEquipped ? "Disequipaggia oggetto" : "Equipaggia oggetto"}
                         title={item.isEquipped ? "Disequipaggia" : "Equipaggia"}
@@ -1984,6 +2032,105 @@ const Inventory = ({
                 </Button>
               </>
             )}
+            {isRelationalDetail && Array.isArray(transferTargets) && transferTargets.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTransferTargetSlug((transferTargets[0]?.slug as string) ?? "");
+                  setTransferQuantity("1");
+                  setTransferError("");
+                  setTransferOpen(true);
+                }}
+              >
+                Trasferisci
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Trasferisci oggetto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Destinatario</Label>
+              <Select value={transferTargetSlug} onChange={setTransferTargetSlug}>
+                <option value="">Seleziona un personaggio</option>
+                {(Array.isArray(transferTargets) ? transferTargets : []).map((target: any) => (
+                  <option key={target.slug} value={target.slug}>
+                    {target.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {(getDetailEntry() as any)?.stackable ? (
+              <div className="space-y-2">
+                <Label>Quantità</Label>
+                <Input
+                  value={transferQuantity}
+                  onChange={(event) => setTransferQuantity(event.target.value)}
+                  inputMode="numeric"
+                />
+              </div>
+            ) : null}
+            {transferError ? <div className="text-sm text-destructive">{transferError}</div> : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={() => void handleTransferRelationalItem()} disabled={transferringItem || !transferTargetSlug}>
+              {transferringItem ? "Trasferisco..." : "Conferma"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={equipResolutionOpen} onOpenChange={setEquipResolutionOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{equipResolutionMode === "swap" ? "Slot occupati" : "Scegli equipaggiamento"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              {equipResolutionMode === "swap"
+                ? `Per equipaggiare ${equipResolutionItemName} devi liberare gli slot richiesti.`
+                : `Scegli come equipaggiare ${equipResolutionItemName}.`}
+            </div>
+
+            <RadioGroup value={equipResolutionSelectedOptionId} onValueChange={setEquipResolutionSelectedOptionId} className="space-y-2">
+              {equipResolutionOptions.map((option) => (
+                <label
+                  key={option.optionId}
+                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/60 bg-muted/15 px-3 py-3"
+                >
+                  <RadioGroupItem value={option.optionId} className="mt-0.5" />
+                  <div className="space-y-1 text-sm">
+                    <div className="font-medium text-foreground">{formatEquipOptionLabel(option)}</div>
+                    {option.conflicts.length > 0 ? (
+                      <div className="text-muted-foreground">
+                        Sostituisce: {option.conflicts.map((conflict) => `${conflict.itemName} (${EQUIPMENT_SLOT_LABELS[conflict.slot] ?? conflict.slot})`).join(", ")}
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground">Nessun conflitto.</div>
+                    )}
+                  </div>
+                </label>
+              ))}
+            </RadioGroup>
+
+            {equipResolutionError ? <div className="text-sm text-destructive">{equipResolutionError}</div> : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEquipResolutionOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={() => void confirmEquipResolution()} disabled={!equipResolutionSelectedOptionId}>
+              Conferma
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2034,6 +2181,101 @@ const Inventory = ({
     setCoinFlow(null);
     if (nextKind) setKind(nextKind);
     setInvOpen(true);
+  }
+
+  async function handleTransferRelationalItem() {
+    if (!transferRelationalInventoryItem) return;
+    const detailEntry = getDetailEntry() as any;
+    if (!isRelationalDetail || !detailEntry?.id) return;
+    if (!transferTargetSlug) {
+      setTransferError("Seleziona un personaggio destinatario.");
+      return;
+    }
+
+    const numericQuantity = Math.max(1, parseInt(transferQuantity, 10) || 1);
+    setTransferringItem(true);
+    setTransferError("");
+    try {
+      await transferRelationalInventoryItem(detailEntry.id, {
+        toCharacterSlug: transferTargetSlug,
+        quantity: detailEntry.stackable ? numericQuantity : 1,
+      });
+      setTransferOpen(false);
+      setDetailOpen(false);
+      setTransferTargetSlug("");
+      setTransferQuantity("1");
+      toast.success("Oggetto trasferito.");
+    } catch (error: any) {
+      setTransferError(String(error?.message ?? "Non sono riuscito a trasferire l'oggetto."));
+    } finally {
+      setTransferringItem(false);
+    }
+  }
+
+  function openEquipResolutionDialog(item: any, details: EquipResolutionDetails) {
+    const options = Array.isArray(details?.options) ? details.options : [];
+    setEquipResolutionItemId(item.id);
+    setEquipResolutionItemName(item.itemName ?? "Oggetto senza nome");
+    setEquipResolutionMode(details?.mode === "swap" ? "swap" : "choice");
+    setEquipResolutionOptions(options);
+    setEquipResolutionSelectedOptionId(options[0]?.optionId ?? "");
+    setEquipResolutionError("");
+    setEquipResolutionOpen(true);
+  }
+
+  async function handleToggleRelationalEquip(item: any) {
+    if (!toggleEquipRelationalItem) return;
+
+    if (item.isEquipped) {
+      try {
+        await toggleEquipRelationalItem(item.id, { isEquipped: false });
+      } catch (error: any) {
+        toast.error(String(error?.message ?? "Non sono riuscito a disequipaggiare l'oggetto."));
+      }
+      return;
+    }
+
+    try {
+      await toggleEquipRelationalItem(item.id, { isEquipped: true });
+    } catch (error: any) {
+      const details = error?.details as EquipResolutionDetails | undefined;
+      if (details?.code === "EQUIP_RESOLUTION_REQUIRED") {
+        openEquipResolutionDialog(item, details);
+        return;
+      }
+      toast.error(String(error?.message ?? "Non sono riuscito a equipaggiare l'oggetto."));
+    }
+  }
+
+  async function confirmEquipResolution() {
+    if (!toggleEquipRelationalItem || !equipResolutionItemId || !equipResolutionSelectedOptionId) {
+      return;
+    }
+
+    const selectedOption = equipResolutionOptions.find((option) => option.optionId === equipResolutionSelectedOptionId);
+    if (!selectedOption) {
+      setEquipResolutionError("Seleziona una configurazione valida.");
+      return;
+    }
+
+    try {
+      await toggleEquipRelationalItem(equipResolutionItemId, {
+        isEquipped: true,
+        equipConfig: {
+          optionId: selectedOption.optionId,
+          slots: selectedOption.slots,
+          swapItemIds: selectedOption.conflicts.map((conflict) => conflict.itemId),
+        },
+      });
+      setEquipResolutionOpen(false);
+      setEquipResolutionItemId("");
+      setEquipResolutionItemName("");
+      setEquipResolutionOptions([]);
+      setEquipResolutionSelectedOptionId("");
+      setEquipResolutionError("");
+    } catch (error: any) {
+      setEquipResolutionError(String(error?.message ?? "Non sono riuscito a completare l'equipaggiamento."));
+    }
   }
 
   async function handleAssignCatalogItem() {

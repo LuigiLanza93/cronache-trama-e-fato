@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Sparkles } from "lucide-react";
+import { ChevronDown, Plus, Sparkles } from "lucide-react";
 
 import {
   AlertDialog,
@@ -84,11 +84,22 @@ type CapabilityEntry = {
   shortDescription: string;
   description?: string;
   passiveEffects?: PassiveEffectEntry[];
+  sourceType?: "character" | "item";
+  sourceLabel?: string;
+  sourceItemId?: string;
+  sourceFeatureId?: string;
+  readOnly?: boolean;
   usage?: {
     resetOn: CapabilityReset;
     customLabel?: string;
     used: boolean[];
   };
+};
+
+type CapabilityListEntry = {
+  cap: CapabilityEntry;
+  index: number;
+  source: "character" | "derived";
 };
 
 type CapabilityFormState = {
@@ -262,33 +273,59 @@ export default function Capabilities({
   updateCapability,
   removeCapability,
   toggleCapabilityUse,
+  toggleDerivedCapabilityUse,
+  derivedCapabilities = [],
 }: {
   characterData: any;
   addCapability: (entry: CapabilityEntry) => void;
   updateCapability: (capabilityIndex: number, entry: CapabilityEntry) => void;
   removeCapability: (capabilityIndex: number) => void;
   toggleCapabilityUse: (capabilityIndex: number, useIndex: number) => void;
+  toggleDerivedCapabilityUse?: (characterItemId: string, itemFeatureId: string, useIndex: number, currentUsed: boolean) => void;
+  derivedCapabilities?: CapabilityEntry[];
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  const [detailEntry, setDetailEntry] = useState<CapabilityListEntry | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [form, setForm] = useState<CapabilityFormState>(DEFAULT_FORM);
   const [formError, setFormError] = useState("");
+  const [activeCollapsed, setActiveCollapsed] = useState(false);
+  const [passiveCollapsed, setPassiveCollapsed] = useState(false);
 
-  const capabilities = Array.isArray(characterData?.capabilities) ? characterData.capabilities : [];
+  const characterCapabilities = Array.isArray(characterData?.capabilities) ? characterData.capabilities : [];
+  const capabilityEntries = useMemo<CapabilityListEntry[]>(
+    () => [
+      ...characterCapabilities.map((cap: CapabilityEntry, index: number) => ({
+        cap,
+        index,
+        source: "character" as const,
+      })),
+      ...derivedCapabilities.map((cap: CapabilityEntry, index: number) => ({
+        cap,
+        index,
+        source: "derived" as const,
+      })),
+    ],
+    [characterCapabilities, derivedCapabilities]
+  );
   const activeCapabilities = useMemo(
-    () => capabilities.map((cap: CapabilityEntry, index: number) => ({ cap, index })).filter(({ cap }) => cap.kind === "active"),
-    [capabilities]
+    () => capabilityEntries.filter(({ cap }) => cap.kind === "active"),
+    [capabilityEntries]
   );
   const passiveCapabilities = useMemo(
-    () => capabilities.map((cap: CapabilityEntry, index: number) => ({ cap, index })).filter(({ cap }) => cap.kind === "passive"),
-    [capabilities]
+    () => capabilityEntries.filter(({ cap }) => cap.kind === "passive"),
+    [capabilityEntries]
   );
+  const activeUsageSummary = useMemo(() => {
+    const allUses = activeCapabilities.flatMap((entry) => entry.cap.usage?.used ?? []);
+    const total = allUses.length;
+    const used = allUses.filter(Boolean).length;
+    return { remaining: Math.max(0, total - used), total };
+  }, [activeCapabilities]);
 
-  const detailCapability =
-    detailIndex !== null && capabilities[detailIndex] ? (capabilities[detailIndex] as CapabilityEntry) : null;
+  const detailCapability = detailEntry?.cap ?? null;
 
   const resetForm = () => {
     setForm(DEFAULT_FORM);
@@ -296,8 +333,8 @@ export default function Capabilities({
     setEditingIndex(null);
   };
 
-  const openDetail = (index: number) => {
-    setDetailIndex(index);
+  const openDetail = (entry: CapabilityListEntry) => {
+    setDetailEntry(entry);
     setDetailOpen(true);
   };
 
@@ -307,10 +344,10 @@ export default function Capabilities({
   };
 
   const openEditForm = () => {
-    if (detailIndex === null || !detailCapability) return;
+    if (!detailEntry || detailEntry.source !== "character" || !detailCapability) return;
     setForm(toFormState(detailCapability));
     setFormError("");
-    setEditingIndex(detailIndex);
+    setEditingIndex(detailEntry.index);
     setDetailOpen(false);
     setFormOpen(true);
   };
@@ -407,7 +444,7 @@ export default function Capabilities({
 
         used = Array.from({ length: maxUses }, () => false);
         if (editingIndex !== null) {
-          const previous = capabilities[editingIndex]?.usage?.used ?? [];
+          const previous = characterCapabilities[editingIndex]?.usage?.used ?? [];
           used = Array.from({ length: maxUses }, (_, index) => previous[index] ?? false);
         }
       }
@@ -430,11 +467,32 @@ export default function Capabilities({
   };
 
   const confirmDelete = () => {
-    if (detailIndex === null) return;
-    removeCapability(detailIndex);
+    if (!detailEntry || detailEntry.source !== "character") return;
+    removeCapability(detailEntry.index);
     setConfirmDeleteOpen(false);
     setDetailOpen(false);
-    setDetailIndex(null);
+    setDetailEntry(null);
+  };
+
+  const toggleUsageForEntry = (entry: CapabilityListEntry, useIndex: number) => {
+    if (entry.source === "character") {
+      toggleCapabilityUse(entry.index, useIndex);
+      return;
+    }
+
+    if (
+      entry.cap.sourceItemId &&
+      entry.cap.sourceFeatureId &&
+      toggleDerivedCapabilityUse &&
+      Array.isArray(entry.cap.usage?.used)
+    ) {
+      toggleDerivedCapabilityUse(
+        entry.cap.sourceItemId,
+        entry.cap.sourceFeatureId,
+        useIndex,
+        !!entry.cap.usage?.used?.[useIndex]
+      );
+    }
   };
 
   return (
@@ -459,47 +517,58 @@ export default function Capabilities({
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <div className="font-semibold text-primary">Attive</div>
-          {activeCapabilities.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => setActiveCollapsed((current) => !current)}
+            className="flex w-full items-center justify-between rounded-sm text-left font-semibold text-primary transition hover:bg-muted/30"
+          >
+            <span>
+              {activeCollapsed
+                ? `Attive (${activeUsageSummary.total > 0 ? `${activeUsageSummary.remaining}/${activeUsageSummary.total}` : activeCapabilities.length})`
+                : "Attive"}
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${activeCollapsed ? "" : "rotate-180"}`} />
+          </button>
+          {!activeCollapsed && (activeCapabilities.length === 0 ? (
             <div className="text-sm text-muted-foreground">Nessuna skill attiva censita.</div>
           ) : (
-            activeCapabilities.map(({ cap, index }) => (
-              <div key={`active-${index}`} className="dnd-frame rounded p-3">
+          activeCapabilities.map((entry) => (
+              <div key={`active-${entry.source}-${entry.index}-${entry.cap.name}`} className="dnd-frame rounded p-3">
                 <div className="flex items-start justify-between gap-3">
                   <button
                     type="button"
-                    onClick={() => openDetail(index)}
+                    onClick={() => openDetail(entry)}
                     className="min-w-0 flex-1 rounded-sm text-left transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="font-semibold text-primary">{cap.name}</div>
-                      {cap.category && (
+                      <div className="font-semibold text-primary">{entry.cap.name}</div>
+                      {entry.cap.category && (
                         <Badge variant="outline" className="text-[10px]">
-                          {cap.category}
+                          {entry.cap.category}
                         </Badge>
                       )}
-                      {cap.usage && (
+                      {entry.cap.usage && (
                         <Badge variant="secondary" className="text-[10px]">
-                          {usageLabel(cap.usage)}
+                          {usageLabel(entry.cap.usage)}
                         </Badge>
                       )}
                     </div>
-                    <div className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{cap.shortDescription}</div>
+                    <div className="mt-1 whitespace-pre-line text-xs text-muted-foreground">{entry.cap.shortDescription}</div>
                   </button>
 
                   <div className="flex shrink-0 flex-wrap justify-end gap-2 pt-0.5">
-                    {(cap.usage?.used ?? []).map((used, useIndex) => (
+                    {(entry.cap.usage?.used ?? []).map((used, useIndex) => (
                       <label
-                        key={`cap-${index}-use-${useIndex}`}
+                        key={`cap-${entry.index}-use-${useIndex}`}
                         className="inline-flex cursor-pointer items-center"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <input
                           type="checkbox"
                           checked={used}
-                          onChange={() => toggleCapabilityUse(index, useIndex)}
+                          onChange={() => toggleUsageForEntry(entry, useIndex)}
                           className="h-4 w-4"
-                          aria-label={`${cap.name} uso ${useIndex + 1}`}
+                          aria-label={`${entry.cap.name} uso ${useIndex + 1}`}
                         />
                       </label>
                     ))}
@@ -507,35 +576,44 @@ export default function Capabilities({
                 </div>
               </div>
             ))
-          )}
+          ))}
         </div>
 
         <div className="space-y-2">
-          <div className="font-semibold text-primary">Passive</div>
-          {passiveCapabilities.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => setPassiveCollapsed((current) => !current)}
+            className="flex w-full items-center justify-between rounded-sm text-left font-semibold text-primary transition hover:bg-muted/30"
+          >
+            <span>{passiveCollapsed ? `Passive (${passiveCapabilities.length})` : "Passive"}</span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${passiveCollapsed ? "" : "rotate-180"}`} />
+          </button>
+          {!passiveCollapsed && (passiveCapabilities.length === 0 ? (
             <div className="text-sm text-muted-foreground">Nessuna skill passiva censita.</div>
           ) : (
-            passiveCapabilities.map(({ cap, index }) => (
+            passiveCapabilities.map((entry) => (
               <button
-                key={`passive-${index}`}
+                key={`passive-${entry.source}-${entry.index}-${entry.cap.name}`}
                 type="button"
-                onClick={() => openDetail(index)}
+                onClick={() => openDetail(entry)}
                 className="w-full rounded dnd-frame p-3 text-left transition hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-semibold text-primary">{cap.name}</div>
-                    <div className="whitespace-pre-line text-xs text-muted-foreground">{cap.shortDescription}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="font-semibold text-primary">{entry.cap.name}</div>
+                    </div>
+                    <div className="whitespace-pre-line text-xs text-muted-foreground">{entry.cap.shortDescription}</div>
                   </div>
-                  {cap.category && (
+                  {entry.cap.category && (
                     <Badge variant="outline" className="shrink-0 text-[10px]">
-                      {cap.category}
+                      {entry.cap.category}
                     </Badge>
                   )}
                 </div>
               </button>
             ))
-          )}
+          ))}
         </div>
       </div>
 
@@ -961,7 +1039,7 @@ export default function Capabilities({
         open={detailOpen}
         onOpenChange={(open) => {
           setDetailOpen(open);
-          if (!open) setDetailIndex(null);
+          if (!open) setDetailEntry(null);
         }}
       >
         <DialogContent className="sm:max-w-lg">
@@ -1003,14 +1081,14 @@ export default function Capabilities({
                   <div className="flex flex-wrap gap-2">
                     {detailCapability.usage.used.map((used, useIndex) => (
                       <label
-                        key={`detail-cap-${detailIndex}-use-${useIndex}`}
+                        key={`detail-cap-${detailEntry?.index}-use-${useIndex}`}
                         className="inline-flex items-center rounded border border-border px-2 py-1"
                       >
                         <input
                           type="checkbox"
                           checked={used}
                           onChange={() => {
-                            if (detailIndex !== null) toggleCapabilityUse(detailIndex, useIndex);
+                            if (detailEntry) toggleUsageForEntry(detailEntry, useIndex);
                           }}
                           className="h-4 w-4"
                         />
@@ -1023,12 +1101,16 @@ export default function Capabilities({
           )}
 
           <DialogFooter className="mt-2">
-            <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
-              Elimina
-            </Button>
-            <Button variant="outline" onClick={openEditForm}>
-              Modifica
-            </Button>
+            {detailEntry?.source === "character" && (
+              <>
+                <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
+                  Elimina
+                </Button>
+                <Button variant="outline" onClick={openEditForm}>
+                  Modifica
+                </Button>
+              </>
+            )}
             <DialogClose asChild>
               <Button variant="outline">Chiudi</Button>
             </DialogClose>

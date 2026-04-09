@@ -203,6 +203,11 @@ enum ItemFeatureReset {
   CUSTOM
 }
 
+enum ItemFeatureKind {
+  ACTIVE
+  PASSIVE
+}
+
 enum InventoryOwnerType {
   CHARACTER
   NPC
@@ -525,10 +530,12 @@ model ItemFeature {
   id               String          @id
   itemDefinitionId String
   name             String
+  kind             ItemFeatureKind @default(ACTIVE)
   description      String?
   resetOn          ItemFeatureReset?
   customResetLabel String?
   maxUses          Int?
+  passiveEffects   String?
   condition        EffectCondition @default(WHILE_EQUIPPED)
   sortOrder        Int             @default(0)
   createdAt        DateTime        @default(now())

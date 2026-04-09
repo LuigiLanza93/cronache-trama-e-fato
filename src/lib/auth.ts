@@ -271,12 +271,20 @@ export type ItemModifierEntry = {
 export type ItemFeatureEntry = {
   id: string;
   name: string;
+  kind: string;
   description: string | null;
   resetOn: string | null;
   customResetLabel: string | null;
   maxUses: number | null;
+  passiveEffects: Array<Record<string, unknown>>;
   condition: string;
   sortOrder: number;
+};
+
+export type CharacterItemFeatureStateEntry = {
+  itemFeatureId: string;
+  usesSpent: number;
+  lastResetAt: string | null;
 };
 
 export type ItemAbilityRequirementEntry = {
@@ -346,11 +354,49 @@ export type CharacterInventoryItemEntry = {
   stackable: boolean;
   quantity: number;
   isEquipped: boolean;
+  equippedSlots: string[];
   nameOverride: string | null;
   descriptionOverride: string | null;
   notes: string | null;
+  featureStates: CharacterItemFeatureStateEntry[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type EquipResolutionOption = {
+  optionId: string;
+  groupKey: string;
+  selectionMode: string;
+  slots: string[];
+  conflicts: Array<{
+    slot: string;
+    itemId: string;
+    itemName: string;
+  }>;
+};
+
+export type EquipResolutionDetails = {
+  code: string;
+  mode?: "choice" | "swap";
+  itemId?: string;
+  itemName?: string;
+  options?: EquipResolutionOption[];
+};
+
+export type InventoryTransferEntry = {
+  id: string;
+  type: string;
+  actionLabel: string;
+  fromCharacterSlug: string | null;
+  fromCharacterName: string | null;
+  toCharacterSlug: string | null;
+  toCharacterName: string | null;
+  itemName: string;
+  quantity: number;
+  createdAt: string;
+  notes: string | null;
+  undone: boolean;
+  canUndo: boolean;
 };
 
 async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
@@ -372,12 +418,17 @@ async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
       }
     } catch {}
 
-    const error = new Error(message) as Error & {
-      status?: number;
-    };
-    error.status = res.status;
-    throw error;
-  }
+      const error = new Error(message) as Error & {
+        status?: number;
+        details?: unknown;
+      };
+      error.status = res.status;
+      try {
+        const payload = await res.clone().json();
+        error.details = payload?.details;
+      } catch {}
+      throw error;
+    }
 
   if (res.status === 204) return null as T;
   return res.json();
@@ -618,10 +669,46 @@ export function deleteCharacterInventoryItemRequest(slug: string, characterItemI
 export function updateCharacterInventoryItemRequest(
   slug: string,
   characterItemId: string,
-  payload: { quantity?: number; isEquipped?: boolean }
+    payload: {
+      quantity?: number;
+      isEquipped?: boolean;
+      equipConfig?: {
+        optionId?: string;
+        slots?: string[];
+        swapItemIds?: string[];
+      };
+      featureState?: {
+        itemFeatureId: string;
+        usesSpent: number;
+    };
+  }
 ) {
   return authFetch<CharacterInventoryItemEntry>(`/api/characters/${slug}/inventory-items/${characterItemId}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+}
+
+export function transferCharacterInventoryItemRequest(
+  slug: string,
+  characterItemId: string,
+  payload: {
+    toCharacterSlug: string;
+    quantity?: number;
+  }
+) {
+  return authFetch<CharacterInventoryItemEntry[]>(`/api/characters/${slug}/inventory-items/${characterItemId}/transfer`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchInventoryTransfers() {
+  return authFetch<InventoryTransferEntry[]>("/api/inventory-transactions", { method: "GET" });
+}
+
+export function undoInventoryTransactionRequest(transactionId: string) {
+  return authFetch<{ ok: true }>(`/api/inventory-transactions/${transactionId}/undo`, {
+    method: "POST",
   });
 }

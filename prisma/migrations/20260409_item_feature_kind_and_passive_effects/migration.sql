@@ -1,0 +1,8 @@
+ALTER TABLE "ItemFeature" ADD COLUMN "kind" TEXT NOT NULL DEFAULT 'ACTIVE';
+ALTER TABLE "ItemFeature" ADD COLUMN "passiveEffects" TEXT;
+
+UPDATE "ItemFeature"
+SET "kind" = CASE
+  WHEN "resetOn" IS NOT NULL OR "maxUses" IS NOT NULL THEN 'ACTIVE'
+  ELSE 'PASSIVE'
+END;

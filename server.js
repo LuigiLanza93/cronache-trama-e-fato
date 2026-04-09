@@ -677,10 +677,16 @@ function readItemDefinition(itemId) {
     .map((row) => ({
       id: row.id,
       name: row.name,
+      kind: columnExists("ItemFeature", "kind")
+        ? String(row.kind ?? "ACTIVE").toUpperCase()
+        : (row.resetOn != null || row.maxUses != null ? "ACTIVE" : "PASSIVE"),
       description: row.description ?? null,
       resetOn: row.resetOn ?? null,
       customResetLabel: row.customResetLabel ?? null,
       maxUses: row.maxUses ?? null,
+      passiveEffects: columnExists("ItemFeature", "passiveEffects")
+        ? (Array.isArray(parseJsonString(row.passiveEffects, [])) ? parseJsonString(row.passiveEffects, []) : [])
+        : [],
       condition: row.condition,
       sortOrder: Number(row.sortOrder ?? 0),
     }));
@@ -828,16 +834,21 @@ function normalizeItemDefinitionPayload(payload, existingId = null) {
         })).filter((entry) => entry.target)
       : [],
     features: rawFeatures
-      ? rawFeatures.map((entry, index) => ({
-          id: String(entry?.id ?? crypto.randomUUID()),
-          name: String(entry?.name ?? "").trim(),
-          description: normalizeNullableString(entry?.description),
-          resetOn: normalizeNullableString(entry?.resetOn),
-          customResetLabel: normalizeNullableString(entry?.customResetLabel),
-          maxUses: normalizeNullableInt(entry?.maxUses),
-          condition: String(entry?.condition ?? "WHILE_EQUIPPED").trim() || "WHILE_EQUIPPED",
-          sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : index,
-        })).filter((entry) => entry.name)
+      ? rawFeatures.map((entry, index) => {
+          const kind = String(entry?.kind ?? "ACTIVE").trim().toUpperCase() === "PASSIVE" ? "PASSIVE" : "ACTIVE";
+          return {
+            id: String(entry?.id ?? crypto.randomUUID()),
+            name: String(entry?.name ?? "").trim(),
+            kind,
+            description: normalizeNullableString(entry?.description),
+            resetOn: kind === "ACTIVE" ? normalizeNullableString(entry?.resetOn) : null,
+            customResetLabel: kind === "ACTIVE" ? normalizeNullableString(entry?.customResetLabel) : null,
+            maxUses: kind === "ACTIVE" ? normalizeNullableInt(entry?.maxUses) : null,
+            passiveEffects: kind === "PASSIVE" && Array.isArray(entry?.passiveEffects) ? entry.passiveEffects : [],
+            condition: String(entry?.condition ?? "WHILE_EQUIPPED").trim() || "WHILE_EQUIPPED",
+            sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : index,
+          };
+        }).filter((entry) => entry.name)
       : [],
     abilityRequirements: rawAbilityRequirements
       ? rawAbilityRequirements.map((entry, index) => {
@@ -1001,8 +1012,8 @@ function saveItemDefinition(payload, existingId = null) {
     `);
     const insertFeature = sqlite.prepare(`
       INSERT INTO "ItemFeature" (
-        id, itemDefinitionId, name, description, resetOn, customResetLabel, maxUses, condition, sortOrder, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, itemDefinitionId, name, kind, description, resetOn, customResetLabel, maxUses, passiveEffects, condition, sortOrder, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertAbilityRequirement = tableExists("ItemAbilityRequirement")
       ? sqlite.prepare(`
@@ -1075,10 +1086,12 @@ function saveItemDefinition(payload, existingId = null) {
         entry.id,
         normalized.id,
         entry.name,
+        entry.kind,
         entry.description,
         entry.resetOn,
         entry.customResetLabel,
         entry.maxUses,
+        entry.passiveEffects?.length ? JSON.stringify(entry.passiveEffects) : null,
         entry.condition,
         entry.sortOrder,
         now,
@@ -1222,6 +1235,179 @@ function buildCharacterInventoryDetailSummary(itemDefinitionId, itemCategory) {
   };
 }
 
+function createDetailedError(message, details = null) {
+  const error = new Error(message);
+  if (details) error.details = details;
+  return error;
+}
+
+function buildSlotGroups(slotRules) {
+  const grouped = new Map();
+  (Array.isArray(slotRules) ? slotRules : []).forEach((rule, index) => {
+    const groupKey = String(rule?.groupKey ?? "").trim() || `default-${index}`;
+    const bucket = grouped.get(groupKey) ?? [];
+    bucket.push({
+      slot: String(rule?.slot ?? "").trim(),
+      selectionMode: String(rule?.selectionMode ?? "ALL_REQUIRED").trim() || "ALL_REQUIRED",
+      sortOrder: Number(rule?.sortOrder ?? index),
+    });
+    grouped.set(groupKey, bucket);
+  });
+
+  return Array.from(grouped.entries())
+    .map(([groupKey, rules]) => ({
+      groupKey,
+      selectionMode: String(rules[0]?.selectionMode ?? "ALL_REQUIRED"),
+      rules: rules
+        .filter((rule) => rule.slot)
+        .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0)),
+    }))
+    .filter((group) => group.rules.length > 0)
+    .sort((a, b) => Number(a.rules[0]?.sortOrder ?? 0) - Number(b.rules[0]?.sortOrder ?? 0));
+}
+
+function getEquipmentSlotSortWeight(slot) {
+  const order = [
+    "WEAPON_HAND_RIGHT",
+    "WEAPON_HAND_LEFT",
+    "HEAD",
+    "ARMOR",
+    "BACK",
+    "NECK",
+    "RING_1",
+    "RING_2",
+    "RING_3",
+    "RING_4",
+    "RING_5",
+    "RING_6",
+    "RING_7",
+    "RING_8",
+    "RING_9",
+    "RING_10",
+    "GLOVE_LEFT",
+    "GLOVE_RIGHT",
+    "FEET",
+  ];
+  const index = order.indexOf(String(slot ?? "").trim());
+  return index === -1 ? 999 : index;
+}
+
+function readCharacterSlotOccupancy(characterId, excludedItemIds = []) {
+  if (!tableExists("CharacterItemEquip")) return new Map();
+
+  const rows = sqlite.prepare(`
+    SELECT
+      cie.slot,
+      ci.id AS characterItemId,
+      ci.nameOverride,
+      d.name AS itemDefinitionName
+    FROM "CharacterItemEquip" cie
+    JOIN "CharacterItem" ci ON ci.id = cie.characterItemId
+    LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
+    WHERE ci.characterId = ?
+  `).all(characterId);
+
+  const excluded = new Set((Array.isArray(excludedItemIds) ? excludedItemIds : []).filter(Boolean));
+  const occupancy = new Map();
+  rows.forEach((row) => {
+    if (excluded.has(row.characterItemId)) return;
+    occupancy.set(String(row.slot), {
+      slot: String(row.slot),
+      itemId: row.characterItemId,
+      itemName: row.nameOverride ?? row.itemDefinitionName ?? "Oggetto senza nome",
+    });
+  });
+  return occupancy;
+}
+
+function buildEquipOptionsForItem(itemDefinition, occupancyMap) {
+  const groups = buildSlotGroups(itemDefinition?.slotRules ?? []);
+  return groups.flatMap((group) => {
+    if (group.selectionMode === "ANY_ONE") {
+      return group.rules.map((rule) => {
+        const occupied = occupancyMap.get(rule.slot);
+        return {
+          optionId: `${group.groupKey}::${rule.slot}`,
+          groupKey: group.groupKey,
+          selectionMode: group.selectionMode,
+          slots: [rule.slot],
+          conflicts: occupied ? [occupied] : [],
+        };
+      });
+    }
+
+    const slots = Array.from(new Set(group.rules.map((rule) => rule.slot)));
+    const conflicts = slots
+      .map((slot) => occupancyMap.get(slot))
+      .filter(Boolean)
+      .filter((entry, index, array) => array.findIndex((candidate) => candidate.itemId === entry.itemId) === index);
+
+    return [{
+      optionId: `${group.groupKey}::${slots.join("|")}`,
+      groupKey: group.groupKey,
+      selectionMode: group.selectionMode,
+      slots,
+      conflicts,
+    }];
+  });
+}
+
+function chooseEquipOption(existing, itemDefinition, options, equipConfig) {
+  if (!Array.isArray(options) || options.length === 0) {
+    throw createDetailedError("Questo oggetto non ha slot configurati per l'equipaggiamento", {
+      code: "EQUIP_SLOT_RULES_MISSING",
+    });
+  }
+
+  const normalizedCategory = String(itemDefinition?.category ?? "").toUpperCase();
+  const requestedOptionId = String(equipConfig?.optionId ?? "").trim();
+  const requestedSlots = Array.isArray(equipConfig?.slots)
+    ? equipConfig.slots.map((slot) => String(slot ?? "").trim()).filter(Boolean).sort()
+    : null;
+
+  const selectedByRequest =
+    (requestedOptionId ? options.find((option) => option.optionId === requestedOptionId) : null)
+    ?? (requestedSlots
+      ? options.find((option) => {
+          const sortedSlots = [...option.slots].sort();
+          return sortedSlots.length === requestedSlots.length &&
+            sortedSlots.every((slot, index) => slot === requestedSlots[index]);
+        })
+      : null);
+  if (selectedByRequest) return selectedByRequest;
+
+  const conflictFreeOptions = options.filter((option) => option.conflicts.length === 0);
+
+  if (normalizedCategory === "RING" && conflictFreeOptions.length > 0) {
+    return [...conflictFreeOptions].sort(
+      (a, b) => getEquipmentSlotSortWeight(a.slots[0]) - getEquipmentSlotSortWeight(b.slots[0])
+    )[0];
+  }
+
+  if (conflictFreeOptions.length === 1) {
+    return conflictFreeOptions[0];
+  }
+
+  if (conflictFreeOptions.length > 1) {
+    throw createDetailedError("Scegli come equipaggiare questo oggetto", {
+      code: "EQUIP_RESOLUTION_REQUIRED",
+      mode: "choice",
+      itemId: existing.id,
+      itemName: existing.nameOverride ?? itemDefinition?.name ?? "Oggetto senza nome",
+      options: conflictFreeOptions,
+    });
+  }
+
+  const swappableOptions = options.filter((option) => option.conflicts.length > 0);
+  throw createDetailedError("Gli slot richiesti sono gia occupati", {
+    code: "EQUIP_RESOLUTION_REQUIRED",
+    mode: "swap",
+    itemId: existing.id,
+    itemName: existing.nameOverride ?? itemDefinition?.name ?? "Oggetto senza nome",
+    options: swappableOptions,
+  });
+}
+
 function readCharacterInventoryItemsBySlug(slug) {
   if (!tableExists("CharacterItem")) return [];
 
@@ -1230,7 +1416,7 @@ function readCharacterInventoryItemsBySlug(slug) {
     .get(slug);
   if (!character) return null;
 
-  return sqlite.prepare(`
+  const rows = sqlite.prepare(`
     SELECT
       ci.id,
       ci.characterId,
@@ -1251,7 +1437,44 @@ function readCharacterInventoryItemsBySlug(slug) {
     LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
     WHERE ci.characterId = ?
     ORDER BY ci.sortOrder ASC, ci.createdAt ASC
-  `).all(character.id).map((row) => {
+    `).all(character.id);
+
+  const equippedSlotsByItemId = tableExists("CharacterItemEquip") && rows.length > 0
+    ? sqlite
+        .prepare(`
+          SELECT characterItemId, slot
+          FROM "CharacterItemEquip"
+          WHERE characterItemId IN (${rows.map(() => "?").join(",") || "NULL"})
+          ORDER BY slot ASC
+        `)
+        .all(...rows.map((row) => row.id))
+        .reduce((acc, row) => {
+          if (!acc[row.characterItemId]) acc[row.characterItemId] = [];
+          acc[row.characterItemId].push(String(row.slot));
+          return acc;
+        }, {})
+    : {};
+
+  const featureStatesByItemId = tableExists("CharacterItemFeatureState")
+    ? sqlite
+        .prepare(`
+          SELECT characterItemId, itemFeatureId, usesSpent, lastResetAt
+          FROM "CharacterItemFeatureState"
+          WHERE characterItemId IN (${rows.map(() => "?").join(",") || "NULL"})
+        `)
+        .all(...rows.map((row) => row.id))
+        .reduce((acc, row) => {
+          if (!acc[row.characterItemId]) acc[row.characterItemId] = [];
+          acc[row.characterItemId].push({
+            itemFeatureId: row.itemFeatureId,
+            usesSpent: Number(row.usesSpent ?? 0),
+            lastResetAt: row.lastResetAt ?? null,
+          });
+          return acc;
+        }, {})
+    : {};
+
+  return rows.map((row) => {
     const category = row.itemDefinitionCategory ?? null;
     const details = buildCharacterInventoryDetailSummary(row.itemDefinitionId ?? null, category);
 
@@ -1267,11 +1490,13 @@ function readCharacterInventoryItemsBySlug(slug) {
       detailSummary: details.detailSummary,
       equippable: !!row.itemDefinitionEquippable,
       stackable: !!row.itemDefinitionStackable,
-      quantity: Number(row.quantity ?? 1),
-      isEquipped: !!row.isEquipped,
-      nameOverride: row.nameOverride ?? null,
-      descriptionOverride: row.descriptionOverride ?? null,
-      notes: row.notes ?? null,
+        quantity: Number(row.quantity ?? 1),
+        isEquipped: !!row.isEquipped,
+        equippedSlots: Array.isArray(equippedSlotsByItemId[row.id]) ? equippedSlotsByItemId[row.id] : [],
+        nameOverride: row.nameOverride ?? null,
+        descriptionOverride: row.descriptionOverride ?? null,
+        notes: row.notes ?? null,
+      featureStates: Array.isArray(featureStatesByItemId[row.id]) ? featureStatesByItemId[row.id] : [],
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -1396,20 +1621,469 @@ function assignItemDefinitionToCharacter(characterSlug, payload, actorUserId = n
         now
       );
 
-      if (insertTransactionItem && transactionId) {
-        insertTransactionItem.run(
-          crypto.randomUUID(),
-          transactionId,
-          characterItemId,
-          itemDefinition.id,
-          itemDefinition.name,
-          entry.quantity
-        );
-      }
-    });
+        if (insertTransactionItem && transactionId) {
+          const snapshot = {
+            mode: "dm_grant",
+            toCharacterId: character.id,
+            characterItemId,
+            quantity: entry.quantity,
+            itemDefinitionId: itemDefinition.id,
+            itemName: itemDefinition.name,
+          };
+          insertTransactionItem.run(
+            crypto.randomUUID(),
+            transactionId,
+            characterItemId,
+            itemDefinition.id,
+            JSON.stringify(snapshot),
+            entry.quantity
+          );
+        }
+      });
   });
 
   return readCharacterInventoryItemsBySlug(characterSlug);
+}
+
+function isUndoTransactionNotes(notes) {
+  return typeof notes === "string" && notes.startsWith("UNDO::");
+}
+
+function isAnnulledTransactionNotes(notes) {
+  return typeof notes === "string" && notes.startsWith("ANNULLED::");
+}
+
+function transferCharacterItemBetweenCharacters(fromCharacterSlug, characterItemId, payload, actorUserId = null) {
+  if (!tableExists("CharacterItem")) {
+    throw new Error("Character inventory not available");
+  }
+
+  const fromCharacter = sqlite
+    .prepare('SELECT id, slug, name, characterType FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(fromCharacterSlug);
+  if (!fromCharacter) {
+    throw new Error("Character not found");
+  }
+
+  const toCharacterSlug = String(payload?.toCharacterSlug ?? "").trim();
+  if (!toCharacterSlug) {
+    throw new Error("Target character required");
+  }
+
+  const toCharacter = sqlite
+    .prepare('SELECT id, slug, name, characterType FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(toCharacterSlug);
+  if (!toCharacter) {
+    throw new Error("Target character not found");
+  }
+  if (String(toCharacter.characterType).toUpperCase() === "PNG") {
+    throw new Error("Transfers to PNG are not supported");
+  }
+  if (fromCharacter.id === toCharacter.id) {
+    throw new Error("Choose a different target character");
+  }
+
+  const existing = sqlite.prepare(`
+    SELECT
+      ci.*,
+      d.name AS itemDefinitionName,
+      d.stackable AS itemDefinitionStackable
+    FROM "CharacterItem" ci
+    LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
+    WHERE ci.id = ? AND ci.characterId = ?
+    LIMIT 1
+  `).get(characterItemId, fromCharacter.id);
+  if (!existing) {
+    throw new Error("Character item not found");
+  }
+
+  const availableQuantity = Math.max(1, Number(existing.quantity ?? 1));
+  const requestedQuantity = Math.max(1, normalizeNullableInt(payload?.quantity) ?? 1);
+  const transferQuantity = Math.min(availableQuantity, requestedQuantity);
+  const isStackable = !!existing.itemDefinitionStackable;
+  if (!isStackable && transferQuantity !== 1) {
+    throw new Error("This item cannot be transferred in multiple quantities");
+  }
+
+  const destinationMergeCandidate = isStackable
+    ? sqlite.prepare(`
+        SELECT id, quantity
+        FROM "CharacterItem"
+        WHERE characterId = ?
+          AND id <> ?
+          AND (
+            (itemDefinitionId IS NULL AND ? IS NULL)
+            OR itemDefinitionId = ?
+          )
+          AND COALESCE(nameOverride, '') = COALESCE(?, '')
+          AND COALESCE(descriptionOverride, '') = COALESCE(?, '')
+          AND COALESCE(notes, '') = COALESCE(?, '')
+          AND isEquipped = 0
+        ORDER BY sortOrder ASC, createdAt ASC
+        LIMIT 1
+      `).get(
+        toCharacter.id,
+        existing.id,
+        existing.itemDefinitionId ?? null,
+        existing.itemDefinitionId ?? null,
+        existing.nameOverride ?? null,
+        existing.descriptionOverride ?? null,
+        existing.notes ?? null
+      )
+    : null;
+
+  const destinationSortOrder = Number(
+    sqlite.prepare('SELECT MAX(sortOrder) AS maxSortOrder FROM "CharacterItem" WHERE characterId = ?').get(toCharacter.id)?.maxSortOrder ?? -1
+  );
+  const now = new Date().toISOString();
+  const transactionId = crypto.randomUUID();
+  const transferMode = destinationMergeCandidate
+    ? "merge"
+    : (isStackable && transferQuantity < availableQuantity ? "split" : "move");
+  const movedItemId =
+    transferMode === "move"
+      ? existing.id
+      : (transferMode === "merge" ? destinationMergeCandidate.id : crypto.randomUUID());
+  const sourceWillBeDeleted = transferMode === "merge" && transferQuantity >= availableQuantity;
+  const snapshot = {
+    mode: transferMode,
+    fromCharacterId: fromCharacter.id,
+    toCharacterId: toCharacter.id,
+    sourceItemId: existing.id,
+    destinationItemId: movedItemId,
+    quantity: transferQuantity,
+    itemDefinitionId: existing.itemDefinitionId ?? null,
+    itemName: existing.nameOverride ?? existing.itemDefinitionName ?? "Oggetto senza nome",
+    sourceDeletedAfterTransfer: sourceWillBeDeleted,
+    sourceSnapshot: {
+      itemDefinitionId: existing.itemDefinitionId ?? null,
+      nameOverride: existing.nameOverride ?? null,
+      descriptionOverride: existing.descriptionOverride ?? null,
+      notes: existing.notes ?? null,
+      data: existing.data ?? null,
+    },
+  };
+
+  runInTransaction(() => {
+    sqlite.prepare(`
+      INSERT INTO "InventoryTransaction" (
+        id, type, fromOwnerType, fromCharacterId, fromNpcName, toOwnerType, toCharacterId, toNpcName,
+        notes, createdByUserId, createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      transactionId,
+      "TRANSFER",
+      "CHARACTER",
+      fromCharacter.id,
+      null,
+      "CHARACTER",
+      toCharacter.id,
+      null,
+      null,
+      actorUserId,
+      now
+    );
+
+      if (transferMode === "move") {
+        sqlite.prepare(`
+          UPDATE "CharacterItem"
+          SET characterId = ?, sortOrder = ?, isEquipped = 0, updatedAt = ?
+          WHERE id = ?
+        `).run(toCharacter.id, destinationSortOrder + 1, now, existing.id);
+      } else if (transferMode === "merge") {
+        const destinationQuantity = Math.max(0, Number(destinationMergeCandidate.quantity ?? 0));
+
+        sqlite.prepare(`
+          UPDATE "CharacterItem"
+          SET quantity = ?, updatedAt = ?
+          WHERE id = ?
+        `).run(destinationQuantity + transferQuantity, now, destinationMergeCandidate.id);
+
+        const nextSourceQuantity = availableQuantity - transferQuantity;
+        if (nextSourceQuantity <= 0) {
+          sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(existing.id);
+        } else {
+          sqlite.prepare(`
+            UPDATE "CharacterItem"
+            SET quantity = ?, updatedAt = ?
+            WHERE id = ?
+          `).run(nextSourceQuantity, now, existing.id);
+        }
+      } else {
+        sqlite.prepare(`
+          UPDATE "CharacterItem"
+          SET quantity = ?, updatedAt = ?
+          WHERE id = ?
+      `).run(Math.max(0, availableQuantity - transferQuantity), now, existing.id);
+
+      sqlite.prepare(`
+        INSERT INTO "CharacterItem" (
+          id, characterId, itemDefinitionId, nameOverride, descriptionOverride, quantity, isEquipped,
+          sortOrder, notes, data, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        movedItemId,
+        toCharacter.id,
+        existing.itemDefinitionId ?? null,
+        existing.nameOverride ?? null,
+        existing.descriptionOverride ?? null,
+        transferQuantity,
+        0,
+        destinationSortOrder + 1,
+        existing.notes ?? null,
+        existing.data ?? null,
+        now,
+        now
+      );
+    }
+
+    sqlite.prepare(`
+      INSERT INTO "InventoryTransactionItem" (
+        id, transactionId, characterItemId, itemDefinitionId, descriptionSnapshot, quantity
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      crypto.randomUUID(),
+      transactionId,
+      movedItemId,
+      existing.itemDefinitionId ?? null,
+      JSON.stringify(snapshot),
+      transferQuantity
+    );
+  });
+
+  return readCharacterInventoryItemsBySlug(fromCharacterSlug);
+}
+
+function readInventoryTransfers() {
+  if (!tableExists("InventoryTransaction")) return [];
+
+  const rows = sqlite.prepare(`
+    SELECT
+      t.id,
+      t.type,
+      t.notes,
+      t.createdAt,
+      fc.slug AS fromCharacterSlug,
+      fc.name AS fromCharacterName,
+      tc.slug AS toCharacterSlug,
+      tc.name AS toCharacterName,
+      ti.quantity,
+      ti.descriptionSnapshot
+      FROM "InventoryTransaction" t
+      LEFT JOIN "Character" fc ON fc.id = t.fromCharacterId
+      LEFT JOIN "Character" tc ON tc.id = t.toCharacterId
+      LEFT JOIN "InventoryTransactionItem" ti ON ti.transactionId = t.id
+      WHERE t.type IN ('TRANSFER', 'INITIAL_GRANT', 'REMOVAL')
+      ORDER BY t.createdAt DESC
+    `).all();
+
+    return rows
+      .filter((row) => !isUndoTransactionNotes(row.notes))
+      .map((row) => {
+        const snapshot = parseJsonString(row.descriptionSnapshot, {});
+        const rawSnapshotLabel =
+          typeof row.descriptionSnapshot === "string" && row.descriptionSnapshot.trim()
+            ? row.descriptionSnapshot.trim()
+            : null;
+        const type = String(row.type ?? "TRANSFER");
+        const actionLabel =
+          type === "INITIAL_GRANT"
+            ? "Assegnazione DM"
+            : type === "REMOVAL"
+              ? "Rimozione DM"
+              : "Trasferimento";
+        return {
+          id: row.id,
+          type,
+          actionLabel,
+          fromCharacterSlug: row.fromCharacterSlug ?? null,
+          fromCharacterName: row.fromCharacterName ?? null,
+          toCharacterSlug: row.toCharacterSlug ?? null,
+          toCharacterName: row.toCharacterName ?? null,
+          itemName:
+            (snapshot && typeof snapshot === "object" ? snapshot.itemName : null)
+            ?? rawSnapshotLabel
+            ?? "Oggetto senza nome",
+          quantity: Number(row.quantity ?? snapshot?.quantity ?? 1),
+          createdAt: row.createdAt,
+          notes: row.notes ?? null,
+          undone: isAnnulledTransactionNotes(row.notes),
+          canUndo: type === "TRANSFER" && !isAnnulledTransactionNotes(row.notes),
+        };
+      });
+  }
+
+function undoInventoryTransfer(transactionId, actorUserId = null) {
+  const transaction = sqlite
+    .prepare(`
+      SELECT *
+      FROM "InventoryTransaction"
+      WHERE id = ? AND type = 'TRANSFER'
+      LIMIT 1
+    `)
+    .get(transactionId);
+  if (!transaction || isUndoTransactionNotes(transaction.notes)) {
+    throw new Error("Transfer transaction not found");
+  }
+  if (isAnnulledTransactionNotes(transaction.notes)) {
+    throw new Error("This transfer has already been undone");
+  }
+
+  const itemRow = sqlite
+    .prepare('SELECT * FROM "InventoryTransactionItem" WHERE transactionId = ? ORDER BY rowid ASC LIMIT 1')
+    .get(transactionId);
+  if (!itemRow) {
+    throw new Error("Transfer payload not found");
+  }
+
+  const snapshot = parseJsonString(itemRow.descriptionSnapshot, {});
+  if (!snapshot?.fromCharacterId || !snapshot?.toCharacterId || !snapshot?.destinationItemId) {
+    throw new Error("Transfer snapshot is invalid");
+  }
+
+  const sourceSortOrder = Number(
+    sqlite.prepare('SELECT MAX(sortOrder) AS maxSortOrder FROM "CharacterItem" WHERE characterId = ?').get(snapshot.fromCharacterId)?.maxSortOrder ?? -1
+  );
+  const now = new Date().toISOString();
+  const undoTransactionId = crypto.randomUUID();
+
+  runInTransaction(() => {
+      if (snapshot.mode === "move") {
+        const movedItem = sqlite
+          .prepare('SELECT id, characterId FROM "CharacterItem" WHERE id = ? LIMIT 1')
+          .get(snapshot.destinationItemId);
+        if (!movedItem || movedItem.characterId !== snapshot.toCharacterId) {
+          throw new Error("Cannot undo this transfer anymore");
+      }
+
+      sqlite.prepare(`
+        UPDATE "CharacterItem"
+        SET characterId = ?, sortOrder = ?, isEquipped = 0, updatedAt = ?
+        WHERE id = ?
+      `).run(snapshot.fromCharacterId, sourceSortOrder + 1, now, snapshot.destinationItemId);
+      } else if (snapshot.mode === "merge") {
+        const destinationItem = sqlite
+          .prepare('SELECT id, quantity FROM "CharacterItem" WHERE id = ? AND characterId = ? LIMIT 1')
+          .get(snapshot.destinationItemId, snapshot.toCharacterId);
+
+        if (!destinationItem || Number(destinationItem.quantity ?? 0) < Number(snapshot.quantity ?? 0)) {
+          throw new Error("Cannot undo this transfer anymore");
+        }
+
+        const existingSourceItem = sqlite
+          .prepare('SELECT id, quantity FROM "CharacterItem" WHERE id = ? AND characterId = ? LIMIT 1')
+          .get(snapshot.sourceItemId, snapshot.fromCharacterId);
+
+        if (existingSourceItem) {
+          sqlite.prepare(`
+            UPDATE "CharacterItem"
+            SET quantity = ?, updatedAt = ?
+            WHERE id = ?
+          `).run(Number(existingSourceItem.quantity ?? 0) + Number(snapshot.quantity ?? 0), now, snapshot.sourceItemId);
+        } else if (snapshot.sourceDeletedAfterTransfer) {
+          sqlite.prepare(`
+            INSERT INTO "CharacterItem" (
+              id, characterId, itemDefinitionId, nameOverride, descriptionOverride, quantity, isEquipped,
+              sortOrder, notes, data, createdAt, updatedAt
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            snapshot.sourceItemId,
+            snapshot.fromCharacterId,
+            snapshot.sourceSnapshot?.itemDefinitionId ?? snapshot.itemDefinitionId ?? null,
+            snapshot.sourceSnapshot?.nameOverride ?? null,
+            snapshot.sourceSnapshot?.descriptionOverride ?? null,
+            Number(snapshot.quantity ?? 0),
+            0,
+            sourceSortOrder + 1,
+            snapshot.sourceSnapshot?.notes ?? null,
+            snapshot.sourceSnapshot?.data ?? null,
+            now,
+            now
+          );
+        } else {
+          throw new Error("Cannot undo this transfer anymore");
+        }
+
+        const nextDestinationQuantity = Number(destinationItem.quantity ?? 0) - Number(snapshot.quantity ?? 0);
+        if (nextDestinationQuantity <= 0) {
+          sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(snapshot.destinationItemId);
+        } else {
+          sqlite.prepare(`
+            UPDATE "CharacterItem"
+            SET quantity = ?, updatedAt = ?
+            WHERE id = ?
+          `).run(nextDestinationQuantity, now, snapshot.destinationItemId);
+        }
+      } else {
+        const sourceItem = sqlite
+          .prepare('SELECT id, quantity FROM "CharacterItem" WHERE id = ? AND characterId = ? LIMIT 1')
+          .get(snapshot.sourceItemId, snapshot.fromCharacterId);
+        const destinationItem = sqlite
+          .prepare('SELECT id, quantity FROM "CharacterItem" WHERE id = ? AND characterId = ? LIMIT 1')
+        .get(snapshot.destinationItemId, snapshot.toCharacterId);
+
+      if (!sourceItem || !destinationItem || Number(destinationItem.quantity ?? 0) < Number(snapshot.quantity ?? 0)) {
+        throw new Error("Cannot undo this transfer anymore");
+      }
+
+      sqlite.prepare(`
+        UPDATE "CharacterItem"
+        SET quantity = ?, updatedAt = ?
+        WHERE id = ?
+      `).run(Number(sourceItem.quantity ?? 0) + Number(snapshot.quantity ?? 0), now, snapshot.sourceItemId);
+
+      const nextDestinationQuantity = Number(destinationItem.quantity ?? 0) - Number(snapshot.quantity ?? 0);
+      if (nextDestinationQuantity <= 0) {
+        sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(snapshot.destinationItemId);
+      } else {
+        sqlite.prepare(`
+          UPDATE "CharacterItem"
+          SET quantity = ?, updatedAt = ?
+          WHERE id = ?
+        `).run(nextDestinationQuantity, now, snapshot.destinationItemId);
+      }
+    }
+
+    sqlite.prepare(`
+      UPDATE "InventoryTransaction"
+      SET notes = ?, createdByUserId = COALESCE(createdByUserId, ?)
+      WHERE id = ?
+    `).run(`ANNULLED::${transaction.notes ?? ""}`, actorUserId, transactionId);
+
+    sqlite.prepare(`
+      INSERT INTO "InventoryTransaction" (
+        id, type, fromOwnerType, fromCharacterId, fromNpcName, toOwnerType, toCharacterId, toNpcName,
+        notes, createdByUserId, createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      undoTransactionId,
+      "TRANSFER",
+      transaction.toOwnerType ?? "CHARACTER",
+      transaction.toCharacterId ?? null,
+      null,
+      transaction.fromOwnerType ?? "CHARACTER",
+      transaction.fromCharacterId ?? null,
+      null,
+      `UNDO::${transactionId}`,
+      actorUserId,
+      now
+    );
+
+    sqlite.prepare(`
+      INSERT INTO "InventoryTransactionItem" (
+        id, transactionId, characterItemId, itemDefinitionId, descriptionSnapshot, quantity
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      crypto.randomUUID(),
+      undoTransactionId,
+      snapshot.mode === "move" ? snapshot.destinationItemId : snapshot.sourceItemId,
+      snapshot.itemDefinitionId ?? null,
+      itemRow.descriptionSnapshot,
+      Number(snapshot.quantity ?? 1)
+    );
+  });
+
+  return { ok: true };
 }
 
 function buildQuickCreateWeaponSlotRules(weaponHandling) {
@@ -1550,18 +2224,22 @@ function updateCharacterInventoryItem(characterSlug, characterItemId, payload) {
     throw new Error("Character not found");
   }
 
-  const existing = sqlite.prepare(`
-    SELECT
-      ci.id,
-      ci.characterId,
-      ci.quantity,
-      ci.isEquipped,
-      d.equippable AS itemDefinitionEquippable
-    FROM "CharacterItem" ci
-    LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
-    WHERE ci.id = ? AND ci.characterId = ?
-    LIMIT 1
-  `).get(characterItemId, character.id);
+    const existing = sqlite.prepare(`
+      SELECT
+        ci.id,
+        ci.characterId,
+        ci.itemDefinitionId,
+        ci.nameOverride,
+        ci.quantity,
+        ci.isEquipped,
+        d.name AS itemDefinitionName,
+        d.category AS itemDefinitionCategory,
+        d.equippable AS itemDefinitionEquippable
+      FROM "CharacterItem" ci
+      LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
+      WHERE ci.id = ? AND ci.characterId = ?
+      LIMIT 1
+    `).get(characterItemId, character.id);
   if (!existing) {
     throw new Error("Character item not found");
   }
@@ -1571,18 +2249,135 @@ function updateCharacterInventoryItem(characterSlug, characterItemId, payload) {
   if (isEquipped && !existing.itemDefinitionEquippable) {
     throw new Error("Item is not equippable");
   }
+  if (isEquipped && !existing.itemDefinitionId) {
+    throw new Error("This item has no catalog definition");
+  }
 
-  sqlite.prepare(`
-    UPDATE "CharacterItem"
-    SET quantity = ?, isEquipped = ?, updatedAt = ?
-    WHERE id = ? AND characterId = ?
-  `).run(
-    quantity,
-    isEquipped ? 1 : 0,
-    new Date().toISOString(),
-    existing.id,
-    character.id
-  );
+  const featureStatePayload =
+    payload?.featureState && typeof payload.featureState === "object"
+      ? payload.featureState
+      : null;
+  const equipConfig =
+    payload?.equipConfig && typeof payload.equipConfig === "object"
+      ? payload.equipConfig
+      : {};
+
+  const now = new Date().toISOString();
+
+  runInTransaction(() => {
+      if (payload?.isEquipped !== undefined) {
+        sqlite.prepare('DELETE FROM "CharacterItemEquip" WHERE characterItemId = ?').run(existing.id);
+      }
+
+      if (payload?.isEquipped !== undefined && isEquipped) {
+        const itemDefinition = readItemDefinition(existing.itemDefinitionId);
+        const occupancy = readCharacterSlotOccupancy(character.id, [existing.id]);
+        const options = buildEquipOptionsForItem(itemDefinition, occupancy);
+        const selectedOption = chooseEquipOption(existing, itemDefinition, options, equipConfig);
+        const requiredSwapIds = new Set(
+          selectedOption.conflicts.map((conflict) => String(conflict.itemId))
+        );
+        const providedSwapIds = new Set(
+          (Array.isArray(equipConfig?.swapItemIds) ? equipConfig.swapItemIds : [])
+            .map((id) => String(id ?? "").trim())
+            .filter(Boolean)
+        );
+
+        if (requiredSwapIds.size > 0) {
+          const matchesAll = Array.from(requiredSwapIds).every((itemId) => providedSwapIds.has(itemId));
+          if (!matchesAll) {
+            throw createDetailedError("Conferma quale oggetto sostituire per liberare gli slot", {
+              code: "EQUIP_RESOLUTION_REQUIRED",
+              mode: "swap",
+              itemId: existing.id,
+              itemName: existing.nameOverride ?? existing.itemDefinitionName ?? "Oggetto senza nome",
+              options: options.filter((option) => option.conflicts.length > 0),
+            });
+          }
+
+          for (const itemId of requiredSwapIds) {
+            sqlite.prepare(`
+              UPDATE "CharacterItem"
+              SET isEquipped = 0, updatedAt = ?
+              WHERE id = ? AND characterId = ?
+            `).run(now, itemId, character.id);
+            sqlite.prepare('DELETE FROM "CharacterItemEquip" WHERE characterItemId = ?').run(itemId);
+          }
+        }
+
+        selectedOption.slots.forEach((slot) => {
+          sqlite.prepare(`
+            INSERT INTO "CharacterItemEquip" (id, characterItemId, slot)
+            VALUES (?, ?, ?)
+          `).run(crypto.randomUUID(), existing.id, slot);
+        });
+      }
+
+      sqlite.prepare(`
+        UPDATE "CharacterItem"
+        SET quantity = ?, isEquipped = ?, updatedAt = ?
+        WHERE id = ? AND characterId = ?
+      `).run(
+      quantity,
+      isEquipped ? 1 : 0,
+      now,
+      existing.id,
+      character.id
+    );
+
+    if (featureStatePayload && tableExists("CharacterItemFeatureState")) {
+      const itemFeatureId = String(featureStatePayload.itemFeatureId ?? "").trim();
+      if (!itemFeatureId) {
+        throw new Error("Item feature required");
+      }
+
+      const itemFeature = sqlite
+        .prepare(`
+          SELECT f.id, f.maxUses
+          FROM "ItemFeature" f
+          JOIN "CharacterItem" ci ON ci.itemDefinitionId = f.itemDefinitionId
+          WHERE f.id = ? AND ci.id = ? AND ci.characterId = ?
+          LIMIT 1
+        `)
+        .get(itemFeatureId, existing.id, character.id);
+
+      if (!itemFeature) {
+        throw new Error("Item feature not found");
+      }
+
+      const maxUses = itemFeature.maxUses == null ? null : Math.max(0, Number(itemFeature.maxUses));
+      const usesSpent = Math.max(
+        0,
+        Math.min(
+          maxUses ?? Number(featureStatePayload.usesSpent ?? 0),
+          normalizeNullableInt(featureStatePayload.usesSpent) ?? 0
+        )
+      );
+
+      const existingState = sqlite
+        .prepare(`
+          SELECT id
+          FROM "CharacterItemFeatureState"
+          WHERE characterItemId = ? AND itemFeatureId = ?
+          LIMIT 1
+        `)
+        .get(existing.id, itemFeatureId);
+
+      if (existingState) {
+        sqlite.prepare(`
+          UPDATE "CharacterItemFeatureState"
+          SET usesSpent = ?, updatedAt = ?
+          WHERE id = ?
+        `).run(usesSpent, now, existingState.id);
+      } else {
+        sqlite.prepare(`
+          INSERT INTO "CharacterItemFeatureState" (
+            id, characterItemId, itemFeatureId, usesSpent, lastResetAt, updatedAt
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `).run(crypto.randomUUID(), existing.id, itemFeatureId, usesSpent, null, now);
+      }
+    }
+  });
 
   return readCharacterInventoryItemsBySlug(characterSlug)?.find((item) => item.id === existing.id) ?? null;
 }
@@ -3027,18 +3822,73 @@ async function start() {
       return res.status(404).json({ error: "Character not found" });
     }
 
-    const characterItem = sqlite
-      .prepare('SELECT id FROM "CharacterItem" WHERE id = ? AND characterId = ? LIMIT 1')
-      .get(req.params.characterItemId, character.id);
-    if (!characterItem) {
-      return res.status(404).json({ error: "Character item not found" });
-    }
+      const characterItem = sqlite
+        .prepare(`
+          SELECT
+            ci.*,
+            d.name AS itemDefinitionName
+          FROM "CharacterItem" ci
+          LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
+          WHERE ci.id = ? AND ci.characterId = ?
+          LIMIT 1
+        `)
+        .get(req.params.characterItemId, character.id);
+      if (!characterItem) {
+        return res.status(404).json({ error: "Character item not found" });
+      }
 
-    sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
-    return res.status(204).end();
-  });
+      const now = new Date().toISOString();
+      const transactionId = crypto.randomUUID();
+      const itemName = characterItem.nameOverride ?? characterItem.itemDefinitionName ?? "Oggetto senza nome";
+      const snapshot = {
+        mode: "dm_remove",
+        fromCharacterId: character.id,
+        sourceItemId: characterItem.id,
+        quantity: Number(characterItem.quantity ?? 1),
+        itemDefinitionId: characterItem.itemDefinitionId ?? null,
+        itemName,
+      };
 
-  app.patch("/api/characters/:slug/inventory-items/:characterItemId", requireAuth, (req, res) => {
+      runInTransaction(() => {
+        sqlite.prepare(`
+          INSERT INTO "InventoryTransaction" (
+            id, type, fromOwnerType, fromCharacterId, fromNpcName, toOwnerType, toCharacterId, toNpcName,
+            notes, createdByUserId, createdAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          transactionId,
+          "REMOVAL",
+          "CHARACTER",
+          character.id,
+          null,
+          "SYSTEM",
+          null,
+          null,
+          `Rimozione DM: ${itemName}`,
+          req.user?.id ?? null,
+          now
+        );
+
+        sqlite.prepare(`
+          INSERT INTO "InventoryTransactionItem" (
+            id, transactionId, characterItemId, itemDefinitionId, descriptionSnapshot, quantity
+          ) VALUES (?, ?, ?, ?, ?, ?)
+        `).run(
+          crypto.randomUUID(),
+          transactionId,
+          characterItem.id,
+          characterItem.itemDefinitionId ?? null,
+          JSON.stringify(snapshot),
+          Number(characterItem.quantity ?? 1)
+        );
+
+        sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
+      });
+
+      return res.status(204).end();
+    });
+
+    app.patch("/api/characters/:slug/inventory-items/:characterItemId", requireAuth, (req, res) => {
     const slug = req.params.slug;
     const ownership = readOwnership();
     if (!canEditCharacter(req.user, slug, ownership)) {
@@ -3051,9 +3901,45 @@ async function start() {
         return res.status(404).json({ error: "Character item not found" });
       }
       return res.json(item);
+      } catch (error) {
+        const message = String(error?.message ?? error);
+        const status = /not found/i.test(message) ? 404 : /forbidden/i.test(message) ? 403 : 400;
+        return res.status(status).json({ error: message, details: error?.details ?? null });
+      }
+    });
+
+  app.post("/api/characters/:slug/inventory-items/:characterItemId/transfer", requireAuth, (req, res) => {
+    const slug = req.params.slug;
+    const ownership = readOwnership();
+    if (!canEditCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    try {
+      const items = transferCharacterItemBetweenCharacters(
+        slug,
+        req.params.characterItemId,
+        req.body ?? {},
+        req.user?.id ?? null
+      );
+      return res.json(items);
     } catch (error) {
       const message = String(error?.message ?? error);
       const status = /not found/i.test(message) ? 404 : /forbidden/i.test(message) ? 403 : 400;
+      return res.status(status).json({ error: message });
+    }
+  });
+
+  app.get("/api/inventory-transactions", requireRole("dm"), (req, res) => {
+    return res.json(readInventoryTransfers());
+  });
+
+  app.post("/api/inventory-transactions/:transactionId/undo", requireRole("dm"), (req, res) => {
+    try {
+      return res.json(undoInventoryTransfer(req.params.transactionId, req.user?.id ?? null));
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      const status = /not found/i.test(message) ? 404 : 400;
       return res.status(status).json({ error: message });
     }
   });

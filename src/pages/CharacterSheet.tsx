@@ -25,6 +25,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import {
   joinCharacterRoom,
   fetchCharacter,
+  fetchCharacters,
   onCharacterState,
   onCharacterPatch,
   onInitiativeTurnStart,
@@ -43,13 +44,16 @@ import {
 } from "@/utils";
 import {
   assignItemToCharacterRequest,
+  fetchItemDefinition,
   fetchSkills,
   fetchSpellSlots,
   fetchSpells,
   fetchItemDefinitions,
   fetchCharacterInventoryItems,
+  transferCharacterInventoryItemRequest,
   updateCharacterInventoryItemRequest,
   type CharacterInventoryItemEntry,
+  type ItemDefinitionEntry,
   type ItemDefinitionSummary,
   type SkillEntry as SkillCatalogEntry,
   type SpellEntry as SpellFromApi,
@@ -168,11 +172,20 @@ type CapabilityEntry = {
   shortDescription: string;
   description?: string;
   passiveEffects?: PassiveEffectEntry[];
+  sourceType?: "character" | "item";
+  sourceLabel?: string;
+  sourceItemId?: string;
+  sourceFeatureId?: string;
+  readOnly?: boolean;
   usage?: {
     resetOn: CapabilityReset;
     customLabel?: string;
     used: boolean[];
   };
+};
+type TransferTarget = {
+  slug: string;
+  name: string;
 };
 
 interface Character {
@@ -421,6 +434,15 @@ const CharacterSheet = () => {
   const [spellSlotTable, setSpellSlotTable] = useState<SpellSlotTable>({});
   const [relationalInventoryItems, setRelationalInventoryItems] = useState<CharacterInventoryItemEntry[]>([]);
   const [itemDefinitions, setItemDefinitions] = useState<ItemDefinitionSummary[]>([]);
+  const [itemDefinitionDetailsById, setItemDefinitionDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
+  const [transferTargets, setTransferTargets] = useState<TransferTarget[]>([]);
+
+  const refreshRelationalInventory = useCallback(async (slug: string) => {
+    const items = await fetchCharacterInventoryItems(slug);
+    const normalized = Array.isArray(items) ? items : [];
+    setRelationalInventoryItems(normalized);
+    return normalized;
+  }, []);
 
   useEffect(() => {
     const nextClass = characterData?.basicInfo?.class?.toLowerCase?.() ?? "";
@@ -572,6 +594,33 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, { capabilities: nextCapabilities });
   };
 
+  const toggleDerivedCapabilityUse = async (
+    characterItemId: string,
+    itemFeatureId: string,
+    useIndex: number,
+    currentUsed: boolean
+  ) => {
+    if (!character) return;
+    const item = relationalInventoryItems.find((entry) => entry.id === characterItemId);
+    if (!item) return;
+
+    const currentState = item.featureStates?.find((entry) => entry.itemFeatureId === itemFeatureId);
+    const currentUsesSpent = currentState?.usesSpent ?? 0;
+    const nextUsesSpent = Math.max(0, currentUsesSpent + (currentUsed ? -1 : 1));
+
+    try {
+      const updated = await updateCharacterInventoryItemRequest(character, characterItemId, {
+        featureState: {
+          itemFeatureId,
+          usesSpent: nextUsesSpent,
+        },
+      });
+      setRelationalInventoryItems((prev) => prev.map((entry) => (entry.id === updated.id ? updated : entry)));
+    } catch {
+      // silent fail for now to keep the legacy UX consistent
+    }
+  };
+
   const confirmRemoveFeature = () => {
     if (modalFeatureIndex === null) return;
     removeFeature(modalFeatureIndex);
@@ -674,20 +723,30 @@ const CharacterSheet = () => {
     if (character) updateCharacter(character, patch);
   };
 
-  const toggleEquipRelationalItem = async (characterItemId: string) => {
+  const toggleEquipRelationalItem = async (
+    characterItemId: string,
+    payload?: {
+      isEquipped?: boolean;
+      equipConfig?: {
+        optionId?: string;
+        slots?: string[];
+        swapItemIds?: string[];
+      };
+    }
+  ) => {
     if (!character) return;
     const current = relationalInventoryItems.find((item) => item.id === characterItemId);
     if (!current || !current.equippable) return;
 
     try {
-      const updated = await updateCharacterInventoryItemRequest(character, characterItemId, {
-        isEquipped: !current.isEquipped,
+      await updateCharacterInventoryItemRequest(character, characterItemId, {
+        isEquipped: payload?.isEquipped ?? !current.isEquipped,
+        equipConfig: payload?.equipConfig,
       });
-      setRelationalInventoryItems((prev) =>
-        prev.map((item) => (item.id === updated.id ? updated : item))
-      );
-    } catch {
-      // keep legacy UX quiet for now; failed command simply won't update the row
+      const nextInventory = await refreshRelationalInventory(character);
+      return nextInventory.find((item) => item.id === characterItemId) ?? null;
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -733,6 +792,15 @@ const CharacterSheet = () => {
   }) => {
     if (!character) throw new Error("Character slug mancante");
     const nextInventory = await assignItemToCharacterRequest(character, payload);
+    setRelationalInventoryItems(Array.isArray(nextInventory) ? nextInventory : []);
+  };
+
+  const transferRelationalInventoryItem = async (
+    characterItemId: string,
+    payload: { toCharacterSlug: string; quantity?: number }
+  ) => {
+    if (!character) throw new Error("Character slug mancante");
+    const nextInventory = await transferCharacterInventoryItemRequest(character, characterItemId, payload);
     setRelationalInventoryItems(Array.isArray(nextInventory) ? nextInventory : []);
   };
 
@@ -1001,7 +1069,7 @@ const CharacterSheet = () => {
     const slug = character;
     if (!slug) return;
     let active = true;
-    void fetchCharacterInventoryItems(slug)
+    void refreshRelationalInventory(slug)
       .then((items) => {
         if (active) setRelationalInventoryItems(Array.isArray(items) ? items : []);
       })
@@ -1012,34 +1080,45 @@ const CharacterSheet = () => {
     return () => {
       active = false;
     };
-  }, [character]);
+  }, [character, refreshRelationalInventory]);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const [nextSpells, nextSkills, nextSpellSlots] = await Promise.all([
+        const [nextSpells, nextSkills, nextSpellSlots, nextCharacters] = await Promise.all([
           fetchSpells(),
           fetchSkills(),
           fetchSpellSlots(),
+          fetchCharacters(),
         ]);
         if (active) {
           setSpells(nextSpells);
           setSkillsCatalog(Array.isArray(nextSkills?.skills) ? nextSkills.skills : []);
           setSpellSlotTable(nextSpellSlots ?? {});
+          setTransferTargets(
+            (Array.isArray(nextCharacters) ? nextCharacters : [])
+              .filter((entry) => entry?.characterType !== "png" && entry?.slug !== character)
+              .map((entry) => ({
+                slug: entry.slug,
+                name: entry?.basicInfo?.characterName ?? entry.slug,
+              }))
+              .sort((a, b) => a.name.localeCompare(b.name, "it", { sensitivity: "base" }))
+          );
         }
       } catch {
         if (active) {
           setSpells({});
           setSkillsCatalog([]);
           setSpellSlotTable({});
+          setTransferTargets([]);
         }
       }
     })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [character]);
 
   useEffect(() => {
     let active = true;
@@ -1055,6 +1134,103 @@ const CharacterSheet = () => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const missingDefinitionIds = Array.from(
+      new Set(
+        relationalInventoryItems
+          .filter((item) => item.isEquipped && item.itemDefinitionId)
+          .map((item) => item.itemDefinitionId)
+          .filter(
+            (itemDefinitionId): itemDefinitionId is string =>
+              !!itemDefinitionId && !itemDefinitionDetailsById[itemDefinitionId]
+          )
+      )
+    );
+
+    if (missingDefinitionIds.length === 0) return;
+
+    let active = true;
+
+    void Promise.all(
+      missingDefinitionIds.map(async (itemDefinitionId) => {
+        try {
+          const detail = await fetchItemDefinition(itemDefinitionId);
+          return [itemDefinitionId, detail] as const;
+        } catch {
+          return null;
+        }
+      })
+    ).then((results) => {
+      if (!active) return;
+      const validResults = results.filter(
+        (entry): entry is readonly [string, ItemDefinitionEntry] => Array.isArray(entry)
+      );
+      if (validResults.length === 0) return;
+      setItemDefinitionDetailsById((prev) => ({
+        ...prev,
+        ...Object.fromEntries(validResults),
+      }));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [relationalInventoryItems, itemDefinitionDetailsById]);
+
+  const derivedItemCapabilities = useMemo<CapabilityEntry[]>(() => {
+    return relationalInventoryItems.flatMap((item) => {
+      if (!item.isEquipped || !item.itemDefinitionId) return [];
+      const detail = itemDefinitionDetailsById[item.itemDefinitionId];
+      if (!detail || !Array.isArray(detail.features) || detail.features.length === 0) return [];
+
+      return detail.features.map((feature) => {
+        const isPassiveFeature = String(feature.kind ?? "").toUpperCase() === "PASSIVE";
+        const isActiveFeature =
+          !isPassiveFeature && (!!feature.resetOn || (typeof feature.maxUses === "number" && feature.maxUses > 0) || String(feature.kind ?? "").toUpperCase() === "ACTIVE");
+        const resetMap: Record<string, CapabilityReset> = {
+          AT_WILL: "atWill",
+          ENCOUNTER: "encounter",
+          SHORT_REST: "shortRest",
+          LONG_REST: "longRest",
+          DAILY: "longRest",
+          CUSTOM: "custom",
+        };
+        const usesSpent = Math.max(
+          0,
+          Number(item.featureStates?.find((entry) => entry.itemFeatureId === feature.id)?.usesSpent ?? 0)
+        );
+        const usage =
+          isActiveFeature
+            ? {
+                resetOn: resetMap[feature.resetOn ?? "AT_WILL"] ?? "atWill",
+                customLabel: feature.resetOn === "CUSTOM" ? feature.customResetLabel ?? undefined : undefined,
+                used:
+                  typeof feature.maxUses === "number" && feature.maxUses > 0
+                    ? Array.from({ length: feature.maxUses }, (_, index) => index < usesSpent)
+                    : [],
+              }
+            : undefined;
+
+        return {
+          name: feature.name,
+          category: item.itemName,
+          kind: (String(feature.kind ?? "").toUpperCase() === "PASSIVE" ? "passive" : (isActiveFeature ? "active" : "passive")),
+          shortDescription:
+            feature.description?.trim() ||
+            `Feature concessa da ${item.itemName} mentre l'oggetto e' equipaggiato.`,
+          description: feature.description?.trim() || undefined,
+          passiveEffects: Array.isArray(feature.passiveEffects) ? (feature.passiveEffects as PassiveEffectEntry[]) : undefined,
+          sourceType: "item",
+          sourceLabel: item.itemName,
+          sourceItemId: item.id,
+          sourceFeatureId: feature.id,
+          readOnly: true,
+          usage,
+        } satisfies CapabilityEntry;
+      });
+    });
+  }, [itemDefinitionDetailsById, relationalInventoryItems]);
 
   useEffect(() => {
     if (characterData?.basicInfo?.class) {
@@ -1176,6 +1352,8 @@ const CharacterSheet = () => {
               updateCapability={updateCapability}
               removeCapability={removeCapability}
               toggleCapabilityUse={toggleCapabilityUse}
+              toggleDerivedCapabilityUse={toggleDerivedCapabilityUse}
+              derivedCapabilities={derivedItemCapabilities}
             />
             <AttacksAndSpells
               characterData={characterData}
@@ -1259,6 +1437,8 @@ const CharacterSheet = () => {
               toggleEquipRelationalItem={toggleEquipRelationalItem}
               decrementRelationalConsumable={decrementRelationalConsumable}
               incrementRelationalConsumable={incrementRelationalConsumable}
+              transferTargets={transferTargets}
+              transferRelationalInventoryItem={transferRelationalInventoryItem}
             />
           </div>
         </div>

@@ -7,6 +7,7 @@ import {
   Link2,
   LogIn,
   LogOut,
+  Package,
   PlusCircle,
   Scroll,
   ScrollText,
@@ -244,6 +245,24 @@ const Index = () => {
         description: "Filtra i mostri censiti, apri il dettaglio da combattimento e crea nuove varianti.",
         href: "/dm/bestiary",
         icon: ScrollText,
+      },
+      {
+        title: "Gestione oggetti",
+        description: "Apri il catalogo oggetti per statistiche, attacchi, effetti, visibilita e metadati.",
+        href: "/dm/items",
+        icon: Package,
+      },
+      {
+        title: "Assegna oggetti",
+        description: "Assegna oggetti ai personaggi e consulta il loro inventario relazionale.",
+        href: "/dm/inventory",
+        icon: PlusCircle,
+      },
+      {
+        title: "Transazioni oggetti",
+        description: "Controlla i trasferimenti tra PG e annulla eventuali errori.",
+        href: "/dm/inventory#transazioni",
+        icon: Link2,
       },
     ],
     []
