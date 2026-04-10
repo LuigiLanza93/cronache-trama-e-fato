@@ -101,16 +101,18 @@ const Features = ({
             const cls = parseClassFromFeatureTitle(feature.name);
             const lvl = parseLevelFromFeatureTitle(feature.name);
             const match = findSpell(baseName, cls, lvl);
+            const spellLevel = match?.level ?? lvl ?? null;
+            const isSpellLike = spellLevel !== null;
 
-            return { feature, index, baseName, match };
+            return { feature, index, baseName, match, spellLevel, isSpellLike };
         })
         .sort((a, b) => {
-            if (a.match && b.match) {
-                if (a.match.level !== b.match.level) return a.match.level - b.match.level;
+            if (a.isSpellLike && b.isSpellLike) {
+                if ((a.spellLevel ?? 0) !== (b.spellLevel ?? 0)) return (a.spellLevel ?? 0) - (b.spellLevel ?? 0);
                 return a.baseName.localeCompare(b.baseName, "it");
             }
-            if (a.match && !b.match) return -1;
-            if (!a.match && b.match) return 1;
+            if (a.isSpellLike && !b.isSpellLike) return -1;
+            if (!a.isSpellLike && b.isSpellLike) return 1;
             return a.index - b.index;
         });
 
@@ -123,10 +125,10 @@ const Features = ({
     const normalizedClass = (characterData.basicInfo.class ?? "").trim().toLowerCase();
     const compactSlotRow = ["guerriero", "fighter", "warlock"].includes(normalizedClass);
 
-    const nonSpellFeatures = orderedFeatures.filter(({ match }) => !match);
-    const spellFeatures = orderedFeatures.filter(({ match }) => !!match);
+    const nonSpellFeatures = orderedFeatures.filter(({ isSpellLike }) => !isSpellLike);
+    const spellFeatures = orderedFeatures.filter(({ isSpellLike }) => isSpellLike);
     const spellGroups = spellFeatures.reduce((acc, entry) => {
-        const level = entry.match.level;
+        const level = entry.spellLevel ?? 0;
         if (!acc[level]) acc[level] = [];
         acc[level].push(entry);
         return acc;
@@ -194,11 +196,13 @@ const Features = ({
                                                 <div className="line-clamp-2 pr-1 text-sm font-semibold leading-snug text-primary">
                                                     {baseName}
                                                 </div>
-                                                <div className="mt-1 text-[11px] leading-tight text-muted-foreground">
-                                                    {match.school}
-                                                    {match.concentration ? " · Concentrazione" : ""}
-                                                    {match.ritual ? " · Rituale" : ""}
-                                                </div>
+                                                {match ? (
+                                                    <div className="mt-1 text-[11px] leading-tight text-muted-foreground">
+                                                        {match.school}
+                                                        {match.concentration ? " · Concentrazione" : ""}
+                                                        {match.ritual ? " · Rituale" : ""}
+                                                    </div>
+                                                ) : null}
                                             </div>
                                             {feature.uses && (
                                                 <Badge variant="outline" className="ml-2 shrink-0 text-[10px]">

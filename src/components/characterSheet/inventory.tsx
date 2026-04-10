@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Backpack,
   Circle,
+  Check,
   Crosshair,
   Feather,
   FlaskConical,
@@ -295,6 +296,7 @@ type InventoryTarget =
 
 const Inventory = ({
   coins,
+  coinActionsEnabled = true,
   characterData,
   setMode,
   setCoinFlow,
@@ -306,8 +308,18 @@ const Inventory = ({
   coinQty,
   setCoinQty,
   coinFlow,
-  compactCoinsOnAdd,
-  setCompactCoinsOnAdd,
+  coinCounterpartyName,
+  setCoinCounterpartyName,
+  coinReason,
+  setCoinReason,
+  coinPurchaseDescription,
+  setCoinPurchaseDescription,
+  coinNote,
+  setCoinNote,
+  coinTransferTargetSlug,
+  setCoinTransferTargetSlug,
+  coinSubmitting,
+  handleCurrencySubmit,
   handleInventorySubmit,
   resetInvForm,
   itemName,
@@ -364,9 +376,9 @@ const Inventory = ({
     ma: "sp",
     me: "ep",
     mo: "gp",
-    mp: "pp",
   } as const;
   type CoinAbbr = keyof typeof COIN_KEYS;
+  const isCoinTransfer = mode === "coins" && coinFlow === "transfer";
   const COIN_META: Record<
     CoinAbbr,
     {
@@ -410,16 +422,36 @@ const Inventory = ({
       ringClass: "ring-yellow-600/30",
       textClass: "text-yellow-700",
     },
-    mp: {
-      label: "Platino",
-      shortLabel: "MP",
-      key: "pp",
-      swatchClass: "bg-gradient-to-br from-cyan-50 to-cyan-200",
-      ringClass: "ring-cyan-400/30",
-      textClass: "text-cyan-700",
-    },
   };
-  const COIN_ORDER: CoinAbbr[] = ["mp", "mo", "me", "ma", "mr"];
+  const COIN_ORDER: CoinAbbr[] = ["mo", "me", "ma", "mr"];
+  const coinPrimaryLabel =
+    coinFlow === "add"
+      ? "Da chi / da dove"
+      : coinFlow === "remove"
+        ? "A chi"
+        : "Destinatario PG";
+  const coinPrimaryPlaceholder =
+    coinFlow === "add"
+      ? "Es. Ricompensa del duca, bottino goblin, Oste Pinco Pallino"
+      : "Es. Oste Pinco Pallino, guardia al ponte";
+  const coinReasonPlaceholder =
+    coinFlow === "add"
+      ? "Es. Ricompensa, bottino, vendita"
+      : coinFlow === "remove"
+        ? "Es. Pernottamento, pedaggio, acquisto"
+        : "Es. Prestito, divisione bottino";
+  const coinDetailLabel =
+    coinFlow === "remove"
+      ? "Cosa sta comprando"
+      : coinFlow === "add"
+        ? "Origine / dettaglio"
+        : "Dettaglio";
+  const coinDetailPlaceholder =
+    coinFlow === "remove"
+      ? "Campo opzionale"
+      : coinFlow === "add"
+        ? "Es. Taglia sui briganti, borsa trovata nel covo"
+        : "Es. Quota per le provviste";
 
   // === mapping categorie ===
   const SKILL_TYPES = ["volonta", "incontro", "riposoBreve", "riposoLungo"] as const;
@@ -1232,7 +1264,8 @@ const Inventory = ({
               variant="ghost"
               className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
               aria-label="Aggiungi monete"
-              title="Aggiungi monete"
+              title={coinActionsEnabled ? "Aggiungi monete" : "Gestione monete in attivazione"}
+              disabled={!coinActionsEnabled}
               onClick={() => {
                 lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
                 setMode("coins");
@@ -1248,7 +1281,8 @@ const Inventory = ({
               variant="ghost"
               className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
               aria-label="Rimuovi monete"
-              title="Rimuovi monete"
+              title={coinActionsEnabled ? "Rimuovi monete" : "Gestione monete in attivazione"}
+              disabled={!coinActionsEnabled}
               onClick={() => {
                 lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
                 setMode("coins");
@@ -1257,6 +1291,26 @@ const Inventory = ({
               }}
             >
               <span className="text-base leading-none">-</span>
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+              aria-label="Trasferisci monete"
+              title={coinActionsEnabled ? "Trasferisci monete" : "Gestione monete in attivazione"}
+              disabled={!coinActionsEnabled || !Array.isArray(transferTargets) || transferTargets.length === 0}
+              onClick={() => {
+                lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+                setMode("coins");
+                setCoinFlow("transfer");
+                if (!coinTransferTargetSlug && Array.isArray(transferTargets) && transferTargets[0]?.slug) {
+                  setCoinTransferTargetSlug(String(transferTargets[0].slug));
+                }
+                setInvOpen(true);
+              }}
+            >
+              <Repeat className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -1283,7 +1337,9 @@ const Inventory = ({
           })}
         </div>
         <div className="mt-1.5 text-[11px] text-muted-foreground">
-          I cambi tra i vari tagli vengono calcolati automaticamente.
+          {coinActionsEnabled
+            ? "I cambi tra i vari tagli vengono calcolati automaticamente."
+            : "Saldo letto dal DB. Le operazioni monete arrivano nel prossimo step."}
         </div>
       </div>
 
@@ -1507,7 +1563,7 @@ const Inventory = ({
         }}
       >
         <DialogContent
-          className="sm:max-w-md"
+          className="max-h-[85vh] overflow-y-auto sm:max-w-4xl"
           onCloseAutoFocus={(e) => {
             e.preventDefault();
             lastOpenTriggerRef.current?.focus();
@@ -1518,7 +1574,9 @@ const Inventory = ({
               {mode === "coins"
                 ? coinFlow === "add"
                   ? "Aggiungi monete"
-                  : "Rimuovi monete"
+                  : coinFlow === "remove"
+                    ? "Rimuovi monete"
+                    : "Trasferisci monete"
                 : editingTarget
                   ? kind === "weapon"
                     ? "Modifica arma"
@@ -1535,12 +1593,9 @@ const Inventory = ({
 
           <div className="space-y-4">
             <div>
-              <Label className="mb-2 block">Tipo</Label>
-              {mode === "coins" ? (
-                <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                  Monete
-                </div>
-              ) : (
+              {mode === "coins" ? null : (
+                <>
+                <Label className="mb-2 block">Tipo</Label>
                 <RadioGroup
                   value={kind}
                   onValueChange={(v) => {
@@ -1564,68 +1619,140 @@ const Inventory = ({
                     <Label htmlFor="r-consumable">Consumabili</Label>
                   </div>
                 </RadioGroup>
+                </>
               )}
             </div>
 
             {mode === "coins" ? (
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-3 text-xs text-muted-foreground">
-                  Il cambio viene gestito automaticamente secondo la valuta di D&D.
-                </div>
-                <div className="col-span-3">
-                  <Label className="mb-1 block">Taglio</Label>
-                  <div className="space-y-1.5">
-                    {COIN_ORDER.map((abbr) => (
-                      <Button
-                        key={abbr}
-                        type="button"
-                        variant={coinType === abbr ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCoinType(abbr)}
-                        className="h-auto w-full justify-between px-2.5 py-1.5"
-                      >
-                        <span className="flex items-center gap-3">
-                          <span
-                            className={`inline-flex h-5 w-5 items-center justify-center rounded-full ring-1 ${COIN_META[abbr].ringClass} ${COIN_META[abbr].swatchClass} shadow-inner`}
-                            aria-hidden="true"
-                          >
-                            <span className={`text-[8px] font-bold ${COIN_META[abbr].textClass}`}>
-                              {COIN_META[abbr].shortLabel}
-                            </span>
-                          </span>
-                          <span className="text-left">
-                            <span className="block text-sm leading-none">{COIN_META[abbr].label}</span>
-                          </span>
-                        </span>
-                      </Button>
-                    ))}
+              <div className="space-y-5">
+                <div className="space-y-3">
+                  <div className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/85">
+                    Operazione
+                  </div>
+                  <div className="mx-auto flex w-full max-w-xl rounded-full border border-border/70 bg-muted/10 p-1">
+                    <Button
+                      type="button"
+                      variant={coinFlow === "add" ? "default" : "ghost"}
+                      className="h-8 flex-1 rounded-full px-3 text-xs font-semibold"
+                      onClick={() => setCoinFlow("add")}
+                    >
+                      Entrata
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={coinFlow === "remove" ? "default" : "ghost"}
+                      className="h-8 flex-1 rounded-full px-3 text-xs font-semibold"
+                      onClick={() => setCoinFlow("remove")}
+                    >
+                      Spesa
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={coinFlow === "transfer" ? "default" : "ghost"}
+                      className="h-8 flex-1 rounded-full px-3 text-xs font-semibold"
+                      onClick={() => setCoinFlow("transfer")}
+                    >
+                      Trasferisci
+                    </Button>
                   </div>
                 </div>
-                <div className="col-span-3">
-                  <Label className="mb-1 block">
-                    Quantità {coinFlow === "remove" ? "da rimuovere" : "da aggiungere"}
-                  </Label>
-                  <Input
-                    inputMode="numeric"
-                    value={coinQty}
-                    onChange={(e) => setCoinQty(e.target.value)}
-                    placeholder="Es. 10"
-                  />
-                </div>
-                {coinFlow === "add" && (
-                  <div className="col-span-3 flex items-center gap-2 rounded-md bg-muted/30 px-2.5 py-1.5">
-                    <input
-                      id="compact-coins-on-add"
-                      type="checkbox"
-                      checked={!!compactCoinsOnAdd}
-                      onChange={(e) => setCompactCoinsOnAdd(e.target.checked)}
-                      className="h-4 w-4"
-                    />
-                    <Label htmlFor="compact-coins-on-add" className="mb-0 cursor-pointer text-sm leading-tight">
-                      Compatta automaticamente le monete dopo l'aggiunta
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-start">
+                  <div className="space-y-2">
+                    <Label className="mb-0.5 block">
+                      {coinFlow === "add"
+                        ? "Quantita da aggiungere"
+                        : coinFlow === "remove"
+                          ? "Quantita da spendere"
+                          : "Quantita da trasferire"}
                     </Label>
+                    <Input
+                      inputMode="numeric"
+                      value={coinQty}
+                      onChange={(e) => setCoinQty(e.target.value)}
+                      placeholder="Es. 10"
+                    />
                   </div>
-                )}
+                  <div className="space-y-3">
+                    <Label className="mb-0.5 block">Taglio</Label>
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                      {COIN_ORDER.map((abbr) => {
+                        const selected = coinType === abbr;
+                        return (
+                          <button
+                            key={abbr}
+                            type="button"
+                            onClick={() => setCoinType(abbr)}
+                            className="group flex flex-col items-center gap-1 text-center"
+                          >
+                            <span
+                              className={`inline-flex h-11 w-11 items-center justify-center rounded-full ring-1 transition-all ${COIN_META[abbr].ringClass} ${COIN_META[abbr].swatchClass} ${selected ? "scale-105 ring-primary/80 shadow-[0_0_0_2px_rgba(255,255,255,0.08),0_0_0_4px_rgba(255,92,92,0.16)]" : "opacity-70 group-hover:opacity-100"}`}
+                              aria-hidden="true"
+                            >
+                              <span className={`text-xs font-bold ${COIN_META[abbr].textClass}`}>
+                                {COIN_META[abbr].shortLabel}
+                              </span>
+                            </span>
+                            <span
+                              className={`text-[11px] font-semibold transition-colors ${selected ? "text-primary" : "text-muted-foreground"}`}
+                            >
+                              {COIN_META[abbr].label}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-4 md:grid-cols-6 md:items-start">
+                  {coinFlow === "transfer" && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="mb-1 block">{coinPrimaryLabel}</Label>
+                      <Select value={coinTransferTargetSlug} onChange={setCoinTransferTargetSlug}>
+                        <option value="">Seleziona personaggio</option>
+                        {(Array.isArray(transferTargets) ? transferTargets : []).map((target: any) => (
+                          <option key={target.slug} value={target.slug}>
+                            {target.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
+                  {coinFlow !== "transfer" && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="mb-1 block">{coinPrimaryLabel}</Label>
+                      <Input
+                        value={coinCounterpartyName}
+                        onChange={(e) => setCoinCounterpartyName(e.target.value)}
+                        placeholder={coinPrimaryPlaceholder}
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="mb-1 block">Motivo</Label>
+                    <Input
+                      value={coinReason}
+                      onChange={(e) => setCoinReason(e.target.value)}
+                      placeholder={coinReasonPlaceholder}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="mb-1 block">{coinDetailLabel}</Label>
+                    <Input
+                      value={coinPurchaseDescription}
+                      onChange={(e) => setCoinPurchaseDescription(e.target.value)}
+                      placeholder={coinDetailPlaceholder}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-6">
+                    <Label className="mb-1 block">Note</Label>
+                    <Textarea
+                      rows={3}
+                      value={coinNote}
+                      onChange={(e) => setCoinNote(e.target.value)}
+                      placeholder="Annotazioni opzionali"
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -1839,28 +1966,31 @@ const Inventory = ({
           </div>
 
           <DialogFooter className="mt-2">
-            <DialogClose asChild>
-              <Button variant="outline">Annulla</Button>
-            </DialogClose>
+            <div className="flex items-center gap-2">
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+                  aria-label="Annulla"
+                  title="Annulla"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </DialogClose>
             {mode === "coins" ? (
               <Button
-                onClick={() =>
-                  handleInventorySubmit({
-                    editTarget: editingTarget ?? undefined,
-                    kind,
-                    weaponCategory,
-                    weaponHands: weaponCategory === "melee" ? weaponHands : undefined,
-                    weaponRange: weaponCategory === "ranged" ? weaponRange?.trim() || undefined : undefined,
-                    damageKind,
-                    description: descriptionVal?.trim() || undefined,
-                    equippable: kind === "object" ? !!equippableVal : undefined,
-                    consumableSubtype,
-                    quantity: Number.isNaN(parseInt(quantityVal)) ? 0 : parseInt(quantityVal, 10),
-                    potionDice: potionDiceVal?.trim() || undefined,
-                  })
-                }
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+                onClick={() => void handleCurrencySubmit()}
+                disabled={coinSubmitting}
+                aria-label={coinSubmitting ? "Salvataggio in corso" : "Conferma"}
+                title={coinSubmitting ? "Salvataggio in corso" : "Conferma"}
               >
-                Salva
+                <Check className="h-4 w-4" />
               </Button>
             ) : (
               <Button
@@ -1870,6 +2000,7 @@ const Inventory = ({
                 {assigningItem ? "Aggiungo..." : catalogMode === "catalog" ? "Aggiungi all'inventario" : "Censisci e aggiungi"}
               </Button>
             )}
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

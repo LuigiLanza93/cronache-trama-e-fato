@@ -26,8 +26,39 @@ const PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
 const SESSION_COOKIE = "ctf_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
-const sqlite = new DatabaseSync(SQLITE_DB_FILE);
-sqlite.exec("PRAGMA foreign_keys = ON;");
+
+function createSqliteConnection() {
+  const connection = new DatabaseSync(SQLITE_DB_FILE);
+  connection.exec("PRAGMA foreign_keys = ON;");
+  return connection;
+}
+
+function getSqliteDbMtimeMs() {
+  try {
+    return fs.statSync(SQLITE_DB_FILE).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+let sqlite = createSqliteConnection();
+let sqliteLastKnownMtimeMs = getSqliteDbMtimeMs();
+
+function ensureSqliteConnectionFresh() {
+  const currentMtimeMs = getSqliteDbMtimeMs();
+  if (!currentMtimeMs || currentMtimeMs === sqliteLastKnownMtimeMs) {
+    return;
+  }
+
+  try {
+    sqlite.close();
+  } catch {
+    // If close fails, reopen anyway and let the next operation surface real issues.
+  }
+
+  sqlite = createSqliteConnection();
+  sqliteLastKnownMtimeMs = currentMtimeMs;
+}
 
 const CHARACTER_SHEET_LAYOUT_KEY = "character-sheet";
 const ALLOWED_CHARACTER_SHEET_CARD_IDS = new Set([
@@ -41,6 +72,13 @@ const ALLOWED_CHARACTER_SHEET_CARD_IDS = new Set([
   "features",
   "inventory",
 ]);
+const CURRENCY_KEYS = new Set(["cp", "sp", "ep", "gp"]);
+const CURRENCY_ORDER = ["cp", "sp", "ep", "gp"];
+const CURRENCY_EXCHANGE_UP = {
+  cp: 10,
+  sp: 5,
+  ep: 2,
+};
 
 // ---- Utilities ----
 function ensureDir(p) {
@@ -78,6 +116,162 @@ function parseJsonString(value, fallback) {
   }
 }
 
+function normalizeCurrencyBalance(value) {
+  return {
+    cp: Number(value?.cp ?? 0) || 0,
+    sp: Number(value?.sp ?? 0) || 0,
+    ep: Number(value?.ep ?? 0) || 0,
+    gp: Number(value?.gp ?? 0) || 0,
+  };
+}
+
+function makeCurrencyChangeStep(balance, fromKey) {
+  const fromIndex = CURRENCY_ORDER.indexOf(fromKey);
+  if (fromIndex <= 0 || balance[fromKey] <= 0) return false;
+
+  const lowerKey = CURRENCY_ORDER[fromIndex - 1];
+  const factor = CURRENCY_EXCHANGE_UP[lowerKey];
+  if (!factor) return false;
+
+  balance[fromKey] -= 1;
+  balance[lowerKey] += factor;
+  return true;
+}
+
+function removeCurrencyWithChange(baseBalance, currencyKey, amount) {
+  const nextBalance = normalizeCurrencyBalance(baseBalance);
+
+  for (let i = 0; i < amount; i += 1) {
+    if (nextBalance[currencyKey] > 0) {
+      nextBalance[currencyKey] -= 1;
+      continue;
+    }
+
+    let borrowed = false;
+    for (let higherIndex = CURRENCY_ORDER.indexOf(currencyKey) + 1; higherIndex < CURRENCY_ORDER.length; higherIndex += 1) {
+      const higherKey = CURRENCY_ORDER[higherIndex];
+      if (nextBalance[higherKey] <= 0) continue;
+
+      for (let step = higherIndex; step > CURRENCY_ORDER.indexOf(currencyKey); step -= 1) {
+        const currentKey = CURRENCY_ORDER[step];
+        if (!makeCurrencyChangeStep(nextBalance, currentKey)) {
+          return null;
+        }
+      }
+
+      borrowed = true;
+      break;
+    }
+
+    if (!borrowed || nextBalance[currencyKey] <= 0) {
+      return null;
+    }
+
+    nextBalance[currencyKey] -= 1;
+  }
+
+  return nextBalance;
+}
+
+function compactCurrencyAtTier(baseBalance, currencyKey) {
+  const nextBalance = normalizeCurrencyBalance(baseBalance);
+  const currencyIndex = CURRENCY_ORDER.indexOf(currencyKey);
+  if (currencyIndex < 0 || currencyIndex >= CURRENCY_ORDER.length - 1) {
+    return nextBalance;
+  }
+
+  const nextKey = CURRENCY_ORDER[currencyIndex + 1];
+  const factor = CURRENCY_EXCHANGE_UP[currencyKey];
+  if (!factor) return nextBalance;
+
+  const promoted = Math.floor(nextBalance[currencyKey] / factor);
+  if (promoted <= 0) return nextBalance;
+
+  nextBalance[currencyKey] = nextBalance[currencyKey] % factor;
+  nextBalance[nextKey] += promoted;
+  return nextBalance;
+}
+
+function readCharacterCurrencyBalance(characterId) {
+  if (!characterId) return null;
+  const row = sqlite
+    .prepare('SELECT cp, sp, ep, gp FROM "CharacterCurrencyBalance" WHERE characterId = ? LIMIT 1')
+    .get(characterId);
+  if (!row) return null;
+  return {
+    cp: Number(row.cp ?? 0) || 0,
+    sp: Number(row.sp ?? 0) || 0,
+    ep: Number(row.ep ?? 0) || 0,
+    gp: Number(row.gp ?? 0) || 0,
+  };
+}
+
+function writeCharacterCurrencyBalance(characterId, balance) {
+  const normalized = normalizeCurrencyBalance(balance);
+  sqlite
+    .prepare(
+      `UPDATE "CharacterCurrencyBalance"
+       SET cp = ?, sp = ?, ep = ?, gp = ?, updatedAt = CURRENT_TIMESTAMP
+       WHERE characterId = ?`
+    )
+    .run(normalized.cp, normalized.sp, normalized.ep, normalized.gp, characterId);
+  return normalized;
+}
+
+function getCharacterRecordBySlug(slug) {
+  return sqlite
+    .prepare('SELECT id, slug, name, characterType, archivedAt FROM "Character" WHERE slug = ? LIMIT 1')
+    .get(slug);
+}
+
+function createCurrencyTransactionRecord(payload) {
+  const transaction = {
+    id: payload.id ?? crypto.randomUUID(),
+    fromCharacterId: payload.fromCharacterId ?? null,
+    toCharacterId: payload.toCharacterId ?? null,
+    fromExternalName: payload.fromExternalName ?? null,
+    toExternalName: payload.toExternalName ?? null,
+    reason: payload.reason ?? null,
+    purchaseDescription: payload.purchaseDescription ?? null,
+    note: payload.note ?? null,
+    cp: Number(payload.cp ?? 0) || 0,
+    sp: Number(payload.sp ?? 0) || 0,
+    ep: Number(payload.ep ?? 0) || 0,
+    gp: Number(payload.gp ?? 0) || 0,
+    createdByUserId: payload.createdByUserId ?? null,
+    reversalOfTransactionId: payload.reversalOfTransactionId ?? null,
+    reversedAt: payload.reversedAt ?? null,
+  };
+
+  sqlite
+    .prepare(
+      `INSERT INTO "CurrencyTransaction" (
+        id, fromCharacterId, toCharacterId, fromExternalName, toExternalName,
+        reason, purchaseDescription, note, cp, sp, ep, gp,
+        createdByUserId, reversalOfTransactionId, reversedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      transaction.id,
+      transaction.fromCharacterId,
+      transaction.toCharacterId,
+      transaction.fromExternalName,
+      transaction.toExternalName,
+      transaction.reason,
+      transaction.purchaseDescription,
+      transaction.note,
+      transaction.cp,
+      transaction.sp,
+      transaction.ep,
+      transaction.gp,
+      transaction.createdByUserId,
+      transaction.reversalOfTransactionId,
+      transaction.reversedAt
+    );
+
+  return transaction;
+}
+
 function runInTransaction(work) {
   sqlite.exec("BEGIN");
   try {
@@ -96,6 +290,10 @@ function runInTransaction(work) {
 
 ensureRaceSpeedReferenceTable();
 ensureUserLayoutPreferenceTable();
+ensureCharacterCurrencyBalanceTable();
+ensureCurrencyTransactionTable();
+ensureCharacterCurrencyBalanceRows();
+ensureLegacyCharacterCurrencyBalancesMigrated();
 
 function normalizeUserRow(row) {
   if (!row) return null;
@@ -115,10 +313,12 @@ function normalizeUserRow(row) {
 function normalizeCharacterRow(row) {
   if (!row) return null;
   const data = parseJsonString(row.data, {});
+  const currencyBalance = readCharacterCurrencyBalance(row.id);
   return {
     ...data,
     slug: row.slug,
     characterType: String(row.characterType).toLowerCase(),
+    currencyBalance,
     basicInfo: {
       ...(data.basicInfo ?? {}),
       characterName: row.name,
@@ -519,6 +719,187 @@ function ensureUserLayoutPreferenceTable() {
     CREATE INDEX IF NOT EXISTS "UserLayoutPreference_userId_idx"
     ON "UserLayoutPreference"("userId");
   `);
+}
+
+function ensureCharacterCurrencyBalanceTable() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "CharacterCurrencyBalance" (
+      "characterId" TEXT NOT NULL PRIMARY KEY,
+      "cp" INTEGER NOT NULL DEFAULT 0,
+      "sp" INTEGER NOT NULL DEFAULT 0,
+      "ep" INTEGER NOT NULL DEFAULT 0,
+      "gp" INTEGER NOT NULL DEFAULT 0,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("characterId") REFERENCES "Character"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    );
+  `);
+}
+
+function ensureCharacterCurrencyBalanceRows() {
+  if (!tableExists("Character")) return;
+
+  sqlite.exec(`
+    INSERT INTO "CharacterCurrencyBalance" ("characterId", "cp", "sp", "ep", "gp", "updatedAt")
+    SELECT c."id", 0, 0, 0, 0, CURRENT_TIMESTAMP
+    FROM "Character" c
+    LEFT JOIN "CharacterCurrencyBalance" b ON b."characterId" = c."id"
+    WHERE b."characterId" IS NULL
+  `);
+}
+
+function ensureCharacterCurrencyBalanceForCharacter(characterId) {
+  if (!characterId) return;
+  sqlite.prepare(`
+    INSERT OR IGNORE INTO "CharacterCurrencyBalance" (
+      "characterId", "cp", "sp", "ep", "gp", "updatedAt"
+    ) VALUES (?, 0, 0, 0, 0, ?)
+  `).run(characterId, new Date().toISOString());
+}
+
+function ensureCurrencyTransactionTable() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "CurrencyTransaction" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "fromCharacterId" TEXT,
+      "toCharacterId" TEXT,
+      "fromExternalName" TEXT,
+      "toExternalName" TEXT,
+      "reason" TEXT,
+      "purchaseDescription" TEXT,
+      "note" TEXT,
+      "cp" INTEGER NOT NULL DEFAULT 0,
+      "sp" INTEGER NOT NULL DEFAULT 0,
+      "ep" INTEGER NOT NULL DEFAULT 0,
+      "gp" INTEGER NOT NULL DEFAULT 0,
+      "createdByUserId" TEXT,
+      "reversalOfTransactionId" TEXT,
+      "reversedAt" DATETIME,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("fromCharacterId") REFERENCES "Character"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+      FOREIGN KEY ("toCharacterId") REFERENCES "Character"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+      FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CurrencyTransaction_fromCharacterId_idx"
+    ON "CurrencyTransaction"("fromCharacterId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CurrencyTransaction_toCharacterId_idx"
+    ON "CurrencyTransaction"("toCharacterId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CurrencyTransaction_createdByUserId_idx"
+    ON "CurrencyTransaction"("createdByUserId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CurrencyTransaction_createdAt_idx"
+    ON "CurrencyTransaction"("createdAt");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CurrencyTransaction_reversalOfTransactionId_idx"
+    ON "CurrencyTransaction"("reversalOfTransactionId");
+  `);
+}
+
+function normalizeLegacyCoinsForMigration(value) {
+  const raw = value && typeof value === "object" ? value : {};
+  const platinumAsGold = Number(raw.pp ?? 0) * 10;
+
+  return {
+    cp: Number(raw.cp ?? 0) || 0,
+    sp: Number(raw.sp ?? 0) || 0,
+    ep: Number(raw.ep ?? 0) || 0,
+    gp: (Number(raw.gp ?? 0) || 0) + platinumAsGold,
+  };
+}
+
+function ensureLegacyCharacterCurrencyBalancesMigrated() {
+  if (!tableExists("Character")) return;
+  if (!tableExists("CharacterCurrencyBalance")) return;
+  if (!tableExists("CurrencyTransaction")) return;
+
+  const characters = sqlite
+    .prepare('SELECT id, data FROM "Character"')
+    .all();
+
+  const getBalance = sqlite.prepare(`
+    SELECT cp, sp, ep, gp
+    FROM "CharacterCurrencyBalance"
+    WHERE characterId = ?
+    LIMIT 1
+  `);
+
+  const getInitialTransaction = sqlite.prepare(`
+    SELECT id
+    FROM "CurrencyTransaction"
+    WHERE id = ?
+    LIMIT 1
+  `);
+
+  const updateBalance = sqlite.prepare(`
+    UPDATE "CharacterCurrencyBalance"
+    SET cp = ?, sp = ?, ep = ?, gp = ?, updatedAt = ?
+    WHERE characterId = ?
+  `);
+
+  const insertInitialTransaction = sqlite.prepare(`
+    INSERT INTO "CurrencyTransaction" (
+      id, fromCharacterId, toCharacterId, fromExternalName, toExternalName,
+      reason, purchaseDescription, note, cp, sp, ep, gp,
+      createdByUserId, reversalOfTransactionId, reversedAt, createdAt
+    ) VALUES (?, NULL, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)
+  `);
+
+  const now = new Date().toISOString();
+
+  runInTransaction(() => {
+    for (const row of characters) {
+      const data = parseJsonString(row.data, {});
+      const legacyCoins = normalizeLegacyCoinsForMigration(data?.equipment?.coins);
+      const total =
+        legacyCoins.cp +
+        legacyCoins.sp +
+        legacyCoins.ep +
+        legacyCoins.gp;
+
+      if (total <= 0) continue;
+
+      const transactionId = `currency_init_${row.id}`;
+      if (getInitialTransaction.get(transactionId)) continue;
+
+      const balance = getBalance.get(row.id);
+      const currentTotal =
+        Number(balance?.cp ?? 0) +
+        Number(balance?.sp ?? 0) +
+        Number(balance?.ep ?? 0) +
+        Number(balance?.gp ?? 0);
+
+      if (currentTotal > 0) continue;
+
+      updateBalance.run(
+        legacyCoins.cp,
+        legacyCoins.sp,
+        legacyCoins.ep,
+        legacyCoins.gp,
+        now,
+        row.id
+      );
+
+      insertInitialTransaction.run(
+        transactionId,
+        row.id,
+        "DM",
+        "Assegnazione iniziale",
+        "Inizializzazione portafoglio",
+        legacyCoins.cp,
+        legacyCoins.sp,
+        legacyCoins.ep,
+        legacyCoins.gp,
+        now
+      );
+    }
+  });
 }
 
 function normalizeCharacterSheetLayoutEntries(entries) {
@@ -3059,6 +3440,7 @@ function createUniqueMonsterFileName(baseName) {
 }
 
 function listCharacterSlugs() {
+  ensureSqliteConnectionFresh();
   return sqlite
     .prepare('SELECT slug FROM "Character" WHERE archivedAt IS NULL ORDER BY slug COLLATE NOCASE')
     .all()
@@ -3066,6 +3448,7 @@ function listCharacterSlugs() {
 }
 
 function readCharacter(slug) {
+  ensureSqliteConnectionFresh();
   const row = sqlite
     .prepare('SELECT * FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
     .get(slug);
@@ -3073,11 +3456,26 @@ function readCharacter(slug) {
 }
 
 function listCharacters() {
+  ensureSqliteConnectionFresh();
   return sqlite
     .prepare('SELECT * FROM "Character" WHERE archivedAt IS NULL ORDER BY name COLLATE NOCASE')
     .all()
     .map(normalizeCharacterRow)
     .filter(Boolean);
+}
+
+function listCharacterTransferTargets() {
+  ensureSqliteConnectionFresh();
+  return sqlite
+    .prepare('SELECT slug, name, characterType FROM "Character" WHERE archivedAt IS NULL AND characterType = \'PG\' ORDER BY name COLLATE NOCASE')
+    .all()
+    .map((row) => ({
+      slug: row.slug,
+      characterType: "pg",
+      basicInfo: {
+        characterName: row.name,
+      },
+    }));
 }
 
 function writeCharacter(slug, data) {
@@ -3166,6 +3564,7 @@ function writeCharacter(slug, data) {
     payload.createdAt,
     payload.updatedAt
   );
+  ensureCharacterCurrencyBalanceForCharacter(payload.id);
 }
 
 function archiveCharacter(slug) {
@@ -3468,7 +3867,6 @@ function createEmptyCharacter({
         sp: 0,
         ep: 0,
         gp: 0,
-        pp: 0,
       },
     },
     features: [],
@@ -4475,6 +4873,10 @@ async function start() {
     return res.json(characters);
   });
 
+  app.get("/api/characters/transfer-targets", requireAuth, (_req, res) => {
+    return res.json(listCharacterTransferTargets());
+  });
+
   app.get("/api/characters/:slug", requireAuth, (req, res) => {
     const slug = req.params.slug;
     const ownership = readOwnership();
@@ -4486,6 +4888,160 @@ async function start() {
     const state = readCharacter(slug);
     if (!state) return res.status(404).json({ error: "Character not found" });
     return res.json(state);
+  });
+
+  app.post("/api/characters/:slug/currency-transactions", requireAuth, (req, res) => {
+    const slug = req.params.slug;
+    const ownership = readOwnership();
+
+    if (!canEditCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const sourceCharacter = getCharacterRecordBySlug(slug);
+    if (!sourceCharacter || sourceCharacter.archivedAt) {
+      return res.status(404).json({ error: "Character not found" });
+    }
+
+    const operation = typeof req.body?.operation === "string" ? req.body.operation.trim() : "";
+    if (!["add", "remove", "transfer"].includes(operation)) {
+      return res.status(400).json({ error: "Operazione monete non valida." });
+    }
+
+    const currency = typeof req.body?.currency === "string" ? req.body.currency.trim().toLowerCase() : "";
+    if (!CURRENCY_KEYS.has(currency)) {
+      return res.status(400).json({ error: "Taglio moneta non valido." });
+    }
+
+    const amount = Number.parseInt(String(req.body?.amount ?? ""), 10);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ error: "Inserisci una quantità positiva di monete." });
+    }
+
+    const counterpartyName = typeof req.body?.counterpartyName === "string" ? req.body.counterpartyName.trim() : "";
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    const purchaseDescription =
+      typeof req.body?.purchaseDescription === "string" ? req.body.purchaseDescription.trim() : "";
+    const note = typeof req.body?.note === "string" ? req.body.note.trim() : "";
+    const compactOnAdd = req.body?.compactOnAdd === true;
+    const targetCharacterSlug =
+      typeof req.body?.targetCharacterSlug === "string" ? req.body.targetCharacterSlug.trim() : "";
+
+    let targetCharacter = null;
+    if (operation === "transfer") {
+      if (!targetCharacterSlug) {
+        return res.status(400).json({ error: "Seleziona il personaggio destinatario." });
+      }
+      if (targetCharacterSlug === slug) {
+        return res.status(400).json({ error: "Non puoi trasferire monete allo stesso personaggio." });
+      }
+      targetCharacter = getCharacterRecordBySlug(targetCharacterSlug);
+      if (!targetCharacter || targetCharacter.archivedAt || String(targetCharacter.characterType).toUpperCase() !== "PG") {
+        return res.status(400).json({ error: "Destinatario non valido." });
+      }
+    }
+
+    const transactionAmounts = {
+      cp: 0,
+      sp: 0,
+      ep: 0,
+      gp: 0,
+      [currency]: amount,
+    };
+
+    let sourceBalance = null;
+    let targetBalance = null;
+    let createdTransaction = null;
+
+    try {
+      runInTransaction(() => {
+        const currentSourceBalance = readCharacterCurrencyBalance(sourceCharacter.id) ?? normalizeCurrencyBalance();
+
+        if (operation === "add") {
+          sourceBalance = {
+            ...currentSourceBalance,
+            [currency]: currentSourceBalance[currency] + amount,
+          };
+          if (compactOnAdd) {
+            sourceBalance = compactCurrencyAtTier(sourceBalance, currency);
+          }
+          writeCharacterCurrencyBalance(sourceCharacter.id, sourceBalance);
+          createdTransaction = createCurrencyTransactionRecord({
+            toCharacterId: sourceCharacter.id,
+            fromExternalName: counterpartyName || null,
+            reason: reason || null,
+            purchaseDescription: purchaseDescription || null,
+            note: note || null,
+            createdByUserId: req.user?.id ?? null,
+            ...transactionAmounts,
+          });
+          return;
+        }
+
+        if (operation === "remove") {
+          sourceBalance = removeCurrencyWithChange(currentSourceBalance, currency, amount);
+          if (!sourceBalance) {
+            throw new Error("Monete insufficienti per questa operazione.");
+          }
+          writeCharacterCurrencyBalance(sourceCharacter.id, sourceBalance);
+          createdTransaction = createCurrencyTransactionRecord({
+            fromCharacterId: sourceCharacter.id,
+            toExternalName: counterpartyName || null,
+            reason: reason || null,
+            purchaseDescription: purchaseDescription || null,
+            note: note || null,
+            createdByUserId: req.user?.id ?? null,
+            ...transactionAmounts,
+          });
+          return;
+        }
+
+        sourceBalance = removeCurrencyWithChange(currentSourceBalance, currency, amount);
+        if (!sourceBalance) {
+          throw new Error("Monete insufficienti per questa operazione.");
+        }
+
+        const currentTargetBalance = readCharacterCurrencyBalance(targetCharacter.id) ?? normalizeCurrencyBalance();
+        targetBalance = {
+          ...currentTargetBalance,
+          [currency]: currentTargetBalance[currency] + amount,
+        };
+
+        writeCharacterCurrencyBalance(sourceCharacter.id, sourceBalance);
+        writeCharacterCurrencyBalance(targetCharacter.id, targetBalance);
+        createdTransaction = createCurrencyTransactionRecord({
+          fromCharacterId: sourceCharacter.id,
+          toCharacterId: targetCharacter.id,
+          reason: reason || null,
+          purchaseDescription: purchaseDescription || null,
+          note: note || null,
+          createdByUserId: req.user?.id ?? null,
+          ...transactionAmounts,
+        });
+      });
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error && error.message ? error.message : "Operazione monete non riuscita.",
+      });
+    }
+
+    const sourceState = readCharacter(slug);
+    if (sourceState) {
+      io.to(`char:${slug}`).emit("character:state", sourceState);
+    }
+    if (targetCharacter?.slug) {
+      const targetState = readCharacter(targetCharacter.slug);
+      if (targetState) {
+        io.to(`char:${targetCharacter.slug}`).emit("character:state", targetState);
+      }
+    }
+
+    return res.status(201).json({
+      ok: true,
+      balance: sourceBalance,
+      targetBalance,
+      transaction: createdTransaction,
+    });
   });
 
   app.post("/api/characters", requireAuth, (req, res) => {

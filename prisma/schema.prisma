@@ -265,6 +265,7 @@ model User {
   scenarios         EncounterScenario[] @relation("ScenarioCreator")
   sessions          Session[]
   inventoryTransactionsCreated InventoryTransaction[] @relation("InventoryTransactionCreatedBy")
+  currencyTransactionsCreated  CurrencyTransaction[]  @relation("CurrencyTransactionCreatedBy")
   layoutPreferences UserLayoutPreference[]
 
   @@index([role])
@@ -291,6 +292,9 @@ model Character {
   owner     User?         @relation("CharacterOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   createdBy User?         @relation("CharacterCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   messages  ChatMessage[]
+  currencyBalance CharacterCurrencyBalance?
+  currencyTransactionsFrom CurrencyTransaction[] @relation("CurrencyTransactionFromCharacter")
+  currencyTransactionsTo   CurrencyTransaction[] @relation("CurrencyTransactionToCharacter")
   inventoryItems CharacterItem[]
   inventoryTransactionsFrom InventoryTransaction[] @relation("InventoryTransactionFromCharacter")
   inventoryTransactionsTo   InventoryTransaction[] @relation("InventoryTransactionToCharacter")
@@ -299,6 +303,46 @@ model Character {
   @@index([ownerUserId])
   @@index([createdByUserId])
   @@index([archivedAt])
+}
+
+model CharacterCurrencyBalance {
+  characterId String   @id
+  cp          Int      @default(0)
+  sp          Int      @default(0)
+  ep          Int      @default(0)
+  gp          Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+}
+
+model CurrencyTransaction {
+  id                     String    @id
+  fromCharacterId        String?
+  toCharacterId          String?
+  fromExternalName       String?
+  toExternalName         String?
+  reason                 String?
+  purchaseDescription    String?
+  note                   String?
+  cp                     Int       @default(0)
+  sp                     Int       @default(0)
+  ep                     Int       @default(0)
+  gp                     Int       @default(0)
+  createdByUserId        String?
+  reversalOfTransactionId String?
+  reversedAt             DateTime?
+  createdAt              DateTime  @default(now())
+
+  fromCharacter Character? @relation("CurrencyTransactionFromCharacter", fields: [fromCharacterId], references: [id], onDelete: SetNull)
+  toCharacter   Character? @relation("CurrencyTransactionToCharacter", fields: [toCharacterId], references: [id], onDelete: SetNull)
+  createdBy     User?      @relation("CurrencyTransactionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([fromCharacterId])
+  @@index([toCharacterId])
+  @@index([createdByUserId])
+  @@index([createdAt])
+  @@index([reversalOfTransactionId])
 }
 
 model Monster {

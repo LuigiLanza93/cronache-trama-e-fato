@@ -12,6 +12,38 @@ export type ManagedUser = AuthUser & {
 };
 
 export type CharacterOwnership = Record<string, string>;
+export type CurrencyBalance = {
+  cp: number;
+  sp: number;
+  ep: number;
+  gp: number;
+};
+export type CharacterTransferTarget = {
+  slug: string;
+  characterType: "pg";
+  basicInfo: {
+    characterName: string;
+  };
+};
+export type CurrencyTransactionRequestPayload = {
+  operation: "add" | "remove" | "transfer";
+  currency: keyof CurrencyBalance;
+  amount: number;
+  compactOnAdd?: boolean;
+  counterpartyName?: string | null;
+  reason?: string | null;
+  purchaseDescription?: string | null;
+  note?: string | null;
+  targetCharacterSlug?: string | null;
+};
+export type CurrencyTransactionResponse = {
+  ok: true;
+  balance: CurrencyBalance;
+  targetBalance: CurrencyBalance | null;
+  transaction: {
+    id: string;
+  };
+};
 
 export type MonsterSummary = {
   id: string;
@@ -498,6 +530,17 @@ export function deleteUserRequest(userId: string) {
 
 export function fetchCharacterOwnership() {
   return authFetch<CharacterOwnership>("/api/character-ownership", { method: "GET" });
+}
+
+export function fetchCharacterTransferTargets() {
+  return authFetch<CharacterTransferTarget[]>("/api/characters/transfer-targets", { method: "GET" });
+}
+
+export function createCharacterCurrencyTransactionRequest(slug: string, payload: CurrencyTransactionRequestPayload) {
+  return authFetch<CurrencyTransactionResponse>(`/api/characters/${slug}/currency-transactions`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function updateCharacterOwnership(slug: string, userId: string | null) {

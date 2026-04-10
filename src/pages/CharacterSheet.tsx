@@ -45,7 +45,6 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import {
   joinCharacterRoom,
   fetchCharacter,
-  fetchCharacters,
   onCharacterState,
   onCharacterPatch,
   onInitiativeTurnStart,
@@ -64,7 +63,9 @@ import {
 } from "@/utils";
 import {
   assignItemToCharacterRequest,
+  createCharacterCurrencyTransactionRequest,
   fetchItemDefinition,
+  fetchCharacterTransferTargets,
   fetchSkills,
   fetchSpellSlots,
   fetchSpells,
@@ -99,7 +100,7 @@ import FloatingCharacterChat from "@/components/chat/floating-character-chat";
 import { SheetCardStateProvider } from "@/components/characterSheet/sheet-card-state";
 
 type InputEl = HTMLInputElement | HTMLTextAreaElement;
-type Coins = { cp: number; sp: number; ep: number; gp: number; pp: number };
+type Coins = { cp: number; sp: number; ep: number; gp: number };
 
 /** === Nuovi tipi per skills categorizzate === */
 type SkillType = "volonta" | "incontro" | "riposoBreve" | "riposoLungo";
@@ -267,6 +268,7 @@ interface Character {
     items?: StructuredItem[]; // nuovo inventario strutturato
     coins?: Partial<Coins>;
   };
+  currencyBalance?: Partial<Coins> | null;
   features: Array<{ name: string; description: string; uses?: string }>;
   capabilities?: CapabilityEntry[];
 }
@@ -279,7 +281,6 @@ const COIN_KEYS = {
   ma: "sp",
   me: "ep",
   mo: "gp",
-  mp: "pp",
 } as const;
 type CoinAbbr = keyof typeof COIN_KEYS;
 
@@ -288,15 +289,13 @@ const COIN_VALUES_CP: Record<keyof Coins, number> = {
   sp: 10,
   ep: 50,
   gp: 100,
-  pp: 1000,
 };
 
-const COIN_ORDER: Array<keyof Coins> = ["cp", "sp", "ep", "gp", "pp"];
+const COIN_ORDER: Array<keyof Coins> = ["cp", "sp", "ep", "gp"];
 const COIN_EXCHANGE_UP: Partial<Record<keyof Coins, number>> = {
   cp: 10, // 10 cp = 1 sp
   sp: 5,  // 5 sp = 1 ep
   ep: 2,  // 2 ep = 1 gp
-  gp: 10, // 10 gp = 1 pp
 };
 
 function coinsToCopper(coins: Partial<Coins> | undefined): number {
@@ -306,18 +305,17 @@ function coinsToCopper(coins: Partial<Coins> | undefined): number {
     (coins.cp ?? 0) * COIN_VALUES_CP.cp +
     (coins.sp ?? 0) * COIN_VALUES_CP.sp +
     (coins.ep ?? 0) * COIN_VALUES_CP.ep +
-    (coins.gp ?? 0) * COIN_VALUES_CP.gp +
-    (coins.pp ?? 0) * COIN_VALUES_CP.pp
+    (coins.gp ?? 0) * COIN_VALUES_CP.gp
   );
 }
 
-function normalizeCoinsShape(coins: Partial<Coins> | undefined): Coins {
+function normalizeCoinsShape(coins: Partial<Coins> | (Partial<Coins> & { pp?: number }) | undefined): Coins {
+  const platinumAsGold = (coins?.pp ?? 0) * 10;
   return {
     cp: coins?.cp ?? 0,
     sp: coins?.sp ?? 0,
     ep: coins?.ep ?? 0,
-    gp: coins?.gp ?? 0,
-    pp: coins?.pp ?? 0,
+    gp: (coins?.gp ?? 0) + platinumAsGold,
   };
 }
 
@@ -671,8 +669,13 @@ const CharacterSheet = () => {
   const [mode, setMode] = useState<"coins" | "item">("coins");
   const [coinType, setCoinType] = useState<CoinAbbr>("mo");
   const [coinQty, setCoinQty] = useState<string>("");
-  const [coinFlow, setCoinFlow] = useState<"add" | "remove">("add");
-  const [compactCoinsOnAdd, setCompactCoinsOnAdd] = useState(false);
+  const [coinFlow, setCoinFlow] = useState<"add" | "remove" | "transfer">("add");
+  const [coinCounterpartyName, setCoinCounterpartyName] = useState("");
+  const [coinReason, setCoinReason] = useState("");
+  const [coinPurchaseDescription, setCoinPurchaseDescription] = useState("");
+  const [coinNote, setCoinNote] = useState("");
+  const [coinTransferTargetSlug, setCoinTransferTargetSlug] = useState("");
+  const [coinSubmitting, setCoinSubmitting] = useState(false);
 
   // campi comuni item/weapon legacy
   const [itemName, setItemName] = useState("");
@@ -940,21 +943,18 @@ const CharacterSheet = () => {
   };
 
   const coins: Coins = useMemo(() => {
-    const c = characterData?.equipment.coins ?? {};
-    return {
-      cp: c?.cp ?? 0,
-      sp: c?.sp ?? 0,
-      ep: c?.ep ?? 0,
-      gp: c?.gp ?? 0,
-      pp: c?.pp ?? 0,
-    };
-  }, [characterData?.equipment.coins]);
+    return normalizeCoinsShape(characterData?.currencyBalance ?? characterData?.equipment.coins ?? {});
+  }, [characterData?.currencyBalance, characterData?.equipment.coins]);
 
   const resetInvForm = () => {
     setMode("coins");
     setCoinType("mo");
     setCoinQty("");
-    setCompactCoinsOnAdd(false);
+    setCoinCounterpartyName("");
+    setCoinReason("");
+    setCoinPurchaseDescription("");
+    setCoinNote("");
+    setCoinTransferTargetSlug("");
     setItemName("");
     setItemAtkBonus("");
     setItemDmgType("");
@@ -985,6 +985,52 @@ const CharacterSheet = () => {
       },
     [character]
   );
+
+  const handleCurrencySubmit = async () => {
+    if (!character) return;
+
+    const qty = parseInt(coinQty, 10);
+    if (Number.isNaN(qty) || qty <= 0) {
+      setInvError("Inserisci una quantità positiva di monete.");
+      return;
+    }
+
+    if (coinFlow === "transfer" && !coinTransferTargetSlug) {
+      setInvError("Seleziona il personaggio destinatario.");
+      return;
+    }
+
+    setInvError("");
+    setCoinSubmitting(true);
+    try {
+      const currency = COIN_KEYS[coinType] as keyof Coins;
+      const result = await createCharacterCurrencyTransactionRequest(character, {
+        operation: coinFlow,
+        currency,
+        amount: qty,
+        counterpartyName: coinFlow === "transfer" ? null : coinCounterpartyName.trim() || null,
+        reason: coinReason.trim() || null,
+        purchaseDescription: coinPurchaseDescription.trim() || null,
+        note: coinNote.trim() || null,
+        targetCharacterSlug: coinFlow === "transfer" ? coinTransferTargetSlug : null,
+      });
+
+      setCharacterData((prev) =>
+        prev
+          ? {
+              ...prev,
+              currencyBalance: result.balance,
+            }
+          : prev
+      );
+      setInvOpen(false);
+      resetInvForm();
+    } catch (error) {
+      setInvError(error instanceof Error && error.message ? error.message : "Operazione monete non riuscita.");
+    } finally {
+      setCoinSubmitting(false);
+    }
+  };
 
   const toggleEquipAttack = (index: number) => {
     if (!characterData) return;
@@ -1207,11 +1253,7 @@ const CharacterSheet = () => {
         return;
       }
 
-      const nextEquip = { ...characterData.equipment, coins: nextCoins };
-      setCharacterData((prev) => (prev ? { ...prev, equipment: nextEquip } : prev));
-      if (character) updateCharacter(character, { equipment: { coins: nextCoins } });
-      setInvOpen(false);
-      resetInvForm();
+      setInvError("La gestione operativa delle monete arriva nel prossimo step.");
       return;
     }
 
@@ -1372,7 +1414,7 @@ const CharacterSheet = () => {
           fetchSpells(),
           fetchSkills(),
           fetchSpellSlots(),
-          fetchCharacters(),
+          fetchCharacterTransferTargets(),
         ]);
         if (active) {
           setSpells(nextSpells);
@@ -1669,9 +1711,10 @@ const CharacterSheet = () => {
         inventory: {
           label: "Inventario",
           render: (
-            <Inventory
-              coins={coins}
-              characterData={characterData}
+        <Inventory
+          coins={coins}
+          coinActionsEnabled
+          characterData={characterData}
               setMode={setMode}
               setCoinFlow={setCoinFlow}
               setInvOpen={setInvOpen}
@@ -1682,8 +1725,18 @@ const CharacterSheet = () => {
               coinQty={coinQty}
               setCoinQty={setCoinQty}
               coinFlow={coinFlow}
-              compactCoinsOnAdd={compactCoinsOnAdd}
-              setCompactCoinsOnAdd={setCompactCoinsOnAdd}
+              coinCounterpartyName={coinCounterpartyName}
+              setCoinCounterpartyName={setCoinCounterpartyName}
+              coinReason={coinReason}
+              setCoinReason={setCoinReason}
+              coinPurchaseDescription={coinPurchaseDescription}
+              setCoinPurchaseDescription={setCoinPurchaseDescription}
+              coinNote={coinNote}
+              setCoinNote={setCoinNote}
+              coinTransferTargetSlug={coinTransferTargetSlug}
+              setCoinTransferTargetSlug={setCoinTransferTargetSlug}
+              coinSubmitting={coinSubmitting}
+              handleCurrencySubmit={handleCurrencySubmit}
               handleInventorySubmit={handleInventorySubmit}
               resetInvForm={resetInvForm}
               itemName={itemName}
@@ -1734,13 +1787,19 @@ const CharacterSheet = () => {
       abilityModifier,
       characterData,
       coinFlow,
+      coinCounterpartyName,
+      coinNote,
+      coinPurchaseDescription,
       coinQty,
+      coinReason,
+      coinSubmitting,
+      coinTransferTargetSlug,
       coinType,
       coins,
-      compactCoinsOnAdd,
       deathSaves,
       decrementRelationalConsumable,
       derivedItemCapabilities,
+      handleCurrencySubmit,
       handleInventorySubmit,
       incrementRelationalConsumable,
       invError,
@@ -1764,9 +1823,13 @@ const CharacterSheet = () => {
       removeAttack,
       resetInvForm,
       setCoinFlow,
+      setCoinCounterpartyName,
+      setCoinNote,
+      setCoinPurchaseDescription,
       setCoinQty,
+      setCoinReason,
+      setCoinTransferTargetSlug,
       setCoinType,
-      setCompactCoinsOnAdd,
       setDeathSaves,
       setInvOpen,
       setItemAtkBonus,
