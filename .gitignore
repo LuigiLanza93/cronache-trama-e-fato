@@ -28,3 +28,10 @@ dist-ssr
 prisma/dev.db
 prisma/dev.db-journal
 prisma/migration.db-journal
+
+# Old local-only dev dashboard prototype
+Apri pannello sviluppo.cmd
+tools/dev-control-panel.mjs
+
+# Dev dashboard runtime state
+local-tools/.dev-dashboard/

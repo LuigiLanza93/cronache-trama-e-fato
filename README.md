@@ -71,6 +71,23 @@ Apri:
 http://localhost:3000
 ```
 
+Su Windows puoi anche usare il cruscotto di sviluppo:
+
+- fai doppio click su `Apri cruscotto dev.cmd`
+- oppure avvia `Apri cruscotto dev.vbs`
+
+Il cruscotto ti permette di:
+
+- avviare, fermare e riavviare il server
+- cambiare e salvare la porta di avvio
+- vedere gli indirizzi locale e di rete
+- copiare uno degli indirizzi da condividere con chi deve collegarsi
+- aprire l'app nel browser
+
+La configurazione locale del cruscotto viene salvata in:
+
+- `local-tools/.dev-dashboard/settings.json`
+
 In produzione locale:
 
 ```bash
@@ -203,6 +220,12 @@ Pagine principali:
 Script di migrazione:
 
 - `scripts/import-json-to-sqlite.mjs`
+
+Cruscotto sviluppo Windows:
+
+- `Apri cruscotto dev.cmd`
+- `Apri cruscotto dev.vbs`
+- `local-tools/dev-dashboard.ps1`
 
 Archivio storico JSON:
 
