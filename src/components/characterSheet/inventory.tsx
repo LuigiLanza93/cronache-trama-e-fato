@@ -328,8 +328,6 @@ const Inventory = ({
   /** --- fine nuove props --- */
   invError,
   removeAttack,
-  removeItem,
-  updateLegacyItem,
   toggleEquipAttack,
 
   // opzionali per i nuovi tipi (oggetti/consumabili già gestiti)
@@ -2420,9 +2418,7 @@ const Inventory = ({
 
     if (detailTarget.kind === "weapon") {
       removeAttack(detailTarget.index);
-    } else if (detailTarget.kind === "legacyObject") {
-      removeItem(detailTarget.index);
-    } else {
+    } else if (detailTarget.kind !== "legacyObject") {
       removeStructuredItem?.(detailTarget.index);
     }
 
