@@ -26,7 +26,7 @@ export type CharacterTransferTarget = {
   };
 };
 export type CurrencyTransactionRequestPayload = {
-  operation: "add" | "remove" | "transfer";
+  operation: "add" | "remove" | "transfer" | "convert";
   currency: keyof CurrencyBalance;
   amount: number;
   compactOnAdd?: boolean;
@@ -43,6 +43,38 @@ export type CurrencyTransactionResponse = {
   transaction: {
     id: string;
   };
+};
+export type CurrencyTransactionEntry = {
+  id: string;
+  actionLabel: string;
+  summary: string;
+  createdAt: string;
+  fromCharacterSlug: string | null;
+  fromCharacterName: string | null;
+  toCharacterSlug: string | null;
+  toCharacterName: string | null;
+  fromExternalName: string | null;
+  toExternalName: string | null;
+  reason: string | null;
+  purchaseDescription: string | null;
+  note: string | null;
+  undone: boolean;
+  canUndo: boolean;
+  operationType: "ADD" | "REMOVE" | "TRANSFER" | "CONVERT";
+};
+
+export type PlayerCurrencyTransactionEntry = {
+  id: string;
+  actionLabel: string;
+  signedSummary: string;
+  summary: string;
+  counterpartLabel: string | null;
+  reason: string | null;
+  purchaseDescription: string | null;
+  note: string | null;
+  createdAt: string;
+  direction: "in" | "out" | "neutral";
+  operationType: "ADD" | "REMOVE" | "TRANSFER" | "CONVERT";
 };
 
 export type MonsterSummary = {
@@ -776,6 +808,22 @@ export function fetchInventoryTransfers() {
 
 export function undoInventoryTransactionRequest(transactionId: string) {
   return authFetch<{ ok: true }>(`/api/inventory-transactions/${transactionId}/undo`, {
+    method: "POST",
+  });
+}
+
+export function fetchCurrencyTransactions() {
+  return authFetch<CurrencyTransactionEntry[]>("/api/currency-transactions", { method: "GET" });
+}
+
+export function fetchCharacterCurrencyTransactions(slug: string) {
+  return authFetch<PlayerCurrencyTransactionEntry[]>(`/api/characters/${slug}/currency-transactions/history`, {
+    method: "GET",
+  });
+}
+
+export function undoCurrencyTransactionRequest(operationId: string) {
+  return authFetch<{ ok: true }>(`/api/currency-transactions/${operationId}/undo`, {
     method: "POST",
   });
 }

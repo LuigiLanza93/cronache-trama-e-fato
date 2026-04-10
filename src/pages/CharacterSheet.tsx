@@ -64,6 +64,7 @@ import {
 import {
   assignItemToCharacterRequest,
   createCharacterCurrencyTransactionRequest,
+  fetchCharacterCurrencyTransactions,
   fetchItemDefinition,
   fetchCharacterTransferTargets,
   fetchSkills,
@@ -77,6 +78,7 @@ import {
   updateCharacterInventoryItemRequest,
   type CharacterSheetLayoutEntry,
   type CharacterInventoryItemEntry,
+  type PlayerCurrencyTransactionEntry,
   type ItemDefinitionEntry,
   type ItemDefinitionSummary,
   type SkillEntry as SkillCatalogEntry,
@@ -669,13 +671,16 @@ const CharacterSheet = () => {
   const [mode, setMode] = useState<"coins" | "item">("coins");
   const [coinType, setCoinType] = useState<CoinAbbr>("mo");
   const [coinQty, setCoinQty] = useState<string>("");
-  const [coinFlow, setCoinFlow] = useState<"add" | "remove" | "transfer">("add");
+  const [coinFlow, setCoinFlow] = useState<"add" | "remove" | "transfer" | "convert">("add");
   const [coinCounterpartyName, setCoinCounterpartyName] = useState("");
   const [coinReason, setCoinReason] = useState("");
   const [coinPurchaseDescription, setCoinPurchaseDescription] = useState("");
   const [coinNote, setCoinNote] = useState("");
   const [coinTransferTargetSlug, setCoinTransferTargetSlug] = useState("");
   const [coinSubmitting, setCoinSubmitting] = useState(false);
+  const [currencyHistoryOpen, setCurrencyHistoryOpen] = useState(false);
+  const [currencyHistoryLoading, setCurrencyHistoryLoading] = useState(false);
+  const [currencyHistoryEntries, setCurrencyHistoryEntries] = useState<PlayerCurrencyTransactionEntry[]>([]);
 
   // campi comuni item/weapon legacy
   const [itemName, setItemName] = useState("");
@@ -995,6 +1000,11 @@ const CharacterSheet = () => {
       return;
     }
 
+    if (coinFlow === "convert" && coinType === "mo") {
+      setInvError("Le monete d'oro non possono essere convertite oltre.");
+      return;
+    }
+
     if (coinFlow === "transfer" && !coinTransferTargetSlug) {
       setInvError("Seleziona il personaggio destinatario.");
       return;
@@ -1008,9 +1018,9 @@ const CharacterSheet = () => {
         operation: coinFlow,
         currency,
         amount: qty,
-        counterpartyName: coinFlow === "transfer" ? null : coinCounterpartyName.trim() || null,
-        reason: coinReason.trim() || null,
-        purchaseDescription: coinPurchaseDescription.trim() || null,
+        counterpartyName: coinFlow === "transfer" || coinFlow === "convert" ? null : coinCounterpartyName.trim() || null,
+        reason: coinFlow === "convert" ? null : coinReason.trim() || null,
+        purchaseDescription: coinFlow === "convert" ? null : coinPurchaseDescription.trim() || null,
         note: coinNote.trim() || null,
         targetCharacterSlug: coinFlow === "transfer" ? coinTransferTargetSlug : null,
       });
@@ -1029,6 +1039,21 @@ const CharacterSheet = () => {
       setInvError(error instanceof Error && error.message ? error.message : "Operazione monete non riuscita.");
     } finally {
       setCoinSubmitting(false);
+    }
+  };
+
+  const openCurrencyHistory = async () => {
+    if (!character) return;
+    setCurrencyHistoryOpen(true);
+    setCurrencyHistoryLoading(true);
+    try {
+      const entries = await fetchCharacterCurrencyTransactions(character);
+      setCurrencyHistoryEntries(Array.isArray(entries) ? entries : []);
+    } catch {
+      setCurrencyHistoryEntries([]);
+      toast.error("Non sono riuscito a caricare lo storico monete.");
+    } finally {
+      setCurrencyHistoryLoading(false);
     }
   };
 
@@ -1779,6 +1804,11 @@ const CharacterSheet = () => {
               incrementRelationalConsumable={incrementRelationalConsumable}
               transferTargets={transferTargets}
               transferRelationalInventoryItem={transferRelationalInventoryItem}
+              openCurrencyHistory={openCurrencyHistory}
+              currencyHistoryOpen={currencyHistoryOpen}
+              setCurrencyHistoryOpen={setCurrencyHistoryOpen}
+              currencyHistoryEntries={currencyHistoryEntries}
+              currencyHistoryLoading={currencyHistoryLoading}
             />
           ),
         },
@@ -1793,6 +1823,9 @@ const CharacterSheet = () => {
       coinQty,
       coinReason,
       coinSubmitting,
+      currencyHistoryEntries,
+      currencyHistoryLoading,
+      currencyHistoryOpen,
       coinTransferTargetSlug,
       coinType,
       coins,
@@ -1822,6 +1855,7 @@ const CharacterSheet = () => {
       relationalInventoryItems,
       removeAttack,
       resetInvForm,
+      openCurrencyHistory,
       setCoinFlow,
       setCoinCounterpartyName,
       setCoinNote,
@@ -1830,6 +1864,7 @@ const CharacterSheet = () => {
       setCoinReason,
       setCoinTransferTargetSlug,
       setCoinType,
+      setCurrencyHistoryOpen,
       setDeathSaves,
       setInvOpen,
       setItemAtkBonus,

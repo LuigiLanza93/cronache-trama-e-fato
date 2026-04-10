@@ -261,7 +261,13 @@ const Index = () => {
       {
         title: "Transazioni oggetti",
         description: "Controlla i trasferimenti tra PG e annulla eventuali errori.",
-        href: "/dm/inventory#transazioni",
+        href: "/dm/inventory/transactions",
+        icon: Link2,
+      },
+      {
+        title: "Transazioni monete",
+        description: "Controlla i movimenti monete e annulla eventuali errori.",
+        href: "/dm/currency-transactions",
         icon: Link2,
       },
     ],

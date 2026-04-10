@@ -139,7 +139,15 @@ function makeCurrencyChangeStep(balance, fromKey) {
 }
 
 function removeCurrencyWithChange(baseBalance, currencyKey, amount) {
+  const detailed = removeCurrencyWithChangeDetailed(baseBalance, currencyKey, amount);
+  return detailed ? detailed.balance : null;
+}
+
+function removeCurrencyWithChangeDetailed(baseBalance, currencyKey, amount) {
   const nextBalance = normalizeCurrencyBalance(baseBalance);
+  const conversions = [];
+  const targetIndex = CURRENCY_ORDER.indexOf(currencyKey);
+  if (targetIndex < 0) return null;
 
   for (let i = 0; i < amount; i += 1) {
     if (nextBalance[currencyKey] > 0) {
@@ -148,15 +156,21 @@ function removeCurrencyWithChange(baseBalance, currencyKey, amount) {
     }
 
     let borrowed = false;
-    for (let higherIndex = CURRENCY_ORDER.indexOf(currencyKey) + 1; higherIndex < CURRENCY_ORDER.length; higherIndex += 1) {
+    for (let higherIndex = targetIndex + 1; higherIndex < CURRENCY_ORDER.length; higherIndex += 1) {
       const higherKey = CURRENCY_ORDER[higherIndex];
       if (nextBalance[higherKey] <= 0) continue;
 
-      for (let step = higherIndex; step > CURRENCY_ORDER.indexOf(currencyKey); step -= 1) {
+      for (let step = higherIndex; step > targetIndex; step -= 1) {
         const currentKey = CURRENCY_ORDER[step];
+        const lowerKey = CURRENCY_ORDER[step - 1];
+        const factor = CURRENCY_EXCHANGE_UP[lowerKey];
         if (!makeCurrencyChangeStep(nextBalance, currentKey)) {
           return null;
         }
+        conversions.push({
+          outgoing: normalizeCurrencyBalance({ [currentKey]: 1 }),
+          incoming: normalizeCurrencyBalance({ [lowerKey]: factor }),
+        });
       }
 
       borrowed = true;
@@ -170,7 +184,10 @@ function removeCurrencyWithChange(baseBalance, currencyKey, amount) {
     nextBalance[currencyKey] -= 1;
   }
 
-  return nextBalance;
+  return {
+    balance: normalizeCurrencyBalance(nextBalance),
+    conversions,
+  };
 }
 
 function compactCurrencyAtTier(baseBalance, currencyKey) {
@@ -190,6 +207,76 @@ function compactCurrencyAtTier(baseBalance, currencyKey) {
   nextBalance[currencyKey] = nextBalance[currencyKey] % factor;
   nextBalance[nextKey] += promoted;
   return nextBalance;
+}
+
+function convertCurrencyAmountUpDetailed(baseBalance, currencyKey, amount) {
+  const nextBalance = normalizeCurrencyBalance(baseBalance);
+  const currencyIndex = CURRENCY_ORDER.indexOf(currencyKey);
+  if (currencyIndex < 0 || currencyIndex >= CURRENCY_ORDER.length - 1) {
+    return null;
+  }
+
+  if (nextBalance[currencyKey] < amount) {
+    return null;
+  }
+
+  nextBalance[currencyKey] -= amount;
+  const outgoing = normalizeCurrencyBalance({ [currencyKey]: amount });
+  const incoming = normalizeCurrencyBalance({ [currencyKey]: amount });
+
+  for (let index = currencyIndex; index < CURRENCY_ORDER.length - 1; index += 1) {
+    const currentKey = CURRENCY_ORDER[index];
+    const factor = CURRENCY_EXCHANGE_UP[currentKey];
+    const nextKey = CURRENCY_ORDER[index + 1];
+    if (!factor || !nextKey) continue;
+
+    const promoted = Math.floor(incoming[currentKey] / factor);
+    if (promoted > 0) {
+      incoming[currentKey] = incoming[currentKey] % factor;
+      incoming[nextKey] += promoted;
+    }
+  }
+
+  for (const key of CURRENCY_ORDER) {
+    nextBalance[key] += incoming[key];
+  }
+
+  return {
+    balance: normalizeCurrencyBalance(nextBalance),
+    outgoing,
+    incoming,
+  };
+}
+
+function addCurrencyAmounts(baseBalance, amounts) {
+  const nextBalance = normalizeCurrencyBalance(baseBalance);
+  const normalizedAmounts = normalizeCurrencyBalance(amounts);
+  for (const key of CURRENCY_ORDER) {
+    nextBalance[key] += normalizedAmounts[key];
+  }
+  return normalizeCurrencyBalance(nextBalance);
+}
+
+function removeCurrencyAmountsWithChange(baseBalance, amounts) {
+  let nextBalance = normalizeCurrencyBalance(baseBalance);
+  const normalizedAmounts = normalizeCurrencyBalance(amounts);
+  for (const key of CURRENCY_ORDER) {
+    const qty = normalizedAmounts[key];
+    if (!qty) continue;
+    nextBalance = removeCurrencyWithChange(nextBalance, key, qty);
+    if (!nextBalance) return null;
+  }
+  return normalizeCurrencyBalance(nextBalance);
+}
+
+function formatCurrencyAmounts(amounts) {
+  const normalized = normalizeCurrencyBalance(amounts);
+  const parts = [];
+  if (normalized.gp) parts.push(`${normalized.gp} MO`);
+  if (normalized.ep) parts.push(`${normalized.ep} ME`);
+  if (normalized.sp) parts.push(`${normalized.sp} MA`);
+  if (normalized.cp) parts.push(`${normalized.cp} MR`);
+  return parts.join(", ") || "0";
 }
 
 function readCharacterCurrencyBalance(characterId) {
@@ -227,6 +314,7 @@ function getCharacterRecordBySlug(slug) {
 function createCurrencyTransactionRecord(payload) {
   const transaction = {
     id: payload.id ?? crypto.randomUUID(),
+    operationId: payload.operationId ?? payload.id ?? null,
     fromCharacterId: payload.fromCharacterId ?? null,
     toCharacterId: payload.toCharacterId ?? null,
     fromExternalName: payload.fromExternalName ?? null,
@@ -246,13 +334,14 @@ function createCurrencyTransactionRecord(payload) {
   sqlite
     .prepare(
       `INSERT INTO "CurrencyTransaction" (
-        id, fromCharacterId, toCharacterId, fromExternalName, toExternalName,
+        id, operationId, fromCharacterId, toCharacterId, fromExternalName, toExternalName,
         reason, purchaseDescription, note, cp, sp, ep, gp,
         createdByUserId, reversalOfTransactionId, reversedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       transaction.id,
+      transaction.operationId,
       transaction.fromCharacterId,
       transaction.toCharacterId,
       transaction.fromExternalName,
@@ -270,6 +359,351 @@ function createCurrencyTransactionRecord(payload) {
     );
 
   return transaction;
+}
+
+function isTechnicalCurrencyChangeRow(row) {
+  return (
+    String(row?.reason ?? "") === "Cambio valuta" &&
+    (
+      (!!row?.fromCharacterId && !row?.toCharacterId && row?.toExternalName === "Cambio valuta") ||
+      (!!row?.toCharacterId && !row?.fromCharacterId && row?.fromExternalName === "Cambio valuta")
+    )
+  );
+}
+
+function legacyCurrencyOperationKey(row) {
+  if (row?.operationId) return row.operationId;
+  if (!isTechnicalCurrencyChangeRow(row)) return row?.id;
+
+  const normalizedNote = String(row?.note ?? "").trim();
+  const normalizedCreatedAt = String(row?.createdAt ?? "").trim();
+  const normalizedCharacterId = String(row?.fromCharacterId ?? row?.toCharacterId ?? "").trim();
+
+  if (normalizedNote && normalizedCreatedAt && normalizedCharacterId) {
+    return `legacy-convert:${normalizedCharacterId}:${normalizedNote}:${normalizedCreatedAt}`;
+  }
+
+  return row?.id;
+}
+
+function classifyCurrencyOperationGroup(ordered) {
+  const first = ordered[0];
+  const technicalChangeRows = ordered.filter((row) => isTechnicalCurrencyChangeRow(row));
+  const businessRows = ordered.filter((row) => !isTechnicalCurrencyChangeRow(row));
+  const isConversion =
+    businessRows.length === 0 &&
+    technicalChangeRows.length === ordered.length &&
+    ordered.length === 2;
+  const primaryRow = businessRows[0] ?? first;
+  const isAutomaticTechnicalConversion =
+    isConversion &&
+    String(primaryRow?.note ?? "").toLowerCase().startsWith("cambio automatico per");
+
+  let actionLabel = "Movimento";
+  let summary = formatCurrencyAmounts(primaryRow);
+  if (isConversion) {
+    const outgoing = ordered.find((row) => row.fromCharacterId && !row.toCharacterId) ?? ordered[0];
+    const incoming = ordered.find((row) => row.toCharacterId && !row.fromCharacterId) ?? ordered[1] ?? ordered[0];
+    actionLabel = "Cambio valuta";
+    summary = `${formatCurrencyAmounts(outgoing)} -> ${formatCurrencyAmounts(incoming)}`;
+  } else if (primaryRow.fromCharacterId && primaryRow.toCharacterId) {
+    actionLabel = "Trasferimento";
+  } else if (primaryRow.toCharacterId && !primaryRow.fromCharacterId) {
+    actionLabel = primaryRow.reason === "Assegnazione iniziale" ? "Assegnazione iniziale" : "Entrata";
+  } else if (primaryRow.fromCharacterId && !primaryRow.toCharacterId) {
+    actionLabel = "Spesa";
+  }
+
+  return {
+    first,
+    primaryRow,
+    technicalChangeRows,
+    businessRows,
+    isConversion,
+    isAutomaticTechnicalConversion,
+    actionLabel,
+    summary,
+  };
+}
+
+function readCurrencyTransactionsForDm() {
+  if (!tableExists("CurrencyTransaction")) return [];
+
+  const reversedOriginalIds = new Set(
+    sqlite
+      .prepare(`
+        SELECT reversalOfTransactionId
+        FROM "CurrencyTransaction"
+        WHERE reversalOfTransactionId IS NOT NULL
+      `)
+      .all()
+      .map((row) => String(row.reversalOfTransactionId ?? "").trim())
+      .filter(Boolean)
+  );
+
+  const rows = sqlite.prepare(`
+    SELECT
+      t.id,
+      t.operationId,
+      t.fromCharacterId,
+      t.toCharacterId,
+      t.fromExternalName,
+      t.toExternalName,
+      t.reason,
+      t.purchaseDescription,
+      t.note,
+      t.cp,
+      t.sp,
+      t.ep,
+      t.gp,
+      t.createdByUserId,
+      t.reversalOfTransactionId,
+      t.reversedAt,
+      t.createdAt,
+      fc.slug AS fromCharacterSlug,
+      fc.name AS fromCharacterName,
+      tc.slug AS toCharacterSlug,
+      tc.name AS toCharacterName
+    FROM "CurrencyTransaction" t
+    LEFT JOIN "Character" fc ON fc.id = t.fromCharacterId
+    LEFT JOIN "Character" tc ON tc.id = t.toCharacterId
+    WHERE t.reversalOfTransactionId IS NULL
+    ORDER BY t.createdAt DESC, t.id DESC
+  `).all();
+
+  const grouped = new Map();
+  for (const row of rows) {
+    const key = legacyCurrencyOperationKey(row);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(row);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([operationId, operationRows]) => {
+      const ordered = operationRows.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      const undone = ordered.every((row) => !!row.reversedAt) || ordered.some((row) => reversedOriginalIds.has(String(row.id)));
+      const {
+        primaryRow,
+        isConversion,
+        isAutomaticTechnicalConversion,
+        actionLabel,
+        summary,
+      } = classifyCurrencyOperationGroup(ordered);
+
+      if (isAutomaticTechnicalConversion) {
+        return null;
+      }
+
+      return {
+        id: operationId,
+        actionLabel,
+        summary,
+        createdAt: primaryRow.createdAt,
+        fromCharacterSlug: primaryRow.fromCharacterSlug ?? null,
+        fromCharacterName: primaryRow.fromCharacterName ?? null,
+        toCharacterSlug: primaryRow.toCharacterSlug ?? null,
+        toCharacterName: primaryRow.toCharacterName ?? null,
+        fromExternalName: primaryRow.fromExternalName ?? null,
+        toExternalName: primaryRow.toExternalName ?? null,
+        reason: primaryRow.reason ?? null,
+        purchaseDescription: primaryRow.purchaseDescription ?? null,
+        note: primaryRow.note ?? null,
+        undone,
+        canUndo: !undone && ordered.every((row) => !reversedOriginalIds.has(String(row.id))),
+        operationType: isConversion
+          ? "CONVERT"
+          : primaryRow.fromCharacterId && primaryRow.toCharacterId
+            ? "TRANSFER"
+            : primaryRow.toCharacterId && !primaryRow.fromCharacterId
+              ? "ADD"
+              : "REMOVE",
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+function readCharacterCurrencyTransactionsForPlayer(characterId) {
+  if (!characterId || !tableExists("CurrencyTransaction")) return [];
+
+  const rows = sqlite.prepare(`
+    SELECT
+      t.id,
+      t.operationId,
+      t.fromCharacterId,
+      t.toCharacterId,
+      t.fromExternalName,
+      t.toExternalName,
+      t.reason,
+      t.purchaseDescription,
+      t.note,
+      t.cp,
+      t.sp,
+      t.ep,
+      t.gp,
+      t.reversedAt,
+      t.createdAt,
+      fc.slug AS fromCharacterSlug,
+      fc.name AS fromCharacterName,
+      tc.slug AS toCharacterSlug,
+      tc.name AS toCharacterName
+    FROM "CurrencyTransaction" t
+    LEFT JOIN "Character" fc ON fc.id = t.fromCharacterId
+    LEFT JOIN "Character" tc ON tc.id = t.toCharacterId
+    WHERE t.reversalOfTransactionId IS NULL
+      AND t.reversedAt IS NULL
+      AND (t.fromCharacterId = ? OR t.toCharacterId = ?)
+    ORDER BY t.createdAt DESC, t.id DESC
+  `).all(characterId, characterId);
+
+  const grouped = new Map();
+  for (const row of rows) {
+    const key = legacyCurrencyOperationKey(row);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(row);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([operationId, operationRows]) => {
+      const ordered = operationRows.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      const {
+        primaryRow,
+        isConversion,
+        isAutomaticTechnicalConversion,
+        actionLabel,
+        summary,
+      } = classifyCurrencyOperationGroup(ordered);
+
+      if (isAutomaticTechnicalConversion) {
+        return null;
+      }
+
+      let direction = "neutral";
+      let counterpartLabel = null;
+
+      if (isConversion) {
+        direction = "neutral";
+        counterpartLabel = "Portafoglio";
+      } else if (primaryRow.toCharacterId === characterId && primaryRow.fromCharacterId === characterId) {
+        direction = "neutral";
+        counterpartLabel = "Portafoglio";
+      } else if (primaryRow.toCharacterId === characterId) {
+        direction = "in";
+        counterpartLabel = primaryRow.fromCharacterName ?? primaryRow.fromExternalName ?? null;
+      } else if (primaryRow.fromCharacterId === characterId) {
+        direction = "out";
+        counterpartLabel = primaryRow.toCharacterName ?? primaryRow.toExternalName ?? null;
+      }
+
+      return {
+        id: operationId,
+        actionLabel,
+        signedSummary: direction === "in" ? `+${summary}` : direction === "out" ? `-${summary}` : summary,
+        summary,
+        counterpartLabel,
+        reason: primaryRow.reason ?? null,
+        purchaseDescription: primaryRow.purchaseDescription ?? null,
+        note: primaryRow.note ?? null,
+        createdAt: primaryRow.createdAt,
+        direction,
+        operationType: isConversion
+          ? "CONVERT"
+          : primaryRow.fromCharacterId && primaryRow.toCharacterId
+            ? "TRANSFER"
+            : primaryRow.toCharacterId && !primaryRow.fromCharacterId
+              ? "ADD"
+              : "REMOVE",
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+function undoCurrencyTransactionOperation(operationId, actorUserId = null) {
+  if (!operationId || !tableExists("CurrencyTransaction")) {
+    throw new Error("Operazione non trovata");
+  }
+
+  const reversedOriginalIds = new Set(
+    sqlite
+      .prepare(`
+        SELECT reversalOfTransactionId
+        FROM "CurrencyTransaction"
+        WHERE reversalOfTransactionId IS NOT NULL
+      `)
+      .all()
+      .map((row) => String(row.reversalOfTransactionId ?? "").trim())
+      .filter(Boolean)
+  );
+
+  const rows = sqlite.prepare(`
+    SELECT *
+    FROM "CurrencyTransaction"
+    WHERE COALESCE(operationId, id) = ?
+      AND reversalOfTransactionId IS NULL
+    ORDER BY createdAt ASC, id ASC
+  `).all(operationId);
+
+  if (!rows.length) {
+    throw new Error("Operazione non trovata");
+  }
+
+  if (rows.some((row) => !!row.reversedAt || reversedOriginalIds.has(String(row.id)))) {
+    throw new Error("Questa operazione è già stata annullata");
+  }
+
+  const now = new Date().toISOString();
+  const undoOperationId = crypto.randomUUID();
+  const affectedCharacterIds = new Set();
+
+  runInTransaction(() => {
+    for (const row of rows) {
+      const amounts = normalizeCurrencyBalance(row);
+      if (row.fromCharacterId) affectedCharacterIds.add(row.fromCharacterId);
+      if (row.toCharacterId) affectedCharacterIds.add(row.toCharacterId);
+
+      if (row.fromCharacterId && row.toCharacterId) {
+        const targetBalance = readCharacterCurrencyBalance(row.toCharacterId) ?? normalizeCurrencyBalance();
+        const nextTargetBalance = removeCurrencyAmountsWithChange(targetBalance, amounts);
+        if (!nextTargetBalance) {
+          throw new Error("Non posso annullare: il destinatario non ha più monete sufficienti.");
+        }
+        const sourceBalance = readCharacterCurrencyBalance(row.fromCharacterId) ?? normalizeCurrencyBalance();
+        writeCharacterCurrencyBalance(row.toCharacterId, nextTargetBalance);
+        writeCharacterCurrencyBalance(row.fromCharacterId, addCurrencyAmounts(sourceBalance, amounts));
+      } else if (row.toCharacterId && !row.fromCharacterId) {
+        const targetBalance = readCharacterCurrencyBalance(row.toCharacterId) ?? normalizeCurrencyBalance();
+        const nextTargetBalance = removeCurrencyAmountsWithChange(targetBalance, amounts);
+        if (!nextTargetBalance) {
+          throw new Error("Non posso annullare: il personaggio non ha più monete sufficienti.");
+        }
+        writeCharacterCurrencyBalance(row.toCharacterId, nextTargetBalance);
+      } else if (row.fromCharacterId && !row.toCharacterId) {
+        const sourceBalance = readCharacterCurrencyBalance(row.fromCharacterId) ?? normalizeCurrencyBalance();
+        writeCharacterCurrencyBalance(row.fromCharacterId, addCurrencyAmounts(sourceBalance, amounts));
+      }
+
+      sqlite
+        .prepare(`UPDATE "CurrencyTransaction" SET reversedAt = ? WHERE id = ?`)
+        .run(now, row.id);
+
+      createCurrencyTransactionRecord({
+        operationId: undoOperationId,
+        fromCharacterId: row.toCharacterId ?? null,
+        toCharacterId: row.fromCharacterId ?? null,
+        fromExternalName: row.toExternalName ?? null,
+        toExternalName: row.fromExternalName ?? null,
+        reason: row.reason ?? "Annullamento",
+        purchaseDescription: row.purchaseDescription ?? null,
+        note: `Annullamento di ${row.id}`,
+        createdByUserId: actorUserId,
+        reversalOfTransactionId: row.id,
+        ...amounts,
+      });
+    }
+  });
+
+  return { ok: true, affectedCharacterIds: Array.from(affectedCharacterIds) };
 }
 
 function runInTransaction(work) {
@@ -760,6 +1194,7 @@ function ensureCurrencyTransactionTable() {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS "CurrencyTransaction" (
       "id" TEXT NOT NULL PRIMARY KEY,
+      "operationId" TEXT,
       "fromCharacterId" TEXT,
       "toCharacterId" TEXT,
       "fromExternalName" TEXT,
@@ -799,6 +1234,15 @@ function ensureCurrencyTransactionTable() {
   sqlite.exec(`
     CREATE INDEX IF NOT EXISTS "CurrencyTransaction_reversalOfTransactionId_idx"
     ON "CurrencyTransaction"("reversalOfTransactionId");
+  `);
+
+  if (!columnExists("CurrencyTransaction", "operationId")) {
+    sqlite.exec(`ALTER TABLE "CurrencyTransaction" ADD COLUMN "operationId" TEXT;`);
+  }
+
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CurrencyTransaction_operationId_idx"
+    ON "CurrencyTransaction"("operationId");
   `);
 }
 
@@ -845,10 +1289,10 @@ function ensureLegacyCharacterCurrencyBalancesMigrated() {
 
   const insertInitialTransaction = sqlite.prepare(`
     INSERT INTO "CurrencyTransaction" (
-      id, fromCharacterId, toCharacterId, fromExternalName, toExternalName,
+      id, operationId, fromCharacterId, toCharacterId, fromExternalName, toExternalName,
       reason, purchaseDescription, note, cp, sp, ep, gp,
       createdByUserId, reversalOfTransactionId, reversedAt, createdAt
-    ) VALUES (?, NULL, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)
+    ) VALUES (?, ?, NULL, ?, ?, NULL, ?, NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)
   `);
 
   const now = new Date().toISOString();
@@ -887,6 +1331,7 @@ function ensureLegacyCharacterCurrencyBalancesMigrated() {
       );
 
       insertInitialTransaction.run(
+        transactionId,
         transactionId,
         row.id,
         "DM",
@@ -4424,6 +4869,47 @@ async function start() {
     }
   });
 
+  app.get("/api/currency-transactions", requireRole("dm"), (req, res) => {
+    return res.json(readCurrencyTransactionsForDm());
+  });
+
+  app.get("/api/characters/:slug/currency-transactions/history", requireAuth, (req, res) => {
+    const slug = req.params.slug;
+    const ownership = readOwnership();
+
+    if (!canAccessCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const character = getCharacterRecordBySlug(slug);
+    if (!character || character.archivedAt) {
+      return res.status(404).json({ error: "Character not found" });
+    }
+
+    return res.json(readCharacterCurrencyTransactionsForPlayer(character.id));
+  });
+
+  app.post("/api/currency-transactions/:operationId/undo", requireRole("dm"), (req, res) => {
+    try {
+      const result = undoCurrencyTransactionOperation(req.params.operationId, req.user?.id ?? null);
+      for (const characterId of result.affectedCharacterIds ?? []) {
+        const row = sqlite
+          .prepare('SELECT slug FROM "Character" WHERE id = ? LIMIT 1')
+          .get(characterId);
+        if (!row?.slug) continue;
+        const state = readCharacter(row.slug);
+        if (state) {
+          io.to(`char:${row.slug}`).emit("character:state", state);
+        }
+      }
+      return res.json({ ok: true });
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      const status = /not found/i.test(message) ? 404 : 400;
+      return res.status(status).json({ error: message });
+    }
+  });
+
   // ===== Bestiary =====
   app.get("/api/monsters", requireRole("dm"), (req, res) => {
     const monsters = listMonsters().map((monster) => ({
@@ -4904,7 +5390,7 @@ async function start() {
     }
 
     const operation = typeof req.body?.operation === "string" ? req.body.operation.trim() : "";
-    if (!["add", "remove", "transfer"].includes(operation)) {
+    if (!["add", "remove", "transfer", "convert"].includes(operation)) {
       return res.status(400).json({ error: "Operazione monete non valida." });
     }
 
@@ -4923,7 +5409,6 @@ async function start() {
     const purchaseDescription =
       typeof req.body?.purchaseDescription === "string" ? req.body.purchaseDescription.trim() : "";
     const note = typeof req.body?.note === "string" ? req.body.note.trim() : "";
-    const compactOnAdd = req.body?.compactOnAdd === true;
     const targetCharacterSlug =
       typeof req.body?.targetCharacterSlug === "string" ? req.body.targetCharacterSlug.trim() : "";
 
@@ -4952,6 +5437,7 @@ async function start() {
     let sourceBalance = null;
     let targetBalance = null;
     let createdTransaction = null;
+    const operationId = crypto.randomUUID();
 
     try {
       runInTransaction(() => {
@@ -4962,11 +5448,9 @@ async function start() {
             ...currentSourceBalance,
             [currency]: currentSourceBalance[currency] + amount,
           };
-          if (compactOnAdd) {
-            sourceBalance = compactCurrencyAtTier(sourceBalance, currency);
-          }
           writeCharacterCurrencyBalance(sourceCharacter.id, sourceBalance);
           createdTransaction = createCurrencyTransactionRecord({
+            operationId,
             toCharacterId: sourceCharacter.id,
             fromExternalName: counterpartyName || null,
             reason: reason || null,
@@ -4978,13 +5462,73 @@ async function start() {
           return;
         }
 
+        if (operation === "convert") {
+          const conversion = convertCurrencyAmountUpDetailed(currentSourceBalance, currency, amount);
+          if (!conversion) {
+            if (currency === "gp") {
+              throw new Error("Le monete d'oro non possono essere convertite oltre.");
+            }
+            throw new Error("Monete insufficienti o conversione non valida.");
+          }
+          sourceBalance = conversion.balance;
+          writeCharacterCurrencyBalance(sourceCharacter.id, sourceBalance);
+          const conversionLabel = "Cambio valuta";
+          const conversionNote = note || `Conversione ${amount} ${currency.toUpperCase()}`;
+          const outgoingTransaction = createCurrencyTransactionRecord({
+            operationId,
+            fromCharacterId: sourceCharacter.id,
+            toExternalName: conversionLabel,
+            reason: conversionLabel,
+            purchaseDescription: null,
+            note: conversionNote,
+            createdByUserId: req.user?.id ?? null,
+            ...conversion.outgoing,
+          });
+          createCurrencyTransactionRecord({
+            operationId,
+            toCharacterId: sourceCharacter.id,
+            fromExternalName: conversionLabel,
+            reason: conversionLabel,
+            purchaseDescription: null,
+            note: conversionNote,
+            createdByUserId: req.user?.id ?? null,
+            ...conversion.incoming,
+          });
+          createdTransaction = outgoingTransaction;
+          return;
+        }
+
         if (operation === "remove") {
-          sourceBalance = removeCurrencyWithChange(currentSourceBalance, currency, amount);
-          if (!sourceBalance) {
+          const removal = removeCurrencyWithChangeDetailed(currentSourceBalance, currency, amount);
+          if (!removal) {
             throw new Error("Monete insufficienti per questa operazione.");
           }
+          sourceBalance = removal.balance;
           writeCharacterCurrencyBalance(sourceCharacter.id, sourceBalance);
+          for (const conversion of removal.conversions) {
+            createCurrencyTransactionRecord({
+              operationId,
+              fromCharacterId: sourceCharacter.id,
+              toExternalName: "Cambio valuta",
+              reason: "Cambio valuta",
+              purchaseDescription: null,
+              note: "Cambio automatico per spesa",
+              createdByUserId: req.user?.id ?? null,
+              ...conversion.outgoing,
+            });
+            createCurrencyTransactionRecord({
+              operationId,
+              toCharacterId: sourceCharacter.id,
+              fromExternalName: "Cambio valuta",
+              reason: "Cambio valuta",
+              purchaseDescription: null,
+              note: "Cambio automatico per spesa",
+              createdByUserId: req.user?.id ?? null,
+              ...conversion.incoming,
+            });
+          }
           createdTransaction = createCurrencyTransactionRecord({
+            operationId,
             fromCharacterId: sourceCharacter.id,
             toExternalName: counterpartyName || null,
             reason: reason || null,
@@ -4996,10 +5540,11 @@ async function start() {
           return;
         }
 
-        sourceBalance = removeCurrencyWithChange(currentSourceBalance, currency, amount);
-        if (!sourceBalance) {
+        const transferRemoval = removeCurrencyWithChangeDetailed(currentSourceBalance, currency, amount);
+        if (!transferRemoval) {
           throw new Error("Monete insufficienti per questa operazione.");
         }
+        sourceBalance = transferRemoval.balance;
 
         const currentTargetBalance = readCharacterCurrencyBalance(targetCharacter.id) ?? normalizeCurrencyBalance();
         targetBalance = {
@@ -5009,7 +5554,30 @@ async function start() {
 
         writeCharacterCurrencyBalance(sourceCharacter.id, sourceBalance);
         writeCharacterCurrencyBalance(targetCharacter.id, targetBalance);
+        for (const conversion of transferRemoval.conversions) {
+          createCurrencyTransactionRecord({
+            operationId,
+            fromCharacterId: sourceCharacter.id,
+            toExternalName: "Cambio valuta",
+            reason: "Cambio valuta",
+            purchaseDescription: null,
+            note: "Cambio automatico per trasferimento",
+            createdByUserId: req.user?.id ?? null,
+            ...conversion.outgoing,
+          });
+          createCurrencyTransactionRecord({
+            operationId,
+            toCharacterId: sourceCharacter.id,
+            fromExternalName: "Cambio valuta",
+            reason: "Cambio valuta",
+            purchaseDescription: null,
+            note: "Cambio automatico per trasferimento",
+            createdByUserId: req.user?.id ?? null,
+            ...conversion.incoming,
+          });
+        }
         createdTransaction = createCurrencyTransactionRecord({
+          operationId,
           fromCharacterId: sourceCharacter.id,
           toCharacterId: targetCharacter.id,
           reason: reason || null,

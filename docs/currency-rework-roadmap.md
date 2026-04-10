@@ -422,16 +422,35 @@ Stato:
 - ogni operazione aggiorna il saldo corrente in `CharacterCurrencyBalance`
 - ogni operazione registra una voce in `CurrencyTransaction`
 - le uscite e i trasferimenti usano il cambio automatico da tagli superiori se necessario
-- le entrate possono opzionalmente compattare il taglio selezionato
 - i target di trasferimento vengono letti da una lista dedicata di tutti i PG attivi, indipendente dai normali permessi di lettura scheda
 
 ### Fase 7
 
 - aggiungere utility conversione
 
+Stato:
+
+- completato
+- la scheda personaggio espone ora una quarta operazione `Converti`
+- la conversione e' una utility separata da entrate, uscite e trasferimenti
+- converte il taglio selezionato verso il taglio superiore fino al massimo possibile
+- aggiorna il saldo corrente in `CharacterCurrencyBalance`
+- registra due movimenti in `CurrencyTransaction` con causale `Cambio valuta`:
+  - uscita del taglio originario
+  - entrata del risultato convertito
+
 ### Fase 8
 
 - aggiungere storico DM con annullamento
+
+Stato:
+
+- completato
+- il DM ha una sezione dedicata allo storico monete
+- le operazioni vengono lette a livello di `operationId`, quindi anche il cambio valuta appare come operazione unica
+- il DM può annullare le operazioni registrate
+- l'annullamento ripristina i saldi quando i portafogli correnti lo consentono
+- gli annulli aggiornano anche le schede aperte via realtime
 
 ## Cose esplicitamente fuori scope v1
 

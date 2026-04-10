@@ -318,6 +318,7 @@ model CharacterCurrencyBalance {
 
 model CurrencyTransaction {
   id                     String    @id
+  operationId            String?
   fromCharacterId        String?
   toCharacterId          String?
   fromExternalName       String?
@@ -340,6 +341,7 @@ model CurrencyTransaction {
 
   @@index([fromCharacterId])
   @@index([toCharacterId])
+  @@index([operationId])
   @@index([createdByUserId])
   @@index([createdAt])
   @@index([reversalOfTransactionId])

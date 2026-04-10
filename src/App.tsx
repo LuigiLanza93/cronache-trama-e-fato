@@ -18,6 +18,8 @@ import NewCharacter from "./pages/NewCharacter";
 import BestiaryManagement from "./pages/BestiaryManagement";
 import ItemManagement from "./pages/ItemManagement";
 import CharacterInventoryManagement from "./pages/CharacterInventoryManagement";
+import InventoryTransactionsPage from "./pages/InventoryTransactionsPage";
+import CurrencyTransactionsPage from "./pages/CurrencyTransactionsPage";
 import PlayerMonsterCompendium from "./pages/PlayerMonsterCompendium";
 import NotFound from "./pages/NotFound";
 
@@ -87,6 +89,22 @@ const App = () => (
                 element={
                   <RequireRole role="dm">
                     <CharacterInventoryManagement />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/dm/inventory/transactions"
+                element={
+                  <RequireRole role="dm">
+                    <InventoryTransactionsPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="/dm/currency-transactions"
+                element={
+                  <RequireRole role="dm">
+                    <CurrencyTransactionsPage />
                   </RequireRole>
                 }
               />

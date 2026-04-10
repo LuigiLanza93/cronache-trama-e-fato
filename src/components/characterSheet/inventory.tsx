@@ -370,6 +370,11 @@ const Inventory = ({
   incrementRelationalConsumable,
   transferTargets,
   transferRelationalInventoryItem,
+  openCurrencyHistory,
+  currencyHistoryOpen,
+  setCurrencyHistoryOpen,
+  currencyHistoryEntries,
+  currencyHistoryLoading,
 }: any) => {
   const COIN_KEYS = {
     mr: "cp",
@@ -396,7 +401,7 @@ const Inventory = ({
       key: "cp",
       swatchClass: "bg-gradient-to-br from-amber-500 to-amber-800",
       ringClass: "ring-amber-900/30",
-      textClass: "text-amber-900",
+      textClass: "text-amber-950",
     },
     ma: {
       label: "Argento",
@@ -404,7 +409,7 @@ const Inventory = ({
       key: "sp",
       swatchClass: "bg-gradient-to-br from-slate-100 to-slate-400",
       ringClass: "ring-slate-500/30",
-      textClass: "text-slate-700",
+      textClass: "text-slate-900",
     },
     me: {
       label: "Electrum",
@@ -412,7 +417,7 @@ const Inventory = ({
       key: "ep",
       swatchClass: "bg-gradient-to-br from-emerald-200 to-teal-500",
       ringClass: "ring-teal-600/30",
-      textClass: "text-teal-700",
+      textClass: "text-teal-950",
     },
     mo: {
       label: "Oro",
@@ -420,10 +425,11 @@ const Inventory = ({
       key: "gp",
       swatchClass: "bg-gradient-to-br from-yellow-200 to-yellow-500",
       ringClass: "ring-yellow-600/30",
-      textClass: "text-yellow-700",
+      textClass: "text-yellow-950",
     },
   };
   const COIN_ORDER: CoinAbbr[] = ["mo", "me", "ma", "mr"];
+  const isCoinConvert = mode === "coins" && coinFlow === "convert";
   const coinPrimaryLabel =
     coinFlow === "add"
       ? "Da chi / da dove"
@@ -452,6 +458,7 @@ const Inventory = ({
       : coinFlow === "add"
         ? "Es. Taglia sui briganti, borsa trovata nel covo"
         : "Es. Quota per le provviste";
+  const canConvertSelectedTier = coinType !== "mo";
 
   // === mapping categorie ===
   const SKILL_TYPES = ["volonta", "incontro", "riposoBreve", "riposoLungo"] as const;
@@ -1312,34 +1319,64 @@ const Inventory = ({
             >
               <Repeat className="h-4 w-4" />
             </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+              aria-label="Converti monete"
+              title={coinActionsEnabled ? "Converti monete" : "Gestione monete in attivazione"}
+              disabled={!coinActionsEnabled}
+              onClick={() => {
+                lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+                setMode("coins");
+                setCoinFlow("convert");
+                setInvOpen(true);
+              }}
+            >
+              <WandSparkles className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+              aria-label="Storico monete"
+              title="Storico monete"
+              onClick={() => {
+                lastOpenTriggerRef.current = document.activeElement as HTMLButtonElement | null;
+                void openCurrencyHistory?.();
+              }}
+            >
+              <ScrollText className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-        <div className="space-y-1.5">
+        <div className="grid grid-cols-4 gap-2">
           {COIN_ORDER.map((abbr) => {
             const meta = COIN_META[abbr];
             return (
-              <div
-                key={abbr}
-                className="flex items-center justify-between rounded-md bg-card/40 px-2 py-1"
-              >
-                <div className="flex items-center gap-2">
+              <div key={abbr} className="flex justify-center">
+                <span
+                  className={`relative inline-flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border border-white/10 ring-1 shadow-[inset_0_2px_6px_rgba(255,255,255,0.18),inset_0_-6px_10px_rgba(0,0,0,0.22),0_6px_14px_rgba(0,0,0,0.18)] ${meta.ringClass} ${meta.swatchClass}`}
+                  aria-label={`${coins[meta.key]} ${meta.label}`}
+                  title={`${coins[meta.key]} ${meta.label}`}
+                >
                   <span
-                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full ring-1 ${meta.ringClass} ${meta.swatchClass} shadow-inner`}
                     aria-hidden="true"
-                  >
-                    <span className={`text-[8px] font-bold ${meta.textClass}`}>{meta.shortLabel}</span>
+                    className="pointer-events-none absolute inset-x-[18%] top-[10%] h-[26%] rounded-full bg-white/28 blur-[1px]"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-[10%] rounded-full border border-black/10"
+                  />
+                  <span className={`relative z-10 text-[13px] font-extrabold tabular-nums drop-shadow-[0_1px_1px_rgba(0,0,0,0.24)] ${meta.textClass}`}>
+                    {coins[meta.key]}
                   </span>
-                  <div className="font-medium leading-none">{meta.label}</div>
-                </div>
-                <span className="font-semibold tabular-nums text-sm">{coins[meta.key]}</span>
+                </span>
               </div>
             );
           })}
-        </div>
-        <div className="mt-1.5 text-[11px] text-muted-foreground">
-          {coinActionsEnabled
-            ? "I cambi tra i vari tagli vengono calcolati automaticamente."
-            : "Saldo letto dal DB. Le operazioni monete arrivano nel prossimo step."}
         </div>
       </div>
 
@@ -1576,7 +1613,9 @@ const Inventory = ({
                   ? "Aggiungi monete"
                   : coinFlow === "remove"
                     ? "Rimuovi monete"
-                    : "Trasferisci monete"
+                    : coinFlow === "transfer"
+                      ? "Trasferisci monete"
+                      : "Converti monete"
                 : editingTarget
                   ? kind === "weapon"
                     ? "Modifica arma"
@@ -1629,11 +1668,11 @@ const Inventory = ({
                   <div className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/85">
                     Operazione
                   </div>
-                  <div className="mx-auto flex w-full max-w-xl rounded-full border border-border/70 bg-muted/10 p-1">
+                  <div className="mx-auto grid w-full max-w-2xl grid-cols-4 rounded-full border border-border/70 bg-muted/10 p-1">
                     <Button
                       type="button"
                       variant={coinFlow === "add" ? "default" : "ghost"}
-                      className="h-8 flex-1 rounded-full px-3 text-xs font-semibold"
+                      className="h-8 rounded-full px-3 text-xs font-semibold"
                       onClick={() => setCoinFlow("add")}
                     >
                       Entrata
@@ -1641,7 +1680,7 @@ const Inventory = ({
                     <Button
                       type="button"
                       variant={coinFlow === "remove" ? "default" : "ghost"}
-                      className="h-8 flex-1 rounded-full px-3 text-xs font-semibold"
+                      className="h-8 rounded-full px-3 text-xs font-semibold"
                       onClick={() => setCoinFlow("remove")}
                     >
                       Spesa
@@ -1649,10 +1688,18 @@ const Inventory = ({
                     <Button
                       type="button"
                       variant={coinFlow === "transfer" ? "default" : "ghost"}
-                      className="h-8 flex-1 rounded-full px-3 text-xs font-semibold"
+                      className="h-8 rounded-full px-3 text-xs font-semibold"
                       onClick={() => setCoinFlow("transfer")}
                     >
                       Trasferisci
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={coinFlow === "convert" ? "default" : "ghost"}
+                      className="h-8 rounded-full px-3 text-xs font-semibold"
+                      onClick={() => setCoinFlow("convert")}
+                    >
+                      Converti
                     </Button>
                   </div>
                 </div>
@@ -1663,7 +1710,9 @@ const Inventory = ({
                         ? "Quantita da aggiungere"
                         : coinFlow === "remove"
                           ? "Quantita da spendere"
-                          : "Quantita da trasferire"}
+                          : coinFlow === "transfer"
+                            ? "Quantita da trasferire"
+                            : "Quantita da convertire"}
                     </Label>
                     <Input
                       inputMode="numeric"
@@ -1701,9 +1750,19 @@ const Inventory = ({
                         );
                       })}
                     </div>
+                    {isCoinConvert ? (
+                      <div className="text-xs text-muted-foreground">
+                        Converte il taglio selezionato nel taglio superiore fino al massimo possibile.
+                      </div>
+                    ) : null}
+                    {isCoinConvert && !canConvertSelectedTier ? (
+                      <div className="text-xs text-muted-foreground">Le monete d'oro non possono essere convertite oltre.</div>
+                    ) : null}
                   </div>
                 </div>
                 <div className="grid gap-4 md:grid-cols-6 md:items-start">
+                  {!isCoinConvert && (
+                    <>
                   {coinFlow === "transfer" && (
                     <div className="space-y-2 md:col-span-2">
                       <Label className="mb-1 block">{coinPrimaryLabel}</Label>
@@ -1743,6 +1802,8 @@ const Inventory = ({
                       placeholder={coinDetailPlaceholder}
                     />
                   </div>
+                    </>
+                  )}
                   <div className="space-y-2 md:col-span-6">
                     <Label className="mb-1 block">Note</Label>
                     <Textarea
@@ -2001,6 +2062,102 @@ const Inventory = ({
               </Button>
             )}
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={currencyHistoryOpen} onOpenChange={setCurrencyHistoryOpen}>
+        <DialogContent
+          className="max-h-[82vh] overflow-hidden sm:max-w-3xl"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            lastOpenTriggerRef.current?.focus();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Storico monete</DialogTitle>
+          </DialogHeader>
+
+          <div className="max-h-[62vh] overflow-y-auto pr-1">
+            {currencyHistoryLoading ? (
+              <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+                Carico lo storico monete...
+              </div>
+            ) : currencyHistoryEntries.length === 0 ? (
+              <div className="rounded-xl border border-border/60 bg-muted/10 px-4 py-8 text-center text-sm text-muted-foreground">
+                Nessun movimento monete da mostrare.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {currencyHistoryEntries.map((entry: any) => {
+                  const contextParts = [entry.reason, entry.purchaseDescription, entry.note].filter(Boolean);
+                  const summaryTone =
+                    entry.direction === "in"
+                      ? "text-emerald-400"
+                      : entry.direction === "out"
+                        ? "text-amber-300"
+                        : "text-primary";
+                  const badgeTone =
+                    entry.direction === "in"
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                      : entry.direction === "out"
+                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                        : "border-border/60 bg-muted/20 text-muted-foreground";
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className="rounded-xl border border-border/60 bg-card/50 px-4 py-3"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${badgeTone}`}>
+                              {entry.actionLabel}
+                            </span>
+                            <span className={`text-base font-semibold ${summaryTone}`}>
+                              {entry.signedSummary}
+                            </span>
+                          </div>
+                          {entry.counterpartLabel ? (
+                            <div className="text-sm text-muted-foreground">
+                              {entry.direction === "in"
+                                ? `Da ${entry.counterpartLabel}`
+                                : entry.direction === "out"
+                                  ? `Verso ${entry.counterpartLabel}`
+                                  : entry.counterpartLabel}
+                            </div>
+                          ) : null}
+                          {contextParts.length > 0 ? (
+                            <div className="text-sm text-muted-foreground">
+                              {contextParts.join(" · ")}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="shrink-0 text-xs text-muted-foreground">
+                          {new Date(entry.createdAt).toLocaleString("it-IT")}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-2">
+            <DialogClose asChild>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+                aria-label="Chiudi storico monete"
+                title="Chiudi"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
           </DialogFooter>
         </DialogContent>
       </Dialog>
