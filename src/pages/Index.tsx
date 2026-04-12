@@ -274,6 +274,24 @@ const Index = () => {
     []
   );
 
+  const dmActionMap = useMemo(
+    () => Object.fromEntries(dmActions.map((action) => [action.href, action])),
+    [dmActions]
+  );
+
+  const primaryDmActions = ["/dm", "/dm/initiative"]
+    .map((href) => dmActionMap[href])
+    .filter(Boolean);
+  const secondaryDmActions = ["/dm/assignments", "/dm/bestiary", "/dm/items"]
+    .map((href) => dmActionMap[href])
+    .filter(Boolean);
+  const tertiaryDmActions = ["/dm/inventory", "/dm/users"]
+    .map((href) => dmActionMap[href])
+    .filter(Boolean);
+  const utilityDmActions = ["/dm/inventory/transactions", "/dm/currency-transactions"]
+    .map((href) => dmActionMap[href])
+    .filter(Boolean);
+
   if (!loading && !user) {
     return (
       <div className="min-h-screen parchment">
@@ -355,12 +373,12 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen parchment px-6 py-12">
-      <div className="mx-auto max-w-6xl space-y-8">
+    <div className="min-h-screen parchment px-6 py-10">
+      <div className="mx-auto max-w-6xl space-y-6">
         <section className="space-y-3">
           <div className="space-y-3">
-            <div className="flex justify-end">
-              <div className="flex flex-wrap items-center justify-end gap-3 text-sm">
+            <div className="relative text-center">
+              <div className="absolute right-0 top-1/2 hidden -translate-y-1/2 flex-wrap items-center justify-end gap-3 text-sm md:flex">
                 <div className="inline-flex items-center">
                   {user.role === "dm" ? (
                     <Shield className="h-4 w-4 text-primary" aria-label="Master" />
@@ -373,53 +391,129 @@ const Index = () => {
                   <LogOut className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-            <div className="text-center">
+            
               <h1 className="font-heading text-5xl font-bold text-primary">
                 {user.role === "dm" ? "Home del master" : "Home del giocatore"}
               </h1>
               <div className="mt-3">
                 <AppVersionDialog notifyOnNewVersion={user.role === "player"} />
               </div>
-              <p className="mx-auto mt-3 max-w-3xl text-muted-foreground">
-                {user.role === "dm"
-                  ? "Da qui puoi aprire la gestione sessione, organizzare gli utenti e mantenere allineate le associazioni tra account e personaggi."
-                  : "Da qui accedi ai tuoi personaggi associati e, quando sarà pronta, potrai iniziare la creazione di un nuovo personaggio."}
-              </p>
+              {user.role !== "dm" && (
+                <p className="mx-auto mt-3 max-w-3xl text-muted-foreground">
+                  Da qui accedi ai tuoi personaggi associati e, quando sarà pronta, potrai iniziare la creazione di un nuovo personaggio.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-3 text-sm md:hidden">
+              <div className="inline-flex items-center">
+                {user.role === "dm" ? (
+                  <Shield className="h-4 w-4 text-primary" aria-label="Master" />
+                ) : (
+                  <UserRound className="h-4 w-4 text-primary" aria-label="Giocatore" />
+                )}
+              </div>
+              <span className="text-muted-foreground">{user.username}</span>
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => void logout()} aria-label="Esci" title="Esci">
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
 
           </div>
         </section>
 
         {user.role === "dm" ? (
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {dmActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <Link key={action.href} to={action.href} className="block h-full">
-                  <Card className="character-section flex h-full flex-col justify-between transition-colors hover:bg-accent/30">
+          <section className="space-y-4">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1.85fr)]">
+              <div className="grid gap-4">
+                {primaryDmActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Link key={action.href} to={action.href} className="block h-full">
+                      <Card className="character-section flex h-full min-h-[220px] flex-col justify-between transition-colors hover:bg-accent/30">
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <Icon className="h-6 w-6 text-primary" />
+                            <div className="font-heading text-2xl font-semibold text-primary">{action.title}</div>
+                          </div>
+                          <p className="mt-4 max-w-xl text-base text-muted-foreground">{action.description}</p>
+                        </div>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <div className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  {secondaryDmActions.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <Link key={action.href} to={action.href} className="block h-full">
+                        <Card className="character-section flex h-full min-h-[190px] flex-col justify-between transition-colors hover:bg-accent/30">
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <Icon className="h-5 w-5 text-primary" />
+                              <div className="font-heading text-xl font-semibold text-primary">{action.title}</div>
+                            </div>
+                            <p className="mt-3 text-sm text-muted-foreground">{action.description}</p>
+                          </div>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {tertiaryDmActions.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <Link key={action.href} to={action.href} className="block h-full">
+                        <Card className="character-section flex h-full min-h-[170px] flex-col justify-between transition-colors hover:bg-accent/30">
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <Icon className="h-5 w-5 text-primary" />
+                              <div className="font-heading text-xl font-semibold text-primary">{action.title}</div>
+                            </div>
+                            <p className="mt-3 text-sm text-muted-foreground">{action.description}</p>
+                          </div>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px]">
+                  {utilityDmActions.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <Link key={action.href} to={action.href} className="block h-full">
+                        <Card className="character-section flex h-full min-h-[140px] flex-col justify-between transition-colors hover:bg-accent/30">
+                          <div>
+                            <div className="flex items-center gap-3">
+                              <Icon className="h-5 w-5 text-primary" />
+                              <div className="font-heading text-lg font-semibold text-primary">{action.title}</div>
+                            </div>
+                            <p className="mt-3 text-sm text-muted-foreground">{action.description}</p>
+                          </div>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+
+                  <Card className="character-section flex h-full min-h-[140px] flex-col justify-between border-dashed border-primary/25 bg-background/40">
                     <div>
                       <div className="flex items-center gap-3">
-                        <Icon className="h-5 w-5 text-primary" />
-                        <div className="font-heading text-xl font-semibold text-primary">{action.title}</div>
+                        <Sparkles className="h-5 w-5 text-primary" />
+                        <div className="font-heading text-xl font-semibold text-primary">More to come</div>
                       </div>
-                      <p className="mt-3 text-sm text-muted-foreground">{action.description}</p>
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        Nuovi strumenti DM arriveranno qui nelle prossime rifiniture.
+                      </p>
                     </div>
                   </Card>
-                </Link>
-              );
-            })}
-            <Card className="character-section flex h-full flex-col justify-between border-dashed border-primary/25 bg-background/40">
-              <div>
-                <div className="flex items-center gap-3">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  <div className="font-heading text-xl font-semibold text-primary">More to come</div>
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Nuovi strumenti DM arriveranno qui nelle prossime rifiniture.
-                </p>
               </div>
-            </Card>
+            </div>
           </section>
         ) : (
           <section className="space-y-6">
@@ -607,3 +701,4 @@ const Index = () => {
 };
 
 export default Index;
+
