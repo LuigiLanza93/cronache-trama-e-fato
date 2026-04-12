@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ComponentPropsWithoutRef, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
   Dice6,
@@ -25,13 +25,26 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AppVersionDialog } from "@/components/app-version-dialog";
 import { useAuth } from "@/components/auth-provider";
 import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
-import { fetchCharacters } from "@/realtime";
+import {
+  fetchCurrencyTransactions,
+  fetchInventoryTransfers,
+  fetchItemDefinitions,
+  fetchMonsters,
+  fetchUsers,
+  type CurrencyTransactionEntry,
+  type InventoryTransferEntry,
+  type ItemDefinitionSummary,
+  type ManagedUser,
+  type MonsterSummary,
+} from "@/lib/auth";
+import { fetchCharacters, requestPresenceSnapshot, subscribePresence } from "@/realtime";
 
 type CharacterState = Record<string, any>;
 
 type HomeCharacter = {
   slug: string;
   name: string;
+  characterType: "pg" | "png";
   className: string;
   level: number | null;
   initiativeBonus: number;
@@ -45,6 +58,83 @@ type HomeCharacter = {
     temp: number;
   };
 };
+
+type InitiativePlayerEntry = {
+  id: string;
+  slug: string;
+  initiative: number;
+  initiativeRoll: number;
+  sortOrder: number;
+};
+
+type InitiativeMonsterEntry = {
+  id: string;
+  name: string;
+  initiative: number;
+  currentHitPoints: number;
+  maxHitPoints: number;
+  sortOrder: number;
+};
+
+type InitiativeEncounterState = {
+  players: InitiativePlayerEntry[];
+  monsters: InitiativeMonsterEntry[];
+  started: boolean;
+  round: number;
+  currentTurnId: string | null;
+};
+
+type InitiativeCombatantSummary = {
+  id: string;
+  name: string;
+  initiative: number;
+  sortOrder: number;
+  type: "player" | "monster";
+  currentHitPoints?: number;
+};
+
+type TransactionCardSummary = {
+  title: string;
+  detail: string;
+  timestamp: string;
+} | null;
+
+const INITIATIVE_STORAGE_KEY = "dm-initiative-tracker-v1";
+const RARITY_ORDER = ["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY", "UNIQUE"] as const;
+const RARITY_LABELS: Record<string, string> = {
+  COMMON: "Comuni",
+  UNCOMMON: "Non comuni",
+  RARE: "Rari",
+  VERY_RARE: "Molto rari",
+  LEGENDARY: "Leggendari",
+  UNIQUE: "Unici",
+};
+const RARITY_ALIASES: Record<string, (typeof RARITY_ORDER)[number]> = {
+  COMMON: "COMMON",
+  COMUNE: "COMMON",
+  UNCOMMON: "UNCOMMON",
+  "NON COMUNE": "UNCOMMON",
+  NON_COMUNE: "UNCOMMON",
+  RARE: "RARE",
+  RARO: "RARE",
+  VERY_RARE: "VERY_RARE",
+  "MOLTO RARO": "VERY_RARE",
+  MOLTO_RARO: "VERY_RARE",
+  LEGENDARY: "LEGENDARY",
+  LEGGENDARIO: "LEGENDARY",
+  UNIQUE: "UNIQUE",
+  UNICO: "UNIQUE",
+};
+
+function normalizeRarityKey(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_")
+    .replace(/\s+/g, " ");
+
+  return RARITY_ALIASES[normalized] ?? normalized.replace(/\s+/g, "_");
+}
 
 const SPELLCASTING_ABILITY_BY_CLASS: Record<string, string> = {
   bardo: "charisma",
@@ -155,6 +245,102 @@ function hpBarColor(hp: HomeCharacter["hp"]) {
   return "bg-rose-500";
 }
 
+function parseInitiativeEncounterState(raw: string | null): InitiativeEncounterState {
+  if (!raw) {
+    return {
+      players: [],
+      monsters: [],
+      started: false,
+      round: 1,
+      currentTurnId: null,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      players: Array.isArray(parsed?.players)
+        ? parsed.players.map((player: any) => ({
+            id: typeof player?.id === "string" ? player.id : `player:${String(player?.slug ?? "")}`,
+            slug: typeof player?.slug === "string" ? player.slug : "",
+            initiative: typeof player?.initiative === "number" ? player.initiative : 0,
+            initiativeRoll: typeof player?.initiativeRoll === "number" ? player.initiativeRoll : 0,
+            sortOrder: typeof player?.sortOrder === "number" ? player.sortOrder : 0,
+          }))
+        : [],
+      monsters: Array.isArray(parsed?.monsters)
+        ? parsed.monsters.map((monster: any) => ({
+            id: typeof monster?.id === "string" ? monster.id : `monster:${String(monster?.name ?? "")}`,
+            name: typeof monster?.name === "string" ? monster.name : "Mostro",
+            initiative: typeof monster?.initiative === "number" ? monster.initiative : 0,
+            currentHitPoints: typeof monster?.currentHitPoints === "number" ? monster.currentHitPoints : 0,
+            maxHitPoints: typeof monster?.maxHitPoints === "number" ? monster.maxHitPoints : 0,
+            sortOrder: typeof monster?.sortOrder === "number" ? monster.sortOrder : 0,
+          }))
+        : [],
+      started: !!parsed?.started,
+      round: typeof parsed?.round === "number" && parsed.round > 0 ? parsed.round : 1,
+      currentTurnId: typeof parsed?.currentTurnId === "string" ? parsed.currentTurnId : null,
+    };
+  } catch {
+    return {
+      players: [],
+      monsters: [],
+      started: false,
+      round: 1,
+      currentTurnId: null,
+    };
+  }
+}
+
+function compareInitiativeCombatants(a: InitiativeCombatantSummary, b: InitiativeCombatantSummary) {
+  if (b.initiative !== a.initiative) return b.initiative - a.initiative;
+  return a.sortOrder - b.sortOrder;
+}
+
+function formatCompactTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("it-IT", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+function directionFromInventoryEntry(entry: InventoryTransferEntry) {
+  if (entry.type === "INITIAL_GRANT") {
+    return `DM -> ${entry.toCharacterName ?? "-"}`;
+  }
+
+  if (entry.type === "REMOVAL") {
+    return `${entry.fromCharacterName ?? "-"} -> DM`;
+  }
+
+  return `${entry.fromCharacterName ?? "-"} -> ${entry.toCharacterName ?? "-"}`;
+}
+
+function currencyFromSummary(entry: CurrencyTransactionEntry) {
+  if (entry.operationType === "ADD") return entry.fromExternalName ?? "Origine esterna";
+  if (entry.operationType === "REMOVE") return entry.fromCharacterName ?? "-";
+  if (entry.operationType === "TRANSFER") return entry.fromCharacterName ?? "-";
+  return entry.fromCharacterName ?? entry.toCharacterName ?? "Portafoglio";
+}
+
+function currencyToSummary(entry: CurrencyTransactionEntry) {
+  if (entry.operationType === "ADD") return entry.toCharacterName ?? "-";
+  if (entry.operationType === "REMOVE") return entry.toExternalName ?? "Destinazione esterna";
+  if (entry.operationType === "TRANSFER") return entry.toCharacterName ?? "-";
+  return entry.toCharacterName ?? entry.fromCharacterName ?? "Portafoglio";
+}
+
+function D20Icon(props: ComponentPropsWithoutRef<"svg">) {
+  return (
+    <svg viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" {...props}>
+      <path d="M91.9,61.37l-14-42a2,2,0,0,0-1.33-1.29l-37-11a2,2,0,0,0-2,.51l-31,31a2,2,0,0,0-.48,2.06l15,44A2,2,0,0,0,22.73,86l36,5L59,91a2,2,0,0,0,1.31-.49l31-27A2,2,0,0,0,91.9,61.37ZM24.44,82,31.6,47.05l33.08,34ZM77.26,31.69,32.33,43.61l7.06-31.75Zm-47,12.12L11.16,39.66,36.88,14ZM66.38,79.92,32.91,45.53,78.38,33.46l.12.35-12,46ZM77,29.29l-30.52-16,28,8.31ZM10.66,41.6l19.16,4.17L23.16,78.26ZM58.37,86.89,35.5,83.72l27.23-.62Zm10.85-9.44L79.66,37.29l8,24.08ZM41.64,35.5a7,7,0,0,1,1.85-3.82,16.93,16.93,0,0,0,1.84-2.58A2.44,2.44,0,0,0,45.4,27a2.67,2.67,0,0,0-1.13-1.28,2.34,2.34,0,0,0-1.74-.21c-.9.2-1.38.64-1.46,1.31a4.35,4.35,0,0,0,.36,1.74l-3,.7a6,6,0,0,1-.42-3c.26-1.51,1.4-2.47,3.4-2.91a6.62,6.62,0,0,1,4.21.31,5.27,5.27,0,0,1,2.73,2.71,3.82,3.82,0,0,1,.21,2.86,7.46,7.46,0,0,1-1.35,2.28l-.85,1.08q-.81,1-1.08,1.47A2.81,2.81,0,0,0,45,35l6.62-1.74,1.11,2.45L42.09,38.6A6.75,6.75,0,0,1,41.64,35.5ZM56.57,21.81A13,13,0,0,1,60,26.36a10.48,10.48,0,0,1,1.47,5.28c-.1,1.4-1.06,2.36-2.87,2.85a5.11,5.11,0,0,1-4.76-.82,13,13,0,0,1-3.53-4.93,9.78,9.78,0,0,1-1.2-5.25c.2-1.3,1.19-2.14,3-2.53A5.18,5.18,0,0,1,56.57,21.81Zm-1.26,9.66a2.13,2.13,0,0,0,2.25.81,1.29,1.29,0,0,0,1-1.66,13.72,13.72,0,0,0-1.33-3.57,15,15,0,0,0-2.06-3.34A2.09,2.09,0,0,0,53.07,23,1.24,1.24,0,0,0,52,24.46,12.67,12.67,0,0,0,53.23,28,15.33,15.33,0,0,0,55.31,31.47Z" />
+    </svg>
+  );
+}
+
 function toHomeCharacter(state: CharacterState): HomeCharacter | null {
   const slug = typeof state?.slug === "string" ? state.slug : "";
   if (!slug) return null;
@@ -162,6 +348,7 @@ function toHomeCharacter(state: CharacterState): HomeCharacter | null {
   return {
     slug,
     name: state?.basicInfo?.characterName ?? slug,
+    characterType: state?.characterType === "png" ? "png" : "pg",
     className: state?.basicInfo?.class ?? "",
     level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
     initiativeBonus: state?.combatStats?.initiative ?? 0,
@@ -180,6 +367,15 @@ function toHomeCharacter(state: CharacterState): HomeCharacter | null {
 const Index = () => {
   const { user, logout, loading } = useAuth();
   const [characters, setCharacters] = useState<HomeCharacter[]>([]);
+  const [onlineCharacterSlugs, setOnlineCharacterSlugs] = useState<string[]>([]);
+  const [monsterSummaries, setMonsterSummaries] = useState<MonsterSummary[]>([]);
+  const [itemDefinitions, setItemDefinitions] = useState<ItemDefinitionSummary[]>([]);
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
+  const [inventoryTransfers, setInventoryTransfers] = useState<InventoryTransferEntry[]>([]);
+  const [currencyTransactions, setCurrencyTransactions] = useState<CurrencyTransactionEntry[]>([]);
+  const [initiativeEncounter, setInitiativeEncounter] = useState<InitiativeEncounterState>(() =>
+    typeof window === "undefined" ? parseInitiativeEncounterState(null) : parseInitiativeEncounterState(window.localStorage.getItem(INITIATIVE_STORAGE_KEY))
+  );
   const [playerCreateDialogOpen, setPlayerCreateDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -189,6 +385,11 @@ const Index = () => {
   useEffect(() => {
     if (!user) {
       setCharacters([]);
+      setMonsterSummaries([]);
+      setItemDefinitions([]);
+      setManagedUsers([]);
+      setInventoryTransfers([]);
+      setCurrencyTransactions([]);
       return;
     }
 
@@ -214,6 +415,99 @@ const Index = () => {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user || user.role !== "dm") {
+      setMonsterSummaries([]);
+      setItemDefinitions([]);
+      setManagedUsers([]);
+      setInventoryTransfers([]);
+      setCurrencyTransactions([]);
+      return;
+    }
+
+    let active = true;
+
+    void fetchMonsters()
+      .then((items) => {
+        if (active) setMonsterSummaries(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (active) setMonsterSummaries([]);
+      });
+
+    void fetchItemDefinitions()
+      .then((items) => {
+        if (active) setItemDefinitions(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (active) setItemDefinitions([]);
+      });
+
+    void fetchUsers()
+      .then((items) => {
+        if (active) setManagedUsers(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (active) setManagedUsers([]);
+      });
+
+    void fetchInventoryTransfers()
+      .then((items) => {
+        if (active) setInventoryTransfers(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (active) setInventoryTransfers([]);
+      });
+
+    void fetchCurrencyTransactions()
+      .then((items) => {
+        if (active) setCurrencyTransactions(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (active) setCurrencyTransactions([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) {
+      setOnlineCharacterSlugs([]);
+      return;
+    }
+
+    const unsubscribe = subscribePresence((list) => {
+      setOnlineCharacterSlugs(list.filter((entry) => entry.count > 0).map((entry) => entry.slug));
+    });
+
+    requestPresenceSnapshot();
+
+    return () => {
+      try {
+        unsubscribe();
+      } catch {}
+    };
+  }, [user]);
+
+  useEffect(() => {
+    const readInitiativeEncounter = () => {
+      setInitiativeEncounter(parseInitiativeEncounterState(window.localStorage.getItem(INITIATIVE_STORAGE_KEY)));
+    };
+
+    readInitiativeEncounter();
+    window.addEventListener("storage", readInitiativeEncounter);
+    window.addEventListener("focus", readInitiativeEncounter);
+    document.addEventListener("visibilitychange", readInitiativeEncounter);
+
+    return () => {
+      window.removeEventListener("storage", readInitiativeEncounter);
+      window.removeEventListener("focus", readInitiativeEncounter);
+      document.removeEventListener("visibilitychange", readInitiativeEncounter);
+    };
+  }, []);
+
   const dmActions = useMemo(
     () => [
       {
@@ -226,7 +520,7 @@ const Index = () => {
         title: "Tracker iniziativa",
         description: "Prepara il combattimento, aggiungi mostri e segui round e turni.",
         href: "/dm/initiative",
-        icon: Dice6,
+        icon: D20Icon,
       },
       {
         title: "Gestione utenti",
@@ -291,6 +585,198 @@ const Index = () => {
   const utilityDmActions = ["/dm/inventory/transactions", "/dm/currency-transactions"]
     .map((href) => dmActionMap[href])
     .filter(Boolean);
+
+  const playerCharacterSlugs = useMemo(
+    () =>
+      characters
+        .filter((character) => character.characterType !== "png")
+        .map((character) => character.slug),
+    [characters]
+  );
+
+  const onlinePlayerCount = useMemo(() => {
+    const onlineSet = new Set(onlineCharacterSlugs);
+    return playerCharacterSlugs.filter((slug) => onlineSet.has(slug)).length;
+  }, [onlineCharacterSlugs, playerCharacterSlugs]);
+
+  const sessionStatusLabel = useMemo(() => {
+    const totalPlayers = playerCharacterSlugs.length;
+
+    if (totalPlayers === 0) {
+      return "Nessun PG nel roster";
+    }
+
+    if (onlinePlayerCount === 0) {
+      return "Nessun giocatore online";
+    }
+
+    if (onlinePlayerCount === totalPlayers) {
+      return "Tavolo al completo";
+    }
+
+    const missingPlayers = totalPlayers - onlinePlayerCount;
+    return missingPlayers === 1 ? "Manca 1 giocatore" : `Mancano ${missingPlayers} giocatori`;
+  }, [onlinePlayerCount, playerCharacterSlugs.length]);
+
+  const initiativeCombatants = useMemo(() => {
+    const characterNameBySlug = Object.fromEntries(characters.map((character) => [character.slug, character.name]));
+
+    const players: InitiativeCombatantSummary[] = initiativeEncounter.players
+      .filter((entry) => entry.slug)
+      .map((entry) => ({
+        id: entry.id,
+        name: characterNameBySlug[entry.slug] ?? entry.slug,
+        initiative: entry.initiative,
+        sortOrder: entry.sortOrder,
+        type: "player",
+      }));
+
+    const monsters: InitiativeCombatantSummary[] = initiativeEncounter.monsters.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      initiative: entry.initiative,
+      sortOrder: entry.sortOrder,
+      type: "monster",
+      currentHitPoints: entry.currentHitPoints,
+    }));
+
+    return [...players, ...monsters].sort(compareInitiativeCombatants);
+  }, [characters, initiativeEncounter]);
+
+  const initiativeEligibleCombatants = useMemo(
+    () =>
+      initiativeCombatants.filter((combatant) =>
+        combatant.type === "monster" ? (combatant.currentHitPoints ?? 0) > 0 : true
+      ),
+    [initiativeCombatants]
+  );
+
+  const initiativeCurrentTurn = useMemo(() => {
+    if (!initiativeEncounter.started || initiativeEligibleCombatants.length === 0) return null;
+
+    return (
+      initiativeEligibleCombatants.find((combatant) => combatant.id === initiativeEncounter.currentTurnId) ??
+      initiativeEligibleCombatants[0] ??
+      null
+    );
+  }, [initiativeEligibleCombatants, initiativeEncounter.currentTurnId, initiativeEncounter.started]);
+
+  const initiativeNextTurn = useMemo(() => {
+    if (!initiativeCurrentTurn || initiativeEligibleCombatants.length === 0) return null;
+
+    const currentIndex = initiativeEligibleCombatants.findIndex((combatant) => combatant.id === initiativeCurrentTurn.id);
+    if (currentIndex === -1) return initiativeEligibleCombatants[0] ?? null;
+    if (initiativeEligibleCombatants.length === 1) return initiativeCurrentTurn;
+
+    return initiativeEligibleCombatants[(currentIndex + 1) % initiativeEligibleCombatants.length] ?? null;
+  }, [initiativeCurrentTurn, initiativeEligibleCombatants]);
+
+  const initiativeStatus = useMemo(() => {
+    const combatantCount = initiativeEncounter.players.length + initiativeEncounter.monsters.length;
+
+    if (!initiativeEncounter.started && combatantCount === 0) {
+      return { label: "Nessun combattimento in corso", showDetails: false };
+    }
+
+    if (!initiativeEncounter.started) {
+      return { label: "Combattimento in preparazione", showDetails: false };
+    }
+
+    return { label: "Combattimento in corso", showDetails: true };
+  }, [initiativeEncounter.monsters.length, initiativeEncounter.players.length, initiativeEncounter.started]);
+
+  const activeCharacterCounts = useMemo(() => {
+    const pg = characters.filter((character) => character.characterType === "pg").length;
+    const png = characters.filter((character) => character.characterType === "png").length;
+    return { pg, png };
+  }, [characters]);
+
+  const monsterRarityCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    monsterSummaries.forEach((monster) => {
+      const key = normalizeRarityKey(monster.rarity) || "UNKNOWN";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+
+    const orderedKnown = RARITY_ORDER
+      .filter((key) => counts.has(key))
+      .map((key) => ({
+        key,
+        label: RARITY_LABELS[key],
+        count: counts.get(key) ?? 0,
+      }));
+
+    const orderedUnknown = Array.from(counts.entries())
+      .filter(([key]) => !RARITY_ORDER.includes(key as (typeof RARITY_ORDER)[number]))
+      .sort(([left], [right]) => left.localeCompare(right, undefined, { sensitivity: "base" }))
+      .map(([key, count]) => ({
+        key,
+        label: key === "UNKNOWN" ? "Senza rarita" : key,
+        count,
+      }));
+
+    return [...orderedKnown, ...orderedUnknown];
+  }, [monsterSummaries]);
+
+  const itemCategoryCounts = useMemo(() => {
+    return itemDefinitions.reduce(
+      (acc, item) => {
+        const category = String(item.category ?? "").trim().toUpperCase();
+        if (category === "WEAPON") {
+          acc.weapons += 1;
+        } else if (category === "ARMOR") {
+          acc.armors += 1;
+        } else {
+          acc.other += 1;
+        }
+        return acc;
+      },
+      { weapons: 0, armors: 0, other: 0 }
+    );
+  }, [itemDefinitions]);
+
+  const managedUserCounts = useMemo(() => {
+    return managedUsers.reduce(
+      (acc, managedUser) => {
+        if (managedUser.role === "dm") {
+          acc.dm += 1;
+        } else {
+          acc.player += 1;
+        }
+        return acc;
+      },
+      { dm: 0, player: 0 }
+    );
+  }, [managedUsers]);
+
+  const latestInventoryTransfer = useMemo<TransactionCardSummary>(() => {
+    if (inventoryTransfers.length === 0) return null;
+
+    const latest = [...inventoryTransfers].sort(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    )[0];
+
+    return {
+      title: latest.itemName,
+      detail: `${latest.quantity}x ${directionFromInventoryEntry(latest)}`,
+      timestamp: formatCompactTimestamp(latest.createdAt),
+    };
+  }, [inventoryTransfers]);
+
+  const latestCurrencyTransaction = useMemo<TransactionCardSummary>(() => {
+    if (currencyTransactions.length === 0) return null;
+
+    const latest = [...currencyTransactions].sort(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    )[0];
+
+    return {
+      title: latest.summary,
+      detail: `${currencyFromSummary(latest)} -> ${currencyToSummary(latest)}`,
+      timestamp: formatCompactTimestamp(latest.createdAt),
+    };
+  }, [currencyTransactions]);
 
   if (!loading && !user) {
     return (
@@ -427,15 +913,60 @@ const Index = () => {
               <div className="grid gap-4">
                 {primaryDmActions.map((action) => {
                   const Icon = action.icon;
+                  const isSessionAction = action.href === "/dm";
+                  const isInitiativeAction = action.href === "/dm/initiative";
+                  const isEnhancedPrimaryAction = isSessionAction || isInitiativeAction;
                   return (
                     <Link key={action.href} to={action.href} className="block h-full">
                       <Card className="character-section flex h-full min-h-[220px] flex-col justify-between transition-colors hover:bg-accent/30">
-                        <div>
+                        <div className="flex h-full flex-col">
                           <div className="flex items-center gap-3">
-                            <Icon className="h-6 w-6 text-primary" />
-                            <div className="font-heading text-2xl font-semibold text-primary">{action.title}</div>
+                            {isEnhancedPrimaryAction ? (
+                              <Icon className="h-12 w-12 text-primary" />
+                            ) : (
+                              <Icon className="h-6 w-6 text-primary" />
+                            )}
+                            <div className={isEnhancedPrimaryAction ? "font-heading text-3xl font-semibold text-primary" : "font-heading text-2xl font-semibold text-primary"}>
+                              {action.title}
+                            </div>
                           </div>
-                          <p className="mt-4 max-w-xl text-base text-muted-foreground">{action.description}</p>
+                          {isSessionAction ? (
+                            <>
+                              <p className="mt-3 max-w-xl text-base italic text-muted-foreground">
+                                Tieni d'occhio il tavolo in un solo sguardo, tra presenze, personaggi attivi e ritmo della sessione.
+                              </p>
+                              <div className="mt-auto max-w-xl rounded-xl border border-primary/20 bg-background/65 px-4 py-3">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium text-muted-foreground">
+                                  <div className="inline-flex items-center gap-1.5">
+                                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
+                                    <span>{onlinePlayerCount} online</span>
+                                  </div>
+                                  <span className="text-border">-</span>
+                                  <div className="inline-flex items-center gap-1.5">
+                                    <span className="h-2.5 w-2.5 rounded-full bg-rose-500" aria-hidden="true" />
+                                    <span>{playerCharacterSlugs.length - onlinePlayerCount} offline</span>
+                                  </div>
+                                </div>
+                                <div className="mt-1 text-sm text-foreground/85">{sessionStatusLabel}</div>
+                              </div>
+                            </>
+                          ) : isInitiativeAction ? (
+                            <>
+                              <p className="mt-3 max-w-xl text-base italic text-muted-foreground">{action.description}</p>
+                              <div className="mt-auto max-w-xl rounded-xl border border-primary/20 bg-background/65 px-4 py-3">
+                                <div className="text-sm font-medium text-foreground/85">{initiativeStatus.label}</div>
+                                {initiativeStatus.showDetails ? (
+                                  <div className="mt-2 grid gap-1 text-sm text-muted-foreground">
+                                    <div>Round: {initiativeEncounter.round}</div>
+                                    <div>Di turno: {initiativeCurrentTurn?.name ?? "-"}</div>
+                                    <div>Prossimo: {initiativeNextTurn?.name ?? "-"}</div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </>
+                          ) : (
+                            <p className="mt-4 max-w-xl text-base text-muted-foreground">{action.description}</p>
+                          )}
                         </div>
                       </Card>
                     </Link>
@@ -447,15 +978,45 @@ const Index = () => {
                 <div className="grid gap-4 md:grid-cols-3">
                   {secondaryDmActions.map((action) => {
                     const Icon = action.icon;
+                    const isAssignmentsAction = action.href === "/dm/assignments";
+                    const isBestiaryAction = action.href === "/dm/bestiary";
+                    const isItemsAction = action.href === "/dm/items";
                     return (
                       <Link key={action.href} to={action.href} className="block h-full">
                         <Card className="character-section flex h-full min-h-[190px] flex-col justify-between transition-colors hover:bg-accent/30">
-                          <div>
+                          <div className="flex h-full flex-col">
                             <div className="flex items-center gap-3">
                               <Icon className="h-5 w-5 text-primary" />
                               <div className="font-heading text-xl font-semibold text-primary">{action.title}</div>
                             </div>
-                            <p className="mt-3 text-sm text-muted-foreground">{action.description}</p>
+                            {isAssignmentsAction ? (
+                              <div className="mt-auto rounded-xl border border-primary/20 bg-background/65 px-3 py-2.5">
+                                <div className="grid gap-0.5 text-xs leading-4 text-muted-foreground">
+                                  <div>PG censiti: {activeCharacterCounts.pg}</div>
+                                  <div>PNG censiti: {activeCharacterCounts.png}</div>
+                                </div>
+                              </div>
+                            ) : isBestiaryAction ? (
+                              <div className="mt-auto rounded-xl border border-primary/20 bg-background/65 px-3 py-2.5">
+                                <div className="grid gap-0.5 text-xs leading-4 text-muted-foreground">
+                                  {monsterRarityCounts.map((entry) => (
+                                    <div key={entry.key}>
+                                      {entry.label}: {entry.count}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : isItemsAction ? (
+                              <div className="mt-auto rounded-xl border border-primary/20 bg-background/65 px-3 py-2.5">
+                                <div className="grid gap-0.5 text-xs leading-4 text-muted-foreground">
+                                  <div>Armi: {itemCategoryCounts.weapons}</div>
+                                  <div>Armature: {itemCategoryCounts.armors}</div>
+                                  <div>Altro: {itemCategoryCounts.other}</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-3 text-sm italic text-muted-foreground">{action.description}</p>
+                            )}
                           </div>
                         </Card>
                       </Link>
@@ -466,15 +1027,25 @@ const Index = () => {
                 <div className="grid gap-4 md:grid-cols-2">
                   {tertiaryDmActions.map((action) => {
                     const Icon = action.icon;
+                    const isUsersAction = action.href === "/dm/users";
                     return (
                       <Link key={action.href} to={action.href} className="block h-full">
                         <Card className="character-section flex h-full min-h-[170px] flex-col justify-between transition-colors hover:bg-accent/30">
-                          <div>
+                          <div className="flex h-full flex-col">
                             <div className="flex items-center gap-3">
                               <Icon className="h-5 w-5 text-primary" />
                               <div className="font-heading text-xl font-semibold text-primary">{action.title}</div>
                             </div>
-                            <p className="mt-3 text-sm text-muted-foreground">{action.description}</p>
+                            {isUsersAction ? (
+                              <div className="mt-auto rounded-xl border border-primary/20 bg-background/65 px-3 py-2.5">
+                                <div className="grid gap-0.5 text-xs leading-4 text-muted-foreground">
+                                  <div>Utenti DM: {managedUserCounts.dm}</div>
+                                  <div>Utenti player: {managedUserCounts.player}</div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-3 text-sm italic text-muted-foreground">{action.description}</p>
+                            )}
                           </div>
                         </Card>
                       </Link>
@@ -485,15 +1056,31 @@ const Index = () => {
                 <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px]">
                   {utilityDmActions.map((action) => {
                     const Icon = action.icon;
+                    const isInventoryTransactionsAction = action.href === "/dm/inventory/transactions";
+                    const transactionSummary = isInventoryTransactionsAction
+                      ? latestInventoryTransfer
+                      : action.href === "/dm/currency-transactions"
+                        ? latestCurrencyTransaction
+                        : null;
                     return (
                       <Link key={action.href} to={action.href} className="block h-full">
                         <Card className="character-section flex h-full min-h-[140px] flex-col justify-between transition-colors hover:bg-accent/30">
-                          <div>
+                          <div className="flex h-full flex-col">
                             <div className="flex items-center gap-3">
                               <Icon className="h-5 w-5 text-primary" />
                               <div className="font-heading text-lg font-semibold text-primary">{action.title}</div>
                             </div>
-                            <p className="mt-3 text-sm text-muted-foreground">{action.description}</p>
+                            <div className="mt-auto rounded-xl border border-primary/20 bg-background/65 px-3 py-2.5">
+                              {transactionSummary ? (
+                                <div className="space-y-0.5 text-xs leading-4">
+                                  <div className="truncate font-medium text-foreground/90">{transactionSummary.title}</div>
+                                  <div className="truncate text-muted-foreground">{transactionSummary.detail}</div>
+                                  <div className="text-muted-foreground/80">{transactionSummary.timestamp}</div>
+                                </div>
+                              ) : (
+                                <div className="text-xs leading-4 text-muted-foreground">Nessuna transazione registrata</div>
+                              )}
+                            </div>
                           </div>
                         </Card>
                       </Link>
