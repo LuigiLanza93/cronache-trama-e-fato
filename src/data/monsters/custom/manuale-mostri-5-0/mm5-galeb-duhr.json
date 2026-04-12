@@ -1,0 +1,117 @@
+{
+  "slug": "mm5-galeb-duhr",
+  "general": {
+    "name": "Galeb Duhr",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "Media",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 85,
+      "formula": "9d8 + 45"
+    },
+    "speed": {
+      "walk": "4,5 m (9 m quando rotola, 18 m rotolando in discesa)"
+    }
+  },
+  "abilities": {
+    "strength": 20,
+    "dexterity": 14,
+    "constitution": 20,
+    "intelligence": 11,
+    "wisdom": 12,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente da attacchi non magici",
+      "perforante da attacchi non magici",
+      "tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato",
+      "indebolimento",
+      "paralizzato",
+      "pietrificato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      },
+      {
+        "name": "percezione tellurica",
+        "value": "18 m"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Terran"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Finche il galeb duhr rimane immobile, non e distinguibile da un normale macigno."
+    },
+    {
+      "name": "Carica Rotolante",
+      "usage": null,
+      "description": "Se il galeb duhr rotola per almeno 6 metri in linea retta verso un bersaglio e poi lo colpisce con un attacco con schianto nello stesso turno, il bersaglio subisce 7 (2d6) danni contundenti extra. Se il bersaglio e una creatura, deve superare un tiro salvezza su Forza con CD 16, altrimenti cade a terra prona."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Schianto",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +8 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 12 (2d6 + 5) danni contundenti."
+    },
+    {
+      "name": "Animare Macigni",
+      "usage": "1/Giorno",
+      "description": "Il galeb duhr anima magicamente un massimo di due macigni situati entro 18 metri da lui e che esso sia in grado di vedere. Le statistiche di un macigno sono le stesse di un galeb duhr, ad eccezione di Intelligenza 1 e Carisma 1, non puo essere affascinato o spaventato ed e privo dell'opzione di questa azione. Un macigno rimane animato fintanto che il galeb duhr mantiene la concentrazione o per un massimo di 1 minuto."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 142
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "slug": "mm5-yeti",
+  "general": {
+    "name": "Yeti",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 51,
+      "formula": "6d10 + 18"
+    },
+    "speed": {
+      "walk": "12 m",
+      "climb": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 13,
+    "constitution": 16,
+    "intelligence": 8,
+    "wisdom": 12,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "freddo"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Yeti"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Paura del Fuoco",
+      "usage": null,
+      "description": "Se lo yeti subisce danni da fuoco, subisce svantaggio ai tiri per colpire e alle prove di caratteristica fino alla fine del suo turno successivo."
+    },
+    {
+      "name": "Olfatto Acuto",
+      "usage": null,
+      "description": "Lo yeti dispone di vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto."
+    },
+    {
+      "name": "Mimetismo sulla Neve",
+      "usage": null,
+      "description": "Lo yeti dispone di vantaggio alle prove di Destrezza (Furtività) effettuate per nascondersi nei terreni innevati."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Lo yeti può usare lo Sguardo Agghiacciante ed effettua due attacchi con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 7 (1d6 + 4) danni taglienti più 3 (1d6) danni da freddo."
+    },
+    {
+      "name": "Sguardo Agghiacciante",
+      "usage": null,
+      "description": "Lo yeti bersaglia una creatura situata entro 9 metri da lui e che esso sia in grado di vedere. Se può vedere lo yeti, il bersaglio deve superare un tiro salvezza su Costituzione con CD 13 contro questa magia, altrimenti subisce 10 (3d6) danni da freddo ed è paralizzato per 1 minuto, a meno che non sia immune ai danni da freddo. Il bersaglio può ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, l'effetto per lui termina. Se supera il tiro salvezza o se l'effetto per lui termina, il bersaglio è immune allo Sguardo Agghiacciante di tutti gli yeti per 1 ora."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 305
+  }
+}

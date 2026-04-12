@@ -1,0 +1,109 @@
+{
+  "slug": "mm5-vermeiena",
+  "general": {
+    "name": "Vermeiena",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "senza allineamento",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 51,
+      "formula": "6d10 + 18"
+    },
+    "speed": {
+      "walk": "9 m",
+      "climb": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 14,
+    "dexterity": 13,
+    "constitution": 16,
+    "intelligence": 1,
+    "wisdom": 12,
+    "charisma": 5
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Olfatto Acuto",
+      "usage": null,
+      "description": "Il vermeiena dispone di vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto."
+    },
+    {
+      "name": "Movimenti del Ragno",
+      "usage": null,
+      "description": "Il vermeiena può scalare le superfici difficili, inclusi i soffitti, lungo i quali si muove a testa in giù, senza effettuare una prova di caratteristica."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il vermeiena effettua due attacchi: uno con i tentacoli e uno con il morso."
+    },
+    {
+      "name": "Tentacoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +8 al tiro per colpire, portata 3 m, una creatura. Colpito: 4 (1d4 + 2) danni da veleno e il bersaglio deve superare un tiro salvezza su Costituzione con CD 13, altrimenti è avvelenato per 1 minuto. Finché l'avvelenamento non termina, il bersaglio è paralizzato. Il bersaglio può ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, l'effetto per lui termina."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 7 (2d4 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 300
+  }
+}

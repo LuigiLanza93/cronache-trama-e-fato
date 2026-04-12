@@ -1,0 +1,111 @@
+{
+  "slug": "mm5-grell",
+  "general": {
+    "name": "Grell",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Media",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 55,
+      "formula": "10d8 + 10"
+    },
+    "speed": {
+      "walk": "3 m",
+      "fly": "9 m (fluttuare)"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 14,
+    "constitution": 13,
+    "intelligence": 12,
+    "wisdom": 11,
+    "charisma": 9
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 6
+      },
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fulmine"
+    ],
+    "conditionImmunities": [
+      "accecato",
+      "prono"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 14"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m (cieco oltre questo raggio)"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Grell"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il grell effettua due attacchi: uno con i tentacoli e uno con il becco."
+    },
+    {
+      "name": "Tentacoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 3 m, una creatura. Colpito: 7 (1d10 + 2) danni perforanti e il bersaglio deve superare un tiro salvezza su Costituzione con CD 11, altrimenti è avvelenato per 1 minuto. Il bersaglio avvelenato è paralizzato e può ripetere il tiro salvezza alla fine di ogni suo turno; se lo supera, l'effetto termina. Il bersaglio è anche afferrato (CD 15 per sfuggire). Se il bersaglio è di taglia Media o inferiore, è anche trattenuto finché il grell lo afferra. Mentre afferra il bersaglio, il grell dispone di vantaggio ai tiri per colpire contro di esso e non può usare questo attacco contro altri bersagli. Quando il grell si muove, un bersaglio di taglia Media o inferiore afferrato si muove insieme a lui."
+    },
+    {
+      "name": "Becco",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 7 (2d4 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 173
+  }
+}

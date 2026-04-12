@@ -1,0 +1,78 @@
+{
+  "slug": "mm5-anchilosauro",
+  "general": {
+    "name": "Anchilosauro",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Enorme",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "senza allineamento",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 68,
+      "formula": "8d12 + 16"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 11,
+    "constitution": 15,
+    "intelligence": 2,
+    "wisdom": 12,
+    "charisma": 5
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Coda",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 18 (4d6 + 4) danni contundenti. Se il bersaglio è una creatura, deve superare un tiro salvezza su Forza con CD 14, altrimenti cade a terra prono."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 79
+  }
+}

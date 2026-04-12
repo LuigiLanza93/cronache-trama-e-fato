@@ -1,0 +1,94 @@
+{
+  "slug": "mm5-allosauro",
+  "general": {
+    "name": "Allosauro",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "bestia",
+    "subtype": "",
+    "typeLabel": "bestia",
+    "alignment": "senza allineamento",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 51,
+      "formula": "6d10 + 18"
+    },
+    "speed": {
+      "walk": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 13,
+    "constitution": 17,
+    "intelligence": 2,
+    "wisdom": 12,
+    "charisma": 5
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 15"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Balzo",
+      "usage": null,
+      "description": "Se l'allosauro si muove di almeno 9 metri in linea retta verso una creatura e poi la colpisce con un attacco con gli artigli nello stesso turno, quel bersaglio deve superare un tiro salvezza su Forza con CD 13, altrimenti cade a terra prono. Se il bersaglio è prono, l'allosauro può effettuare un attacco con il morso contro di esso come azione bonus."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 15 (2d10 + 4) danni perforanti."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 8 (1d8 + 4) danni taglienti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 79
+  }
+}

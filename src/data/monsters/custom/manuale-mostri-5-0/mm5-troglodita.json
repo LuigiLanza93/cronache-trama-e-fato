@@ -1,0 +1,117 @@
+{
+  "slug": "mm5-troglodita",
+  "general": {
+    "name": "Troglodita",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "troglodita",
+    "typeLabel": "umanoide (troglodita)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 13,
+      "formula": "2d8 + 4"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 14,
+    "dexterity": 10,
+    "constitution": 14,
+    "intelligence": 6,
+    "wisdom": 10,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Troglodita"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Pelle Mimetica",
+      "usage": null,
+      "description": "Il troglodita dispone di vantaggio alle prove di Destrezza (Furtivita) effettuate per nascondersi."
+    },
+    {
+      "name": "Fetore",
+      "usage": null,
+      "description": "Ogni creatura che non sia un troglodita e che inizi il proprio turno entro 1,5 metri dal troglodita deve superare un tiro salvezza su Costituzione con CD 12, altrimenti e avvelenata fino all'inizio del proprio turno successivo. Se supera il tiro salvezza, la creatura e immune al fetore di tutti i trogloditi per 1 ora."
+    },
+    {
+      "name": "Sensibilita alla Luce del Sole",
+      "usage": null,
+      "description": "Finche e esposto alla luce del sole, il troglodita subisce svantaggio ai tiri per colpire, oltre che alle prove di Saggezza (Percezione) basate sulla vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il troglodita effettua tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 4 (1d4 + 2) danni perforanti."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 4 (1d4 + 2) danni taglienti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 289
+  }
+}

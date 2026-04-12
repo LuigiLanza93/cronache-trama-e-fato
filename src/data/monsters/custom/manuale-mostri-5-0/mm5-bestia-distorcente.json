@@ -1,0 +1,98 @@
+{
+  "slug": "mm5-bestia-distorcente",
+  "general": {
+    "name": "Bestia Distorcente",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 85,
+      "formula": "10d10 + 30"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 15,
+    "constitution": 16,
+    "intelligence": 6,
+    "wisdom": 12,
+    "charisma": 8
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Sfuggente",
+      "usage": null,
+      "description": "Se la bestia distorcente è soggetta a un effetto che le consente di effettuare un tiro salvezza per subire danni dimezzati, non subisce alcun danno se lo supera e solo metà dei danni se lo fallisce."
+    },
+    {
+      "name": "Distorsione",
+      "usage": null,
+      "description": "La bestia distorcente proietta un'illusione magica che la fa apparire accanto al punto in cui si trova in realtà, quindi i tiri per colpire contro di essa subiscono svantaggio. Se viene colpita da un attacco, questo tratto è interrotto fino alla fine del suo turno successivo. Questo tratto viene interrotto anche se la bestia distorcente è incapacitata o ha una velocità pari a 0."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "La bestia distorcente effettua due attacchi con i tentacoli."
+    },
+    {
+      "name": "Tentacolo",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 7 (1d6 + 4) danni contundenti più 3 (1d6) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 31
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "slug": "mm5-pixie",
+  "general": {
+    "name": "Pixie",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Minuscola",
+    "creatureType": "folletto",
+    "subtype": "",
+    "typeLabel": "folletto",
+    "alignment": "neutrale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 1,
+      "formula": "1d4 - 1"
+    },
+    "speed": {
+      "walk": "3 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 2,
+    "dexterity": 20,
+    "constitution": 8,
+    "intelligence": 10,
+    "wisdom": 14,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 7
+      },
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 14"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Silvano"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il pixie dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore del pixie e Carisma (CD 12). Il pixie puo lanciare i seguenti incantesimi innati, che richiedono soltanto la polvere di pixie come componente: a volonta artificio druidico; 1/giorno ciascuno allucinazione di forza, confusione, dissolvi magie, individuazione dei pensieri, individuazione del bene e del male, intralciare, luci danzanti, metamorfosi, sonno, volare."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Invisibilita Superiore",
+      "usage": null,
+      "description": "Il pixie diventa magicamente invisibile finche la sua concentrazione non termina. Ogni oggetto che il pixie indossa o trasporta diventa invisibile assieme a lui."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 254
+  }
+}

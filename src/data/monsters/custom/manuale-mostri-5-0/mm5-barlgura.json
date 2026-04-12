@@ -1,0 +1,146 @@
+{
+  "slug": "mm5-barlgura",
+  "general": {
+    "name": "Barlgura",
+    "challengeRating": {
+      "fraction": "5",
+      "decimal": 5,
+      "display": "5",
+      "xp": 1800
+    },
+    "size": "Grande",
+    "creatureType": "immondo",
+    "subtype": "demone",
+    "typeLabel": "immondo (demone)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 68,
+      "formula": "8d10 + 24"
+    },
+    "speed": {
+      "walk": "12 m",
+      "climb": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 15,
+    "constitution": 16,
+    "intelligence": 7,
+    "wisdom": 14,
+    "charisma": 9
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 6
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 15"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "telepatia 36 m"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore del barlgura è Saggezza (tiro salvezza degli incantesimi CD 13). Il barlgura può lanciare i seguenti incantesimi innati, che non richiedono alcuna componente materiale: 1/giorno ciascuno: allucinazione di forza, intralciare; 2/giorno ciascuno: camuffare se stesso, invisibilità (solo se stesso)."
+    },
+    {
+      "name": "Avventato",
+      "usage": null,
+      "description": "All'inizio del suo turno, il barlgura può ottenere vantaggio a tutti i tiri per colpire con le armi da mischia che effettua in quel turno, ma i tiri per colpire contro di lui dispongono di vantaggio fino all'inizio del suo turno successivo."
+    },
+    {
+      "name": "Balzo con Rincorsa",
+      "usage": null,
+      "description": "Il salto in lungo del barlgura copre una distanza fino a 12 metri e il suo salto in alto fino a 6 metri se il barlgura prende la rincorsa."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il barlgura effettua tre attacchi: uno con il morso e due con i pugni."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 11 (2d6 + 4) danni perforanti."
+    },
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 9 (1d10 + 4) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 56
+  }
+}

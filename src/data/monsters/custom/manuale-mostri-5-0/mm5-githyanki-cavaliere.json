@@ -1,0 +1,106 @@
+{
+  "slug": "mm5-githyanki-cavaliere",
+  "general": {
+    "name": "Githyanki Cavaliere",
+    "challengeRating": {
+      "fraction": "8",
+      "decimal": 8,
+      "display": "8",
+      "xp": 3900
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "gith",
+    "typeLabel": "umanoide (gith)",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura completa"
+    },
+    "hitPoints": {
+      "average": 91,
+      "formula": "14d8 + 28"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 14,
+    "constitution": 15,
+    "intelligence": 14,
+    "wisdom": 14,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 5
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 5
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 5
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gith"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": "Psionici",
+      "description": "La caratteristica innata da incantatore del githyanki e Intelligenza (CD 13, +5 al tiro per colpire con incantesimi). Il githyanki puo lanciare i seguenti incantesimi innati, che non richiedono alcuna componente: a volonta mano magica (la mano e invisibile); 3/giorno ciascuno anti-individuazione (solo se stesso), linguaggi, passo velato, saltare; 1/giorno ciascuno spostamento planare, telecinesi."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il githyanki effettua due attacchi con lo spadone d'argento."
+    },
+    {
+      "name": "Spadone d'Argento",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +9 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 13 (2d6 + 6) danni taglienti piu 10 (3d6) danni psichici. Questo e un attacco con arma magica. Con un colpo critico su un bersaglio in un corpo astrale, il githyanki puo recidere il cordone argentato che lega il bersaglio al suo corpo materiale, anziche infliggere danni."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 161
+  }
+}

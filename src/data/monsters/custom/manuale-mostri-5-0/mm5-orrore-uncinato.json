@@ -1,0 +1,112 @@
+{
+  "slug": "mm5-orrore-uncinato",
+  "general": {
+    "name": "Orrore Uncinato",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 75,
+      "formula": "10d10 + 20"
+    },
+    "speed": {
+      "walk": "9 m",
+      "climb": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 10,
+    "constitution": 15,
+    "intelligence": 6,
+    "wisdom": 12,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      },
+      {
+        "name": "scurovisione",
+        "value": "3 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Orrore Uncinato"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Senso Radar",
+      "usage": null,
+      "description": "L'orrore uncinato non può usare vista cieca se è assordato."
+    },
+    {
+      "name": "Udito Acuto",
+      "usage": null,
+      "description": "L'orrore uncinato dispone di vantaggio alle prove di Saggezza (Percezione) basate sull'udito."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'orrore uncinato effettua due attacchi con gli uncini."
+    },
+    {
+      "name": "Uncino",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 11 (2d6 + 4) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 249
+  }
+}

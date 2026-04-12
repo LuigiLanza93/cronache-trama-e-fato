@@ -1,0 +1,116 @@
+{
+  "slug": "mm5-mefit-del-fango",
+  "general": {
+    "name": "Mefit del Fango",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Piccola",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 27,
+      "formula": "6d6 + 6"
+    },
+    "speed": {
+      "walk": "6 m",
+      "swim": "6 m",
+      "fly": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 8,
+    "dexterity": 12,
+    "constitution": 12,
+    "intelligence": 9,
+    "wisdom": 11,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Aquan"
+      },
+      {
+        "name": "Terran"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Esplosione Mortale",
+      "usage": null,
+      "description": "Quando il mefit muore, esplode in una nube di fango viscoso. Ogni creatura di taglia Media o inferiore situata entro 1,5 metri dal mefit deve superare un tiro salvezza su Destrezza con CD 11, altrimenti e trattenuta fino alla fine del proprio turno successivo."
+    },
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Finche il mefit rimane immobile, non e distinguibile da un normale cumulo di fango."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pugni",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 4 (1d6 + 1) danni contundenti."
+    },
+    {
+      "name": "Soffio di Fango",
+      "usage": "Ricarica 6",
+      "description": "Il mefit vomita fango viscido su una creatura situata entro 1,5 metri da lui. Se il bersaglio e una creatura di taglia Media o inferiore, deve superare un tiro salvezza su Destrezza con CD 11, altrimenti e trattenuto per 1 minuto. Una creatura puo ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, l'effetto per lei termina."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 216
+  }
+}

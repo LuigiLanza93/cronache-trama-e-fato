@@ -1,0 +1,164 @@
+{
+  "slug": "mm5-arcanaloth",
+  "general": {
+    "name": "Arcanaloth",
+    "challengeRating": {
+      "fraction": "12",
+      "decimal": 12,
+      "display": "12",
+      "xp": 8400
+    },
+    "size": "Media",
+    "creatureType": "immondo",
+    "subtype": "yugoloth",
+    "typeLabel": "immondo (yugoloth)",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 104,
+      "formula": "16d8 + 32"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 17,
+    "dexterity": 12,
+    "constitution": 14,
+    "intelligence": 20,
+    "wisdom": 16,
+    "charisma": 17
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 9
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 7
+      }
+    ],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 13
+      },
+      {
+        "name": "Inganno",
+        "bonus": 9
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 9
+      },
+      {
+        "name": "Percezione",
+        "bonus": 7
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "contundente da attacchi non magici",
+      "perforante da attacchi non magici",
+      "tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "acido",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 17"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "tutti"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore dell'arcanaloth e Carisma (CD 15). A volonta: alterare se stesso, dardo incantato, invisibilita (solo se stesso), oscurita, riscaldare il metallo."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "L'arcanaloth dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con arma dell'arcanaloth sono magici."
+    },
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "L'arcanaloth e un incantatore di 16 livello. Caratteristica da incantatore: Intelligenza (CD 17, +9 al tiro per colpire con incantesimi). Trucchetti a volonta: dardo di fuoco, illusione minore, mano magica, prestidigitazione. 1 livello (4 slot): disco fluttuante di Tenser, identificare, individuazione del magico, scudo. 2 livello (3 slot): allucinazione di forza, immagine speculare, individuazione dei pensieri, suggestione. 3 livello (3 slot): controincantesimo, palla di fuoco, paura. 4 livello (3 slot): esilio, porta dimensionale. 5 livello (2 slot): blocca mostri, contattare altri piani. 6 livello (1 slot): catena di fulmini. 7 livello (1 slot): dito della morte. 8 livello (1 slot): vuoto mentale."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 8 (2d4 + 3) danni taglienti. Il bersaglio deve effettuare un tiro salvezza su Costituzione con CD 14; se lo fallisce, subisce 10 (3d6) danni da veleno, mentre se lo supera, subisce la meta di quei danni."
+    },
+    {
+      "name": "Teletrasporto",
+      "usage": null,
+      "description": "L'arcanaloth si teletrasporta magicamente, assieme a ogni oggetto che indossa o trasporta, fino a uno spazio libero situato entro 18 metri e che egli sia in grado di vedere."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 313
+  }
+}

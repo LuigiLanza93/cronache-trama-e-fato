@@ -1,0 +1,136 @@
+{
+  "slug": "mm5-teschio-infuocato",
+  "general": {
+    "name": "Teschio Infuocato",
+    "challengeRating": {
+      "fraction": "4",
+      "decimal": 4,
+      "display": "4",
+      "xp": 1100
+    },
+    "size": "Minuscola",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 40,
+      "formula": "9d4 + 18"
+    },
+    "speed": {
+      "walk": "0 m",
+      "fly": "12 m (fluttuare)"
+    }
+  },
+  "abilities": {
+    "strength": 1,
+    "dexterity": 17,
+    "constitution": 14,
+    "intelligence": 16,
+    "wisdom": 10,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "fulmine",
+      "necrotico",
+      "perforante"
+    ],
+    "damageImmunities": [
+      "freddo",
+      "fuoco",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "paralizzato",
+      "prono",
+      "spaventato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Illuminazione",
+      "usage": null,
+      "description": "Il teschio infuocato puo proiettare luce fioca entro un raggio di 4,5 metri o luce intensa entro un raggio di 4,5 metri e luce fioca per altri 4,5 metri. Puo passare da un'opzione all'altra con un'azione."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il teschio infuocato dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Ringiovanimento",
+      "usage": null,
+      "description": "Se il teschio infuocato e distrutto, recupera tutti i suoi punti ferita dopo 1 ora, a meno che sui suoi resti non sia spruzzata dell'acqua santa o non sia lanciato un incantesimo dissolvi magie o rimuovi maledizione."
+    },
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "Il teschio infuocato e un incantatore di 5 livello: la sua caratteristica da incantatore e Intelligenza (CD 13; +5 al tiro per colpire degli attacchi con incantesimo). Non ha bisogno di componenti somatiche o materiali per lanciare i suoi incantesimi. Trucchetto a volonta: mano magica. 1 livello (3 slot): dardo incantato, scudo. 2 livello (2 slot): sfera infuocata, sfocatura. 3 livello (1 slot): palla di fuoco."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il teschio infuocato usa il Raggio di Fuoco due volte."
+    },
+    {
+      "name": "Raggio di Fuoco",
+      "usage": null,
+      "description": "Attacco con Incantesimo a Distanza: +5 al tiro per colpire, gittata 9 m, un bersaglio. Colpito: 10 (3d6) danni da fuoco."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 285
+  }
+}

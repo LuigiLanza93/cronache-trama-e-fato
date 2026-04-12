@@ -1,0 +1,184 @@
+{
+  "slug": "mm5-dracolich",
+  "general": {
+    "name": "Dracolich",
+    "challengeRating": {
+      "fraction": "17",
+      "decimal": 17,
+      "display": "17",
+      "xp": 18000
+    },
+    "size": "Enorme",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 19,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 225,
+      "formula": "18d12 + 108"
+    },
+    "speed": {
+      "walk": "12 m",
+      "burrow": "9 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 25,
+    "dexterity": 10,
+    "constitution": 23,
+    "intelligence": 16,
+    "wisdom": 15,
+    "charisma": 19
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 11
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 9
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 5
+      },
+      {
+        "name": "Percezione",
+        "bonus": 12
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "necrotico"
+    ],
+    "damageImmunities": [
+      "fulmine",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "indebolimento",
+      "paralizzato",
+      "spaventato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 22"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 6
+  },
+  "traits": [
+    {
+      "name": "Resistenza Leggendaria",
+      "usage": "3/Giorno",
+      "description": "Se il dracolich fallisce un tiro salvezza, puo scegliere invece di superarlo."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il dracolich dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il dracolich puo usare la Presenza Terrificante. Poi effettua tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +12 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 18 (2d10 + 7) danni perforanti piu 5 (1d10) danni da fulmine."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +12 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 14 (2d6 + 7) danni taglienti."
+    },
+    {
+      "name": "Coda",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +12 al tiro per colpire, portata 4,5 m, un bersaglio. Colpito: 16 (2d8 + 7) danni contundenti."
+    },
+    {
+      "name": "Presenza Terrificante",
+      "usage": null,
+      "description": "Ogni creatura a scelta del dracolich situata entro 36 metri da esso e che sia consapevole del dracolich deve superare un tiro salvezza su Saggezza con CD 18, altrimenti e spaventata per 1 minuto. Una creatura puo ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, l'effetto per lei termina. Se una creatura supera il tiro salvezza o se l'effetto per lei termina, quella creatura e immune alla Presenza Terrificante del dracolich per le 24 ore successive."
+    },
+    {
+      "name": "Soffio di Fulmini",
+      "usage": "Ricarica 5-6",
+      "description": "Il dracolich esala una linea di fulmini lunga 27 metri e larga 1,5 metri. Ogni creatura su quella linea deve effettuare un tiro salvezza su Destrezza con CD 20; se lo fallisce, subisce 66 (12d10) danni da fulmine, mentre se lo supera, subisce la meta di quei danni."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "Il dracolich puo effettuare 3 azioni leggendarie, scelte tra le opzioni sottostanti. Puo usare solo un'opzione di azione leggendaria alla volta e solo alla fine del turno di un'altra creatura. Il dracolich recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Individuazione",
+        "description": "Il dracolich effettua una prova di Saggezza (Percezione)."
+      },
+      {
+        "name": "Attacco di Coda",
+        "description": "Il dracolich effettua un attacco con la coda."
+      },
+      {
+        "name": "Attacco di Ala",
+        "description": "Costa 2 azioni. Il dracolich sbatte le ali. Ogni creatura entro 3 metri dal dracolich deve superare un tiro salvezza su Destrezza con CD 21, altrimenti subisce 14 (2d6 + 7) danni contundenti ed e buttata a terra prona. Il dracolich puo poi volare fino a meta della sua velocita di volare."
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [
+    "Il manuale presenta il dracolich come archetipo. Questa scheda usa l'esempio concreto del Dracolich Blu Adulto riportato nel manuale.",
+    "Modifiche generiche dell'archetipo: il tipo cambia in non morto, il dracolich non ha piu bisogno di respirare, mangiare, bere o dormire, ottiene resistenza ai danni necrotici, immunita al veleno, immunita a varie condizioni e Resistenza alla Magia."
+  ],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 84
+  }
+}

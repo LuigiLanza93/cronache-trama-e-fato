@@ -1,0 +1,135 @@
+{
+  "slug": "mm5-marid",
+  "general": {
+    "name": "Marid",
+    "challengeRating": {
+      "fraction": "11",
+      "decimal": 11,
+      "display": "11",
+      "xp": 7200
+    },
+    "size": "Grande",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "caotico neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 229,
+      "formula": "17d10 + 136"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "18 m",
+      "swim": "27 m"
+    }
+  },
+  "abilities": {
+    "strength": 22,
+    "dexterity": 12,
+    "constitution": 26,
+    "intelligence": 18,
+    "wisdom": 17,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 8
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "acido",
+      "freddo",
+      "fulmine"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Aquan"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il marid può respirare in aria e in acqua."
+    },
+    {
+      "name": "Dipartita Elementale",
+      "usage": null,
+      "description": "Se il marid muore, il suo corpo si disintegra in uno spruzzo d'acqua e di schiuma, lasciando dietro di sé solo gli oggetti che il marid indossava o trasportava."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore del marid è Carisma (tiro salvezza degli incantesimi CD 16, +8 al tiro per colpire degli attacchi con incantesimo). Il marid può lanciare i seguenti incantesimi innati, che non richiedono alcuna componente materiale: a volontà: creare o distruggere acqua, individuazione del bene e del male, individuazione del magico, nube di nebbia, purificare cibo e bevande; 3/giorno ciascuno: camminare sull'acqua, linguaggi, respirare sott'acqua; 1/giorno ciascuno: controllare acqua, evoca elementale (solo elementale dell'acqua), forma gassosa, invisibilità, spostamento planare."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il marid effettua due attacchi con il tridente."
+    },
+    {
+      "name": "Tridente",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia o a Distanza: +10 al tiro per colpire, portata 1,5 m o gittata 6/18 m, un bersaglio. Colpito: 13 (2d6 + 6) danni perforanti o 15 (2d8 + 6) danni perforanti se usato a due mani per effettuare un attacco in mischia."
+    },
+    {
+      "name": "Getto d'Acqua",
+      "usage": null,
+      "description": "Il marid spara magicamente un getto d'acqua in una linea di 18 metri, larga 1,5 metri. Ogni creatura sulla linea deve effettuare un tiro salvezza su Destrezza con CD 16; se lo fallisce, subisce 21 (6d6) danni contundenti e, se è una creatura di taglia Enorme o inferiore, viene spinta di un massimo di 6 metri più lontana dal marid e buttata a terra prona. Se lo supera, subisce la metà dei danni contundenti, ma non viene spinta e non cade a terra prona."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 149
+  }
+}

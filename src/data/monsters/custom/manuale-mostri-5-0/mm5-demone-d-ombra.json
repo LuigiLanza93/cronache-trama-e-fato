@@ -1,0 +1,140 @@
+{
+  "slug": "mm5-demone-d-ombra",
+  "general": {
+    "name": "Demone d'Ombra",
+    "challengeRating": {
+      "fraction": "4",
+      "decimal": 4,
+      "display": "4",
+      "xp": 1100
+    },
+    "size": "Media",
+    "creatureType": "immondo",
+    "subtype": "demone",
+    "typeLabel": "immondo (demone)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 66,
+      "formula": "12d8 + 12"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 1,
+    "dexterity": 17,
+    "constitution": 12,
+    "intelligence": 14,
+    "wisdom": 13,
+    "charisma": 14
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 4
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 7
+      }
+    ],
+    "damageVulnerabilities": [
+      "radioso"
+    ],
+    "damageResistances": [
+      "acido",
+      "fuoco",
+      "necrotico",
+      "tuono",
+      "contundente, perforante e tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "freddo",
+      "fulmine",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "afferrato",
+      "avvelenato",
+      "indebolimento",
+      "paralizzato",
+      "pietrificato",
+      "prono",
+      "trattenuto"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "telepatia 36 m"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Movimento Incorporeo",
+      "usage": null,
+      "description": "Il demone può muoversi attraverso altre creature e oggetti come se fossero terreno difficile. Subisce 5 (1d10) danni da forza se termina il suo turno all'interno di un oggetto."
+    },
+    {
+      "name": "Sensibilità alla Luce",
+      "usage": null,
+      "description": "Finché è esposto alla luce intensa, il demone subisce svantaggio ai tiri per colpire, oltre che alle prove di Saggezza (Percezione) basate sulla vista."
+    },
+    {
+      "name": "Furtività d'Ombra",
+      "usage": null,
+      "description": "Finché si trova in condizioni di luce fioca o oscurità, il demone può effettuare l'azione di Nascondersi come azione bonus."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 10 (2d6 + 3) danni psichici o, se il demone disponeva di vantaggio al tiro per colpire, 17 (4d6 + 3) danni psichici."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 57
+  }
+}

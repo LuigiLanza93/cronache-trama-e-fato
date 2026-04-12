@@ -1,0 +1,128 @@
+{
+  "slug": "mm5-githzerai-zerth",
+  "general": {
+    "name": "Githzerai Zerth",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "gith",
+    "typeLabel": "umanoide (gith)",
+    "alignment": "legale neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 84,
+      "formula": "13d8 + 26"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 13,
+    "dexterity": 18,
+    "constitution": 15,
+    "intelligence": 16,
+    "wisdom": 17,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Forza",
+        "bonus": 4
+      },
+      {
+        "ability": "Destrezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 6
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 6
+      }
+    ],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 6
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 6
+      },
+      {
+        "name": "Percezione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 16"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gith"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": "Psionici",
+      "description": "La caratteristica da incantatore del githzerai e Saggezza (CD 14, +6 al tiro per colpire con incantesimi). Il githzerai puo lanciare i seguenti incantesimi innati, che non richiedono alcuna componente: a volonta mano magica (la mano e invisibile); 3/giorno ciascuno caduta morbida, saltare, scudo, vedere invisibilita; 1/giorno ciascuno allucinazione mortale, spostamento planare."
+    },
+    {
+      "name": "Difesa Psichica",
+      "usage": null,
+      "description": "Finche il githzerai non indossa alcuna armatura e non impugna alcuno scudo, la sua CA include il suo modificatore di Saggezza."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il githzerai effettua due colpi senz'armi."
+    },
+    {
+      "name": "Colpo Senz'Armi",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 11 (2d6 + 4) danni contundenti piu 13 (3d8) danni psichici. Questo e un attacco con arma magica."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 162
+  }
+}

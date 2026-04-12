@@ -1,0 +1,154 @@
+{
+  "slug": "mm5-nycaloth",
+  "general": {
+    "name": "Nycaloth",
+    "challengeRating": {
+      "fraction": "9",
+      "decimal": 9,
+      "display": "9",
+      "xp": 5000
+    },
+    "size": "Grande",
+    "creatureType": "immondo",
+    "subtype": "yugoloth",
+    "typeLabel": "immondo (yugoloth)",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 123,
+      "formula": "13d10 + 52"
+    },
+    "speed": {
+      "walk": "12 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 20,
+    "dexterity": 11,
+    "constitution": 19,
+    "intelligence": 12,
+    "wisdom": 10,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 4
+      },
+      {
+        "name": "Intimidire",
+        "bonus": 6
+      },
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "contundente da attacchi non magici",
+      "perforante da attacchi non magici",
+      "tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "acido",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 14"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Infernale"
+      },
+      {
+        "name": "telepatia",
+        "value": "18 m"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore del nycaloth e Carisma. A volonta: dissolvi magie, immagine speculare, individuazione del magico, invisibilita (solo se stesso), oscurita."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il nycaloth dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con arma del nycaloth sono magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il nycaloth effettua due attacchi in mischia o effettua un attacco in mischia e si teletrasporta prima o dopo l'attacco."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +9 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 12 (2d6 + 5) danni taglienti. Se il bersaglio e una creatura, deve superare un tiro salvezza su Costituzione con CD 16, altrimenti subisce 5 (2d4) danni taglienti all'inizio di ogni suo turno a causa di una ferita immonda. Ogni volta che il nycaloth colpisce il bersaglio ferito con questo attacco, i danni inflitti dalla ferita aumentano di 5 (2d4). Una creatura puo usare un'azione per tamponare la ferita effettuando con successo una prova di Saggezza (Medicina) con CD 13. La ferita si richiude anche se il bersaglio riceve una qualsiasi forma di guarigione magica."
+    },
+    {
+      "name": "Ascia Bipenne",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +9 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 18 (2d12 + 5) danni taglienti."
+    },
+    {
+      "name": "Teletrasporto",
+      "usage": null,
+      "description": "Il nycaloth si teletrasporta magicamente, assieme a ogni oggetto che indossa o trasporta, fino a uno spazio libero situato entro 18 metri e che egli sia in grado di vedere."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 314
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "slug": "mm5-fomorian",
+  "general": {
+    "name": "Fomorian",
+    "challengeRating": {
+      "fraction": "8",
+      "decimal": 8,
+      "display": "8",
+      "xp": 3900
+    },
+    "size": "Enorme",
+    "creatureType": "gigante",
+    "subtype": "",
+    "typeLabel": "gigante",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 149,
+      "formula": "13d12 + 65"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 23,
+    "dexterity": 10,
+    "constitution": 20,
+    "intelligence": 9,
+    "wisdom": 14,
+    "charisma": 6
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      },
+      {
+        "name": "Percezione",
+        "bonus": 8
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 18"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gigante"
+      },
+      {
+        "name": "Sottocomune"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il fomorian attacca due volte con il randello pesante o effettua un attacco con il randello pesante e usa Malocchio una volta."
+    },
+    {
+      "name": "Randello Pesante",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +9 al tiro per colpire, portata 4,5 m, un bersaglio. Colpito: 19 (3d8 + 6) danni contundenti."
+    },
+    {
+      "name": "Malocchio",
+      "usage": null,
+      "description": "Il fomorian obbliga magicamente una creatura situata entro 18 metri da lui e che esso sia in grado di vedere a effettuare un tiro salvezza su Carisma con CD 14; se lo fallisce, subisce 27 (6d8) danni psichici, mentre se lo supera, subisce la metà di quei danni."
+    },
+    {
+      "name": "Maledizione del Malocchio",
+      "usage": "Ricarica dopo un Riposo Breve o Lungo",
+      "description": "Con uno sguardo, il fomorian usa Malocchio, ma in caso di tiro salvezza fallito, la creatura è anche maledetta da varie deformità magiche. Finché è deforme, la creatura ha velocità dimezzata e subisce svantaggio alle prove di caratteristica, ai tiri salvezza e agli attacchi basati su Forza o Destrezza. La creatura trasformata può ripetere il tiro salvezza ogni volta che completa un riposo lungo e, se lo supera, l'effetto per lei termina."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 137
+  }
+}

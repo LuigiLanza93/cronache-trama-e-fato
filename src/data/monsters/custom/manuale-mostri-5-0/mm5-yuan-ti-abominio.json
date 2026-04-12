@@ -1,0 +1,141 @@
+{
+  "slug": "mm5-yuan-ti-abominio",
+  "general": {
+    "name": "Yuan-ti Abominio",
+    "challengeRating": {
+      "fraction": "7",
+      "decimal": 7,
+      "display": "7",
+      "xp": 2900
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "mutaforma, yuan-ti",
+    "typeLabel": "mostruosità (mutaforma, yuan-ti)",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 127,
+      "formula": "15d10 + 45"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 16,
+    "constitution": 17,
+    "intelligence": 17,
+    "wisdom": 15,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 6
+      },
+      {
+        "name": "Percezione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 15"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "Lo yuan-ti può usare la sua azione per trasformarsi in un serpente Grande o per tornare alla sua forma naturale. Le statistiche restano le stesse in ogni forma. Ogni oggetto che indossa o trasporta non viene trasformato. Se muore, non cambia forma."
+    },
+    {
+      "name": "Incantesimi Innati (Solo Forma di Abominio)",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore dello yuan-ti è Carisma (tiro salvezza degli incantesimi CD 15). Lo yuan-ti può lanciare i seguenti incantesimi innati, che non richiedono alcuna componente materiale: a volontà: amicizia con gli animali (solo serpenti); 3/giorno: suggestione; 1/giorno: paura."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Lo yuan-ti dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco (Solo Forma di Abominio)",
+      "usage": null,
+      "description": "Lo yuan-ti effettua due attacchi a distanza o tre attacchi in mischia, ma può usare l'attacco con il morso e l'attacco per stritolare soltanto una volta ciascuno."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 7 (1d6 + 4) danni perforanti più 10 (3d6) danni da veleno."
+    },
+    {
+      "name": "Stritolare",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 11 (2d6 + 4) danni contundenti e il bersaglio è afferrato (CD 14 per sfuggire). Finché lo yuan-ti afferra il bersaglio, quest'ultimo è trattenuto e lo yuan-ti non può stritolare un altro bersaglio."
+    },
+    {
+      "name": "Scimitarra (Solo Forma di Abominio)",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 11 (2d6 + 4) danni taglienti."
+    },
+    {
+      "name": "Arco Lungo (Solo Forma di Abominio)",
+      "usage": null,
+      "description": "Attacco con Arma a Distanza: +6 al tiro per colpire, gittata 45/180 m, un bersaglio. Colpito: 12 (2d8 + 3) danni perforanti più 10 (3d6) danni da veleno."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 308
+  }
+}

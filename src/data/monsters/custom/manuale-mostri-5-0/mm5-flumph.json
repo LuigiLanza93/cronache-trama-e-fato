@@ -1,0 +1,126 @@
+{
+  "slug": "mm5-flumph",
+  "general": {
+    "name": "Flumph",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Piccola",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "legale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 7,
+      "formula": "2d6"
+    },
+    "speed": {
+      "walk": "1,5 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 6,
+    "dexterity": 15,
+    "constitution": 10,
+    "intelligence": 14,
+    "wisdom": 14,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 4
+      },
+      {
+        "name": "Religione",
+        "bonus": 4
+      },
+      {
+        "name": "Storia",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [
+      "psichico"
+    ],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce il Sottocomune ma non lo parla"
+      },
+      {
+        "name": "telepatia 18 m"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Telepatia Avanzata",
+      "usage": null,
+      "description": "Il flumph può percepire il contenuto di qualsiasi comunicazione telepatica usata entro 18 metri da lui e non può essere sorpreso dalle creature dotate di una qualsiasi forma di telepatia."
+    },
+    {
+      "name": "Difficoltà da Prono",
+      "usage": null,
+      "description": "Se il flumph è buttato a terra prono, si tira un dado. Con un risultato dispari, il flumph atterra a testa in giù ed è incapacitato. Alla fine di ogni suo turno, il flumph può effettuare un tiro salvezza su Destrezza con CD 10; se lo supera, si raddrizza e pone termine alla condizione di incapacitato."
+    },
+    {
+      "name": "Sudario Telepatico",
+      "usage": null,
+      "description": "Il flumph è immune a qualsiasi effetto che possa percepire le sue emozioni o leggere i suoi pensieri, nonché a tutti gli incantesimi di divinazione."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Tentacoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 4 (1d4 + 2) danni perforanti più 2 (1d4) danni da acido. Alla fine di ogni suo turno, il bersaglio deve effettuare un tiro salvezza su Costituzione con CD 10; se lo fallisce, subisce 2 (1d4) danni da acido, mentre se lo supera, terminano i danni da acido ricorrenti. Anche un incantesimo ristorare inferiore lanciato sul bersaglio pone termine ai danni da acido ricorrenti."
+    },
+    {
+      "name": "Spruzzo Fetido",
+      "usage": "1/Giorno",
+      "description": "Ogni creatura entro un cono di 4,5 metri originato dal flumph deve superare un tiro salvezza su Destrezza con CD 10, altrimenti è rivestita da un liquido puzzolente. Una creatura rivestita dal liquido esala un orrendo fetore per 1d4 ore. La creatura rivestita è avvelenata fintanto che il fetore permane e le altre creature sono considerate avvelenate finché rimangono entro 1,5 metri dalla creatura rivestita. Una creatura può rimuovere il fetore da se stessa usando un riposo breve per farsi un bagno nell'acqua, nell'alcol o nell'aceto."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 136
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "slug": "mm5-ciclope",
+  "general": {
+    "name": "Ciclope",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "Enorme",
+    "creatureType": "gigante",
+    "subtype": "",
+    "typeLabel": "gigante",
+    "alignment": "caotico neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 138,
+      "formula": "12d12 + 60"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 22,
+    "dexterity": 11,
+    "constitution": 20,
+    "intelligence": 8,
+    "wisdom": 6,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 8"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gigante"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Scarsa Percezione della Profondità",
+      "usage": null,
+      "description": "Il ciclope subisce svantaggio a tutti i tiri per colpire contro un bersaglio più lontano di 9 metri."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il ciclope effettua due attacchi con il randello pesante."
+    },
+    {
+      "name": "Randello Pesante",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +9 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 19 (3d8 + 6) danni contundenti."
+    },
+    {
+      "name": "Roccia",
+      "usage": null,
+      "description": "Attacco con Arma a Distanza: +9 al tiro per colpire, gittata 9/36 m, un bersaglio. Colpito: 28 (4d10 + 6) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 42
+  }
+}

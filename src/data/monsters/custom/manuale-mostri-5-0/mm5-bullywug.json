@@ -1,0 +1,119 @@
+{
+  "slug": "mm5-bullywug",
+  "general": {
+    "name": "Bullywug",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "bullywug",
+    "typeLabel": "umanoide (bullywug)",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura di pelle, scudo"
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "6 m",
+      "swim": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 12,
+    "dexterity": 12,
+    "constitution": 13,
+    "intelligence": 7,
+    "wisdom": 10,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Bullywug"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il bullywug può respirare in aria e in acqua."
+    },
+    {
+      "name": "Parlare con Rane e Rospi",
+      "usage": null,
+      "description": "Il bullywug può comunicare i concetti più semplici alle rane e ai rospi quando parla in Bullywug."
+    },
+    {
+      "name": "Mimetismo nelle Paludi",
+      "usage": null,
+      "description": "Il bullywug dispone di vantaggio alle prove di Destrezza (Furtività) effettuate per nascondersi nei terreni paludosi."
+    },
+    {
+      "name": "Balzo da Fermo",
+      "usage": null,
+      "description": "Il bullywug può compiere un salto in lungo di un massimo di 6 metri e un salto in alto di un massimo di 3 metri, con o senza rincorsa."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il bullywug effettua due attacchi in mischia: uno con il morso e uno con la lancia."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 3 (1d4 + 1) danni contundenti."
+    },
+    {
+      "name": "Lancia",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia o a Distanza: +3 al tiro per colpire, portata 1,5 m o gittata 6/18 m, un bersaglio. Colpito: 4 (1d6 + 1) danni perforanti o 5 (1d8 + 1) danni perforanti se usata a due mani per effettuare un attacco in mischia."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 34
+  }
+}

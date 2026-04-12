@@ -1,0 +1,155 @@
+{
+  "slug": "mm5-empireo",
+  "general": {
+    "name": "Empireo",
+    "challengeRating": {
+      "fraction": "23",
+      "decimal": 23,
+      "display": "23",
+      "xp": 50000
+    },
+    "size": "Enorme",
+    "creatureType": "celestiale",
+    "subtype": "titano",
+    "typeLabel": "celestiale (titano)",
+    "alignment": "caotico buono (75%) o neutrale malvagio (25%)",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 22,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 313,
+      "formula": "19d12 + 190"
+    },
+    "speed": {
+      "walk": "15 m",
+      "swim": "15 m",
+      "fly": "15 m"
+    }
+  },
+  "abilities": {
+    "strength": 30,
+    "dexterity": 21,
+    "constitution": 30,
+    "intelligence": 21,
+    "wisdom": 22,
+    "charisma": 27
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Forza",
+        "bonus": 17
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 12
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 13
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 15
+      }
+    ],
+    "skills": [
+      {
+        "name": "Intuizione",
+        "bonus": 13
+      },
+      {
+        "name": "Persuasione",
+        "bonus": 15
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "contundente, perforante e tagliente da attacchi non magici"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 16"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "tutti"
+      }
+    ],
+    "proficiencyBonus": 7
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore dell'empireo è Carisma (tiro salvezza degli incantesimi CD 23, +15 al tiro per colpire degli attacchi con incantesimo). L'empireo può lanciare i seguenti incantesimi innati, che non richiedono alcuna componente materiale: a volontà: camminare sull'acqua, passare senza tracce, respirare sott'acqua, ristorare superiore; 1/giorno ciascuno: comunione, dissolvi il bene e il male, spostamento planare (solo se stesso), tempesta di fuoco, terremoto."
+    },
+    {
+      "name": "Resistenza Leggendaria",
+      "usage": "3/Giorno",
+      "description": "Se l'empireo fallisce un tiro salvezza, può scegliere invece di superarlo."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "L'empireo dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con arma dell'empireo sono magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Maglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +17 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 31 (6d6 + 10) danni contundenti. Se il bersaglio è una creatura, deve superare un tiro salvezza su Costituzione con CD 15, altrimenti è stordito fino alla fine del turno successivo dell'empireo."
+    },
+    {
+      "name": "Dardo",
+      "usage": null,
+      "description": "Attacco con Incantesimo a Distanza: +15 al tiro per colpire, gittata 180 m, un bersaglio. Colpito: 24 (7d6) danni di uno dei tipi seguenti, a scelta dell'empireo: acido, forza, freddo, fulmine, fuoco, radioso o tuono."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "L'empireo può effettuare 3 azioni leggendarie, scelte tra le opzioni sottostanti. Può usare solo un'opzione di azione leggendaria alla volta e solo alla fine del turno di un'altra creatura. Recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Attacco",
+        "description": "L'empireo effettua un attacco."
+      },
+      {
+        "name": "Rafforzare",
+        "description": "L'empireo rafforza tutte le creature non ostili entro 36 metri da sé fino alla fine del proprio turno successivo. Le creature rafforzate non possono essere affascinate o spaventate e ottengono vantaggio alle prove di caratteristica e ai tiri salvezza fino alla fine del turno successivo dell'empireo."
+      },
+      {
+        "name": "Colpo Tremante",
+        "description": "L'empireo colpisce il terreno con il maglio, scatenando una scossa tellurica. Tutte le altre creature sul terreno entro 18 metri dall'empireo devono superare un tiro salvezza su Forza con CD 25, altrimenti cadono a terra prone."
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 130
+  }
+}

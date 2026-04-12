@@ -1,0 +1,122 @@
+{
+  "slug": "mm5-treant",
+  "general": {
+    "name": "Treant",
+    "challengeRating": {
+      "fraction": "9",
+      "decimal": 9,
+      "display": "9",
+      "xp": 5000
+    },
+    "size": "Enorme",
+    "creatureType": "vegetale",
+    "subtype": "",
+    "typeLabel": "vegetale",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 138,
+      "formula": "12d12 + 60"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 23,
+    "dexterity": 8,
+    "constitution": 21,
+    "intelligence": 12,
+    "wisdom": 16,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [
+      "fuoco"
+    ],
+    "damageResistances": [
+      "contundente",
+      "perforante"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Druidico"
+      },
+      {
+        "name": "Elfico"
+      },
+      {
+        "name": "Silvano"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Finché il treant rimane immobile, non è distinguibile da un normale albero."
+    },
+    {
+      "name": "Mostro da Assedio",
+      "usage": null,
+      "description": "Il treant infligge danni doppi agli oggetti e alle strutture."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il treant effettua due attacchi con schianto."
+    },
+    {
+      "name": "Schianto",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +10 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 16 (3d6 + 6) danni contundenti."
+    },
+    {
+      "name": "Roccia",
+      "usage": null,
+      "description": "Attacco con Arma a Distanza: +10 al tiro per colpire, gittata 18/54 m, un bersaglio. Colpito: 28 (4d10 + 6) danni contundenti."
+    },
+    {
+      "name": "Animare Alberi",
+      "usage": "1/Giorno",
+      "description": "Il treant anima magicamente uno o due alberi situati entro 18 metri da lui e che esso sia in grado di vedere. Questi alberi possiedono le stesse statistiche del treant, ad eccezione dei punteggi di Intelligenza e Carisma pari a 1; inoltre, non possono parlare e possiedono soltanto l'opzione di azione di Schianto. Un albero animato funge da alleato del treant. L'albero rimane animato per 1 giorno o finché non muore, finché il treant non muore o non si trova a più di 36 metri dall'albero oppure finché il treant non usa un'azione bonus per ritrasformarlo in un albero inanimato. Poi l'albero mette radici, se possibile."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "possible-duplicate",
+    "possibleDuplicateOf": "Uomo Albero (Treant)",
+    "page": 288
+  }
+}

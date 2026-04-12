@@ -1,0 +1,103 @@
+{
+  "slug": "mm5-cuspide-letale",
+  "general": {
+    "name": "Cuspide Letale",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Media",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "senza allineamento",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 22,
+      "formula": "3d8 + 9"
+    },
+    "speed": {
+      "walk": "1,5 m",
+      "climb": "1,5 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 13,
+    "constitution": 16,
+    "intelligence": 1,
+    "wisdom": 7,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 8"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Finché la cuspide letale rimane immobile sul soffitto, non è distinguibile da una normale stalattite."
+    },
+    {
+      "name": "Movimenti del Ragno",
+      "usage": null,
+      "description": "La cuspide letale può scalare le superfici difficili, inclusi i soffitti, lungo i quali si muove a testa in giù, senza effettuare una prova di caratteristica."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Lasciarsi Cadere",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, una creatura situata direttamente sotto la cuspide letale. Colpito: 3 (1d6) danni perforanti per ogni 3 metri di caduta, fino a 21 (6d6). Mancato: la cuspide letale subisce metà dei normali danni da caduta dovuti alla lunghezza della caduta."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 47
+  }
+}

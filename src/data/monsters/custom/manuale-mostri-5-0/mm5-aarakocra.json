@@ -1,0 +1,104 @@
+{
+  "slug": "mm5-aarakocra",
+  "general": {
+    "name": "Aarakocra",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "aarakocra",
+    "typeLabel": "umanoide (aarakocra)",
+    "alignment": "neutrale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 13,
+      "formula": "3d8"
+    },
+    "speed": {
+      "walk": "6 m",
+      "fly": "15 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 14,
+    "constitution": 10,
+    "intelligence": 11,
+    "wisdom": 12,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 15"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Aarakocra"
+      },
+      {
+        "name": "Auran"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Attacco in Picchiata",
+      "usage": null,
+      "description": "Se l'aarakocra è in volo, si tuffa per almeno 9 metri in linea retta verso un bersaglio e lo colpisce con un attacco con arma da mischia, quell'attacco infligge 3 (1d6) danni extra al bersaglio."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Sperone",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 4 (1d4 + 2) danni taglienti."
+    },
+    {
+      "name": "Giavellotto",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia o a Distanza: +4 al tiro per colpire, portata 1,5 m o gittata 9/36 m, un bersaglio. Colpito: 5 (1d6 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [
+    "Variante dal testo descrittivo: cinque aarakocra entro 9 metri l'uno dall'altro possono evocare un elementale dell'aria tramite una danza aerea di tre turni consecutivi."
+  ],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 12
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "slug": "mm5-spora-gassosa",
+  "general": {
+    "name": "Spora Gassosa",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Grande",
+    "creatureType": "vegetale",
+    "subtype": "",
+    "typeLabel": "vegetale",
+    "alignment": "senza allineamento",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 5,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 1,
+      "formula": "1d10 - 4"
+    },
+    "speed": {
+      "walk": "0 m",
+      "fly": "3 m (fluttuare)"
+    }
+  },
+  "abilities": {
+    "strength": 5,
+    "dexterity": 1,
+    "constitution": 3,
+    "intelligence": 1,
+    "wisdom": 1,
+    "charisma": 1
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "accecato",
+      "assordato",
+      "avvelenato",
+      "paralizzato",
+      "prono",
+      "spaventato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 6"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m (cieco oltre questo raggio)"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Esplosione Mortale",
+      "usage": null,
+      "description": "La spora gassosa esplode quando scende a 0 punti ferita. Ogni creatura entro 6 metri da essa deve superare un tiro salvezza su Costituzione con CD 15, altrimenti subisce 10 (3d6) danni da veleno ed e infettata da una malattia. Le creature immuni alla condizione di avvelenato sono immuni a questa malattia. Le spore invadono il sistema di una creatura infetta, uccidendola entro un numero di ore pari a 1d12 + il punteggio di Costituzione della creatura, a meno che la malattia non venga rimossa. Nella meta di quel tempo, la creatura diventa avvelenata per il resto della durata. Dopo che la creatura e morta, dal suo corpo spuntano 2d4 spore gassose Minuscole che crescono fino a raggiungere il pieno sviluppo in 7 giorni."
+    },
+    {
+      "name": "Somiglianza Inquietante",
+      "usage": null,
+      "description": "La spora gassosa assomiglia a un beholder. Una creatura in grado di vedere la spora gassosa puo discernere la sua vera natura effettuando con successo una prova di Intelligenza (Natura) con CD 15."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Tocco",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +0 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 1 danno da veleno e la creatura deve superare un tiro salvezza su Costituzione con CD 10, altrimenti e infettata dalla malattia descritta nel tratto Esplosione Mortale."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 139
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "slug": "mm5-merrow",
+  "general": {
+    "name": "Merrow",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 45,
+      "formula": "6d10 + 12"
+    },
+    "speed": {
+      "walk": "3 m",
+      "swim": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 10,
+    "constitution": 15,
+    "intelligence": 8,
+    "wisdom": 10,
+    "charisma": 9
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Aquan"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il merrow può respirare in aria e in acqua."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il merrow effettua due attacchi: uno con il morso e uno con gli artigli o l'arpione."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 8 (1d8 + 4) danni perforanti."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 9 (2d4 + 4) danni taglienti."
+    },
+    {
+      "name": "Arpione",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia o a Distanza: +6 al tiro per colpire, portata 1,5 m o gittata 6/18 m, un bersaglio. Colpito: 11 (2d6 + 4) danni perforanti. Se il bersaglio è una creatura di taglia Enorme o inferiore, deve vincere una contesa di Forza contro il merrow, altrimenti verrà tirato fino a 6 metri più vicino al merrow."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 219
+  }
+}

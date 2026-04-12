@@ -1,0 +1,97 @@
+{
+  "slug": "mm5-marinide",
+  "general": {
+    "name": "Marinide",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "marinide",
+    "typeLabel": "umanoide (marinide)",
+    "alignment": "neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "3 m",
+      "swim": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 13,
+    "constitution": 12,
+    "intelligence": 11,
+    "wisdom": 11,
+    "charisma": 12
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Aquan"
+      },
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Anfibio",
+      "usage": null,
+      "description": "Il marinide puo respirare in aria e in acqua."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Lancia",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia o a Distanza: +2 al tiro per colpire, portata 1,5 m o gittata 6/18 m, un bersaglio. Colpito: 3 (1d6) danni perforanti o 4 (1d8) danni perforanti se usata a due mani per effettuare un attacco in mischia."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "possible-duplicate",
+    "possibleDuplicateOf": "Uomo Acquatico",
+    "page": 206
+  }
+}

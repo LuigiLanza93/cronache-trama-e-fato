@@ -1,0 +1,124 @@
+{
+  "slug": "mm5-nothic",
+  "general": {
+    "name": "Nothic",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Media",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 45,
+      "formula": "6d8 + 18"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 14,
+    "dexterity": 16,
+    "constitution": 16,
+    "intelligence": 13,
+    "wisdom": 10,
+    "charisma": 8
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 3
+      },
+      {
+        "name": "Furtività",
+        "bonus": 5
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Sottocomune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Vista Acuta",
+      "usage": null,
+      "description": "Il nothic dispone di vantaggio alle prove di Saggezza (Percezione) basate sulla vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il nothic effettua due attacchi con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 6 (1d6 + 3) danni taglienti."
+    },
+    {
+      "name": "Sguardo Marcescente",
+      "usage": null,
+      "description": "Il nothic bersaglia una creatura entro 9 metri e che esso sia in grado di vedere. Il bersaglio deve superare un tiro salvezza su Costituzione con CD 12 contro questa magia, altrimenti subisce 10 (3d6) danni necrotici."
+    },
+    {
+      "name": "Intuizione Innaturale",
+      "usage": null,
+      "description": "Il nothic bersaglia una creatura entro 9 metri e che esso sia in grado di vedere. Il bersaglio deve effettuare una prova di Carisma (Inganno) contrapposta a una prova di Saggezza (Intuizione) del nothic. Se il nothic vince, apprende magicamente un fatto o un segreto relativo al bersaglio. Il bersaglio vince automaticamente se è immune alla condizione di affascinato."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 236
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "slug": "mm5-rampicante-maligno",
+  "general": {
+    "name": "Rampicante Maligno",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Media",
+    "creatureType": "vegetale",
+    "subtype": "",
+    "typeLabel": "vegetale",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 26,
+      "formula": "4d8 + 8"
+    },
+    "speed": {
+      "walk": "3 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 8,
+    "constitution": 14,
+    "intelligence": 5,
+    "wisdom": 10,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 1
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "accecato",
+      "assordato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m (cieco oltre questo raggio)"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Finche il rampicante maligno rimane immobile, non e distinguibile da un normale rampicante."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Stritolare",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 9 (2d6 + 2) danni contundenti e un bersaglio di taglia Grande o inferiore e afferrato (CD 12 per sfuggire). Finche e afferrato, il bersaglio e trattenuto e il rampicante maligno non puo stritolare un altro bersaglio."
+    },
+    {
+      "name": "Vegetali Intralcianti",
+      "usage": "Ricarica 5-6",
+      "description": "Un groviglio di radici e rampicanti brulicanti spunta in un raggio di 4,5 metri centrato sul maligno, per avvizzire e scomparire dopo 1 minuto. Nel frattempo, quell'area e considerata terreno difficile per le creature non vegetali. Inoltre, ogni creatura a scelta del maligno che si trova in quell'area quando i vegetali compaiono deve superare un tiro salvezza su Forza con CD 12, altrimenti e trattenuta. Una creatura puo usare la sua azione per effettuare una prova di Forza con CD 12, liberando se stessa o un'altra creatura intralciata entro portata in caso di successo."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 202
+  }
+}

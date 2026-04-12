@@ -1,0 +1,152 @@
+{
+  "slug": "mm5-ultroloth",
+  "general": {
+    "name": "Ultroloth",
+    "challengeRating": {
+      "fraction": "13",
+      "decimal": 13,
+      "display": "13",
+      "xp": 10000
+    },
+    "size": "Media",
+    "creatureType": "immondo",
+    "subtype": "yugoloth",
+    "typeLabel": "immondo (yugoloth)",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 19,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 153,
+      "formula": "18d8 + 72"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 16,
+    "constitution": 18,
+    "intelligence": 18,
+    "wisdom": 15,
+    "charisma": 19
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 8
+      },
+      {
+        "name": "Intimidire",
+        "bonus": 9
+      },
+      {
+        "name": "Percezione",
+        "bonus": 7
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "contundente da attacchi non magici",
+      "perforante da attacchi non magici",
+      "tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "acido",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "spaventato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 17"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Infernale"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore dell'ultroloth e Carisma (CD 17). A volonta: alterare se stesso, chiaroveggenza, dissolvi magie, individuazione del magico, individuazione dei pensieri, invisibilita (solo se stesso), oscurita, suggestione. 3/giorno ciascuno: muro di fuoco, paura, porta dimensionale. 1/giorno ciascuno: suggestione di massa, tempesta di fuoco."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "L'ultroloth dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con arma dell'ultroloth sono magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'ultroloth puo usare lo Sguardo Ipnotico ed effettua tre attacchi in mischia."
+    },
+    {
+      "name": "Spada Lunga",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +8 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 7 (1d8 + 3) danni taglienti o 8 (1d10 + 3) danni taglienti se usata a due mani."
+    },
+    {
+      "name": "Sguardo Ipnotico",
+      "usage": null,
+      "description": "Con gli occhi che risplendono di luce opalescente, l'ultroloth bersaglia una creatura situata entro 9 metri da lui e che esso sia in grado di vedere. Se e in grado di vedere l'ultroloth, il bersaglio deve superare un tiro salvezza su Saggezza con CD 17 contro questa magia, altrimenti e affascinato fino alla fine del turno successivo dell'ultroloth. Il bersaglio affascinato e stordito. Se il bersaglio supera il tiro salvezza, e immune allo sguardo dell'ultroloth per le 24 ore successive."
+    },
+    {
+      "name": "Teletrasporto",
+      "usage": null,
+      "description": "L'ultroloth si teletrasporta magicamente, assieme a ogni oggetto che indossa o trasporta, fino a uno spazio libero situato entro 18 metri e che egli sia in grado di vedere."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 314
+  }
+}

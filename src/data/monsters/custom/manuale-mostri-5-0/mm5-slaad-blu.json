@@ -1,0 +1,124 @@
+{
+  "slug": "mm5-slaad-blu",
+  "general": {
+    "name": "Slaad Blu",
+    "challengeRating": {
+      "fraction": "7",
+      "decimal": 7,
+      "display": "7",
+      "xp": 2900
+    },
+    "size": "Grande",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "caotico neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 123,
+      "formula": "13d10 + 52"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 20,
+    "dexterity": 15,
+    "constitution": 18,
+    "intelligence": 7,
+    "wisdom": 7,
+    "charisma": 9
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 1
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "acido",
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "tuono"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Slaad"
+      },
+      {
+        "name": "telepatia",
+        "value": "18 m"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Lo slaad dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Rigenerazione",
+      "usage": null,
+      "description": "Lo slaad recupera 10 punti ferita all'inizio del suo turno se possiede almeno 1 punto ferita."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Lo slaad effettua tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +8 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 12 (2d6 + 5) danni perforanti."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +8 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 12 (2d6 + 5) danni taglienti. Se il bersaglio e un umanoide, deve superare un tiro salvezza su Costituzione con CD 15, altrimenti e infettato da una malattia chiamata virus del caos. Finche e infettato, il bersaglio non puo recuperare punti ferita e il suo massimo dei punti ferita si riduce di 10 (3d6) ogni 24 ore. Se la malattia riduce il massimo dei punti ferita del bersaglio a 0, il bersaglio si trasforma istantaneamente in uno slaad rosso o, se ha la capacita di lanciare incantesimi di 3 livello o superiore, in uno slaad verde."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [
+    "Soltanto un incantesimo desiderio puo invertire la trasformazione da virus del caos."
+  ],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 276
+  }
+}

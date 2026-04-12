@@ -1,0 +1,131 @@
+{
+  "slug": "mm5-naga-guardiana",
+  "general": {
+    "name": "Naga Guardiana",
+    "challengeRating": {
+      "fraction": "10",
+      "decimal": 10,
+      "display": "10",
+      "xp": 5900
+    },
+    "size": "Grande",
+    "creatureType": "mostruosita",
+    "subtype": "",
+    "typeLabel": "mostruosita",
+    "alignment": "legale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 127,
+      "formula": "15d10 + 45"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 19,
+    "dexterity": 18,
+    "constitution": 16,
+    "intelligence": 16,
+    "wisdom": 19,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 8
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 7
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 7
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 8
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 8
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 14"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Celestiale"
+      },
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Ringiovanimento",
+      "usage": null,
+      "description": "Se la naga muore, torna in vita 1d6 giorni dopo e recupera tutti i suoi punti ferita. Soltanto un incantesimo desiderio puo impedire a questo tratto di funzionare."
+    },
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "La naga e un incantatore di 11 livello. Caratteristica da incantatore: Saggezza (CD 16, +8 al tiro per colpire con incantesimi), solo componenti verbali. Trucchetti a volonta: fiamma sacra, riparare, taumaturgia. 1 livello (4 slot): comando, cura ferite, scudo della fede. 2 livello (3 slot): blocca persone, calmare emozioni. 3 livello (3 slot): chiaroveggenza, scagliare maledizione. 4 livello (3 slot): esilio, liberta di movimento. 5 livello (2 slot): colpo infuocato, costrizione. 6 livello (1 slot): visione del vero."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +8 al tiro per colpire, portata 3 m, una creatura. Colpito: 8 (1d8 + 4) danni perforanti e il bersaglio deve effettuare un tiro salvezza su Costituzione con CD 15; se lo fallisce, subisce 45 (10d8) danni da veleno, mentre se lo supera, subisce la meta di quei danni."
+    },
+    {
+      "name": "Sputo Velenoso",
+      "usage": null,
+      "description": "Attacco con Arma a Distanza: +8 al tiro per colpire, gittata 4,5/9 m, una creatura. Colpito: il bersaglio deve effettuare un tiro salvezza su Costituzione con CD 15; se lo fallisce, subisce 45 (10d8) danni da veleno, mentre se lo supera, subisce la meta di quei danni."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "possible-duplicate",
+    "possibleDuplicateOf": "Naga Guardiano",
+    "page": 235
+  }
+}

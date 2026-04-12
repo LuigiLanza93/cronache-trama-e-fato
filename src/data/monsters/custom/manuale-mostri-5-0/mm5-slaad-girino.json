@@ -1,0 +1,103 @@
+{
+  "slug": "mm5-slaad-girino",
+  "general": {
+    "name": "Slaad Girino",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Minuscola",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "caotico neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 10,
+      "formula": "4d4"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 7,
+    "dexterity": 15,
+    "constitution": 10,
+    "intelligence": 3,
+    "wisdom": 5,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "acido",
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "tuono"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 7"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce lo Slaad ma non puo parlarlo"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Lo slaad dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 4 (1d4 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 276
+  }
+}

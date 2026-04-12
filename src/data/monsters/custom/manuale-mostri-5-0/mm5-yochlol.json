@@ -1,0 +1,164 @@
+{
+  "slug": "mm5-yochlol",
+  "general": {
+    "name": "Yochlol",
+    "challengeRating": {
+      "fraction": "10",
+      "decimal": 10,
+      "display": "10",
+      "xp": 5900
+    },
+    "size": "Media",
+    "creatureType": "immondo",
+    "subtype": "demone, mutaforma",
+    "typeLabel": "immondo (demone, mutaforma)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 136,
+      "formula": "16d8 + 64"
+    },
+    "speed": {
+      "walk": "9 m",
+      "climb": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 14,
+    "constitution": 18,
+    "intelligence": 13,
+    "wisdom": 15,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 6
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 5
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 6
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 6
+      }
+    ],
+    "skills": [
+      {
+        "name": "Inganno",
+        "bonus": 10
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "contundente, perforante e tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Elfico"
+      },
+      {
+        "name": "Sottocomune"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "La yochlol può usare la sua azione per trasformarsi in una femmina drow o in un ragno gigante oppure per tornare alla sua forma naturale. Le sue statistiche restano le stesse in ogni forma. Ogni oggetto che indossa o trasporta non viene trasformato. Se muore, la yochlol ritorna alla sua forma naturale."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "La yochlol dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Movimenti del Ragno",
+      "usage": null,
+      "description": "La yochlol può scalare le superfici difficili, inclusi i soffitti, lungo i quali si muove a testa in giù, senza effettuare una prova di caratteristica."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore della yochlol è Carisma (tiro salvezza degli incantesimi CD 14). La yochlol può lanciare i seguenti incantesimi innati, che non richiedono alcuna componente materiale: a volontà: individuazione dei pensieri, ragnatela; 1/giorno: dominare persone."
+    },
+    {
+      "name": "Andatura sulla Ragnatela",
+      "usage": null,
+      "description": "La yochlol ignora le restrizioni di movimento causate dalle ragnatele."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "La yochlol effettua due attacchi in mischia."
+    },
+    {
+      "name": "Schianto (Morso in Forma di Ragno)",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 1,5 m (3 m in forma di demone), un bersaglio. Colpito: 5 (1d6 + 2) danni contundenti, oppure perforanti in forma di ragno, più 21 (6d6) danni da veleno."
+    },
+    {
+      "name": "Forma Nebbiosa",
+      "usage": null,
+      "description": "La yochlol si trasforma in una nebbia tossica o torna alla sua forma di demone. Ogni oggetto che indossa o trasporta viene anch'esso trasformato. Se muore, la yochlol torna alla sua forma naturale. Finché è in forma nebbiosa, la yochlol è incapacitata e non può parlare. Possiede una velocità di volare di 9 metri, può fluttuare e può passare attraverso qualsiasi spazio che non sia sigillato. Dispone di vantaggio ai tiri salvezza su Forza, Destrezza e Costituzione ed è immune ai danni non magici. Finché è in forma nebbiosa, la yochlol può entrare nello spazio di una creatura e fermarsi in quello spazio. Ogni volta che quella creatura inizia il proprio turno con la yochlol nel proprio spazio, deve superare un tiro salvezza su Costituzione con CD 14, altrimenti è avvelenata fino all'inizio del proprio turno successivo. Mentre è avvelenato in questo modo, il bersaglio è incapacitato."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 65
+  }
+}

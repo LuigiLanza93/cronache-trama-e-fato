@@ -1,0 +1,141 @@
+{
+  "slug": "mm5-cavaliere-della-morte",
+  "general": {
+    "name": "Cavaliere della Morte",
+    "challengeRating": {
+      "fraction": "17",
+      "decimal": 17,
+      "display": "17",
+      "xp": 18000
+    },
+    "size": "Media",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 20,
+      "note": "armatura completa, scudo"
+    },
+    "hitPoints": {
+      "average": 180,
+      "formula": "19d8 + 95"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 20,
+    "dexterity": 11,
+    "constitution": 20,
+    "intelligence": 12,
+    "wisdom": 16,
+    "charisma": 18
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 6
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 9
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 10
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "necrotico",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato",
+      "indebolimento",
+      "spaventato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 6
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il cavaliere della morte dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Adunata dei Non Morti",
+      "usage": null,
+      "description": "Se il cavaliere della morte non è incapacitato, sia lui che le creature non morte a sua scelta situate entro 18 metri da lui dispongono di vantaggio ai tiri salvezza contro gli effetti che scacciano i non morti."
+    },
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "Il cavaliere della morte è un incantatore di 19° livello: la sua caratteristica da incantatore è Carisma (tiro salvezza degli incantesimi CD 18, +10 al tiro per colpire degli attacchi con incantesimo). Ha preparato i seguenti incantesimi da paladino: 1° livello (4 slot): comando, duello obbligato, punizione incandescente; 2° livello (3 slot): arma magica, blocca persone; 3° livello (3 slot): arma elementale, dissolvi magie; 4° livello (3 slot): esilio, punizione demoralizzante; 5° livello (2 slot): onda distruttiva (necrotici)."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il cavaliere della morte effettua tre attacchi con la spada lunga."
+    },
+    {
+      "name": "Spada Lunga",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +11 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 9 (1d8 + 5) danni taglienti, o 10 (1d10 + 5) danni taglienti se usata a due mani, più 18 (4d8) danni necrotici."
+    },
+    {
+      "name": "Globo di Fuoco Infernale",
+      "usage": "1/Giorno",
+      "description": "Il cavaliere della morte scaglia una palla di fuoco magica che esplode in un punto situato entro 36 metri da lui e che egli sia in grado di vedere. Ogni creatura entro una sfera del raggio di 6 metri centrata su quel punto deve effettuare un tiro salvezza su Destrezza con CD 18. La sfera si diffonde oltre gli angoli. Se la creatura fallisce il tiro salvezza, subisce 35 (10d6) danni da fuoco e 35 (10d6) danni necrotici, mentre se lo supera, subisce la metà di quei danni."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [
+    {
+      "name": "Parata",
+      "usage": null,
+      "description": "Il cavaliere della morte aggiunge 6 alla sua CA contro un attacco in mischia che lo colpirebbe. Per farlo, il cavaliere della morte deve vedere l'attaccante e deve impugnare un'arma da mischia."
+    }
+  ],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 37
+  }
+}

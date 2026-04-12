@@ -1,0 +1,67 @@
+{
+  "slug": "mm5-dao",
+  "general": {
+    "name": "Dao",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 0
+    },
+    "size": "Media",
+    "creatureType": "",
+    "subtype": "",
+    "typeLabel": "",
+    "alignment": "",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": "placeholder"
+    },
+    "hitPoints": {
+      "average": 1,
+      "formula": "1d8"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 10,
+    "constitution": 10,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [],
+  "actions": [],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Scheda placeholder generata dal censimento del Manuale dei Mostri. Statistiche e testo descrittivo da completare con trascrizione manuale.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "slug": "mm5-goristro",
+  "general": {
+    "name": "Goristro",
+    "challengeRating": {
+      "fraction": "17",
+      "decimal": 17,
+      "display": "17",
+      "xp": 18000
+    },
+    "size": "Enorme",
+    "creatureType": "immondo",
+    "subtype": "demone",
+    "typeLabel": "immondo (demone)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 19,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 310,
+      "formula": "23d12 + 161"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 25,
+    "dexterity": 11,
+    "constitution": 25,
+    "intelligence": 6,
+    "wisdom": 13,
+    "charisma": 14
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Forza",
+        "bonus": 13
+      },
+      {
+        "ability": "Destrezza",
+        "bonus": 6
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 13
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 7
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "contundente, perforante e tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 17"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      }
+    ],
+    "proficiencyBonus": 6
+  },
+  "traits": [
+    {
+      "name": "Carica",
+      "usage": null,
+      "description": "Se il goristro si muove di almeno 4,5 metri in linea retta verso un bersaglio e poi lo colpisce con un attacco da incornata nello stesso turno, il bersaglio subisce 38 (7d10) danni perforanti extra. Se il bersaglio è una creatura, deve superare un tiro salvezza su Forza con CD 21, altrimenti è spinto fino a un massimo di 6 metri più lontano dal goristro e cade a terra prono."
+    },
+    {
+      "name": "Ricordo Labirintico",
+      "usage": null,
+      "description": "Il goristro è in grado di ricordarsi alla perfezione qualsiasi tragitto che abbia già percorso."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il goristro dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Mostro da Assedio",
+      "usage": null,
+      "description": "Il goristro infligge danni doppi agli oggetti e alle strutture."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il goristro effettua tre attacchi: due con i pugni e uno con lo zoccolo."
+    },
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +13 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 20 (3d8 + 7) danni contundenti."
+    },
+    {
+      "name": "Zoccolo",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +13 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 23 (3d10 + 7) danni contundenti. Se il bersaglio è una creatura, deve superare un tiro salvezza su Forza con CD 21, altrimenti cade a terra prona."
+    },
+    {
+      "name": "Incornata",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +13 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 45 (7d10 + 7) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 59
+  }
+}

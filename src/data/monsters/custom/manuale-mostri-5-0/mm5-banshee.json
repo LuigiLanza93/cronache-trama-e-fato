@@ -1,0 +1,140 @@
+{
+  "slug": "mm5-banshee",
+  "general": {
+    "name": "Banshee",
+    "challengeRating": {
+      "fraction": "4",
+      "decimal": 4,
+      "display": "4",
+      "xp": 1100
+    },
+    "size": "Media",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 58,
+      "formula": "13d8"
+    },
+    "speed": {
+      "walk": "0 m",
+      "fly": "12 m (fluttuare)"
+    }
+  },
+  "abilities": {
+    "strength": 1,
+    "dexterity": 14,
+    "constitution": 10,
+    "intelligence": 12,
+    "wisdom": 11,
+    "charisma": 17
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Saggezza",
+        "bonus": 2
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 5
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "acido",
+      "fulmine",
+      "fuoco",
+      "tuono",
+      "contundente, perforante e tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "freddo",
+      "necrotico",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "afferrato",
+      "avvelenato",
+      "indebolimento",
+      "paralizzato",
+      "pietrificato",
+      "prono",
+      "spaventato",
+      "trattenuto"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Elfico"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Individuazione della Vita",
+      "usage": null,
+      "description": "La banshee può percepire magicamente la presenza di creature che non siano non morti e costrutti entro un raggio di 7,5 chilometri. Conosce la direzione generale in cui si trovano, ma non la loro precisa ubicazione."
+    },
+    {
+      "name": "Movimento Incorporeo",
+      "usage": null,
+      "description": "La banshee può muoversi attraverso altre creature e oggetti come se fossero terreno difficile. Subisce 5 (1d10) danni da forza se termina il suo turno all'interno di un oggetto."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Tocco Corruttore",
+      "usage": null,
+      "description": "Attacco con Incantesimo in Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 12 (3d6 + 2) danni necrotici."
+    },
+    {
+      "name": "Volto Terrificante",
+      "usage": null,
+      "description": "Ogni creatura che non sia un non morto situata entro 18 metri dalla banshee e che sia in grado di vederla deve superare un tiro salvezza su Saggezza con CD 13, altrimenti è spaventata per 1 minuto. Un bersaglio spaventato può ripetere il tiro salvezza alla fine di ogni suo turno, subendo svantaggio se la banshee si trova entro linea di vista; se supera il tiro, l'effetto per lui termina. Se un bersaglio supera il tiro salvezza o l'effetto per lui termina, quel bersaglio è immune al Volto Terrificante della banshee per le 24 ore successive."
+    },
+    {
+      "name": "Lamento",
+      "usage": "1/Giorno",
+      "description": "La banshee emette un lamento funesto, purché non sia esposta alla luce del sole. Questo lamento non ha alcun effetto sui costrutti e sui non morti. Ogni altra creatura situata entro 9 metri da lei e in grado di udirla deve effettuare un tiro salvezza su Costituzione con CD 13; se lo fallisce, scende a 0 punti ferita, mentre se lo supera, subisce 10 (3d6) danni psichici."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 23
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "slug": "mm5-chasme",
+  "general": {
+    "name": "Chasme",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "Grande",
+    "creatureType": "immondo",
+    "subtype": "demone",
+    "typeLabel": "immondo (demone)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 84,
+      "formula": "13d10 + 13"
+    },
+    "speed": {
+      "walk": "6 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 15,
+    "constitution": 12,
+    "intelligence": 11,
+    "wisdom": 14,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 5
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "freddo",
+      "fulmine",
+      "fuoco"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 15"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "3 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "telepatia 36 m"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Ronzio",
+      "usage": null,
+      "description": "Il chasme emette un orrendo ronzio a cui i demoni sono immuni. Ogni altra creatura che inizi il proprio turno entro 9 metri dal chasme deve superare un tiro salvezza su Costituzione con CD 12, altrimenti è priva di sensi per 10 minuti. Se una creatura non può udire il ronzio, supera automaticamente il tiro salvezza. L'effetto sulla creatura termina se essa subisce danni o se un'altra creatura usa un'azione per spruzzarla di acqua santa. Se una creatura supera il tiro salvezza o l'effetto per lei termina, quella creatura è immune al ronzio per le 24 ore successive."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il chasme dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Movimenti del Ragno",
+      "usage": null,
+      "description": "Il chasme può scalare le superfici difficili, inclusi i soffitti, lungo i quali si muove a testa in giù, senza effettuare una prova di caratteristica."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Proboscide",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 16 (4d6 + 2) danni perforanti più 24 (7d6) danni necrotici e il massimo dei punti ferita del bersaglio è ridotto di un ammontare pari ai danni necrotici subiti. Se questo effetto riduce il massimo dei punti ferita di una creatura a 0, la creatura muore. Questa riduzione permane finché la creatura non completa un riposo lungo o finché non è influenzata da un incantesimo come ristorare superiore."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 57
+  }
+}

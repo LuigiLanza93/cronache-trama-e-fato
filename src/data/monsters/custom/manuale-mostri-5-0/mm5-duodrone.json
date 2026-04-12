@@ -1,0 +1,107 @@
+{
+  "slug": "mm5-duodrone",
+  "general": {
+    "name": "Duodrone",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Media",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "legale neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 11,
+      "formula": "2d8 + 2"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 13,
+    "constitution": 12,
+    "intelligence": 6,
+    "wisdom": 10,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Modron"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Mente Assiomatica",
+      "usage": null,
+      "description": "Il duodrone non puo essere obbligato ad agire in modo contrario alla sua natura o alle sue istruzioni."
+    },
+    {
+      "name": "Disintegrazione",
+      "usage": null,
+      "description": "Se il duodrone muore, il suo corpo si disintegra in polvere: restano solo le armi e tutto cio che trasportava."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il duodrone effettua due attacchi con i pugni o due attacchi con il giavellotto."
+    },
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +2 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 2 (1d4) danni contundenti."
+    },
+    {
+      "name": "Giavellotto",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia o a Distanza: +3 al tiro per colpire, portata 1,5 m o gittata 9/36 m, un bersaglio. Colpito: 4 (1d6 + 1) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 229
+  }
+}

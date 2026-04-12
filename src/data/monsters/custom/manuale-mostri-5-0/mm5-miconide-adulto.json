@@ -1,0 +1,103 @@
+{
+  "slug": "mm5-miconide-adulto",
+  "general": {
+    "name": "Miconide Adulto",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Media",
+    "creatureType": "vegetale",
+    "subtype": "",
+    "typeLabel": "vegetale",
+    "alignment": "legale neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 22,
+      "formula": "4d8 + 4"
+    },
+    "speed": {
+      "walk": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 10,
+    "constitution": 12,
+    "intelligence": 10,
+    "wisdom": 13,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Spore Segnalatrici",
+      "usage": null,
+      "description": "Quando il miconide subisce danni, tutti gli altri miconidi nel raggio di 72 metri percepiscono il suo dolore."
+    },
+    {
+      "name": "Eliofobia",
+      "usage": null,
+      "description": "Quando e esposto alla luce del sole, il miconide subisce svantaggio alle prove di caratteristica, ai tiri per colpire e ai tiri salvezza. Se il miconide resta esposto alla luce del sole diretta per piu di 1 ora, muore."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +2 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 5 (2d4) danni contundenti piu 5 (2d4) danni da veleno."
+    },
+    {
+      "name": "Spore Pacificatrici",
+      "usage": "3/Giorno",
+      "description": "Il miconide emana spore su una creatura situata entro 1,5 metri da lui e che esso sia in grado di vedere. Il bersaglio deve superare un tiro salvezza su Costituzione con CD 11, altrimenti e stordito per 1 minuto. Il bersaglio puo ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, l'effetto per lui termina."
+    },
+    {
+      "name": "Spore Comunicanti",
+      "usage": null,
+      "description": "Il miconide emana spore nel raggio di 6 metri. Queste spore si diffondono oltre gli angoli e influenzano soltanto le creature di Intelligenza pari o superiore a 2 che non siano non morti, costrutti o elementali. Le creature influenzate possono comunicare telepaticamente tra loro finche si trovano entro 9 metri l'una dall'altra. L'effetto dura 1 ora."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 223
+  }
+}

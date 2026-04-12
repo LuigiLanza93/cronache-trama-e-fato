@@ -1,0 +1,166 @@
+{
+  "slug": "mm5-demilich",
+  "general": {
+    "name": "Demilich",
+    "challengeRating": {
+      "fraction": "18",
+      "decimal": 18,
+      "display": "18",
+      "xp": 20000
+    },
+    "size": "Minuscola",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 20,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 80,
+      "formula": "20d4"
+    },
+    "speed": {
+      "walk": "0 m",
+      "fly": "9 m (fluttuare)"
+    }
+  },
+  "abilities": {
+    "strength": 1,
+    "dexterity": 20,
+    "constitution": 10,
+    "intelligence": 20,
+    "wisdom": 17,
+    "charisma": 20
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 6
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 11
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 9
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 11
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente, perforante e tagliente da armi magiche"
+    ],
+    "damageImmunities": [
+      "necrotico",
+      "psichico",
+      "veleno",
+      "contundente, perforante e tagliente da attacchi non magici"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "assordato",
+      "avvelenato",
+      "indebolimento",
+      "paralizzato",
+      "pietrificato",
+      "prono",
+      "spaventato",
+      "stordito"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 6
+  },
+  "traits": [
+    {
+      "name": "Sfuggente",
+      "usage": null,
+      "description": "Se il demilich è soggetto a un effetto che gli consente di effettuare un tiro salvezza per subire danni dimezzati, non subisce alcun danno se lo supera e solo metà dei danni se lo fallisce."
+    },
+    {
+      "name": "Resistenza Leggendaria",
+      "usage": "3/Giorno",
+      "description": "Se il demilich fallisce un tiro salvezza, può scegliere invece di superarlo."
+    },
+    {
+      "name": "Immunità allo Scacciare",
+      "usage": null,
+      "description": "Il demilich è immune agli effetti che scacciano i non morti."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Ululato",
+      "usage": "Ricarica 5-6",
+      "description": "Il demilich lancia un ululato agghiacciante. Ogni creatura situata entro 9 metri dal demilich e in grado di udire l'ululato deve superare un tiro salvezza su Costituzione con CD 15, altrimenti scende a 0 punti ferita. Se supera il tiro salvezza, la creatura è spaventata fino alla fine del proprio turno successivo."
+    },
+    {
+      "name": "Risucchio di Vita",
+      "usage": null,
+      "description": "Il demilich bersaglia un massimo di tre creature situate entro 3 metri da lui e che esso sia in grado di vedere. Ogni bersaglio deve superare un tiro salvezza su Costituzione con CD 19, altrimenti subisce 21 (6d6) danni necrotici e il demilich recupera un ammontare di punti ferita pari al totale dei danni inflitti a tutti i bersagli."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "Il demilich può effettuare 3 azioni leggendarie, scelte tra le opzioni sottostanti. Può usare solo un'opzione di azione leggendaria alla volta e solo alla fine del turno di un'altra creatura. Il demilich recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Volo",
+        "description": "Il demilich vola fino a metà della sua velocità di volare."
+      },
+      {
+        "name": "Nube di Polvere",
+        "description": "Il demilich fa turbinare magicamente i suoi resti polverosi. Ogni creatura entro 3 metri dal demilich, anche se dietro un angolo, deve superare un tiro salvezza su Costituzione con CD 15, altrimenti è accecata fino alla fine del turno successivo del demilich. Se la creatura supera il tiro salvezza, è immune a questo effetto fino alla fine del turno successivo del demilich."
+      },
+      {
+        "name": "Risucchio di Energia",
+        "description": "Ogni creatura entro 9 metri dal demilich deve effettuare un tiro salvezza su Costituzione con CD 15. Se lo fallisce, il suo massimo dei punti ferita è ridotto magicamente di 10 (3d6). Se il massimo dei punti ferita di una creatura scende a 0 a causa di questo effetto, la creatura muore. Il massimo dei punti ferita di una creatura può essere ripristinato con un incantesimo ristorare superiore o una magia analoga."
+      },
+      {
+        "name": "Maledizione Infame",
+        "description": "Il demilich bersaglia una creatura situata entro 9 metri da lui e che esso sia in grado di vedere. Il bersaglio deve superare un tiro salvezza su Saggezza con CD 15, altrimenti è magicamente maledetto. Finché la maledizione non termina, il bersaglio subisce svantaggio ai tiri per colpire e ai tiri salvezza. Il bersaglio può ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, la maledizione termina."
+      }
+    ]
+  },
+  "lairActions": [
+    "A conteggio di iniziativa 20, il demilich può far tremare violentemente la tomba per un istante. Ogni creatura sul pavimento della tomba deve superare un tiro salvezza su Destrezza con CD 19, altrimenti viene buttata a terra prona.",
+    "A conteggio di iniziativa 20, il demilich può bersagliare una creatura situata entro 18 metri da lui e che esso sia in grado di vedere. Un campo anti-magia riempie lo spazio del bersaglio, muovendosi assieme a lui fino al conteggio di iniziativa 20 del round successivo.",
+    "A conteggio di iniziativa 20, il demilich può bersagliare un qualsiasi numero di creature situate entro 9 metri da lui e che esso sia in grado di vedere. Nessun bersaglio può recuperare punti ferita fino al conteggio di iniziativa 20 del round successivo."
+  ],
+  "regionalEffects": [
+    "La prima volta che una creatura non malvagia entra nell'area della tomba, subisce 16 (3d10) danni necrotici.",
+    "I mostri all'interno della tomba dispongono di vantaggio ai tiri salvezza contro le condizioni di affascinato e spaventato, e contro gli effetti che scacciano i non morti.",
+    "La tomba è protetta dalle forme di viaggio magico delle creature non autorizzate dal demilich. Tali creature non possono entrare o uscire dall'area della tomba tramite teletrasporto o tramite viaggi planari. Gli effetti che consentono il teletrasporto o i viaggi planari funzionano all'interno della tomba, purché non siano usati per entrare o uscire dall'area della tomba."
+  ],
+  "notes": [
+    "Nella sua tana, un demilich possiede un grado di sfida pari a 20 (24.500 PE).",
+    "Variante Acererak e discepoli: un demilich come Acererak può avere grado di sfida 21 o 23 nella tana e ottenere l'azione aggiuntiva Intrappolare l'Anima."
+  ],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 48
+  }
+}

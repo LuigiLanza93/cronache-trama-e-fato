@@ -1,0 +1,128 @@
+{
+  "slug": "mm5-cacciatore-invisibile",
+  "general": {
+    "name": "Cacciatore Invisibile",
+    "challengeRating": {
+      "fraction": "6",
+      "decimal": 6,
+      "display": "6",
+      "xp": 2300
+    },
+    "size": "Media",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 104,
+      "formula": "16d8 + 32"
+    },
+    "speed": {
+      "walk": "15 m",
+      "fly": "15 m (fluttuare)"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 19,
+    "constitution": 14,
+    "intelligence": 10,
+    "wisdom": 15,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 10
+      },
+      {
+        "name": "Percezione",
+        "bonus": 8
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente, perforante e tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "afferrato",
+      "avvelenato",
+      "indebolimento",
+      "paralizzato",
+      "pietrificato",
+      "privo di sensi",
+      "prono",
+      "trattenuto"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 18"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Auran"
+      },
+      {
+        "name": "capisce il Comune ma non lo parla"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Invisibilità",
+      "usage": null,
+      "description": "Il cacciatore è invisibile."
+    },
+    {
+      "name": "Segugio Infallibile",
+      "usage": null,
+      "description": "L'evocatore indica una preda al cacciatore. Il cacciatore conosce la direzione e la distanza a cui si trova la preda, purché entrambi si trovino sullo stesso piano di esistenza. Il cacciatore conosce anche l'ubicazione del suo evocatore."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il cacciatore effettua due attacchi con schianto."
+    },
+    {
+      "name": "Schianto",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 10 (2d6 + 3) danni contundenti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "possible-duplicate",
+    "possibleDuplicateOf": "Persecutore Invisibile",
+    "page": 35
+  }
+}

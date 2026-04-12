@@ -1,0 +1,150 @@
+{
+  "slug": "mm5-slaad-della-morte",
+  "general": {
+    "name": "Slaad della Morte",
+    "challengeRating": {
+      "fraction": "10",
+      "decimal": 10,
+      "display": "10",
+      "xp": 5900
+    },
+    "size": "Media",
+    "creatureType": "aberrazione",
+    "subtype": "mutaforma",
+    "typeLabel": "aberrazione (mutaforma)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 170,
+      "formula": "20d8 + 80"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 20,
+    "dexterity": 15,
+    "constitution": 19,
+    "intelligence": 15,
+    "wisdom": 10,
+    "charisma": 16
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 6
+      },
+      {
+        "name": "Percezione",
+        "bonus": 8
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "acido",
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "tuono"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 18"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Slaad"
+      },
+      {
+        "name": "telepatia",
+        "value": "18 m"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "Lo slaad puo usare la sua azione per trasformarsi in un umanoide Piccolo o Medio, o per tornare alla sua forma naturale. Le sue statistiche, ad eccezione della taglia, restano le stesse in ogni forma. Ogni oggetto che indossa o trasporta non viene trasformato. Se muore, lo slaad torna alla sua forma naturale."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore dello slaad e Carisma (CD 15, +7 al tiro per colpire degli attacchi con incantesimo). Lo slaad puo lanciare i seguenti incantesimi innati, che non richiedono alcuna componente materiale: a volonta immagine maggiore, individuazione dei pensieri, individuazione del magico, invisibilita (solo se stesso), mano magica; 2/giorno ciascuno linguaggi, palla di fuoco, paura, volare; 1/giorno ciascuno nube mortale, spostamento planare."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Lo slaad dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Armi Magiche",
+      "usage": null,
+      "description": "Gli attacchi con arma dello slaad sono magici."
+    },
+    {
+      "name": "Rigenerazione",
+      "usage": null,
+      "description": "Lo slaad recupera 10 punti ferita all'inizio del suo turno se possiede almeno 1 punto ferita."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Lo slaad effettua tre attacchi: uno con il morso e due con gli artigli o lo spadone."
+    },
+    {
+      "name": "Morso",
+      "usage": "Solo Forma di Slaad",
+      "description": "Attacco con Arma da Mischia: +9 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 9 (1d8 + 5) danni perforanti piu 7 (2d6) danni necrotici."
+    },
+    {
+      "name": "Artigli",
+      "usage": "Solo Forma di Slaad",
+      "description": "Attacco con Arma da Mischia: +9 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 10 (1d10 + 5) danni taglienti piu 7 (2d6) danni necrotici."
+    },
+    {
+      "name": "Spadone",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +9 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 12 (2d6 + 5) danni taglienti piu 7 (2d6) danni necrotici."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 278
+  }
+}

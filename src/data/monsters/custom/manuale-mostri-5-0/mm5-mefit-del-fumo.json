@@ -1,0 +1,120 @@
+{
+  "slug": "mm5-mefit-del-fumo",
+  "general": {
+    "name": "Mefit del Fumo",
+    "challengeRating": {
+      "fraction": "1/4",
+      "decimal": 0.25,
+      "display": "1/4",
+      "xp": 50
+    },
+    "size": "Piccola",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 22,
+      "formula": "5d6 + 5"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 6,
+    "dexterity": 14,
+    "constitution": 12,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fuoco",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Auran"
+      },
+      {
+        "name": "Ignan"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Esplosione Mortale",
+      "usage": null,
+      "description": "Quando il mefit muore, lascia dietro di se una nube di fumo che riempie una sfera del raggio di 1,5 metri centrata sul suo spazio. La sfera e pesantemente oscurata. Il vento puo disperdere la sfera, che altrimenti permane per 1 minuto."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": "1/Giorno",
+      "description": "Il mefit puo lanciare luci danzanti come incantesimo innato, che non richiede alcuna componente materiale. La sua caratteristica innata da incantatore e Carisma."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 4 (1d4 + 2) danni taglienti."
+    },
+    {
+      "name": "Soffio di Cenere",
+      "usage": "Ricarica 6",
+      "description": "Il mefit esala ceneri incandescenti in un cono di 4,5 metri. Ogni creatura in quell'area deve superare un tiro salvezza su Destrezza con CD 10, altrimenti e accecata fino alla fine del turno successivo del mefit."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 216
+  }
+}

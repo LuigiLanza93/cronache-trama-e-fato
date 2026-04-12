@@ -1,0 +1,159 @@
+{
+  "slug": "mm5-drago-d-ombra",
+  "general": {
+    "name": "Drago d'Ombra",
+    "challengeRating": {
+      "fraction": "13",
+      "decimal": 13,
+      "display": "13",
+      "xp": 10000
+    },
+    "size": "Grande",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 178,
+      "formula": "17d10 + 85"
+    },
+    "speed": {
+      "walk": "12 m",
+      "climb": "12 m",
+      "fly": "24 m"
+    }
+  },
+  "abilities": {
+    "strength": 23,
+    "dexterity": 10,
+    "constitution": 21,
+    "intelligence": 14,
+    "wisdom": 11,
+    "charisma": 19
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 4
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 9
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 4
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 8
+      }
+    ],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 8
+      },
+      {
+        "name": "Percezione",
+        "bonus": 8
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "necrotico"
+    ],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 18"
+      },
+      {
+        "name": "scurovisione",
+        "value": "24 m"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Ombra Vivente",
+      "usage": null,
+      "description": "Finche si trova in condizioni di luce fioca o di oscurita, il drago possiede resistenza a tutti i danni, ad eccezione di quelli da forza, psichici o radiosi."
+    },
+    {
+      "name": "Furtivita d'Ombra",
+      "usage": null,
+      "description": "Finche si trova in condizioni di luce fioca o di oscurita, il drago puo effettuare l'azione di Nascondersi come azione bonus."
+    },
+    {
+      "name": "Sensibilita alla Luce del Sole",
+      "usage": null,
+      "description": "Finche e esposto alla luce del sole, il drago subisce svantaggio ai tiri per colpire, oltre che alle prove di Saggezza (Percezione) basate sulla vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il drago effettua tre attacchi: uno con il morso e due con gli artigli."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +10 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 17 (2d10 + 6) danni perforanti piu 3 (1d6) danni necrotici."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +10 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 13 (2d6 + 6) danni taglienti."
+    },
+    {
+      "name": "Soffio d'Ombra",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago esala una fiammata d'ombra in un cono di 9 metri. Ogni creatura in quell'area deve effettuare un tiro salvezza su Destrezza con CD 18; se lo fallisce, subisce 56 (16d6) danni necrotici, mentre se lo supera, subisce la meta di quei danni. Un umanoide ridotto a 0 punti ferita da questi danni muore e un'ombra non morta emerge dal suo cadavere, agendo immediatamente dopo il drago nel conteggio di iniziativa. L'ombra e sotto il controllo del drago."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [
+    "Il manuale presenta il drago d'ombra come archetipo. Questa scheda usa l'esempio concreto del Drago d'Ombra Rosso Giovane riportato nel manuale.",
+    "Modifiche generiche dell'archetipo: resistenza ai danni necrotici, competenza raddoppiata in Furtivita, Ombra Vivente, Furtivita d'Ombra, Sensibilita alla Luce del Sole, e sostituzione dei danni del morso e del soffio con danni necrotici."
+  ],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 85
+  }
+}

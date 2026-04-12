@@ -1,0 +1,125 @@
+{
+  "slug": "mm5-orrore-corazzato",
+  "general": {
+    "name": "Orrore Corazzato",
+    "challengeRating": {
+      "fraction": "4",
+      "decimal": 4,
+      "display": "4",
+      "xp": 1100
+    },
+    "size": "Media",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 20,
+      "note": "armatura completa, scudo"
+    },
+    "hitPoints": {
+      "average": 60,
+      "formula": "8d8 + 24"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 13,
+    "constitution": 16,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente da attacchi non magici con armi non di adamantio",
+      "perforante da attacchi non magici con armi non di adamantio",
+      "tagliente da attacchi non magici con armi non di adamantio"
+    ],
+    "damageImmunities": [
+      "forza",
+      "necrotico",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "accecato",
+      "affascinato",
+      "assordato",
+      "avvelenato",
+      "paralizzato",
+      "pietrificato",
+      "spaventato",
+      "stordito"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 14"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m (cieco oltre questo raggio)"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce i linguaggi del suo creatore ma non puo parlarli"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "L'orrore corazzato dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Immunita agli Incantesimi",
+      "usage": null,
+      "description": "L'orrore corazzato e immune a tre incantesimi scelti dal suo creatore. Le immunita tipiche includono fulmine, palla di fuoco e riscaldare il metallo."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "L'orrore corazzato effettua due attacchi con la spada lunga."
+    },
+    {
+      "name": "Spada Lunga",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 8 (1d8 + 4) danni taglienti o 9 (1d10 + 4) danni taglienti se usata a due mani."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 248
+  }
+}

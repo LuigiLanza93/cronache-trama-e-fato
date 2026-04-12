@@ -1,0 +1,102 @@
+{
+  "slug": "mm5-arbusto-maligno",
+  "general": {
+    "name": "Arbusto Maligno",
+    "challengeRating": {
+      "fraction": "1/8",
+      "decimal": 0.125,
+      "display": "1/8",
+      "xp": 25
+    },
+    "size": "Piccola",
+    "creatureType": "vegetale",
+    "subtype": "",
+    "typeLabel": "vegetale",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 4,
+      "formula": "1d6 + 1"
+    },
+    "speed": {
+      "walk": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 6,
+    "dexterity": 13,
+    "constitution": 12,
+    "intelligence": 4,
+    "wisdom": 8,
+    "charisma": 3
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [
+      "fuoco"
+    ],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "accecato",
+      "assordato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 9"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m (cieco oltre questo raggio)"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce il Comune ma non lo parla"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Finché l'arbusto maligno rimane immobile, non è distinguibile da un normale cespuglio secco."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 3 (1d4 + 1) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 202
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "slug": "mm5-sciacallo-mannaro",
+  "general": {
+    "name": "Sciacallo Mannaro",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "mutaforma",
+    "typeLabel": "umanoide (mutaforma)",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 18,
+      "formula": "4d8"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 15,
+    "constitution": 11,
+    "intelligence": 13,
+    "wisdom": 11,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 4
+      },
+      {
+        "name": "Inganno",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "contundente, perforante e tagliente da attacchi non magici con armi non argentate"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune (non puo parlare in forma di sciacallo)"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "Lo sciacallo mannaro puo usare la sua azione per trasformarsi in un umano Medio specifico o in un ibrido umanoide-sciacallo, o per tornare alla sua forma naturale, che e quella di uno sciacallo Piccolo. Le sue statistiche, ad eccezione della taglia, restano le stesse in ogni forma. Ogni oggetto che indossa o trasporta non viene trasformato. Se muore, lo sciacallo mannaro torna alla sua forma naturale."
+    },
+    {
+      "name": "Olfatto e Udito Acuti",
+      "usage": null,
+      "description": "Lo sciacallo mannaro dispone di vantaggio alle prove di Saggezza (Percezione) basate sull'olfatto o sull'udito."
+    },
+    {
+      "name": "Tattiche del Branco",
+      "usage": null,
+      "description": "Lo sciacallo mannaro dispone di vantaggio a un tiro per colpire contro una creatura se almeno uno degli alleati dello sciacallo mannaro si trova entro 1,5 metri dalla creatura e non e incapacitato."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": "Solo Forma di Sciacallo o Ibrida",
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 4 (1d4 + 2) danni perforanti."
+    },
+    {
+      "name": "Scimitarra",
+      "usage": "Solo Forma Umana o Ibrida",
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 5 (1d6 + 2) danni taglienti."
+    },
+    {
+      "name": "Sguardo Soporifero",
+      "usage": null,
+      "description": "Lo sciacallo mannaro guarda una creatura situata entro 9 metri da lui e che esso sia in grado di vedere. Il bersaglio deve effettuare un tiro salvezza su Saggezza con CD 10; se lo fallisce, si addormenta magicamente e cade privo di sensi per 10 minuti o finche qualcuno non usa un'azione per svegliarlo scuotendolo. Se una creatura supera il tiro salvezza, e immune allo sguardo di questo sciacallo mannaro per le 24 ore successive. I non morti e le creature immuni alla condizione di affascinato non sono influenzate."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 269
+  }
+}

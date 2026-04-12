@@ -1,0 +1,117 @@
+{
+  "slug": "mm5-spaventapasseri",
+  "general": {
+    "name": "Spaventapasseri",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Media",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 11,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 36,
+      "formula": "8d8"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 13,
+    "constitution": 11,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 13
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [
+      "fuoco"
+    ],
+    "damageResistances": [
+      "contundente da attacchi non magici",
+      "perforante da attacchi non magici",
+      "tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "indebolimento",
+      "paralizzato",
+      "privo di sensi",
+      "spaventato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce i linguaggi del suo creatore ma non puo parlarli"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Falso Aspetto",
+      "usage": null,
+      "description": "Finche lo spaventapasseri rimane immobile, non e distinguibile da un normale spaventapasseri inanimato."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Lo spaventapasseri effettua due attacchi con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 6 (2d4 + 1) danni taglienti. Se il bersaglio e una creatura, deve superare un tiro salvezza su Saggezza con CD 11, altrimenti e spaventato fino alla fine del turno successivo dello spaventapasseri."
+    },
+    {
+      "name": "Sguardo Terrificante",
+      "usage": null,
+      "description": "Lo spaventapasseri bersaglia una creatura situata entro 9 metri da lui e che esso sia in grado di vedere. Se il bersaglio e in grado di vedere lo spaventapasseri, deve superare un tiro salvezza su Saggezza con CD 11, altrimenti e magicamente spaventato fino alla fine del turno successivo dello spaventapasseri. Il bersaglio spaventato e paralizzato."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 279
+  }
+}

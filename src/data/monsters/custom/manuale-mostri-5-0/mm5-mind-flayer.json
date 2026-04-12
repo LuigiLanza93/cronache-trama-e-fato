@@ -1,0 +1,152 @@
+{
+  "slug": "mm5-mind-flayer",
+  "general": {
+    "name": "Mind Flayer",
+    "challengeRating": {
+      "fraction": "7",
+      "decimal": 7,
+      "display": "7",
+      "xp": 2900
+    },
+    "size": "Media",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "corazza di piastre"
+    },
+    "hitPoints": {
+      "average": 71,
+      "formula": "13d8 + 13"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 11,
+    "dexterity": 12,
+    "constitution": 12,
+    "intelligence": 19,
+    "wisdom": 17,
+    "charisma": 17
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Intelligenza",
+        "bonus": 7
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 6
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 6
+      }
+    ],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 7
+      },
+      {
+        "name": "Furtivita",
+        "bonus": 4
+      },
+      {
+        "name": "Inganno",
+        "bonus": 6
+      },
+      {
+        "name": "Intuizione",
+        "bonus": 6
+      },
+      {
+        "name": "Percezione",
+        "bonus": 6
+      },
+      {
+        "name": "Persuasione",
+        "bonus": 6
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 16"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gergo delle Profondita"
+      },
+      {
+        "name": "Sottocomune"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 3
+  },
+  "traits": [
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il mind flayer dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": "Psionici",
+      "description": "La caratteristica innata da incantatore del mind flayer e Intelligenza (CD 15). Il mind flayer puo lanciare i seguenti incantesimi innati, che non richiedono alcuna componente: a volonta individuazione dei pensieri, levitazione; 1/giorno ciascuno dominare mostri, spostamento planare (solo se stesso)."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Tentacoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 15 (2d10 + 4) danni psichici. Se il bersaglio e di taglia Media o inferiore, e afferrato (CD 15 per sfuggire) e deve superare un tiro salvezza su Intelligenza con CD 15, altrimenti e stordito finche il mind flayer lo afferra."
+    },
+    {
+      "name": "Estrarre Cervello",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 1,5 m, un umanoide incapacitato e afferrato dal mind flayer. Colpito: 55 (10d10) danni perforanti. Se questo danno riduce il bersaglio a 0 punti ferita, il mind flayer uccide il bersaglio estraendone e divorandone il cervello."
+    },
+    {
+      "name": "Esplosione Mentale",
+      "usage": "Ricarica 5-6",
+      "description": "Il mind flayer emette energia psichica in un cono di 18 metri. Ogni creatura in quell'area deve effettuare un tiro salvezza su Intelligenza con CD 15; se lo fallisce, subisce 22 (4d8 + 4) danni psichici ed e stordita per 1 minuto. Una creatura puo ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, l'effetto termina."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 226
+  }
+}

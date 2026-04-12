@@ -1,0 +1,687 @@
+{
+  "generatedAt": "2026-04-12T13:32:40.494Z",
+  "sourceManual": "Manuale_dei_Mostri_5.0.pdf",
+  "placeholderNote": "Scheda placeholder generata dal censimento del Manuale dei Mostri. Statistiche e testo descrittivo da completare con trascrizione manuale.",
+  "count": 97,
+  "monsters": [
+    {
+      "name": "Aarakocra",
+      "slug": "mm5-aarakocra",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-aarakocra.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Artiglio Strisciante",
+      "slug": "mm5-artiglio-strisciante",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-artiglio-strisciante.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Banshee",
+      "slug": "mm5-banshee",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-banshee.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Beholder",
+      "slug": "mm5-beholder",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-beholder.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Bestia Distorcente",
+      "slug": "mm5-bestia-distorcente",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-bestia-distorcente.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Boleto Stridente",
+      "slug": "mm5-boleto-stridente",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-boleto-stridente.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Fungo Stridente"
+    },
+    {
+      "name": "Bullywug",
+      "slug": "mm5-bullywug",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-bullywug.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Cacciatore Invisibile",
+      "slug": "mm5-cacciatore-invisibile",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-cacciatore-invisibile.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Persecutore Invisibile"
+    },
+    {
+      "name": "Cambion",
+      "slug": "mm5-cambion",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-cambion.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Cavaliere della Morte",
+      "slug": "mm5-cavaliere-della-morte",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-cavaliere-della-morte.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Cavallo degli Incubi",
+      "slug": "mm5-cavallo-degli-incubi",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-cavallo-degli-incubi.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Destriero da Incubo"
+    },
+    {
+      "name": "Ciclope",
+      "slug": "mm5-ciclope",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-ciclope.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Cuspide Letale",
+      "slug": "mm5-cuspide-letale",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-cuspide-letale.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Demilich",
+      "slug": "mm5-demilich",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-demilich.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Deva",
+      "slug": "mm5-deva",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-deva.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Angelo Deva"
+    },
+    {
+      "name": "Diavolo Uncinato",
+      "slug": "mm5-diavolo-uncinato",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-diavolo-uncinato.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Divoracervelli",
+      "slug": "mm5-divoracervelli",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-divoracervelli.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Dracolich",
+      "slug": "mm5-dracolich",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-dracolich.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Drago d'Ombra",
+      "slug": "mm5-drago-d-ombra",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-drago-d-ombra.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Drago Fatato",
+      "slug": "mm5-drago-fatato",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-drago-fatato.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Empireo",
+      "slug": "mm5-empireo",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-empireo.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Fatale dell'Acqua",
+      "slug": "mm5-fatale-dell-acqua",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-fatale-dell-acqua.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Fauce Gorgogliante",
+      "slug": "mm5-fauce-gorgogliante",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-fauce-gorgogliante.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Fauci Gorgoglianti"
+    },
+    {
+      "name": "Flumph",
+      "slug": "mm5-flumph",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-flumph.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Fomorian",
+      "slug": "mm5-fomorian",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-fomorian.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Galeb Duhr",
+      "slug": "mm5-galeb-duhr",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-galeb-duhr.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Githyanki Cavaliere",
+      "slug": "mm5-githyanki-cavaliere",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-githyanki-cavaliere.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Githyanki Combattente",
+      "slug": "mm5-githyanki-combattente",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-githyanki-combattente.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Githzerai Monaco",
+      "slug": "mm5-githzerai-monaco",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-githzerai-monaco.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Githzerai Zerth",
+      "slug": "mm5-githzerai-zerth",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-githzerai-zerth.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Goristro",
+      "slug": "mm5-goristro",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-goristro.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Grell",
+      "slug": "mm5-grell",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-grell.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Kenku",
+      "slug": "mm5-kenku",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-kenku.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Magmin",
+      "slug": "mm5-magmin",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-magmin.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Uomo Magma (Magmin)"
+    },
+    {
+      "name": "Marid",
+      "slug": "mm5-marid",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-marid.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Marinide",
+      "slug": "mm5-marinide",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-marinide.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Uomo Acquatico"
+    },
+    {
+      "name": "Merrow",
+      "slug": "mm5-merrow",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-merrow.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Miconide Adulto",
+      "slug": "mm5-miconide-adulto",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-miconide-adulto.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Miconide Germoglio",
+      "slug": "mm5-miconide-germoglio",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-miconide-germoglio.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Miconide Sovrano",
+      "slug": "mm5-miconide-sovrano",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-miconide-sovrano.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Mind Flayer",
+      "slug": "mm5-mind-flayer",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-mind-flayer.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Monodrone",
+      "slug": "mm5-monodrone",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-monodrone.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Duodrone",
+      "slug": "mm5-duodrone",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-duodrone.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Tridrone",
+      "slug": "mm5-tridrone",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-tridrone.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Quadrone",
+      "slug": "mm5-quadrone",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-quadrone.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Pentadrone",
+      "slug": "mm5-pentadrone",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-pentadrone.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Mefit del Fango",
+      "slug": "mm5-mefit-del-fango",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-mefit-del-fango.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Mefit del Fumo",
+      "slug": "mm5-mefit-del-fumo",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-mefit-del-fumo.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Naga d'Ossa",
+      "slug": "mm5-naga-d-ossa",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-naga-d-ossa.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Naga Guardiana",
+      "slug": "mm5-naga-guardiana",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-naga-guardiana.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Naga Guardiano"
+    },
+    {
+      "name": "Nothic",
+      "slug": "mm5-nothic",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-nothic.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Orrore Corazzato",
+      "slug": "mm5-orrore-corazzato",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-orrore-corazzato.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Orrore Uncinato",
+      "slug": "mm5-orrore-uncinato",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-orrore-uncinato.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Peryton",
+      "slug": "mm5-peryton",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-peryton.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Pixie",
+      "slug": "mm5-pixie",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-pixie.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Planetar",
+      "slug": "mm5-planetar",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-planetar.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Angelo Planetar"
+    },
+    {
+      "name": "Quaggoth",
+      "slug": "mm5-quaggoth",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-quaggoth.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Revenant",
+      "slug": "mm5-revenant",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-revenant.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Roc",
+      "slug": "mm5-roc",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-roc.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Sciacallo Mannaro",
+      "slug": "mm5-sciacallo-mannaro",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-sciacallo-mannaro.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Slaad Blu",
+      "slug": "mm5-slaad-blu",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-slaad-blu.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Slaad della Morte",
+      "slug": "mm5-slaad-della-morte",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-slaad-della-morte.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Slaad Girino",
+      "slug": "mm5-slaad-girino",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-slaad-girino.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Slaad Grigio",
+      "slug": "mm5-slaad-grigio",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-slaad-grigio.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Slaad Rosso",
+      "slug": "mm5-slaad-rosso",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-slaad-rosso.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Slaad Verde",
+      "slug": "mm5-slaad-verde",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-slaad-verde.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Solar",
+      "slug": "mm5-solar",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-solar.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Angelo Solar"
+    },
+    {
+      "name": "Spaventapasseri",
+      "slug": "mm5-spaventapasseri",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-spaventapasseri.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Spettro",
+      "slug": "mm5-spettro",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-spettro.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Spora Gassosa",
+      "slug": "mm5-spora-gassosa",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-spora-gassosa.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Teschio Infuocato",
+      "slug": "mm5-teschio-infuocato",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-teschio-infuocato.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Thri-kreen",
+      "slug": "mm5-thri-kreen",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-thri-kreen.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Treant",
+      "slug": "mm5-treant",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-treant.json",
+      "category": "possible-duplicate",
+      "possibleDuplicateOf": "Uomo Albero (Treant)"
+    },
+    {
+      "name": "Troglodita",
+      "slug": "mm5-troglodita",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-troglodita.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Ultroloth",
+      "slug": "mm5-ultroloth",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-ultroloth.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Umber Hulk",
+      "slug": "mm5-umber-hulk",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-umber-hulk.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Vermeiena",
+      "slug": "mm5-vermeiena",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-vermeiena.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Yeti",
+      "slug": "mm5-yeti",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-yeti.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Yochlol",
+      "slug": "mm5-yochlol",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-yochlol.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Yuan-ti Abominio",
+      "slug": "mm5-yuan-ti-abominio",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-yuan-ti-abominio.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Yuan-ti Nefasto",
+      "slug": "mm5-yuan-ti-nefasto",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-yuan-ti-nefasto.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Ago Maligno",
+      "slug": "mm5-ago-maligno",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-ago-maligno.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Allosauro",
+      "slug": "mm5-allosauro",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-allosauro.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Anchilosauro",
+      "slug": "mm5-anchilosauro",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-anchilosauro.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Arbusto Maligno",
+      "slug": "mm5-arbusto-maligno",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-arbusto-maligno.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Arcanaloth",
+      "slug": "mm5-arcanaloth",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-arcanaloth.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Barlgura",
+      "slug": "mm5-barlgura",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-barlgura.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Chasme",
+      "slug": "mm5-chasme",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-chasme.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Dao",
+      "slug": "mm5-dao",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-dao.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Demone d'Ombra",
+      "slug": "mm5-demone-d-ombra",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-demone-d-ombra.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Elementale dell'Aria",
+      "slug": "mm5-elementale-dell-aria",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-elementale-dell-aria.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Elementale dell'Acqua",
+      "slug": "mm5-elementale-dell-acqua",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-elementale-dell-acqua.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Mane",
+      "slug": "mm5-mane",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-mane.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Mezzoloth",
+      "slug": "mm5-mezzoloth",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-mezzoloth.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Nycaloth",
+      "slug": "mm5-nycaloth",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-nycaloth.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Pteranodonte",
+      "slug": "mm5-pteranodonte",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-pteranodonte.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    },
+    {
+      "name": "Rampicante Maligno",
+      "slug": "mm5-rampicante-maligno",
+      "sourceFile": "custom/manuale-mostri-5-0/mm5-rampicante-maligno.json",
+      "category": "manual-only",
+      "possibleDuplicateOf": null
+    }
+  ]
+}

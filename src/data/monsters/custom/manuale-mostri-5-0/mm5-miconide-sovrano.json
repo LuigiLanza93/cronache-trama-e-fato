@@ -1,0 +1,118 @@
+{
+  "slug": "mm5-miconide-sovrano",
+  "general": {
+    "name": "Miconide Sovrano",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "vegetale",
+    "subtype": "",
+    "typeLabel": "vegetale",
+    "alignment": "legale neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 60,
+      "formula": "8d10 + 16"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 12,
+    "dexterity": 10,
+    "constitution": 14,
+    "intelligence": 13,
+    "wisdom": 15,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Spore Segnalatrici",
+      "usage": null,
+      "description": "Quando il miconide subisce danni, tutti gli altri miconidi nel raggio di 72 metri percepiscono il suo dolore."
+    },
+    {
+      "name": "Eliofobia",
+      "usage": null,
+      "description": "Quando è esposto alla luce del sole, il miconide subisce svantaggio alle prove di caratteristica, ai tiri per colpire e ai tiri salvezza. Se il miconide resta esposto alla luce del sole diretta per più di 1 ora, muore."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il miconide usa le Spore Allucinogene o le Spore Pacificatrici, poi effettua un attacco con il pugno."
+    },
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 8 (3d4 + 1) danni contundenti più 7 (3d4) danni da veleno."
+    },
+    {
+      "name": "Spore Animanti",
+      "usage": "3/Giorno",
+      "description": "Il miconide bersaglia un cadavere di un umanoide o di una bestia di taglia Grande o inferiore entro 1,5 metri da sé ed emana le sue spore sul cadavere. Nel giro di 24 ore, il cadavere si anima come servitore delle spore. Il cadavere resta animato per 1d4 + 1 settimane o finché distrutto e non può essere animato di nuovo in questo modo."
+    },
+    {
+      "name": "Spore Allucinogene",
+      "usage": null,
+      "description": "Il miconide emana spore su una creatura situata entro 1,5 metri da lui e che esso sia in grado di vedere. Il bersaglio deve superare un tiro salvezza su Costituzione con CD 12, altrimenti è avvelenato per 1 minuto. Il bersaglio avvelenato è incapacitato finché è soggetto alle allucinazioni. Il bersaglio può ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, l'effetto per lui termina."
+    },
+    {
+      "name": "Spore Pacificatrici",
+      "usage": null,
+      "description": "Il miconide emana spore su una creatura situata entro 1,5 metri da lui e che esso sia in grado di vedere. Il bersaglio deve superare un tiro salvezza su Costituzione con CD 12, altrimenti è stordito per 1 minuto. Il bersaglio può ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, l'effetto per lui termina."
+    },
+    {
+      "name": "Spore Comunicanti",
+      "usage": null,
+      "description": "Il miconide emana spore nel raggio di 9 metri. Queste spore si diffondono oltre gli angoli e influenzano soltanto le creature di Intelligenza pari o superiore a 2 che non siano non morti, costrutti o elementali. Le creature influenzate possono comunicare telepaticamente tra loro finché si trovano entro 9 metri l'una dall'altra. L'effetto dura 1 ora."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 223
+  }
+}

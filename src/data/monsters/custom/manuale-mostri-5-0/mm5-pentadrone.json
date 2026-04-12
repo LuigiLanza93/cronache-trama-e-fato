@@ -1,0 +1,112 @@
+{
+  "slug": "mm5-pentadrone",
+  "general": {
+    "name": "Pentadrone",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Grande",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "legale neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 32,
+      "formula": "5d10 + 5"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 14,
+    "constitution": 12,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 13
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 14"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Modron"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Mente Assiomatica",
+      "usage": null,
+      "description": "Il pentadrone non puo essere obbligato ad agire in modo contrario alla sua natura o alle sue istruzioni."
+    },
+    {
+      "name": "Disintegrazione",
+      "usage": null,
+      "description": "Se il pentadrone muore, il suo corpo si disintegra in polvere: restano solo le armi e tutto cio che trasportava."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il pentadrone effettua cinque attacchi con il braccio."
+    },
+    {
+      "name": "Braccio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 5 (1d6 + 2) danni contundenti."
+    },
+    {
+      "name": "Gas Paralizzante",
+      "usage": "Ricarica 5-6",
+      "description": "Il pentadrone esala gas in un cono di 9 metri. Ogni creatura in quell'area deve superare un tiro salvezza su Costituzione con CD 11, altrimenti e paralizzata per 1 minuto. Una creatura puo ripetere il tiro salvezza alla fine di ogni suo turno e, se lo supera, l'effetto per lei termina."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 230
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "slug": "mm5-yuan-ti-nefasto",
+  "general": {
+    "name": "Yuan-ti Nefasto",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Media",
+    "creatureType": "mostruosita",
+    "subtype": "mutaforma, yuan-ti",
+    "typeLabel": "mostruosita (mutaforma, yuan-ti)",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 66,
+      "formula": "12d8 + 12"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 14,
+    "constitution": 13,
+    "intelligence": 14,
+    "wisdom": 12,
+    "charisma": 16
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 4
+      },
+      {
+        "name": "Inganno",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Abissale"
+      },
+      {
+        "name": "Comune"
+      },
+      {
+        "name": "Draconico"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Mutaforma",
+      "usage": null,
+      "description": "Lo yuan-ti puo usare la sua azione per trasformarsi in un serpente Medio o per tornare alla sua forma naturale. Le statistiche restano le stesse in ogni forma. Ogni oggetto che indossa o trasporta non viene trasformato. Se muore, non cambia forma."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": "Solo Forma di Yuan-ti",
+      "description": "La caratteristica innata da incantatore dello yuan-ti e Carisma (CD 13). A volonta: amicizia con gli animali (solo serpenti). 3/giorno: suggestione."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Lo yuan-ti dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Tipo di Nefasto",
+      "usage": null,
+      "description": "Lo yuan-ti appartiene a uno dei tipi seguenti: tipo 1 corpo umano e testa di serpente; tipo 2 testa e corpo umani e serpenti al posto delle braccia; tipo 3 testa e torace umani con parte inferiore da serpente al posto delle gambe."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Azioni del Tipo 1",
+      "usage": null,
+      "description": "Multiattacco (solo forma di yuan-ti): lo yuan-ti effettua due attacchi a distanza o due attacchi in mischia, ma puo usare il morso solo una volta. Morso: +5 al tiro per colpire, portata 1,5 m, una creatura; colpito 5 (1d4 + 3) danni perforanti piu 7 (2d6) danni da veleno. Scimitarra: +5 al tiro per colpire, portata 1,5 m, un bersaglio; colpito 6 (1d6 + 3) danni taglienti. Arco lungo: +4 al tiro per colpire, gittata 45/180 m, un bersaglio; colpito 6 (1d8 + 2) danni perforanti piu 7 (2d6) danni da veleno."
+    },
+    {
+      "name": "Azioni del Tipo 2",
+      "usage": null,
+      "description": "Multiattacco (solo forma di yuan-ti): lo yuan-ti effettua due attacchi con il morso usando le braccia che sono serpenti. Morso: +5 al tiro per colpire, portata 1,5 m, una creatura; colpito 5 (1d4 + 3) danni perforanti piu 7 (2d6) danni da veleno."
+    },
+    {
+      "name": "Azioni del Tipo 3",
+      "usage": null,
+      "description": "Multiattacco (solo forma di yuan-ti): lo yuan-ti effettua due attacchi a distanza o due attacchi in mischia, ma puo stritolare solo una volta. Morso: +5 al tiro per colpire, portata 1,5 m, una creatura; colpito 5 (1d4 + 3) danni perforanti piu 7 (2d6) danni da veleno. Stritolare: +5 al tiro per colpire, portata 1,5 m, un bersaglio; colpito 10 (2d6 + 3) danni contundenti e il bersaglio e afferrato (CD 13 per sfuggire). Scimitarra: +5 al tiro per colpire, portata 1,5 m, un bersaglio; colpito 6 (1d6 + 3) danni taglienti. Arco lungo: +4 al tiro per colpire, gittata 45/180 m, un bersaglio; colpito 6 (1d8 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 309
+  }
+}

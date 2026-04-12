@@ -1,0 +1,120 @@
+{
+  "slug": "mm5-thri-kreen",
+  "general": {
+    "name": "Thri-kreen",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "thri-kreen",
+    "typeLabel": "umanoide (thri-kreen)",
+    "alignment": "caotico neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 33,
+      "formula": "6d8 + 6"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 12,
+    "dexterity": 15,
+    "constitution": 13,
+    "intelligence": 8,
+    "wisdom": 12,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtivita",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 3
+      },
+      {
+        "name": "Sopravvivenza",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Thri-kreen"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Carapace Mimetico",
+      "usage": null,
+      "description": "Il thri-kreen puo cambiare il colore del carapace per adattarlo ai colori e al tipo di superficie dell'ambiente circostante. Di conseguenza, dispone di vantaggio alle prove di Destrezza (Furtivita) effettuate per nascondersi."
+    },
+    {
+      "name": "Balzo da Fermo",
+      "usage": null,
+      "description": "Il thri-kreen puo compiere un salto in lungo di un massimo di 9 metri e un salto in alto di un massimo di 4,5 metri, con o senza rincorsa."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il thri-kreen effettua due attacchi: uno con il morso e uno con gli artigli."
+    },
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 4 (1d6 + 1) danni perforanti e il bersaglio deve superare un tiro salvezza su Costituzione con CD 11, altrimenti e avvelenato per 1 minuto. Se fallisce il tiro salvezza di 5 o piu, il bersaglio e anche paralizzato finche e avvelenato in questo modo. Il bersaglio avvelenato puo ripetere il tiro salvezza a ogni suo turno e, se lo supera, l'effetto per lui termina."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 6 (2d4 + 1) danni taglienti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 287
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "slug": "mm5-divoracervelli",
+  "general": {
+    "name": "Divoracervelli",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Minuscola",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 21,
+      "formula": "6d4 + 6"
+    },
+    "speed": {
+      "walk": "12 m"
+    }
+  },
+  "abilities": {
+    "strength": 6,
+    "dexterity": 14,
+    "constitution": 13,
+    "intelligence": 12,
+    "wisdom": 11,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Furtività",
+        "bonus": 4
+      },
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente, perforante e tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "accecato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      },
+      {
+        "name": "vista cieca",
+        "value": "18 m (cieco oltre questo raggio)"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce il Gergo delle Profondità ma non lo parla"
+      },
+      {
+        "name": "telepatia 18 m"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Individuazione dei Senzienti",
+      "usage": null,
+      "description": "Il divoracervelli può percepire la presenza e l'ubicazione di ogni creatura situata entro 90 metri da lui che sia dotata di Intelligenza pari o superiore a 3, a prescindere dalle barriere frapposte, a meno che la creatura non sia protetta da un incantesimo vuoto mentale."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il divoracervelli effettua un attacco con gli artigli e usa Divorare il Cervello."
+    },
+    {
+      "name": "Divorare il Cervello",
+      "usage": null,
+      "description": "Il divoracervelli bersaglia una creatura dotata di cervello, situata entro 3 metri da lui e che esso sia in grado di vedere. Il bersaglio deve superare un tiro salvezza su Intelligenza con CD 12 contro questa magia, altrimenti subisce 11 (2d10) danni psichici. Inoltre, in caso di fallimento, si tirano 3d6: se il totale è pari o superiore al punteggio di Intelligenza del bersaglio, quel punteggio è ridotto a 0. Il bersaglio è stordito finché non recupera almeno un punto di Intelligenza."
+    },
+    {
+      "name": "Ladro di Corpi",
+      "usage": null,
+      "description": "Il divoracervelli avvia una contesa di Intelligenza con un umanoide incapacitato situato entro 1,5 metri da lui e che non sia protetto da protezione dal bene e dal male. Se vince la contesa, il divoracervelli divora magicamente il cervello del bersaglio, si teletrasporta nel cranio e assume il controllo del corpo. Finché si trova in quella posizione, il divoracervelli beneficia di copertura totale contro gli attacchi e gli altri effetti che hanno origine al di fuori del corpo ospite. Il divoracervelli conserva i punteggi di Intelligenza, Saggezza e Carisma, nonché la comprensione del Gergo delle Profondità, la telepatia e i tratti. Sotto ogni altro aspetto adotta le statistiche del bersaglio. Sa tutto ciò che sapeva la creatura, inclusi gli incantesimi e i linguaggi. Se il corpo ospite muore, il divoracervelli deve abbandonarlo. Un incantesimo protezione dal bene e dal male lanciato sul corpo ospite costringe il divoracervelli ad abbandonare il bersaglio. Il divoracervelli è costretto ad andarsene anche se il bersaglio recupera il proprio cervello divorato attraverso un desiderio. Spendendo 1,5 metri del suo movimento, il divoracervelli può volontariamente uscire dal corpo ospite, teletrasportandosi nello spazio libero più vicino entro 1,5 metri da esso. Poi il corpo ospite muore, a meno che il suo cervello non sia ripristinato nel giro di 1 round."
+    },
+    {
+      "name": "Artigli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 7 (2d4 + 2) danni taglienti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 81
+  }
+}

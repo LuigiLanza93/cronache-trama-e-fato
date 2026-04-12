@@ -1,0 +1,98 @@
+{
+  "slug": "mm5-miconide-germoglio",
+  "general": {
+    "name": "Miconide Germoglio",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 10
+    },
+    "size": "Piccola",
+    "creatureType": "vegetale",
+    "subtype": "",
+    "typeLabel": "vegetale",
+    "alignment": "legale neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 7,
+      "formula": "2d6"
+    },
+    "speed": {
+      "walk": "3 m"
+    }
+  },
+  "abilities": {
+    "strength": 8,
+    "dexterity": 10,
+    "constitution": 10,
+    "intelligence": 8,
+    "wisdom": 11,
+    "charisma": 5
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Spore Segnalatrici",
+      "usage": null,
+      "description": "Quando il miconide subisce danni, tutti gli altri miconidi nel raggio di 72 metri percepiscono il suo dolore."
+    },
+    {
+      "name": "Eliofobia",
+      "usage": null,
+      "description": "Quando e esposto alla luce del sole, il miconide subisce svantaggio alle prove di caratteristica, ai tiri per colpire e ai tiri salvezza. Se il miconide resta esposto alla luce del sole diretta per piu di 1 ora, muore."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +1 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 1 (1d4 - 1) danni contundenti piu 2 (1d4) danni da veleno."
+    },
+    {
+      "name": "Spore Comunicanti",
+      "usage": "3/Giorno",
+      "description": "Il miconide emana spore nel raggio di 3 metri. Queste spore si diffondono oltre gli angoli e influenzano soltanto le creature di Intelligenza pari o superiore a 2 che non siano non morti, costrutti o elementali. Le creature influenzate possono comunicare telepaticamente tra loro finche si trovano entro 9 metri l'una dall'altra. L'effetto dura 1 ora."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 221
+  }
+}

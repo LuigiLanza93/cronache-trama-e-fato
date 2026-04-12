@@ -1,0 +1,134 @@
+{
+  "slug": "mm5-dao",
+  "general": {
+    "name": "Dao",
+    "challengeRating": {
+      "fraction": "11",
+      "decimal": 11,
+      "display": "11",
+      "xp": 7200
+    },
+    "size": "Grande",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 187,
+      "formula": "15d10 + 105"
+    },
+    "speed": {
+      "walk": "9 m",
+      "burrow": "9 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 23,
+    "dexterity": 12,
+    "constitution": 24,
+    "intelligence": 12,
+    "wisdom": 13,
+    "charisma": 14
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Intelligenza",
+        "bonus": 5
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 5
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 6
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "pietrificato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Terran"
+      }
+    ],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Scivolare nella Terra",
+      "usage": null,
+      "description": "Il dao può scavare attraverso la terra e la pietra non magiche e non lavorate. Quando lo fa, il dao non disturba il materiale attraverso cui si muove."
+    },
+    {
+      "name": "Dipartita Elementale",
+      "usage": null,
+      "description": "Se il dao muore, il suo corpo si disintegra in una nube di polvere cristallina, lasciando dietro di sé solo gli oggetti che il dao indossava o trasportava."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore del dao è Carisma (tiro salvezza degli incantesimi CD 14, +6 al tiro per colpire degli attacchi con incantesimo). Il dao può lanciare i seguenti incantesimi innati, che non richiedono alcuna componente materiale: a volontà: individuazione del bene e del male, individuazione del magico, scolpire pietra; 3/giorno ciascuno: linguaggi, muovere il terreno, passapareti; 1/giorno ciascuno: allucinazione mortale, evoca elementale (solo elementale della terra), forma gassosa, invisibilità, muro di pietra, spostamento planare."
+    },
+    {
+      "name": "Ben Piantato",
+      "usage": null,
+      "description": "Il dao dispone di vantaggio ai tiri salvezza su Forza e Destrezza effettuati contro quegli effetti che lo butterebbero a terra prono."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il dao effettua due attacchi con il pugno o due attacchi con il maglio."
+    },
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +10 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 15 (2d8 + 6) danni contundenti."
+    },
+    {
+      "name": "Maglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +10 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 20 (4d6 + 6) danni contundenti. Se il bersaglio è una creatura di taglia Enorme o inferiore, deve superare una prova di Forza con CD 18, altrimenti cade a terra prono."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 146
+  }
+}

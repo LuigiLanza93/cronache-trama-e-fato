@@ -1,0 +1,117 @@
+{
+  "slug": "mm5-roc",
+  "general": {
+    "name": "Roc",
+    "challengeRating": {
+      "fraction": "11",
+      "decimal": 11,
+      "display": "11",
+      "xp": 7200
+    },
+    "size": "Mastodontica",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "senza allineamento",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 248,
+      "formula": "16d20 + 80"
+    },
+    "speed": {
+      "walk": "6 m",
+      "fly": "36 m"
+    }
+  },
+  "abilities": {
+    "strength": 28,
+    "dexterity": 10,
+    "constitution": 20,
+    "intelligence": 3,
+    "wisdom": 10,
+    "charisma": 9
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 4
+      },
+      {
+        "ability": "Costituzione",
+        "bonus": 9
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 4
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 3
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 4
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 14"
+      }
+    ],
+    "languages": [],
+    "proficiencyBonus": 4
+  },
+  "traits": [
+    {
+      "name": "Vista Acuta",
+      "usage": null,
+      "description": "Il roc dispone di vantaggio alle prove di Saggezza (Percezione) basate sulla vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il roc effettua due attacchi: uno con il becco e uno con gli speroni."
+    },
+    {
+      "name": "Becco",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +13 al tiro per colpire, portata 3 m, un bersaglio. Colpito: 27 (4d8 + 9) danni perforanti."
+    },
+    {
+      "name": "Speroni",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +13 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 23 (4d6 + 9) danni taglienti e il bersaglio è afferrato (CD 19 per sfuggire). Finché il roc afferra il bersaglio, quest'ultimo è trattenuto e il roc non può usare gli speroni contro un altro bersaglio."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 260
+  }
+}

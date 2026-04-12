@@ -1,0 +1,107 @@
+{
+  "slug": "mm5-quaggoth",
+  "general": {
+    "name": "Quaggoth",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "quaggoth",
+    "typeLabel": "umanoide (quaggoth)",
+    "alignment": "caotico neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 45,
+      "formula": "6d8 + 18"
+    },
+    "speed": {
+      "walk": "9 m",
+      "climb": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 17,
+    "dexterity": 12,
+    "constitution": 16,
+    "intelligence": 6,
+    "wisdom": 12,
+    "charisma": 7
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Atletica",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Sottocomune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Furia del Ferimento",
+      "usage": null,
+      "description": "Finche il quaggoth ha 10 punti ferita o meno, dispone di vantaggio ai tiri per colpire. Inoltre, infligge 7 (2d6) danni extra a qualsiasi bersaglio che colpisca con un attacco in mischia."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il quaggoth effettua due attacchi con gli artigli."
+    },
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 6 (1d6 + 3) danni taglienti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 256
+  }
+}

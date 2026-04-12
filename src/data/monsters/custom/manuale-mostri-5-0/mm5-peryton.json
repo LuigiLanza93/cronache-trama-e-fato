@@ -1,0 +1,116 @@
+{
+  "slug": "mm5-peryton",
+  "general": {
+    "name": "Peryton",
+    "challengeRating": {
+      "fraction": "2",
+      "decimal": 2,
+      "display": "2",
+      "xp": 450
+    },
+    "size": "Media",
+    "creatureType": "mostruosità",
+    "subtype": "",
+    "typeLabel": "mostruosità",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 33,
+      "formula": "6d8 + 6"
+    },
+    "speed": {
+      "walk": "6 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 16,
+    "dexterity": 12,
+    "constitution": 13,
+    "intelligence": 9,
+    "wisdom": 12,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente, perforante e tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 15"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce il Comune e l'Elfico ma non può parlarli"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Attacco in Picchiata",
+      "usage": null,
+      "description": "Se il peryton è in volo, si tuffa per almeno 9 metri in linea retta verso un bersaglio e lo colpisce con un attacco con arma da mischia, quell'attacco infligge 9 (2d8) danni extra al bersaglio."
+    },
+    {
+      "name": "Volo Sfuggente",
+      "usage": null,
+      "description": "Il peryton non provoca un attacco di opportunità quando esce volando dalla portata di un nemico."
+    },
+    {
+      "name": "Vista e Olfatto Acuti",
+      "usage": null,
+      "description": "Il peryton dispone di vantaggio alle prove di Saggezza (Percezione) basate sulla vista o sull'olfatto."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il peryton effettua un attacco da incornata e uno con gli speroni."
+    },
+    {
+      "name": "Incornata",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 7 (1d8 + 3) danni perforanti."
+    },
+    {
+      "name": "Speroni",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 8 (2d4 + 3) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 253
+  }
+}

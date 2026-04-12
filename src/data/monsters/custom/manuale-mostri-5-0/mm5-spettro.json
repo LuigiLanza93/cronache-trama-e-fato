@@ -1,0 +1,120 @@
+{
+  "slug": "mm5-spettro",
+  "general": {
+    "name": "Spettro",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Media",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "caotico malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 22,
+      "formula": "5d8"
+    },
+    "speed": {
+      "walk": "0 m",
+      "fly": "15 m (fluttuare)"
+    }
+  },
+  "abilities": {
+    "strength": 1,
+    "dexterity": 14,
+    "constitution": 11,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "acido",
+      "freddo",
+      "fulmine",
+      "fuoco",
+      "tuono",
+      "contundente da attacchi non magici",
+      "perforante da attacchi non magici",
+      "tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "necrotico",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "afferrato",
+      "avvelenato",
+      "indebolimento",
+      "paralizzato",
+      "pietrificato",
+      "privo di sensi",
+      "prono",
+      "trattenuto"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce tutti i linguaggi che conosceva in vita ma non puo parlarli"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Movimento Incorporeo",
+      "usage": null,
+      "description": "Lo spettro puo muoversi attraverso altre creature e oggetti come se fossero terreno difficile. Subisce 5 (1d10) danni da forza se termina il suo turno all'interno di un oggetto."
+    },
+    {
+      "name": "Sensibilita alla Luce del Sole",
+      "usage": null,
+      "description": "Finche e esposto alla luce del sole, lo spettro subisce svantaggio ai tiri per colpire, oltre che alle prove di Saggezza (Percezione) basate sulla vista."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Risucchio di Vita",
+      "usage": null,
+      "description": "Attacco con Incantesimo in Mischia: +4 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 10 (3d6) danni necrotici. Il bersaglio deve superare un tiro salvezza su Costituzione con CD 10, altrimenti il suo massimo dei punti ferita e ridotto di un ammontare pari ai danni subiti. Questa riduzione permane finche la creatura non completa un riposo lungo. Se questo effetto riduce il suo massimo dei punti ferita a 0, il bersaglio muore."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 280
+  }
+}

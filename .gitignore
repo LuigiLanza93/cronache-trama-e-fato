@@ -35,3 +35,8 @@ tools/dev-control-panel.mjs
 
 # Dev dashboard runtime state
 local-tools/.dev-dashboard/
+
+# Local reference manuals copied into docs
+docs/Manuale_dei_Mostri_5.0.pdf
+docs/Manuale_del_DM_5.0.pdf
+docs/Manuale_del_Giocatore_5.0.pdf

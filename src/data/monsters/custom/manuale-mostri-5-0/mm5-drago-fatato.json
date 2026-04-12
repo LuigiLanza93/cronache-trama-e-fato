@@ -1,0 +1,131 @@
+{
+  "slug": "mm5-drago-fatato",
+  "general": {
+    "name": "Drago Fatato",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Minuscola",
+    "creatureType": "drago",
+    "subtype": "",
+    "typeLabel": "drago",
+    "alignment": "caotico buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 14,
+      "formula": "4d4 + 4"
+    },
+    "speed": {
+      "walk": "3 m",
+      "fly": "18 m"
+    }
+  },
+  "abilities": {
+    "strength": 3,
+    "dexterity": 20,
+    "constitution": 13,
+    "intelligence": 14,
+    "wisdom": 12,
+    "charisma": 16
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Arcano",
+        "bonus": 4
+      },
+      {
+        "name": "Furtivita",
+        "bonus": 7
+      },
+      {
+        "name": "Percezione",
+        "bonus": 3
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 13"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Draconico"
+      },
+      {
+        "name": "Silvano"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Invisibilita Superiore",
+      "usage": null,
+      "description": "Come azione bonus, il drago puo diventare invisibile magicamente finche la sua concentrazione non termina. Ogni oggetto che il drago indossa o trasporta diventa invisibile assieme a lui."
+    },
+    {
+      "name": "Telepatia Limitata",
+      "usage": null,
+      "description": "Usando la telepatia, il drago puo comunicare magicamente con qualsiasi altro drago fatato nel raggio di 18 metri."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il drago dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica innata da incantatore del drago e Carisma (CD 13). Man mano che il drago cresce e cambia colore ottiene nuovi incantesimi. Base: rosso 1/giorno ciascuno illusione minore, luci danzanti, mano magica; arancione 1/giorno spruzzo colorato; giallo 1/giorno immagine speculare; verde 1/giorno suggestione; blu 1/giorno immagine maggiore; indaco 1/giorno terreno illusorio; viola 1/giorno metamorfosi."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +7 al tiro per colpire, portata 1,5 m, una creatura. Colpito: 1 danno perforante."
+    },
+    {
+      "name": "Soffio di Euforia",
+      "usage": "Ricarica 5-6",
+      "description": "Il drago esala uno sbuffo di gas euforico su una creatura entro 1,5 metri da lui. Il bersaglio deve superare un tiro salvezza su Saggezza con CD 11, altrimenti per 1 minuto non puo effettuare reazioni e deve tirare un d6 all'inizio di ogni suo turno per determinare il suo comportamento: con 1-4 usa tutto il suo movimento per muoversi in una direzione casuale e non compie azioni o azioni bonus; con 5-6 resta fermo e puo solo ripetere il tiro salvezza."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [
+    "Il grado di sfida sale a 2 (450 PE) per un drago fatato verde, blu, indaco o viola."
+  ],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 119
+  }
+}

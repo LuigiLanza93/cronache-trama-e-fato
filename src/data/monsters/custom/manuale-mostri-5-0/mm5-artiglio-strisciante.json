@@ -1,0 +1,99 @@
+{
+  "slug": "mm5-artiglio-strisciante",
+  "general": {
+    "name": "Artiglio Strisciante",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 10
+    },
+    "size": "Minuscola",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 12,
+      "note": ""
+    },
+    "hitPoints": {
+      "average": 2,
+      "formula": "1d4"
+    },
+    "speed": {
+      "walk": "6 m",
+      "climb": "6 m"
+    }
+  },
+  "abilities": {
+    "strength": 13,
+    "dexterity": 14,
+    "constitution": 11,
+    "intelligence": 5,
+    "wisdom": 10,
+    "charisma": 4
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "indebolimento"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "vista cieca",
+        "value": "9 m (cieco oltre questo raggio)"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce il Comune ma non lo parla"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Immunità allo Scacciare",
+      "usage": null,
+      "description": "L'artiglio è immune agli effetti che scacciano i non morti."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Artiglio",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 3 (1d4 + 1) danni taglienti o contundenti (a scelta dell'artiglio)."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 21
+  }
+}

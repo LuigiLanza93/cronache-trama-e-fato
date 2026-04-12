@@ -1,0 +1,101 @@
+{
+  "slug": "mm5-cavallo-degli-incubi",
+  "general": {
+    "name": "Cavallo degli Incubi",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Grande",
+    "creatureType": "immondo",
+    "subtype": "",
+    "typeLabel": "immondo",
+    "alignment": "neutrale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 68,
+      "formula": "8d10 + 24"
+    },
+    "speed": {
+      "walk": "18 m",
+      "fly": "27 m"
+    }
+  },
+  "abilities": {
+    "strength": 18,
+    "dexterity": 15,
+    "constitution": 16,
+    "intelligence": 10,
+    "wisdom": 13,
+    "charisma": 15
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [
+      {
+        "name": "capisce Abissale, Comune e Infernale ma non li parla"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Conferire Resistenza al Fuoco",
+      "usage": null,
+      "description": "Il cavallo degli incubi può conferire resistenza ai danni da fuoco a chiunque lo cavalchi."
+    },
+    {
+      "name": "Illuminazione",
+      "usage": null,
+      "description": "Il cavallo degli incubi proietta luce intensa in un raggio di 3 metri e luce fioca per 3 metri aggiuntivi."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Zoccoli",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +6 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 13 (2d8 + 4) danni contundenti più 7 (2d6) danni da fuoco."
+    },
+    {
+      "name": "Passo Etereo",
+      "usage": null,
+      "description": "Il cavallo degli incubi e un massimo di tre creature consenzienti situate entro 1,5 metri da esso passano magicamente dal Piano Materiale al Piano Etereo o viceversa."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "possible-duplicate",
+    "possibleDuplicateOf": "Destriero da Incubo",
+    "page": 38
+  }
+}

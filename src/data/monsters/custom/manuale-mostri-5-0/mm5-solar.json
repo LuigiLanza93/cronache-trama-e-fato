@@ -1,0 +1,176 @@
+{
+  "slug": "mm5-solar",
+  "general": {
+    "name": "Solar",
+    "challengeRating": {
+      "fraction": "21",
+      "decimal": 21,
+      "display": "21",
+      "xp": 33000
+    },
+    "size": "Grande",
+    "creatureType": "celestiale",
+    "subtype": "",
+    "typeLabel": "celestiale",
+    "alignment": "legale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 21,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 243,
+      "formula": "18d10 + 144"
+    },
+    "speed": {
+      "walk": "15 m",
+      "fly": "45 m"
+    }
+  },
+  "abilities": {
+    "strength": 26,
+    "dexterity": 22,
+    "constitution": 26,
+    "intelligence": 25,
+    "wisdom": 25,
+    "charisma": 30
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Intelligenza",
+        "bonus": 14
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 14
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 17
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 14
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "radioso",
+      "contundente da attacchi non magici",
+      "perforante da attacchi non magici",
+      "tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "necrotico",
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "indebolimento",
+      "spaventato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 24"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "tutti"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 7
+  },
+  "traits": [
+    {
+      "name": "Armi Angeliche",
+      "usage": null,
+      "description": "Gli attacchi con arma del solar sono magici. Quando il solar colpisce con qualsiasi arma, la sua arma infligge 6d8 danni radiosi extra."
+    },
+    {
+      "name": "Consapevolezza Divina",
+      "usage": null,
+      "description": "Il solar capisce se cio che sente e una menzogna."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore del solar e Carisma (CD 25). A volonta: individuazione del bene e del male, invisibilita (solo se stesso). 3/giorno ciascuno: barriera di lame, dissolvi il bene e il male, resurrezione. 1/giorno ciascuno: comunione, controllare tempo atmosferico."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il solar dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il solar effettua due attacchi con lo spadone."
+    },
+    {
+      "name": "Spadone",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +15 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 22 (4d6 + 8) danni taglienti piu 27 (6d8) danni radiosi."
+    },
+    {
+      "name": "Arco Lungo Assassino",
+      "usage": null,
+      "description": "Attacco con Arma a Distanza: +13 al tiro per colpire, gittata 45/180 m, un bersaglio. Colpito: 15 (2d8 + 6) danni perforanti piu 27 (6d8) danni radiosi. Se il bersaglio e una creatura con 100 punti ferita o meno, deve superare un tiro salvezza su Costituzione con CD 15, altrimenti muore."
+    },
+    {
+      "name": "Spada Volante",
+      "usage": null,
+      "description": "Il solar lascia andare il suo spadone, che fluttua magicamente in uno spazio libero entro 1,5 metri da lui. Se il solar e in grado di vedere lo spadone, come azione bonus puo ordinargli mentalmente di volare fino a un massimo di 15 metri e di sferrare un attacco contro un bersaglio o di tornare nella sua mano."
+    },
+    {
+      "name": "Tocco Guaritore",
+      "usage": "4/Giorno",
+      "description": "Il solar tocca un'altra creatura. Il bersaglio recupera magicamente 40 (8d8 + 4) punti ferita ed e liberato da qualsiasi maledizione, malattia, veleno, cecita o sordita."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "Il solar puo effettuare 3 azioni leggendarie, scelte tra le opzioni sottostanti. Puo usare solo un'opzione di azione leggendaria alla volta e solo alla fine del turno di un'altra creatura. Il solar recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Teletrasporto",
+        "description": "Il solar si teletrasporta magicamente, assieme a ogni oggetto che indossa o trasporta, fino a uno spazio libero situato entro 36 metri e che egli sia in grado di vedere."
+      },
+      {
+        "name": "Esplosione Incandescente",
+        "description": "Costa 2 Azioni. Il solar emette un'onda di energia magica divina. Ogni creatura a sua scelta entro un raggio di 3 metri deve effettuare un tiro salvezza su Destrezza con CD 23; se lo fallisce, subisce 14 (4d6) danni da fuoco piu 14 (4d6) danni radiosi, mentre se lo supera, subisce la meta di quei danni."
+      },
+      {
+        "name": "Sguardo Accecante",
+        "description": "Costa 3 Azioni. Il solar bersaglia una creatura situata entro 9 metri da lui e che egli sia in grado di vedere. Se il bersaglio e in grado di vedere il solar, deve superare un tiro salvezza su Costituzione con CD 15, altrimenti e accecato finche una magia come ristorare inferiore non rimuove la cecita."
+      }
+    ]
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "possible-duplicate",
+    "possibleDuplicateOf": "Angelo Solar",
+    "page": 18
+  }
+}

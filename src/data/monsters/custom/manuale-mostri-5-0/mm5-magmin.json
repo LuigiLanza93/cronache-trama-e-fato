@@ -1,0 +1,103 @@
+{
+  "slug": "mm5-magmin",
+  "general": {
+    "name": "Magmin",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Piccola",
+    "creatureType": "elementale",
+    "subtype": "",
+    "typeLabel": "elementale",
+    "alignment": "caotico neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 14,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 9,
+      "formula": "2d6 + 2"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 7,
+    "dexterity": 15,
+    "constitution": 12,
+    "intelligence": 8,
+    "wisdom": 11,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "contundente da attacchi non magici",
+      "perforante da attacchi non magici",
+      "tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [
+      "fuoco"
+    ],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Ignan"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Esplosione Mortale",
+      "usage": null,
+      "description": "Quando il magmin muore, esplode in una deflagrazione di magma e lava. Ogni creatura situata entro 3 metri dal magmin deve effettuare un tiro salvezza su Destrezza con CD 11; se lo fallisce, subisce 7 (2d6) danni da fuoco, mentre se lo supera, subisce la meta di quei danni. Gli oggetti infiammabili non indossati o trasportati che si trovano in quell'area prendono fuoco."
+    },
+    {
+      "name": "Illuminazione Fiammeggiante",
+      "usage": null,
+      "description": "Come azione bonus, il magmin puo infiammarsi o estinguere le proprie fiamme. Quando si infiamma, il magmin proietta luce intensa in un raggio di 3 metri e luce fioca per altri 3 metri."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Tocco",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 7 (2d6) danni da fuoco. Se il bersaglio e una creatura o un oggetto infiammabile, prende fuoco. Finche una creatura non usa un'azione per estinguere le fiamme, il bersaglio subisce 3 (1d6) danni da fuoco alla fine di ogni suo turno."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "possible-duplicate",
+    "possibleDuplicateOf": "Uomo Magma (Magmin)",
+    "page": 200
+  }
+}

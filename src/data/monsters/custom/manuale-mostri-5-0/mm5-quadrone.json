@@ -1,0 +1,113 @@
+{
+  "slug": "mm5-quadrone",
+  "general": {
+    "name": "Quadrone",
+    "challengeRating": {
+      "fraction": "1",
+      "decimal": 1,
+      "display": "1",
+      "xp": 200
+    },
+    "size": "Media",
+    "creatureType": "costrutto",
+    "subtype": "",
+    "typeLabel": "costrutto",
+    "alignment": "legale neutrale",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 16,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 22,
+      "formula": "4d8 + 4"
+    },
+    "speed": {
+      "walk": "9 m",
+      "fly": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 12,
+    "dexterity": 14,
+    "constitution": 12,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 2
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Modron"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Mente Assiomatica",
+      "usage": null,
+      "description": "Il quadrone non puo essere obbligato ad agire in modo contrario alla sua natura o alle sue istruzioni."
+    },
+    {
+      "name": "Disintegrazione",
+      "usage": null,
+      "description": "Se il quadrone muore, il suo corpo si disintegra in polvere: restano solo le armi e tutto cio che trasportava."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il quadrone effettua due attacchi con i pugni o quattro attacchi con l'arco corto."
+    },
+    {
+      "name": "Pugno",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +3 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 3 (1d4 + 1) danni contundenti."
+    },
+    {
+      "name": "Arco Corto",
+      "usage": null,
+      "description": "Attacco con Arma a Distanza: +4 al tiro per colpire, gittata 24/96 m, un bersaglio. Colpito: 5 (1d6 + 2) danni perforanti."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 230
+  }
+}

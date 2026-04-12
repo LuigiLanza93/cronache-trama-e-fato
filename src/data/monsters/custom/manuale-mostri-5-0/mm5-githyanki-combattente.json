@@ -1,0 +1,106 @@
+{
+  "slug": "mm5-githyanki-combattente",
+  "general": {
+    "name": "Githyanki Combattente",
+    "challengeRating": {
+      "fraction": "3",
+      "decimal": 3,
+      "display": "3",
+      "xp": 700
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "gith",
+    "typeLabel": "umanoide (gith)",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 17,
+      "note": "mezza armatura"
+    },
+    "hitPoints": {
+      "average": 49,
+      "formula": "9d8 + 9"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 14,
+    "constitution": 12,
+    "intelligence": 13,
+    "wisdom": 13,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 3
+      },
+      {
+        "ability": "Intelligenza",
+        "bonus": 3
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 3
+      }
+    ],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 11"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gith"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Incantesimi Innati",
+      "usage": "Psionici",
+      "description": "La caratteristica innata da incantatore del githyanki e Intelligenza. Il githyanki puo lanciare i seguenti incantesimi innati, che non richiedono alcuna componente: a volonta mano magica (la mano e invisibile); 3/giorno ciascuno anti-individuazione (solo se stesso), passo velato, saltare."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il githyanki effettua due attacchi con lo spadone."
+    },
+    {
+      "name": "Spadone",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +4 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 9 (2d6 + 2) danni taglienti piu 7 (2d6) danni psichici."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 161
+  }
+}

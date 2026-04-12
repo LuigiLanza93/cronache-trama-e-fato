@@ -1,0 +1,99 @@
+{
+  "slug": "mm5-naga-d-ossa",
+  "general": {
+    "name": "Naga d'Ossa",
+    "challengeRating": {
+      "fraction": "4",
+      "decimal": 4,
+      "display": "4",
+      "xp": 1100
+    },
+    "size": "Grande",
+    "creatureType": "non morto",
+    "subtype": "",
+    "typeLabel": "non morto",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 15,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 58,
+      "formula": "9d10 + 9"
+    },
+    "speed": {
+      "walk": "9 m"
+    }
+  },
+  "abilities": {
+    "strength": 15,
+    "dexterity": 16,
+    "constitution": 12,
+    "intelligence": 15,
+    "wisdom": 15,
+    "charisma": 16
+  },
+  "details": {
+    "savingThrows": [],
+    "skills": [],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [
+      "veleno"
+    ],
+    "conditionImmunities": [
+      "affascinato",
+      "avvelenato",
+      "indebolimento",
+      "paralizzato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 12"
+      },
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune piu un altro linguaggio"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Incantesimi",
+      "usage": null,
+      "description": "La naga e un incantatore di 5 livello (CD 12, +4 al tiro per colpire con incantesimi) che necessita solo di componenti verbali. Se era una naga guardiana in vita, usa Saggezza e ha preparato: trucchetti a volonta fiamma sacra, riparare, taumaturgia; 1 livello comando, scudo della fede; 2 livello blocca persone, calmare emozioni; 3 livello scagliare maledizione. Se era una naga spirituale in vita, usa Intelligenza e ha preparato: trucchetti a volonta illusione minore, mano magica, raggio di gelo; 1 livello charme su persone, sonno; 2 livello blocca persone, individuazione dei pensieri; 3 livello fulmine."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 al tiro per colpire, portata 3 m, una creatura. Colpito: 10 (2d6 + 3) danni perforanti piu 10 (3d6) danni da veleno."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 234
+  }
+}

@@ -1,0 +1,136 @@
+{
+  "slug": "mm5-beholder",
+  "general": {
+    "name": "Beholder",
+    "challengeRating": {
+      "fraction": "13",
+      "decimal": 13,
+      "display": "13",
+      "xp": 10000
+    },
+    "size": "Grande",
+    "creatureType": "aberrazione",
+    "subtype": "",
+    "typeLabel": "aberrazione",
+    "alignment": "legale malvagio",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 18,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 180,
+      "formula": "19d10 + 76"
+    },
+    "speed": {
+      "walk": "0 m",
+      "fly": "6 m (fluttuare)"
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 14,
+    "constitution": 18,
+    "intelligence": 17,
+    "wisdom": 15,
+    "charisma": 17
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Intelligenza",
+        "bonus": 8
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 7
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 8
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 12
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "prono"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 22"
+      },
+      {
+        "name": "scurovisione",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Gergo delle Profondità"
+      },
+      {
+        "name": "Sottocomune"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Cono Anti-magia",
+      "usage": null,
+      "description": "L'occhio centrale del beholder crea un'area di anti-magia, con gli stessi effetti dell'incantesimo campo anti magia, in un cono di 45 metri. All'inizio di ogni suo turno, il beholder decide in che direzione è rivolto il cono e se è attivo o meno. L'area funziona contro i raggi oculari dello stesso beholder."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Morso",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +5 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 14 (4d6) danni perforanti."
+    },
+    {
+      "name": "Raggi Oculari",
+      "usage": null,
+      "description": "Il beholder scaglia tre dei seguenti raggi oculari magici casuali, ripetendo il tiro in caso di duplicati, scegliendo da uno a tre bersagli situati entro 36 metri da lui e che esso sia in grado di vedere: 1. Raggio di Charme: tiro salvezza su Saggezza CD 16 o affascinato per 1 ora o finché il beholder non infligge danni. 2. Raggio Paralizzante: tiro salvezza su Costituzione CD 16 o paralizzato per 1 minuto, con nuovo tiro salvezza alla fine di ogni turno. 3. Raggio di Paura: tiro salvezza su Saggezza CD 16 o spaventato per 1 minuto, con nuovo tiro salvezza alla fine di ogni turno. 4. Raggio Rallentante: tiro salvezza su Destrezza CD 16 o velocità dimezzata per 1 minuto; inoltre la creatura non può effettuare reazioni e nel suo turno può effettuare un'azione o un'azione bonus, ma non entrambe; nuovo tiro salvezza alla fine di ogni turno. 5. Raggio di Logoramento: tiro salvezza su Costituzione CD 16 o 36 (8d8) danni necrotici, metà se superato. 6. Raggio Telecinetico: se il bersaglio è una creatura, tiro salvezza su Forza CD 16 o viene mosso fino a 9 metri in qualsiasi direzione e trattenuto fino all'inizio del turno successivo del beholder o finché il beholder non è incapacitato; se il bersaglio è un oggetto di peso pari o inferiore a 150 chilogrammi non indossato o trasportato, viene mosso fino a 9 metri e può essere manipolato con precisione. 7. Raggio di Sonno: tiro salvezza su Saggezza CD 16 o privo di sensi per 1 minuto; si risveglia se subisce danni o se un'altra creatura usa un'azione per risvegliarlo; non ha effetto su costrutti e non morti. 8. Raggio Pietrificante: tiro salvezza su Destrezza CD 16 o il bersaglio inizia a trasformarsi in pietra ed è trattenuto; deve ripetere il tiro salvezza alla fine del turno successivo; se fallisce di nuovo è pietrificato finché non viene liberato da ristorare superiore o magia analoga. 9. Raggio di Disintegrazione: tiro salvezza su Destrezza CD 16 o 45 (10d8) danni da forza; se riduce il bersaglio a 0 punti ferita, il corpo diventa un cumulo di sottile polvere grigia; oggetti non magici o creazioni di forza di taglia Grande o inferiore vengono disintegrati senza tiro salvezza. 10. Raggio della Morte: tiro salvezza su Destrezza CD 16 o 55 (10d10) danni necrotici; il bersaglio muore se il raggio lo riduce a 0 punti ferita."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "Il beholder può effettuare 3 azioni leggendarie, usando l'opzione sottostante. Può effettuare solo un'azione leggendaria alla volta e solo alla fine del turno di un'altra creatura. Recupera le azioni leggendarie spese all'inizio del proprio turno.",
+    "actions": [
+      {
+        "name": "Raggio Oculare",
+        "description": "Il beholder usa un raggio oculare casuale."
+      }
+    ]
+  },
+  "lairActions": [
+    "A conteggio di iniziativa 20, un'area di terreno quadrata con lato di 15 metri situata entro 36 metri dal beholder diventa viscida; quell'area è considerata terreno difficile fino al conteggio di iniziativa 20 del round successivo.",
+    "A conteggio di iniziativa 20, dalle pareti entro 36 metri dal beholder spuntano appendici afferranti che permangono fino al conteggio di iniziativa 20 del round dopo il successivo. Ogni creatura a scelta del beholder che inizi il proprio turno entro 3 metri da una di queste pareti deve superare un tiro salvezza su Destrezza con CD 15, altrimenti è afferrata. Per sfuggire è necessaria una prova di Forza (Atletica) o Destrezza (Acrobazia) con CD 15.",
+    "A conteggio di iniziativa 20, un occhio si apre su una superficie solida entro 18 metri dal beholder. Un raggio oculare casuale del beholder viene scagliato da quell'occhio contro un bersaglio a scelta del beholder e che esso sia in grado di vedere. Poi l'occhio si chiude e scompare."
+  ],
+  "regionalEffects": [
+    "Le creature entro 1,5 chilometri dalla tana del beholder a volte hanno la sensazione di essere osservate anche quando in realtà non c'è nessuno a osservarle.",
+    "Quando il beholder dorme, si verificano piccole distorsioni della realtà entro un raggio di 1,5 chilometri dalla sua tana; queste distorsioni svaniscono 24 ore dopo e si applicano solo a superfici naturali e oggetti non magici non trasportati."
+  ],
+  "notes": [
+    "Un beholder incontrato nella sua tana ha grado di sfida 14 (11.500 PE).",
+    "Il beholder non può ripetere un effetto di tana finché non sono stati tutti usati e non può usare lo stesso effetto in due round consecutivi."
+  ],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null,
+    "page": 28
+  }
+}

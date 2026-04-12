@@ -1,0 +1,149 @@
+{
+  "slug": "mm5-planetar",
+  "general": {
+    "name": "Planetar",
+    "challengeRating": {
+      "fraction": "16",
+      "decimal": 16,
+      "display": "16",
+      "xp": 15000
+    },
+    "size": "Grande",
+    "creatureType": "celestiale",
+    "subtype": "",
+    "typeLabel": "celestiale",
+    "alignment": "legale buono",
+    "environments": []
+  },
+  "combat": {
+    "armorClass": {
+      "value": 19,
+      "note": "armatura naturale"
+    },
+    "hitPoints": {
+      "average": 200,
+      "formula": "16d10 + 112"
+    },
+    "speed": {
+      "walk": "12 m",
+      "fly": "36 m"
+    }
+  },
+  "abilities": {
+    "strength": 24,
+    "dexterity": 20,
+    "constitution": 24,
+    "intelligence": 19,
+    "wisdom": 22,
+    "charisma": 25
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Costituzione",
+        "bonus": 12
+      },
+      {
+        "ability": "Saggezza",
+        "bonus": 11
+      },
+      {
+        "ability": "Carisma",
+        "bonus": 12
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 11
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [
+      "radioso",
+      "contundente da attacchi non magici",
+      "perforante da attacchi non magici",
+      "tagliente da attacchi non magici"
+    ],
+    "damageImmunities": [],
+    "conditionImmunities": [
+      "affascinato",
+      "indebolimento",
+      "spaventato"
+    ],
+    "senses": [
+      {
+        "name": "Percezione passiva 21"
+      },
+      {
+        "name": "vista pura",
+        "value": "36 m"
+      }
+    ],
+    "languages": [
+      {
+        "name": "tutti"
+      },
+      {
+        "name": "telepatia",
+        "value": "36 m"
+      }
+    ],
+    "proficiencyBonus": 5
+  },
+  "traits": [
+    {
+      "name": "Armi Angeliche",
+      "usage": null,
+      "description": "Gli attacchi con arma del planetar sono magici. Quando il planetar colpisce con qualsiasi arma, la sua arma infligge 5d8 danni radiosi extra."
+    },
+    {
+      "name": "Consapevolezza Divina",
+      "usage": null,
+      "description": "Il planetar capisce se cio che sente e una menzogna."
+    },
+    {
+      "name": "Incantesimi Innati",
+      "usage": null,
+      "description": "La caratteristica da incantatore del planetar e Carisma (CD 20). A volonta: individuazione del bene e del male, invisibilita (solo se stesso). 3/giorno ciascuno: barriera di lame, colpo infuocato, dissolvi il bene e il male, rianimare morti. 1/giorno ciascuno: comunione, controllare tempo atmosferico, piaga degli insetti."
+    },
+    {
+      "name": "Resistenza alla Magia",
+      "usage": null,
+      "description": "Il planetar dispone di vantaggio ai tiri salvezza contro incantesimi e altri effetti magici."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Il planetar effettua due attacchi in mischia."
+    },
+    {
+      "name": "Spadone",
+      "usage": null,
+      "description": "Attacco con Arma da Mischia: +12 al tiro per colpire, portata 1,5 m, un bersaglio. Colpito: 21 (4d6 + 7) danni taglienti piu 22 (5d8) danni radiosi."
+    },
+    {
+      "name": "Tocco Guaritore",
+      "usage": "4/Giorno",
+      "description": "Il planetar tocca un'altra creatura. Il bersaglio recupera magicamente 30 (6d8 + 2) punti ferita ed e liberato da qualsiasi maledizione, malattia, veleno, cecita o sordita."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "rawText": "Trascrizione manuale del blocco statistiche dal Manuale dei Mostri.",
+    "importCategory": "possible-duplicate",
+    "possibleDuplicateOf": "Angelo Planetar",
+    "page": 17
+  }
+}
