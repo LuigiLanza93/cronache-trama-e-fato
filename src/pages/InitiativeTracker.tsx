@@ -1902,12 +1902,12 @@ export default function InitiativeTracker() {
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4">
                 <div className="overflow-hidden rounded-md border border-border/70 bg-background/20">
-                <div className="grid grid-cols-[minmax(0,1.7fr)_72px_82px_64px_82px_110px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                <div className="grid grid-cols-[minmax(0,1.7fr)_72px_82px_64px_82px_110px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
                   <span>Nome o bestiario</span>
-                  <span>Init</span>
                   <span>CA</span>
                   <span>PF</span>
-                  <span>Qt√†</span>
+                  <span>Qt‡</span>
+                  <span>Init</span>
                   <span className="text-right">Azione</span>
                 </div>
                 <form
@@ -2822,6 +2822,7 @@ export default function InitiativeTracker() {
     </div>
   );
 }
+
 
 
 
