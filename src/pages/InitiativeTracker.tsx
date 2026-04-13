@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -26,6 +27,7 @@ import {
   type MonsterSummary,
 } from "@/lib/auth";
 import { fetchCharacter, fetchCharacters, notifyInitiativeTurn } from "@/realtime";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import {
   BookOpen,
   FolderOpen,
@@ -126,9 +128,11 @@ type MonsterCombatant = MonsterEncounterEntry & {
 
 type Combatant = PlayerCombatant | MonsterCombatant;
 
-type BestiaryMonsterDraft = {
-  monsterId: string;
+type UnifiedMonsterDraft = {
+  name: string;
+  selectedMonsterId: string;
   initiative: string;
+  armorClass: string;
   hitPoints: string;
   quantity: string;
 };
@@ -761,19 +765,52 @@ export default function InitiativeTracker() {
   const [setupSectionsOpen, setSetupSectionsOpen] = useState(true);
   const playerRollInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const monsterNameInputRef = useRef<HTMLInputElement | null>(null);
-  const [monsterForm, setMonsterForm] = useState({
+  const monsterSearchPopoverRef = useRef<HTMLDivElement | null>(null);
+  const [monsterSearchActiveIndex, setMonsterSearchActiveIndex] = useState(-1);
+  const [monsterDraft, setMonsterDraft] = useState<UnifiedMonsterDraft>({
     name: "",
+    selectedMonsterId: "",
     initiative: "",
     armorClass: "",
     hitPoints: "",
     quantity: "1",
   });
-  const [bestiaryMonsterDraft, setBestiaryMonsterDraft] = useState<BestiaryMonsterDraft>({
-    monsterId: "",
-    initiative: "",
-    hitPoints: "",
-    quantity: "1",
-  });
+  const [monsterSearchOpen, setMonsterSearchOpen] = useState(false);
+  const monsterForm = monsterDraft;
+  const setMonsterForm = setMonsterDraft;
+  const bestiaryMonsterDraft = {
+    monsterId: monsterDraft.selectedMonsterId,
+    initiative: monsterDraft.initiative,
+    hitPoints: monsterDraft.hitPoints,
+    quantity: monsterDraft.quantity,
+  };
+  const setBestiaryMonsterDraft = (
+    value:
+      | { monsterId: string; initiative: string; hitPoints: string; quantity: string }
+      | ((prev: { monsterId: string; initiative: string; hitPoints: string; quantity: string }) => {
+          monsterId: string;
+          initiative: string;
+          hitPoints: string;
+          quantity: string;
+        })
+  ) => {
+    setMonsterDraft((prev) => {
+      const current = {
+        monsterId: prev.selectedMonsterId,
+        initiative: prev.initiative,
+        hitPoints: prev.hitPoints,
+        quantity: prev.quantity,
+      };
+      const next = typeof value === "function" ? value(current) : value;
+      return {
+        ...prev,
+        selectedMonsterId: next.monsterId,
+        initiative: next.initiative,
+        hitPoints: next.hitPoints,
+        quantity: next.quantity,
+      };
+    });
+  };
   const [monsterDetailOpen, setMonsterDetailOpen] = useState(false);
   const [monsterDetailLoading, setMonsterDetailLoading] = useState(false);
   const [selectedMonsterDetail, setSelectedMonsterDetail] = useState<MonsterEntry | null>(null);
@@ -817,18 +854,14 @@ export default function InitiativeTracker() {
 
   const handleMonsterFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const added = addMonster();
+    const added = addMonsterFromDraft();
     if (!added) return;
 
     window.requestAnimationFrame(() => {
       monsterNameInputRef.current?.focus();
     });
   };
-
-  const handleBestiaryMonsterSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    addBestiaryMonster();
-  };
+  const handleBestiaryMonsterSubmit = handleMonsterFormSubmit;
 
   const catalogList = useMemo(
     () =>
@@ -850,8 +883,8 @@ export default function InitiativeTracker() {
     [encounter, catalogBySlug, liveCharacterStates]
   );
   const selectedBestiaryMonster = useMemo(
-    () => bestiaryCatalog.find((entry) => entry.id === bestiaryMonsterDraft.monsterId) ?? null,
-    [bestiaryCatalog, bestiaryMonsterDraft.monsterId]
+    () => bestiaryCatalog.find((entry) => entry.id === monsterDraft.selectedMonsterId) ?? null,
+    [bestiaryCatalog, monsterDraft.selectedMonsterId]
   );
   const encounterUnknownBestiaryMonsters = useMemo(() => {
     const ids = Array.from(
@@ -873,6 +906,13 @@ export default function InitiativeTracker() {
     () => (selectedBestiaryMonster ? bestiaryById[selectedBestiaryMonster.id] ?? null : null),
     [bestiaryById, selectedBestiaryMonster]
   );
+  const filteredBestiaryOptions = useMemo(() => {
+    const needle = monsterDraft.name.trim().toLocaleLowerCase("it");
+    if (!needle) return [];
+    return bestiaryCatalog
+      .filter((entry) => entry.name.toLocaleLowerCase("it").includes(needle))
+      .slice(0, 10);
+  }, [bestiaryCatalog, monsterDraft.name]);
   const bestiaryHitPointRange = useMemo(
     () =>
       selectedBestiaryMonsterDetails
@@ -883,6 +923,11 @@ export default function InitiativeTracker() {
         : null,
     [selectedBestiaryMonsterDetails]
   );
+  const monsterDraftQuantity = Number.isFinite(parseInt(monsterDraft.quantity, 10))
+    ? Math.max(1, parseInt(monsterDraft.quantity, 10))
+    : 1;
+  const isBestiaryDraft = Boolean(monsterDraft.selectedMonsterId);
+  const requiresImmediateMonsterInitiative = !isBestiaryDraft || monsterDraftQuantity === 1;
 
   useEffect(() => {
     document.title = "Iniziativa | D&D Character Manager";
@@ -967,24 +1012,29 @@ export default function InitiativeTracker() {
   }, [selectedSlugs]);
 
   useEffect(() => {
-    if (!bestiaryMonsterDraft.monsterId) return;
-    const cached = bestiaryById[bestiaryMonsterDraft.monsterId];
+    if (!monsterDraft.selectedMonsterId) return;
+    const cached = bestiaryById[monsterDraft.selectedMonsterId];
     if (cached) {
-      setBestiaryMonsterDraft((prev) => ({
+      setMonsterDraft((prev) => ({
         ...prev,
+        armorClass: prev.armorClass || String(cached.combat.armorClass.value),
         hitPoints: prev.hitPoints || String(cached.combat.hitPoints.average),
       }));
       return;
     }
 
     let active = true;
-    void fetchMonster(bestiaryMonsterDraft.monsterId)
+    void fetchMonster(monsterDraft.selectedMonsterId)
       .then((monster) => {
         if (!active) return;
         setBestiaryById((prev) => ({ ...prev, [monster.id]: monster }));
-        setBestiaryMonsterDraft((prev) => (
-          prev.monsterId === monster.id
-            ? { ...prev, hitPoints: prev.hitPoints || String(monster.combat.hitPoints.average) }
+        setMonsterDraft((prev) => (
+          prev.selectedMonsterId === monster.id
+            ? {
+                ...prev,
+                armorClass: prev.armorClass || String(monster.combat.armorClass.value),
+                hitPoints: prev.hitPoints || String(monster.combat.hitPoints.average),
+              }
             : prev
         ));
       })
@@ -993,7 +1043,7 @@ export default function InitiativeTracker() {
     return () => {
       active = false;
     };
-  }, [bestiaryMonsterDraft.monsterId, bestiaryById]);
+  }, [monsterDraft.selectedMonsterId, bestiaryById]);
 
   useEffect(() => {
     if (!encounter.started || combatants.length === 0) return;
@@ -1054,21 +1104,91 @@ export default function InitiativeTracker() {
     }));
   };
 
-  const addMonster = () => {
-    const name = monsterForm.name.trim();
+  const selectBestiaryMonster = (entry: MonsterSummary) => {
+    const cached = bestiaryById[entry.id];
+    setMonsterDraft((prev) => ({
+      ...prev,
+      name: entry.name,
+      selectedMonsterId: entry.id,
+      armorClass: cached ? String(cached.combat.armorClass.value) : String(entry.armorClass ?? ""),
+      hitPoints: cached ? String(cached.combat.hitPoints.average) : prev.hitPoints,
+    }));
+    setMonsterSearchOpen(false);
+    setMonsterSearchActiveIndex(-1);
+  };
+
+  const handleMonsterNameChange = (value: string) => {
+    setMonsterDraft((prev) => {
+      const keepsSelection =
+        prev.selectedMonsterId &&
+        selectedBestiaryMonster &&
+        value.trim().toLocaleLowerCase("it") === selectedBestiaryMonster.name.trim().toLocaleLowerCase("it");
+
+      return {
+        ...prev,
+        name: value,
+        selectedMonsterId: keepsSelection ? prev.selectedMonsterId : "",
+        armorClass: keepsSelection ? prev.armorClass : "",
+        hitPoints: keepsSelection ? prev.hitPoints : "",
+      };
+    });
+    setMonsterSearchOpen(Boolean(value.trim()));
+    setMonsterSearchActiveIndex(-1);
+  };
+
+  const handleMonsterSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filteredBestiaryOptions.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setMonsterSearchOpen(true);
+      setMonsterSearchActiveIndex((prev) =>
+        prev < 0 ? 0 : Math.min(prev + 1, filteredBestiaryOptions.length - 1)
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setMonsterSearchOpen(true);
+      setMonsterSearchActiveIndex((prev) =>
+        prev <= 0 ? filteredBestiaryOptions.length - 1 : prev - 1
+      );
+      return;
+    }
+
+    if (event.key === "Enter" && monsterSearchOpen && monsterSearchActiveIndex >= 0) {
+      event.preventDefault();
+      const entry = filteredBestiaryOptions[monsterSearchActiveIndex];
+      if (entry) {
+        selectBestiaryMonster(entry);
+      }
+      return;
+    }
+
+    if (event.key === "Escape" && monsterSearchOpen) {
+      event.preventDefault();
+      setMonsterSearchOpen(false);
+      setMonsterSearchActiveIndex(-1);
+      return;
+    }
+  };
+
+  const addManualMonster = () => {
+    const name = monsterDraft.name.trim();
     if (!name) return false;
 
-    const initiative = Number.isFinite(parseInt(monsterForm.initiative, 10))
-      ? parseInt(monsterForm.initiative, 10)
+    const initiative = Number.isFinite(parseInt(monsterDraft.initiative, 10))
+      ? parseInt(monsterDraft.initiative, 10)
       : 0;
-    const armorClass = Number.isFinite(parseInt(monsterForm.armorClass, 10))
-      ? parseInt(monsterForm.armorClass, 10)
+    const armorClass = Number.isFinite(parseInt(monsterDraft.armorClass, 10))
+      ? parseInt(monsterDraft.armorClass, 10)
       : 0;
-    const hitPoints = Number.isFinite(parseInt(monsterForm.hitPoints, 10))
-      ? Math.max(0, parseInt(monsterForm.hitPoints, 10))
+    const hitPoints = Number.isFinite(parseInt(monsterDraft.hitPoints, 10))
+      ? Math.max(0, parseInt(monsterDraft.hitPoints, 10))
       : 0;
-    const quantity = Number.isFinite(parseInt(monsterForm.quantity, 10))
-      ? Math.max(1, parseInt(monsterForm.quantity, 10))
+    const quantity = Number.isFinite(parseInt(monsterDraft.quantity, 10))
+      ? Math.max(1, parseInt(monsterDraft.quantity, 10))
       : 1;
 
     if (quantity > 1) {
@@ -1082,8 +1202,9 @@ export default function InitiativeTracker() {
         initiatives: Array.from({ length: quantity }, () => ""),
       });
       setInitiativeBatchOpen(true);
-      setMonsterForm({
+      setMonsterDraft({
         name: "",
+        selectedMonsterId: "",
         initiative: "",
         armorClass: "",
         hitPoints: "",
@@ -1119,13 +1240,15 @@ export default function InitiativeTracker() {
       };
     });
 
-    setMonsterForm({
+    setMonsterDraft({
       name: "",
+      selectedMonsterId: "",
       initiative: "",
       armorClass: "",
       hitPoints: "",
       quantity: "1",
     });
+    setMonsterSearchOpen(false);
 
     return true;
   };
@@ -1135,17 +1258,18 @@ export default function InitiativeTracker() {
     const sourceMonster = selectedBestiaryMonsterDetails;
     if (!sourceMonster) return false;
 
-    const initiative = Number.isFinite(parseInt(bestiaryMonsterDraft.initiative, 10))
-      ? parseInt(bestiaryMonsterDraft.initiative, 10)
-      : NaN;
-    if (!Number.isFinite(initiative)) return false;
-
-    const hitPoints = Number.isFinite(parseInt(bestiaryMonsterDraft.hitPoints, 10))
-      ? Math.max(0, parseInt(bestiaryMonsterDraft.hitPoints, 10))
-      : sourceMonster.combat.hitPoints.average;
-    const quantity = Number.isFinite(parseInt(bestiaryMonsterDraft.quantity, 10))
-      ? Math.max(1, parseInt(bestiaryMonsterDraft.quantity, 10))
+    const quantity = Number.isFinite(parseInt(monsterDraft.quantity, 10))
+      ? Math.max(1, parseInt(monsterDraft.quantity, 10))
       : 1;
+
+    const initiative = Number.isFinite(parseInt(monsterDraft.initiative, 10))
+      ? parseInt(monsterDraft.initiative, 10)
+      : NaN;
+    if (quantity === 1 && !Number.isFinite(initiative)) return false;
+
+    const hitPoints = Number.isFinite(parseInt(monsterDraft.hitPoints, 10))
+      ? Math.max(0, parseInt(monsterDraft.hitPoints, 10))
+      : sourceMonster.combat.hitPoints.average;
     const powerTag = classifyMonsterPowerTag(hitPoints, bestiaryHitPointRange);
 
     if (quantity > 1) {
@@ -1159,7 +1283,8 @@ export default function InitiativeTracker() {
         initiatives: Array.from({ length: quantity }, () => ""),
       });
       setInitiativeBatchOpen(true);
-      setBestiaryMonsterDraft({ monsterId: "", initiative: "", hitPoints: "", quantity: "1" });
+      setMonsterDraft({ name: "", selectedMonsterId: "", initiative: "", armorClass: "", hitPoints: "", quantity: "1" });
+      setMonsterSearchOpen(false);
       return true;
     }
 
@@ -1190,9 +1315,17 @@ export default function InitiativeTracker() {
         nextSortOrder: prev.nextSortOrder + 1,
       };
     });
-    setBestiaryMonsterDraft({ monsterId: "", initiative: "", hitPoints: "", quantity: "1" });
+    setMonsterDraft({ name: "", selectedMonsterId: "", initiative: "", armorClass: "", hitPoints: "", quantity: "1" });
+    setMonsterSearchOpen(false);
 
     return true;
+  };
+
+  const addMonsterFromDraft = () => {
+    if (monsterDraft.selectedMonsterId) {
+      return addBestiaryMonster();
+    }
+    return addManualMonster();
   };
 
   const updatePendingMonsterInitiative = (index: number, value: string) => {
@@ -1658,7 +1791,7 @@ export default function InitiativeTracker() {
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="grid gap-6 xl:grid-cols-[0.96fr_1.04fr]">
           <Card className="character-section">
             <Collapsible open={setupSectionsOpen} onOpenChange={setSetupSectionsOpen}>
               <CollapsibleTrigger asChild>
@@ -1672,7 +1805,7 @@ export default function InitiativeTracker() {
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3">
                 <div className="overflow-hidden rounded-md border border-border/70 bg-background/20">
-                <div className="grid grid-cols-[minmax(0,1.8fr)_110px_70px_70px_90px_96px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                <div className="grid grid-cols-[minmax(0,1.65fr)_92px_62px_62px_84px_72px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
                   <span>Personaggio</span>
                   <span>Classe</span>
                   <span>Livello</span>
@@ -1695,7 +1828,7 @@ export default function InitiativeTracker() {
                   return (
                     <div
                       key={entry.slug}
-                      className="grid grid-cols-[minmax(0,1.8fr)_110px_70px_70px_90px_96px] items-center gap-2 border-b border-border/50 px-3 py-1.5 text-sm last:border-b-0"
+                      className="grid grid-cols-[minmax(0,1.65fr)_92px_62px_62px_84px_72px] items-center gap-2 border-b border-border/50 px-3 py-1.5 text-sm last:border-b-0"
                     >
                       <div className="min-w-0">
                         <div className="truncate font-medium text-primary">{source?.name}</div>
@@ -1769,8 +1902,8 @@ export default function InitiativeTracker() {
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4">
                 <div className="overflow-hidden rounded-md border border-border/70 bg-background/20">
-                <div className="grid grid-cols-[minmax(0,1.55fr)_82px_72px_82px_64px_72px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <span>Nome</span>
+                <div className="grid grid-cols-[minmax(0,1.7fr)_72px_82px_64px_82px_110px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <span>Nome o bestiario</span>
                   <span>Init</span>
                   <span>CA</span>
                   <span>PF</span>
@@ -1779,77 +1912,205 @@ export default function InitiativeTracker() {
                 </div>
                 <form
                   onSubmit={handleMonsterFormSubmit}
-                  className="grid grid-cols-[minmax(0,1.55fr)_82px_72px_82px_64px_72px] items-end gap-2 px-3 py-1.5"
+                  className="grid grid-cols-[minmax(0,1.7fr)_72px_82px_64px_82px_110px] items-start gap-2 px-3 py-1.5"
                 >
+                  <div className="min-w-0 space-y-1">
+                    <Popover open={monsterSearchOpen && filteredBestiaryOptions.length > 0} onOpenChange={setMonsterSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <div className="min-w-0">
+                          <Input
+                            ref={monsterNameInputRef}
+                            value={monsterDraft.name}
+                            onChange={(e) => handleMonsterNameChange(e.target.value)}
+                            onKeyDown={handleMonsterSearchKeyDown}
+                            onFocus={() => setMonsterSearchOpen(Boolean(monsterDraft.name.trim()))}
+                            placeholder="Es. Goblin 1 oppure cerca nel bestiario"
+                            className="h-7 text-xs"
+                          />
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        ref={monsterSearchPopoverRef}
+                        align="start"
+                        className="w-[var(--radix-popover-trigger-width)] p-0"
+                        onOpenAutoFocus={(event) => event.preventDefault()}
+                        onCloseAutoFocus={(event) => event.preventDefault()}
+                      >
+                        <Command shouldFilter={false}>
+                          <CommandList>
+                            <CommandEmpty>Nessun mostro trovato.</CommandEmpty>
+                            <CommandGroup>
+                              {filteredBestiaryOptions.map((entry, index) => (
+                                <CommandItem
+                                  key={entry.id}
+                                  value={entry.name}
+                                  onSelect={() => selectBestiaryMonster(entry)}
+                                  onMouseMove={() => setMonsterSearchActiveIndex(index)}
+                                  className={`flex items-center justify-between gap-3 ${
+                                    monsterSearchActiveIndex === index ? "bg-accent text-accent-foreground" : ""
+                                  }`}
+                                >
+                                  <span className="truncate">{entry.name}</span>
+                                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                                    GS {crLabel(entry.challengeRating)}
+                                  </span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    {selectedBestiaryMonster ? (
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        <span>GS {crLabel(selectedBestiaryMonster.challengeRating)}</span>
+                        <span> - </span>
+                        <span>{selectedBestiaryMonster.typeLabel || selectedBestiaryMonster.creatureType || "Tipo?"}</span>
+                      </div>
+                    ) : null}
+                  </div>
                   <div>
                     <Input
-                      ref={monsterNameInputRef}
-                      value={monsterForm.name}
-                      onChange={(e) => setMonsterForm((prev) => ({ ...prev, name: e.target.value }))}
-                      placeholder="Es. Goblin 1"
+                      value={monsterDraft.armorClass}
+                      onChange={(e) => setMonsterDraft((prev) => ({ ...prev, armorClass: e.target.value }))}
+                      inputMode="numeric"
                       className="h-7 text-xs"
+                      placeholder={selectedBestiaryMonster ? "CA auto" : "CA"}
+                      readOnly={isBestiaryDraft}
+                      disabled={isBestiaryDraft}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      value={monsterDraft.hitPoints}
+                      onChange={(e) => setMonsterDraft((prev) => ({ ...prev, hitPoints: e.target.value }))}
+                      inputMode="numeric"
+                      className="h-7 text-xs"
+                      placeholder={selectedBestiaryMonster ? "PF medi" : "PF"}
+                      readOnly={isBestiaryDraft}
+                      disabled={isBestiaryDraft}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      value={monsterDraft.quantity}
+                      onChange={(e) =>
+                        setMonsterDraft((prev) => {
+                          const nextQuantityRaw = e.target.value;
+                          const nextQuantity = Number.isFinite(parseInt(nextQuantityRaw, 10))
+                            ? Math.max(1, parseInt(nextQuantityRaw, 10))
+                            : 1;
+
+                          return {
+                            ...prev,
+                            quantity: nextQuantityRaw,
+                            initiative: prev.selectedMonsterId && nextQuantity > 1 ? "" : prev.initiative,
+                          };
+                        })
+                      }
+                      inputMode="numeric"
+                      className="h-7 text-center text-xs"
                     />
                   </div>
                   <div>
                     <div className="flex items-center gap-1">
                       <Input
-                        value={monsterForm.initiative}
-                        onChange={(e) => setMonsterForm((prev) => ({ ...prev, initiative: e.target.value }))}
+                        value={monsterDraft.initiative}
+                        onChange={(e) => setMonsterDraft((prev) => ({ ...prev, initiative: e.target.value }))}
                         inputMode="numeric"
                         className="h-7 text-xs"
+                        disabled={isBestiaryDraft && monsterDraftQuantity > 1}
+                        placeholder={isBestiaryDraft && monsterDraftQuantity > 1 ? "Batch" : "Init"}
                       />
                       <Button
                         type="button"
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
-                        onClick={() => setMonsterForm((prev) => ({ ...prev, initiative: String(rollD20()) }))}
+                        onClick={() => setMonsterDraft((prev) => ({ ...prev, initiative: String(rollD20()) }))}
                         title="Tira iniziativa"
                         aria-label="Tira iniziativa"
+                        disabled={isBestiaryDraft && monsterDraftQuantity > 1}
                       >
                         <Dices className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
-                  <div>
-                    <Input
-                      value={monsterForm.armorClass}
-                      onChange={(e) => setMonsterForm((prev) => ({ ...prev, armorClass: e.target.value }))}
-                      inputMode="numeric"
-                      className="h-7 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      value={monsterForm.hitPoints}
-                      onChange={(e) => setMonsterForm((prev) => ({ ...prev, hitPoints: e.target.value }))}
-                      inputMode="numeric"
-                      className="h-7 text-xs"
-                    />
-                  </div>
-                  <div>
-                    <Input
-                      value={monsterForm.quantity}
-                      onChange={(e) => setMonsterForm((prev) => ({ ...prev, quantity: e.target.value }))}
-                      inputMode="numeric"
-                      className="h-7 text-center text-xs"
-                    />
-                  </div>
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-end gap-2">
+                    {selectedBestiaryMonster && selectedBestiaryMonsterDetails ? (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                        onClick={() => void openMonsterDetail(selectedBestiaryMonster.id)}
+                        title="Apri scheda mostro"
+                        aria-label="Apri scheda mostro"
+                      >
+                        <BookOpen className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : null}
                     <Button
                       type="submit"
                       size="icon"
                       className="h-7 w-7"
-                      title="Aggiungi mostro"
-                      aria-label="Aggiungi mostro"
+                      disabled={
+                        !monsterDraft.name.trim() ||
+                        (requiresImmediateMonsterInitiative && !monsterDraft.initiative.trim()) ||
+                        (monsterDraft.selectedMonsterId && !selectedBestiaryMonsterDetails)
+                      }
+                      title={monsterDraft.selectedMonsterId ? "Aggiungi dal bestiario" : "Aggiungi mostro manuale"}
+                      aria-label={monsterDraft.selectedMonsterId ? "Aggiungi dal bestiario" : "Aggiungi mostro manuale"}
                     >
                       <Plus className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </form>
+                {selectedBestiaryMonsterDetails && bestiaryHitPointRange ? (
+                  <div className="border-t border-border/60 px-3 py-3">
+                    <div className="mb-2 flex items-center justify-between text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <span>Range Punti Ferita</span>
+                      <span>
+                        {bestiaryHitPointRange.min} - {bestiaryHitPointRange.max}
+                      </span>
+                    </div>
+                    <Slider
+                      value={[
+                        Math.min(
+                          bestiaryHitPointRange.max,
+                          Math.max(
+                            bestiaryHitPointRange.min,
+                            Number.isFinite(parseInt(monsterDraft.hitPoints, 10))
+                              ? parseInt(monsterDraft.hitPoints, 10)
+                              : bestiaryHitPointRange.average
+                          )
+                        ),
+                      ]}
+                      min={bestiaryHitPointRange.min}
+                      max={bestiaryHitPointRange.max}
+                      step={1}
+                      onValueChange={([value]) =>
+                        setMonsterDraft((prev) => ({ ...prev, hitPoints: String(value ?? bestiaryHitPointRange.average) }))
+                      }
+                      aria-label="Punti ferita del mostro"
+                      className="py-1"
+                      trackClassName="bg-[linear-gradient(90deg,rgba(244,63,94,0.55)_0%,rgba(244,63,94,0.55)_0.8%,rgba(251,191,36,0.5)_0.8%,rgba(251,191,36,0.5)_20%,rgba(148,163,184,0.35)_20%,rgba(148,163,184,0.35)_80%,rgba(56,189,248,0.45)_80%,rgba(56,189,248,0.45)_99.2%,rgba(16,185,129,0.55)_99.2%,rgba(16,185,129,0.55)_100%)]"
+                      rangeClassName="bg-primary/30"
+                      thumbClassName="border-primary bg-background shadow-[0_0_0_2px_rgba(0,0,0,0.08)]"
+                    />
+                    <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Min {bestiaryHitPointRange.min}</span>
+                      <span>Medio {selectedBestiaryMonsterDetails.combat.hitPoints.average}</span>
+                      <span>Max {bestiaryHitPointRange.max}</span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">
+                      Formula: {selectedBestiaryMonsterDetails.combat.hitPoints.formula}
+                    </div>
+                  </div>
+                ) : null}
                 </div>
 
-                <div className="overflow-hidden rounded-md border border-border/70 bg-background/20">
+                <div className="hidden overflow-hidden rounded-md border border-border/70 bg-background/20">
                   <div className="grid grid-cols-[minmax(0,1.45fr)_70px_72px_82px_64px_110px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
                     <span>Bestiario</span>
                     <span>GS</span>
@@ -2561,4 +2822,7 @@ export default function InitiativeTracker() {
     </div>
   );
 }
+
+
+
 
