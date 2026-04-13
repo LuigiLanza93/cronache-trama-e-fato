@@ -927,7 +927,7 @@ export default function InitiativeTracker() {
     ? Math.max(1, parseInt(monsterDraft.quantity, 10))
     : 1;
   const isBestiaryDraft = Boolean(monsterDraft.selectedMonsterId);
-  const requiresImmediateMonsterInitiative = !isBestiaryDraft || monsterDraftQuantity === 1;
+  const requiresImmediateMonsterInitiative = monsterDraftQuantity === 1;
 
   useEffect(() => {
     document.title = "Iniziativa | D&D Character Manager";
@@ -1902,17 +1902,17 @@ export default function InitiativeTracker() {
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4">
                 <div className="overflow-hidden rounded-md border border-border/70 bg-background/20">
-                                <div className="grid grid-cols-[minmax(0,1.7fr)_72px_82px_64px_82px_110px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+                                <div className="grid grid-cols-[minmax(0,2.25fr)_72px_82px_64px_82px_76px] gap-2 border-b border-border/70 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground">
                   <span>Nome o bestiario</span>
                   <span>CA</span>
                   <span>PF</span>
-                  <span>Qt‡</span>
+                  <span className="normal-case">Qt&agrave;</span>
                   <span>Init</span>
                   <span className="text-right">Azione</span>
                 </div>
                 <form
                   onSubmit={handleMonsterFormSubmit}
-                  className="grid grid-cols-[minmax(0,1.7fr)_72px_82px_64px_82px_110px] items-start gap-2 px-3 py-1.5"
+                  className="grid grid-cols-[minmax(0,2.25fr)_72px_82px_64px_82px_76px] items-start gap-2 px-3 py-1.5"
                 >
                   <div className="min-w-0 space-y-1">
                     <Popover open={monsterSearchOpen && filteredBestiaryOptions.length > 0} onOpenChange={setMonsterSearchOpen}>
@@ -2004,7 +2004,7 @@ export default function InitiativeTracker() {
                           return {
                             ...prev,
                             quantity: nextQuantityRaw,
-                            initiative: prev.selectedMonsterId && nextQuantity > 1 ? "" : prev.initiative,
+                            initiative: nextQuantity > 1 ? "" : prev.initiative,
                           };
                         })
                       }
@@ -2019,8 +2019,8 @@ export default function InitiativeTracker() {
                         onChange={(e) => setMonsterDraft((prev) => ({ ...prev, initiative: e.target.value }))}
                         inputMode="numeric"
                         className="h-7 text-xs"
-                        disabled={isBestiaryDraft && monsterDraftQuantity > 1}
-                        placeholder={isBestiaryDraft && monsterDraftQuantity > 1 ? "Batch" : "Init"}
+                        disabled={monsterDraftQuantity > 1}
+                        placeholder={monsterDraftQuantity > 1 ? "Batch" : "Init"}
                       />
                       <Button
                         type="button"
@@ -2030,13 +2030,13 @@ export default function InitiativeTracker() {
                         onClick={() => setMonsterDraft((prev) => ({ ...prev, initiative: String(rollD20()) }))}
                         title="Tira iniziativa"
                         aria-label="Tira iniziativa"
-                        disabled={isBestiaryDraft && monsterDraftQuantity > 1}
+                        disabled={monsterDraftQuantity > 1}
                       >
                         <Dices className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-end gap-1">
                     {selectedBestiaryMonster && selectedBestiaryMonsterDetails ? (
                       <Button
                         type="button"
@@ -2116,7 +2116,7 @@ export default function InitiativeTracker() {
                     <span>GS</span>
                     <span>CA</span>
                     <span>PF</span>
-                    <span>Qt√†</span>
+                    <span className="normal-case">Qt&agrave;</span>
                     <span className="text-right">Azione</span>
                   </div>
                   <form onSubmit={handleBestiaryMonsterSubmit} className="grid grid-cols-[minmax(0,1.45fr)_70px_72px_82px_64px_110px] items-end gap-2 px-3 py-1.5">
@@ -2162,7 +2162,7 @@ export default function InitiativeTracker() {
                         className="h-7 text-center text-xs"
                       />
                     </div>
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-1">
                       <Input
                         value={bestiaryMonsterDraft.initiative}
                         onChange={(e) => setBestiaryMonsterDraft((prev) => ({ ...prev, initiative: e.target.value }))}
@@ -2476,7 +2476,7 @@ export default function InitiativeTracker() {
                             </Button>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               size="icon"
                               variant="default"
@@ -2822,6 +2822,12 @@ export default function InitiativeTracker() {
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
