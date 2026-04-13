@@ -1,0 +1,119 @@
+{
+  "slug": "novizio-acrobata",
+  "general": {
+    "name": "Novizio Acrobata",
+    "challengeRating": {
+      "fraction": "1/2",
+      "decimal": 0.5,
+      "display": "1/2",
+      "xp": 100
+    },
+    "size": "Media",
+    "creatureType": "umanoide",
+    "subtype": "",
+    "typeLabel": "umanoide",
+    "alignment": "neutrale malvagio",
+    "environments": [
+      "urbano",
+      "rovine"
+    ]
+  },
+  "combat": {
+    "armorClass": {
+      "value": 13,
+      "note": "cuoio borchiato"
+    },
+    "hitPoints": {
+      "average": 18,
+      "formula": "2d8 + 9"
+    },
+    "speed": {
+      "walk": "9 m",
+      "climb": "",
+      "swim": "",
+      "fly": "",
+      "burrow": "",
+      "other": ""
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 16,
+    "constitution": 14,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 11
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 5
+      }
+    ],
+    "skills": [
+      {
+        "name": "Acrobazia",
+        "bonus": 5
+      },
+      {
+        "name": "Furtività",
+        "bonus": 5
+      }
+    ],
+    "damageVulnerabilities": [],
+    "damageResistances": [],
+    "damageImmunities": [],
+    "conditionImmunities": [],
+    "senses": [
+      {
+        "name": "Percezione passiva 10"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Veleno Paralizzante",
+      "usage": null,
+      "description": "Una creatura colpita dall'attacco con pugnale del novizio acrobata deve superare un tiro salvezza su Costituzione CD 11 oppure subire gli effetti del veleno paralizzante. In caso di fallimento, la velocita della creatura e dimezzata e non puo effettuare reazioni fino alla fine del suo prossimo turno. Se il tiro salvezza fallisce di 5 o piu, la creatura e invece paralizzata fino alla fine del suo prossimo turno."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Pugnale",
+      "usage": null,
+      "description": "Attacco con arma da mischia o a distanza: +5 a colpire, portata 1,5 m o gittata 6/18 m, un bersaglio. Colpisce: 5 (1d4 + 3) danni perforanti."
+    },
+    {
+      "name": "Bomba Fumogena",
+      "usage": null,
+      "description": "Ricarica 1-2. Il novizio acrobata lancia una bomba fumogena in un punto entro 6 m. La bomba esplode in una nube di fumo dal raggio di 3 m che crea un'area pesantemente oscurata fino all'inizio del turno successivo del novizio acrobata. Le creature nell'area quando la bomba esplode devono superare un tiro salvezza su Costituzione CD 11 oppure sono accecate fino all'inizio del turno successivo del novizio acrobata."
+    }
+  ],
+  "bonusActions": [],
+  "reactions": [],
+  "legendaryActions": {
+    "description": "",
+    "actions": []
+  },
+  "lairActions": [],
+  "regionalEffects": [],
+  "notes": [
+    "Creatura homebrew costruita come schermagliatore agile di basso grado sfida.",
+    "La formula dei punti ferita e mantenuta come da scheda originale anche se non perfettamente standard.",
+    "Il Veleno Paralizzante e stato formalizzato in modo conservativo per restare coerente con un GS 1/2."
+  ],
+  "source": {
+    "extractedFrom": "homebrew",
+    "page": "",
+    "rawText": "Novizio Acrobata. CA 13 (cuoio borchiata), PF 18 (2d8 + 9), Velocita 9 m, TS Des +5, Abilita Acrobazia +5, Furtivita +5, Percezione passiva 10, GS 1/2 (100 PE). Attacchi: Pugnale +5, 5 (1d4+3) perforanti. Azioni speciali: Bomba Fumogena (ricarica 1-2): oscuramento forte raggio 3 m, accecamento 1 round. Veleno Paralizzante.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null
+  }
+}

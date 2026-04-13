@@ -1,0 +1,152 @@
+{
+  "slug": "mm5-nome-mostro",
+  "general": {
+    "name": "Nome Mostro",
+    "challengeRating": {
+      "fraction": "0",
+      "decimal": 0,
+      "display": "0",
+      "xp": 0
+    },
+    "size": "Media",
+    "creatureType": "Inserire tipo canonico, per esempio bestia, umanoide, immondo, mostruosita, mostruosita, vegetale, drago",
+    "subtype": "Lasciare stringa vuota se assente. Se presente, usare una stringa semplice, per esempio mutaforma oppure demone, mutaforma",
+    "typeLabel": "Etichetta tipo come appare nel testo sorgente, per esempio umanoide (gith) o immondo (demone, mutaforma)",
+    "alignment": "neutrale",
+    "environments": [
+      "Inserire uno o piu ambienti, oppure lasciare array vuoto"
+    ]
+  },
+  "combat": {
+    "armorClass": {
+      "value": 10,
+      "note": "Per esempio armatura naturale, armatura di cuoio, scudo"
+    },
+    "hitPoints": {
+      "average": 1,
+      "formula": "1d8"
+    },
+    "speed": {
+      "walk": "9 m",
+      "climb": "",
+      "swim": "",
+      "fly": "",
+      "burrow": "",
+      "other": ""
+    }
+  },
+  "abilities": {
+    "strength": 10,
+    "dexterity": 10,
+    "constitution": 10,
+    "intelligence": 10,
+    "wisdom": 10,
+    "charisma": 10
+  },
+  "details": {
+    "savingThrows": [
+      {
+        "ability": "Destrezza",
+        "bonus": 0
+      }
+    ],
+    "skills": [
+      {
+        "name": "Percezione",
+        "bonus": 0
+      }
+    ],
+    "damageVulnerabilities": [
+      "Fuoco"
+    ],
+    "damageResistances": [
+      "Freddo"
+    ],
+    "damageImmunities": [
+      "Veleno"
+    ],
+    "conditionImmunities": [
+      "Avvelenato"
+    ],
+    "senses": [
+      {
+        "name": "scurovisione",
+        "value": "18 m"
+      },
+      {
+        "name": "Percezione passiva 12"
+      }
+    ],
+    "languages": [
+      {
+        "name": "Comune"
+      }
+    ],
+    "proficiencyBonus": 2
+  },
+  "traits": [
+    {
+      "name": "Nome tratto",
+      "usage": null,
+      "description": "Descrizione completa del tratto."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattacco",
+      "usage": null,
+      "description": "Descrizione completa dell'azione."
+    },
+    {
+      "name": "Attacco principale",
+      "usage": null,
+      "description": "Attacco con arma da mischia o a distanza con tutto il testo completo."
+    }
+  ],
+  "bonusActions": [
+    {
+      "name": "Nome azione bonus",
+      "usage": null,
+      "description": "Descrizione completa dell'azione bonus."
+    }
+  ],
+  "reactions": [
+    {
+      "name": "Nome reazione",
+      "usage": null,
+      "description": "Descrizione completa della reazione."
+    }
+  ],
+  "legendaryActions": {
+    "description": "Testo introduttivo delle azioni leggendarie. Lasciare vuoto se il mostro non ne ha.",
+    "actions": [
+      {
+        "name": "Nome azione leggendaria",
+        "usage": null,
+        "description": "Descrizione completa dell'azione leggendaria."
+      }
+    ]
+  },
+  "lairActions": [
+    {
+      "name": "Nome azione di tana",
+      "description": "Descrizione completa dell'azione di tana."
+    }
+  ],
+  "regionalEffects": [
+    {
+      "name": "Nome effetto regionale",
+      "description": "Descrizione completa dell'effetto regionale."
+    }
+  ],
+  "notes": [
+    "Note libere facoltative"
+  ],
+  "source": {
+    "extractedFrom": "Manuale_dei_Mostri_5.0.pdf",
+    "page": "Numero pagina facoltativo",
+    "rawText": "Incollare qui il testo completo del mostro se disponibile. Se il compilatore non sa come riempire alcuni campi, questo testo mi aiuta a completare e correggere il JSON.",
+    "importCategory": "manual-only",
+    "possibleDuplicateOf": null
+  }
+}

@@ -779,6 +779,7 @@ function normalizeMonsterDbRow(row) {
 
     return normalizeMonsterRecord(
       {
+        rarity: row.rarity ?? data?.rarity ?? "",
         slug: row.slug,
         general: {
           name: String(data.name),
@@ -863,7 +864,10 @@ function normalizeMonsterDbRow(row) {
     );
   }
   return normalizeMonsterRecord(
-    data,
+    {
+      ...data,
+      rarity: row.rarity ?? data?.rarity ?? "",
+    },
     row.id,
     row.sourceFile ?? row.filePath ?? ""
   );
@@ -3605,10 +3609,12 @@ function normalizeMonsterRecord(data = {}, fileId, relativePath) {
     display: String(challengeRating?.display ?? challengeRating?.fraction ?? ""),
     xp: typeof challengeRating?.xp === "number" ? challengeRating.xp : 0,
   };
-  const rarity = computeMonsterRarity({
+  const computedRarity = computeMonsterRarity({
     creatureType: normalizedType.creatureType,
     challengeRating: normalizedChallengeRating,
   });
+  const explicitRarity = typeof data?.rarity === "string" ? data.rarity.trim() : "";
+  const rarity = explicitRarity || computedRarity;
 
   return {
     id: fileId,
@@ -3882,6 +3888,131 @@ function createUniqueMonsterFileName(baseName) {
     index += 1;
   }
   return `${baseSlug}-${index}.json`;
+}
+
+function serializeMonsterData(monster) {
+  return JSON.stringify({
+    slug: monster.slug || sanitizeSlug(monster.general?.name || "monster"),
+    general: monster.general,
+    combat: monster.combat,
+    abilities: monster.abilities,
+    details: monster.details,
+    traits: monster.traits,
+    actions: monster.actions,
+    bonusActions: monster.bonusActions,
+    reactions: monster.reactions,
+    legendaryActions: monster.legendaryActions,
+    lairActions: monster.lairActions,
+    regionalEffects: monster.regionalEffects,
+    notes: monster.notes,
+    source: monster.source,
+  });
+}
+
+function ensureMonsterCompendiumEntry(monsterId, now = new Date().toISOString()) {
+  if (!tableExists("MonsterCompendiumEntry")) return;
+  sqlite.prepare(`
+    INSERT OR IGNORE INTO "MonsterCompendiumEntry" (
+      monsterId, knowledgeState, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?)
+  `).run(
+    monsterId,
+    "UNKNOWN",
+    now,
+    now
+  );
+}
+
+function importMonsterFromJsonPayload(payload, targetMonsterId = null) {
+  if (!payload || typeof payload !== "object") {
+    throw new Error("Monster payload required");
+  }
+
+  if (targetMonsterId) {
+    const relativePath = decodeMonsterId(targetMonsterId);
+    if (!relativePath) {
+      throw new Error("Invalid target monster id");
+    }
+
+    const currentMonster = readMonsterByRelativePath(relativePath);
+    if (!currentMonster) {
+      throw new Error("Target monster not found");
+    }
+
+    const nextMonster = normalizeMonsterRecord(payload, currentMonster.id, relativePath);
+    if (!nextMonster.general.name.trim()) {
+      throw new Error("Monster name required");
+    }
+
+    sqlite.prepare(`
+      UPDATE "Monster"
+      SET
+        slug = ?,
+        name = ?,
+        challengeRatingDisplay = ?,
+        challengeRatingDecimal = ?,
+        challengeRatingXp = ?,
+        size = ?,
+        creatureType = ?,
+        rarity = ?,
+        alignment = ?,
+        data = ?,
+        updatedAt = ?
+      WHERE id = ?
+    `).run(
+      nextMonster.slug || sanitizeSlug(nextMonster.general.name),
+      nextMonster.general.name,
+      nextMonster.general.challengeRating.display || null,
+      nextMonster.general.challengeRating.decimal,
+      nextMonster.general.challengeRating.xp,
+      nextMonster.general.size || null,
+      nextMonster.general.creatureType || nextMonster.general.typeLabel || null,
+      nextMonster.rarity || null,
+      nextMonster.general.alignment || null,
+      serializeMonsterData(nextMonster),
+      new Date().toISOString(),
+      nextMonster.id
+    );
+
+    return readMonsterByRelativePath(relativePath);
+  }
+
+  const name = String(payload?.general?.name ?? payload?.name ?? "").trim();
+  if (!name) {
+    throw new Error("Monster name required");
+  }
+
+  const fileName = createUniqueMonsterFileName(payload?.slug || name);
+  const relativePath = `custom/${fileName}`;
+  const monsterId = encodeMonsterId(relativePath);
+  const nextMonster = normalizeMonsterRecord(payload, monsterId, relativePath);
+  const now = new Date().toISOString();
+
+  sqlite.prepare(`
+    INSERT INTO "Monster" (
+      id, slug, name, sourceType, sourceFile, challengeRatingDisplay, challengeRatingDecimal,
+      challengeRatingXp, size, creatureType, rarity, alignment, data, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    monsterId,
+    nextMonster.slug || sanitizeSlug(name),
+    nextMonster.general.name,
+    "CUSTOM",
+    relativePath,
+    nextMonster.general.challengeRating.display || null,
+    nextMonster.general.challengeRating.decimal,
+    nextMonster.general.challengeRating.xp,
+    nextMonster.general.size || null,
+    nextMonster.general.creatureType || nextMonster.general.typeLabel || null,
+    nextMonster.rarity || null,
+    nextMonster.general.alignment || null,
+    serializeMonsterData(nextMonster),
+    now,
+    now
+  );
+
+  ensureMonsterCompendiumEntry(monsterId, now);
+  return readMonsterByRelativePath(relativePath);
 }
 
 function listCharacterSlugs() {
@@ -5190,6 +5321,29 @@ async function start() {
       ...createdMonster,
       compendiumKnowledgeState: readMonsterCompendiumKnowledgeState(createdMonster.id),
     });
+  });
+
+  app.post("/api/monsters/import-json", requireRole("dm"), (req, res) => {
+    const payload = req.body?.monster;
+    const targetMonsterId = typeof req.body?.targetMonsterId === "string" && req.body.targetMonsterId.trim()
+      ? req.body.targetMonsterId.trim()
+      : null;
+
+    try {
+      const savedMonster = importMonsterFromJsonPayload(payload, targetMonsterId);
+      return res.status(targetMonsterId ? 200 : 201).json({
+        ...savedMonster,
+        compendiumKnowledgeState: readMonsterCompendiumKnowledgeState(savedMonster.id),
+      });
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      const status =
+        /not found/i.test(message) ? 404
+          : /invalid/i.test(message) ? 400
+            : /required/i.test(message) ? 400
+              : 400;
+      return res.status(status).json({ error: message });
+    }
   });
 
   app.put("/api/monsters/:monsterId/compendium-knowledge", requireRole("dm"), (req, res) => {

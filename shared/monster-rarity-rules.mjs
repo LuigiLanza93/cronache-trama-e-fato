@@ -20,11 +20,11 @@ export function computeMonsterRarity({ creatureType = "", challengeRating = {} }
 
   if (!type) return "";
 
-  if (["bestia", "umanoide", "pianta", "sciame di minuscole bestie"].includes(type)) {
+  if (["bestia", "umanoide", "pianta", "vegetale", "sciame di minuscole bestie"].includes(type)) {
     return isHighCr ? "Non comune" : "Comune";
   }
 
-  if (["mostruosit\u00E0", "gigante", "non morto", "fatato"].includes(type)) {
+  if (["mostruosit\u00E0", "mostruosita", "gigante", "non morto", "fatato", "folletto"].includes(type)) {
     return isHighCr ? "Raro" : "Non comune";
   }
 

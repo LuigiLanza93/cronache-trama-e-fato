@@ -652,6 +652,16 @@ export function createMonsterRequest(payload: { name: string; duplicateFromId?: 
   });
 }
 
+export function importMonsterJsonRequest(payload: {
+  monster: Record<string, unknown>;
+  targetMonsterId?: string | null;
+}) {
+  return authFetch<MonsterEntry>("/api/monsters/import-json", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function archiveMonsterRequest(monsterId: string) {
   return authFetch<null>(`/api/monsters/${monsterId}`, {
     method: "DELETE",

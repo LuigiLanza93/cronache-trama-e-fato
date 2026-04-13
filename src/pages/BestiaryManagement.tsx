@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { archiveMonsterRequest, createMonsterRequest, fetchMonster, fetchMonsters, updateMonsterCompendiumKnowledgeRequest, updateMonsterRequest, type MonsterEntry, type MonsterSummary, type PlayerMonsterKnowledgeState } from "@/lib/auth";
+import { archiveMonsterRequest, createMonsterRequest, fetchMonster, fetchMonsters, importMonsterJsonRequest, updateMonsterCompendiumKnowledgeRequest, updateMonsterRequest, type MonsterEntry, type MonsterSummary, type PlayerMonsterKnowledgeState } from "@/lib/auth";
 import { toast } from "@/components/ui/sonner";
 
 const ABILITIES = [
@@ -33,6 +33,7 @@ const SPEED_LABELS: Record<string, string> = {
   climb: "Scalare",
   burrow: "Scavare",
 };
+const MONSTER_RARITY_OPTIONS = ["Comune", "Non comune", "Raro", "Molto raro", "Leggendario"] as const;
 const BESTIARY_TABLE_GRID = "minmax(220px, 1.6fr) 64px 84px 84px minmax(128px, 0.95fr) 112px 56px 76px 84px minmax(140px, 1fr)";
 
 type BestiarySortKey =
@@ -139,6 +140,130 @@ function listToText(items: string[]) {
 
 function textToList(value: string) {
   return value.split("\n").map((entry) => entry.trim()).filter(Boolean);
+}
+
+function sanitizeImportSlug(value: string) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function parseImportChallengeDecimal(challengeRating: Record<string, unknown> | null | undefined) {
+  const decimal = challengeRating?.decimal;
+  if (typeof decimal === "number" && Number.isFinite(decimal)) return decimal;
+
+  const display = String(challengeRating?.display ?? challengeRating?.fraction ?? "").trim();
+  if (!display) return null;
+  if (display === "1/8") return 0.125;
+  if (display === "1/4") return 0.25;
+  if (display === "1/2") return 0.5;
+
+  const numeric = Number(display);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function computeImportRarityHint(creatureType: string, challengeRating: Record<string, unknown> | null | undefined) {
+  const type = String(creatureType ?? "").trim().toLocaleLowerCase("it-IT");
+  const challengeDecimal = parseImportChallengeDecimal(challengeRating);
+  const isHighCr = typeof challengeDecimal === "number" && challengeDecimal >= 5;
+
+  if (!type) return "";
+  if (["bestia", "umanoide", "pianta", "vegetale", "sciame di minuscole bestie"].includes(type)) {
+    return isHighCr ? "Non comune" : "Comune";
+  }
+  if (["mostruosità", "mostruosita", "gigante", "non morto", "fatato", "folletto"].includes(type)) {
+    return isHighCr ? "Raro" : "Non comune";
+  }
+  if (["aberrazione", "immondo", "celestiale", "elementale", "melma", "costrutto"].includes(type)) {
+    return isHighCr ? "Molto raro" : "Raro";
+  }
+  if (type === "drago") {
+    return typeof challengeDecimal === "number" && challengeDecimal > 15 ? "Leggendario" : "Molto raro";
+  }
+  return "";
+}
+
+type MonsterImportPreview =
+  | {
+      ok: false;
+      error: string;
+    }
+  | {
+      ok: true;
+      payload: Record<string, unknown>;
+      name: string;
+      slug: string;
+      challengeLabel: string;
+      size: string;
+      creatureType: string;
+      subtype: string;
+      typeLabel: string;
+      alignment: string;
+      rarityHint: string;
+      sourceLabel: string;
+      traitCount: number;
+      actionCount: number;
+      matches: MonsterSummary[];
+    };
+
+function buildMonsterImportPreview(rawJson: string, monsters: MonsterSummary[]): MonsterImportPreview {
+  const text = rawJson.trim();
+  if (!text) {
+    return { ok: false, error: "Incolla un JSON per vedere l'anteprima." };
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    return { ok: false, error: "Il contenuto non e un JSON valido." };
+  }
+
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return { ok: false, error: "Il JSON deve rappresentare un singolo mostro." };
+  }
+
+  const monster = payload as Record<string, unknown>;
+  const general = typeof monster.general === "object" && monster.general !== null ? monster.general as Record<string, unknown> : {};
+  const source = typeof monster.source === "object" && monster.source !== null ? monster.source as Record<string, unknown> : {};
+  const challengeRating = typeof general.challengeRating === "object" && general.challengeRating !== null ? general.challengeRating as Record<string, unknown> : {};
+  const name = String(general.name ?? "").trim();
+
+  if (!name) {
+    return { ok: false, error: "Manca `general.name`." };
+  }
+
+  const slug = String(monster.slug ?? "").trim() || sanitizeImportSlug(name);
+  const challengeLabel = String(challengeRating.display ?? challengeRating.fraction ?? "").trim();
+  const creatureType = String(general.creatureType ?? "").trim();
+  const subtype = String(general.subtype ?? "").trim();
+  const typeLabel = String(general.typeLabel ?? "").trim();
+  const lowerName = name.toLocaleLowerCase("it-IT");
+  const matches = monsters.filter((entry) => (
+    entry.slug.toLocaleLowerCase("it-IT") === slug.toLocaleLowerCase("it-IT") ||
+    entry.name.toLocaleLowerCase("it-IT") === lowerName
+  ));
+
+  return {
+    ok: true,
+    payload: monster,
+    name,
+    slug,
+    challengeLabel,
+    size: String(general.size ?? "").trim(),
+    creatureType,
+    subtype,
+    typeLabel,
+    alignment: String(general.alignment ?? "").trim(),
+    rarityHint: computeImportRarityHint(creatureType, challengeRating),
+    sourceLabel: String(source.extractedFrom ?? "").trim() || "Custom / JSON incollato",
+    traitCount: Array.isArray(monster.traits) ? monster.traits.length : 0,
+    actionCount: Array.isArray(monster.actions) ? monster.actions.length : 0,
+    matches,
+  };
 }
 
 function compareNullableNumber(a: number | null | undefined, b: number | null | undefined) {
@@ -673,8 +798,24 @@ function MonsterEditForm({
             <div className="space-y-2"><Label>Tipo</Label><Input value={monster.general.creatureType} onChange={(event) => draftMonster && setDraftMonster({ ...draftMonster, general: { ...draftMonster.general, creatureType: event.target.value } })} /></div>
             <div className="space-y-2"><Label>Sottotipo</Label><Input value={monster.general.subtype} onChange={(event) => draftMonster && setDraftMonster({ ...draftMonster, general: { ...draftMonster.general, subtype: event.target.value } })} /></div>
             <div className="space-y-2"><Label>Etichetta tipo</Label><Input value={monster.general.typeLabel} onChange={(event) => draftMonster && setDraftMonster({ ...draftMonster, general: { ...draftMonster.general, typeLabel: event.target.value } })} /></div>
+            <div className="space-y-2">
+              <Label>Rarita</Label>
+              <Select
+                value={monster.rarity?.trim() ? monster.rarity : "__auto__"}
+                onValueChange={(value) => draftMonster && setDraftMonster({ ...draftMonster, rarity: value === "__auto__" ? "" : value })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__auto__">Auto</SelectItem>
+                  {MONSTER_RARITY_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2 md:col-span-2"><Label>Allineamento</Label><Input value={monster.general.alignment} onChange={(event) => draftMonster && setDraftMonster({ ...draftMonster, general: { ...draftMonster.general, alignment: event.target.value } })} /></div>
           </div>
+          <p className="text-xs text-muted-foreground">`Auto` usa le regole di calcolo standard. Seleziona una rarita esplicita per i casi speciali che non devono seguire l'automatismo.</p>
           <div className="space-y-2"><Label>Ambienti</Label><Textarea rows={2} value={listToText(monster.general.environments)} onChange={(event) => draftMonster && setDraftMonster({ ...draftMonster, general: { ...draftMonster.general, environments: textToList(event.target.value) } })} /></div>
         </AccordionContent>
       </AccordionItem>
@@ -770,6 +911,12 @@ export default function BestiaryManagement() {
   const [createMode, setCreateMode] = useState<"blank" | "duplicate">("blank");
   const [newMonsterName, setNewMonsterName] = useState("");
   const [duplicateFromId, setDuplicateFromId] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importJsonText, setImportJsonText] = useState("");
+  const [importMode, setImportMode] = useState<"create" | "update">("create");
+  const [importTargetId, setImportTargetId] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importFileName, setImportFileName] = useState("");
 
   useEffect(() => {
     document.title = "Gestione Bestiario | D&D Character Manager";
@@ -868,6 +1015,15 @@ export default function BestiaryManagement() {
     filters.minHitPoints.trim().length > 0;
 
   const monster = editing ? draftMonster : selectedMonster;
+  const importPreview = useMemo(() => buildMonsterImportPreview(importJsonText, monsters), [importJsonText, monsters]);
+
+  useEffect(() => {
+    if (!importPreview.ok) return;
+    if (!importTargetId && importPreview.matches.length === 1) {
+      setImportTargetId(importPreview.matches[0].id);
+      setImportMode("update");
+    }
+  }, [importPreview, importTargetId]);
 
   const toggleSort = (key: BestiarySortKey) => {
     if (sortBy === key) {
@@ -984,6 +1140,63 @@ export default function BestiaryManagement() {
     }
   };
 
+  const handleImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const content = await file.text();
+      setImportJsonText(content);
+      setImportFileName(file.name);
+    } catch {
+      toast.error("Non sono riuscito a leggere il file JSON.");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const importMonsterFromJson = async () => {
+    if (!importPreview.ok) {
+      toast.error(importPreview.error);
+      return;
+    }
+
+    if (importMode === "update" && !importTargetId) {
+      toast.error("Scegli il mostro da aggiornare.");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const savedMonster = await importMonsterJsonRequest({
+        monster: importPreview.payload,
+        targetMonsterId: importMode === "update" ? importTargetId : null,
+      });
+
+      setMonsters((prev) => {
+        const nextSummary = summaryFromMonster(savedMonster);
+        const exists = prev.some((entry) => entry.id === savedMonster.id);
+        const next = exists
+          ? prev.map((entry) => entry.id === savedMonster.id ? nextSummary : entry)
+          : [...prev, nextSummary];
+        return next.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      });
+
+      setImportOpen(false);
+      setImportJsonText("");
+      setImportMode("create");
+      setImportTargetId("");
+      setImportFileName("");
+      toast.success(importMode === "update" ? `${savedMonster.general.name} aggiornato da JSON.` : `${savedMonster.general.name} importato da JSON.`);
+      await openMonster(savedMonster.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Non sono riuscito a importare il mostro.";
+      toast.error(message);
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen parchment px-6 py-12">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -1028,6 +1241,14 @@ export default function BestiaryManagement() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Aggiungi mostro</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setImportOpen(true)} aria-label="Importa mostro da JSON">
+                  <WandSparkles className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Importa mostro da JSON</TooltipContent>
             </Tooltip>
           </div>
         </section>
@@ -1235,6 +1456,152 @@ export default function BestiaryManagement() {
               {monster ? <PlayerMonsterPreviewCard monster={monster} state={playerPreviewState} /> : null}
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={(open) => {
+        setImportOpen(open);
+        if (!open) {
+          setImportJsonText("");
+          setImportMode("create");
+          setImportTargetId("");
+          setImportFileName("");
+        }
+      }}>
+        <DialogContent className="[&>button]:hidden flex max-h-[88vh] flex-col overflow-hidden p-0 sm:max-w-4xl">
+          <DialogHeader>
+            <div className="px-6 pt-6">
+              <DialogTitle>Importa mostro da JSON</DialogTitle>
+              <DialogDescription>Incolla il JSON canonico del mostro oppure carica un file `.json`. Prima del salvataggio puoi vedere anteprima, rarita stimata e possibili match con il bestiario.</DialogDescription>
+            </div>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6">
+            <div className="grid gap-5 pb-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.9fr)]">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="monster-import-file">File JSON</Label>
+                  <Input id="monster-import-file" type="file" accept=".json,application/json" onChange={(event) => void handleImportFile(event)} />
+                  <p className="text-xs text-muted-foreground">{importFileName ? `File caricato: ${importFileName}` : "Puoi anche incollare direttamente il contenuto qui sotto."}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="monster-import-json">JSON mostro</Label>
+                  <Textarea
+                    id="monster-import-json"
+                    rows={20}
+                    value={importJsonText}
+                    onChange={(event) => setImportJsonText(event.target.value)}
+                    placeholder={`{\n  "slug": "mm5-nome-mostro",\n  "general": {\n    "name": "Nome Mostro"\n  }\n}`}
+                    className="font-mono text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-3xl border border-border/60 bg-background/55 p-4">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Anteprima import</div>
+                  <div className="mt-1 text-sm text-muted-foreground">La normalizzazione finale avviene lato server al salvataggio.</div>
+                </div>
+
+                {!importPreview.ok ? (
+                  <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
+                    {importPreview.error}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2 rounded-2xl border border-border/60 bg-background/70 p-4">
+                      <div className="font-heading text-2xl text-primary">{importPreview.name}</div>
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline">slug {importPreview.slug}</Badge>
+                        <Badge variant="outline">GS {importPreview.challengeLabel || "-"}</Badge>
+                        <Badge variant="outline">{importPreview.size || "Taglia?"}</Badge>
+                        <Badge variant="outline">{importPreview.typeLabel || importPreview.creatureType || "Tipo?"}</Badge>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 text-sm md:grid-cols-2">
+                      <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">Tipo</div>
+                        <div className="mt-1 text-foreground">{importPreview.creatureType || "-"}</div>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">Sottotipo</div>
+                        <div className="mt-1 text-foreground">{importPreview.subtype || "-"}</div>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">Allineamento</div>
+                        <div className="mt-1 text-foreground">{importPreview.alignment || "-"}</div>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">Rarita stimata</div>
+                        <div className="mt-1 text-foreground">{importPreview.rarityHint || "Non calcolabile"}</div>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">Tratti</div>
+                        <div className="mt-1 text-foreground">{importPreview.traitCount}</div>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">Azioni</div>
+                        <div className="mt-1 text-foreground">{importPreview.actionCount}</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>Operazione</Label>
+                        <Select value={importMode} onValueChange={(value: "create" | "update") => setImportMode(value)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="create">Crea nuovo mostro</SelectItem>
+                            <SelectItem value="update">Aggiorna mostro esistente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {importPreview.matches.length > 0 ? (
+                        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-950 dark:text-amber-100">
+                          Trovati {importPreview.matches.length} possibili match per nome o slug.
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-sm text-emerald-950 dark:text-emerald-100">
+                          Nessun match rilevato: l'import verra trattato come nuova creatura.
+                        </div>
+                      )}
+
+                      {importMode === "update" ? (
+                        <div className="space-y-2">
+                          <Label>Mostro da aggiornare</Label>
+                          <Select value={importTargetId} onValueChange={setImportTargetId}>
+                            <SelectTrigger><SelectValue placeholder="Scegli il mostro bersaglio" /></SelectTrigger>
+                            <SelectContent>
+                              {importPreview.matches.map((entry) => (
+                                <SelectItem key={entry.id} value={entry.id}>
+                                  {entry.name} · GS {crLabel(entry.challengeRating)}
+                                </SelectItem>
+                              ))}
+                              {importPreview.matches.length === 0 ? <SelectItem value="__none__" disabled>Nessun match disponibile</SelectItem> : null}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : null}
+
+                      <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">Origine</div>
+                        <div className="mt-1 text-sm text-foreground">{importPreview.sourceLabel}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="border-t border-border/60 px-6 py-4">
+            <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => setImportOpen(false)}>
+              <X className="h-4 w-4" />
+            </Button>
+            <Button size="icon" className="rounded-full" onClick={() => void importMonsterFromJson()} disabled={!importPreview.ok || importing || (importMode === "update" && !importTargetId)}>
+              <Check className="h-4 w-4" />
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
