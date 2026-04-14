@@ -1,5 +1,5 @@
-import { type ComponentPropsWithoutRef, useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { type ComponentPropsWithoutRef, FormEvent, useEffect, useMemo, useState } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import {
   Dice6,
   Circle,
@@ -20,6 +20,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AppVersionDialog } from "@/components/app-version-dialog";
@@ -365,7 +367,8 @@ function toHomeCharacter(state: CharacterState): HomeCharacter | null {
 }
 
 const Index = () => {
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, login } = useAuth();
+  const navigate = useNavigate();
   const [characters, setCharacters] = useState<HomeCharacter[]>([]);
   const [onlineCharacterSlugs, setOnlineCharacterSlugs] = useState<string[]>([]);
   const [monsterSummaries, setMonsterSummaries] = useState<MonsterSummary[]>([]);
@@ -377,6 +380,10 @@ const Index = () => {
     typeof window === "undefined" ? parseInitiativeEncounterState(null) : parseInitiativeEncounterState(window.localStorage.getItem(INITIATIVE_STORAGE_KEY))
   );
   const [playerCreateDialogOpen, setPlayerCreateDialogOpen] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
+  const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
     document.title = "Home | D&D Character Manager";
@@ -778,35 +785,69 @@ const Index = () => {
     };
   }, [currencyTransactions]);
 
+  const handleHomeLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setLoginSubmitting(true);
+    setLoginError("");
+
+    try {
+      const nextUser = await login(username.trim(), password);
+      navigate(nextUser.mustChangePassword ? "/change-password" : "/", { replace: true });
+    } catch {
+      setLoginError("Credenziali non valide.");
+    } finally {
+      setLoginSubmitting(false);
+    }
+  };
+
   if (!loading && !user) {
     return (
       <div className="min-h-screen parchment">
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-crimson/10 to-transparent"></div>
           <div className="relative mx-auto max-w-5xl px-6 py-20">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-              <div className="max-w-3xl">
-                <h1 className="mb-6 text-6xl font-heading font-bold text-primary">
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-stretch lg:justify-between">
+              <div className="flex max-w-3xl flex-1 flex-col justify-between">
+                <h1 className="mb-6 text-6xl font-heading font-bold text-primary lg:text-[4.25rem]">
                   D&D Character Manager
                 </h1>
                 <p className="text-xl text-muted-foreground">
-                  Accessi separati per DM e giocatori, schede condivise e strumenti di sessione in un unico posto.
+                  Gestisci personaggi, campagne e sessioni in un unico spazio condiviso. Meno burocrazia, più gioco di ruolo.
                 </p>
               </div>
 
-              <Card className="min-w-[280px] border-primary/15 bg-background/80 p-5">
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">Accesso</div>
-                    <div className="mt-1 text-xl font-semibold text-primary">Entra con la tua utenza</div>
+              <Card className="min-w-[320px] border-primary/15 bg-background/80 p-5 lg:flex lg:min-h-full lg:flex-col lg:justify-center">
+                <form className="space-y-4" onSubmit={handleHomeLoginSubmit}>
+                  <div className="space-y-2">
+                    <Label htmlFor="home-username">Username</Label>
+                    <Input
+                      id="home-username"
+                      value={username}
+                      onChange={(event) => setUsername(event.target.value)}
+                      placeholder="Es. roberto"
+                      autoComplete="username"
+                    />
                   </div>
-                  <Button asChild className="w-full">
-                    <Link to="/login">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Vai al login
-                    </Link>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="home-password">Password</Label>
+                    <Input
+                      id="home-password"
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Password"
+                      autoComplete="current-password"
+                    />
+                  </div>
+
+                  {loginError ? <div className="text-sm text-destructive">{loginError}</div> : null}
+
+                  <Button type="submit" className="w-full" disabled={loginSubmitting || !username.trim() || !password}>
+                    <LogIn className="mr-2 h-4 w-4" />
+                    {loginSubmitting ? "Accesso..." : "Accedi al tavolo!"}
                   </Button>
-                </div>
+                </form>
               </Card>
             </div>
           </div>
@@ -823,25 +864,25 @@ const Index = () => {
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
             <Card className="character-section text-center">
               <Users className="mx-auto mb-4 h-12 w-12 text-primary" />
-              <h3 className="character-section-title text-center border-0 pb-0">Utenze Separate</h3>
+              <h3 className="character-section-title text-center border-0 pb-0">Il tuo spazio personale</h3>
               <p className="text-muted-foreground">
-                Ogni giocatore accede solo ai propri personaggi, mentre il master mantiene il controllo completo.
+                Accedi ai tuoi eroi in un istante. Tutto ciò che ti serve è pronto per il prossimo tiro di iniziativa.
               </p>
             </Card>
 
             <Card className="character-section text-center">
               <Shield className="mx-auto mb-4 h-12 w-12 text-primary" />
-              <h3 className="character-section-title text-center border-0 pb-0">Home Ruolo</h3>
+              <h3 className="character-section-title text-center border-0 pb-0">Controllo Totale</h3>
               <p className="text-muted-foreground">
-                Dopo il login, DM e player atterrano su una home pensata per le loro azioni più frequenti.
+                Una dashboard su misura per te. Che tu sia un DM o un giocatore, avrai sott'occhio solo quello che conta davvero.
               </p>
             </Card>
 
             <Card className="character-section text-center">
               <Dice6 className="mx-auto mb-4 h-12 w-12 text-primary" />
-              <h3 className="character-section-title text-center border-0 pb-0">Realtime</h3>
+              <h3 className="character-section-title text-center border-0 pb-0">Sincronia Perfetta</h3>
               <p className="text-muted-foreground">
-                Presenza online, schede live e messaggi privati continuano a funzionare in modo controllato.
+                Schede che si aggiornano dal vivo e strumenti live per non perdere mai il ritmo della narrazione.
               </p>
             </Card>
           </div>
