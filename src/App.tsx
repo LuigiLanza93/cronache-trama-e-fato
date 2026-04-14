@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import ThemeToggle from "@/components/theme-toggle";
 import { AuthProvider, RequireAuth, RequireRole } from "@/components/auth-provider";
@@ -10,7 +10,6 @@ import Index from "./pages/Index";
 import DMDashboard from "./pages/DMDashboard";
 import InitiativeTracker from "./pages/InitiativeTracker";
 import CharacterSheet from "./pages/CharacterSheet";
-import Login from "./pages/Login";
 import ChangePassword from "./pages/ChangePassword";
 import UserManagement from "./pages/UserManagement";
 import CharacterAssignments from "./pages/CharacterAssignments";
@@ -35,7 +34,7 @@ const App = () => (
           <AuthProvider>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<Navigate to="/" replace />} />
               <Route
                 path="/change-password"
                 element={

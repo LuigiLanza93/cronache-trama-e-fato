@@ -1,0 +1,25 @@
+{
+  "version": "1.4.5",
+  "releaseName": "SQLite Release",
+  "releasedAt": "2026-04-14",
+  "summary": "Patch di rifinitura della landing page e del flusso di accesso. Il login ora vive direttamente nella home pubblica, i redirect verso la vecchia pagina di login sono stati riallineati e la schermata iniziale e' stata compattata per entrare meglio nel viewport desktop.",
+  "sections": [
+    {
+      "title": "Accesso e redirect",
+      "items": [
+        "Integrato il form di login direttamente nella home pubblica, sopra il pulsante principale.",
+        "Rimossi il doppio passaggio verso la pagina /login e il box con le password iniziali.",
+        "Aggiornati i redirect delle route protette: gli utenti non autenticati tornano ora alla home pubblica con login incorporato.",
+        "Mantenuta la route /login come redirect di compatibilita' verso /."
+      ]
+    },
+    {
+      "title": "Home pubblica",
+      "items": [
+        "Ribilanciata la hero per mantenere allineati blocco titolo e card di login.",
+        "Rifinita la tipografia del titolo principale per un miglior equilibrio visivo su desktop.",
+        "Compattati padding e spaziature della landing pubblica per ridurre o eliminare lo scroll verticale nel viewport desktop."
+      ]
+    }
+  ]
+}

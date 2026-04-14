@@ -802,11 +802,11 @@ const Index = () => {
 
   if (!loading && !user) {
     return (
-      <div className="min-h-screen parchment">
+      <div className="min-h-screen parchment lg:h-screen lg:overflow-hidden">
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-crimson/10 to-transparent"></div>
-          <div className="relative mx-auto max-w-5xl px-6 py-20">
-            <div className="flex flex-col gap-8 lg:flex-row lg:items-stretch lg:justify-between">
+          <div className="relative mx-auto max-w-5xl px-6 py-20 lg:py-12">
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-stretch lg:justify-between lg:gap-10">
               <div className="flex max-w-3xl flex-1 flex-col justify-between">
                 <h1 className="mb-6 text-6xl font-heading font-bold text-primary lg:text-[4.25rem]">
                   D&D Character Manager
@@ -824,7 +824,7 @@ const Index = () => {
                       id="home-username"
                       value={username}
                       onChange={(event) => setUsername(event.target.value)}
-                      placeholder="Es. roberto"
+                      placeholder="Il tuo username"
                       autoComplete="username"
                     />
                   </div>
@@ -836,7 +836,7 @@ const Index = () => {
                       type="password"
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      placeholder="Password"
+                      placeholder="La tua password"
                       autoComplete="current-password"
                     />
                   </div>
@@ -853,17 +853,17 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <div className="mb-12 text-center">
-            <h2 className="mb-4 text-3xl font-heading font-bold text-primary">
+        <div className="mx-auto max-w-6xl px-6 py-16 lg:py-10">
+          <div className="mb-12 text-center lg:mb-8">
+            <h2 className="mb-4 text-3xl font-heading font-bold text-primary lg:text-[2rem]">
               Tutto quello che serve al tavolo
             </h2>
             <Separator className="mx-auto w-24 bg-primary" />
           </div>
 
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3 lg:gap-6">
             <Card className="character-section text-center">
-              <Users className="mx-auto mb-4 h-12 w-12 text-primary" />
+              <Users className="mx-auto mb-4 h-12 w-12 text-primary lg:mb-3 lg:h-10 lg:w-10" />
               <h3 className="character-section-title text-center border-0 pb-0">Il tuo spazio personale</h3>
               <p className="text-muted-foreground">
                 Accedi ai tuoi eroi in un istante. Tutto ciò che ti serve è pronto per il prossimo tiro di iniziativa.
@@ -871,7 +871,7 @@ const Index = () => {
             </Card>
 
             <Card className="character-section text-center">
-              <Shield className="mx-auto mb-4 h-12 w-12 text-primary" />
+              <Shield className="mx-auto mb-4 h-12 w-12 text-primary lg:mb-3 lg:h-10 lg:w-10" />
               <h3 className="character-section-title text-center border-0 pb-0">Controllo Totale</h3>
               <p className="text-muted-foreground">
                 Una dashboard su misura per te. Che tu sia un DM o un giocatore, avrai sott'occhio solo quello che conta davvero.
@@ -879,7 +879,7 @@ const Index = () => {
             </Card>
 
             <Card className="character-section text-center">
-              <Dice6 className="mx-auto mb-4 h-12 w-12 text-primary" />
+              <Dice6 className="mx-auto mb-4 h-12 w-12 text-primary lg:mb-3 lg:h-10 lg:w-10" />
               <h3 className="character-section-title text-center border-0 pb-0">Sincronia Perfetta</h3>
               <p className="text-muted-foreground">
                 Schede che si aggiornano dal vivo e strumenti live per non perdere mai il ritmo della narrazione.
