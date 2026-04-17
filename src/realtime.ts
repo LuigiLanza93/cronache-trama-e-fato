@@ -1,4 +1,5 @@
 import { io, Socket } from "socket.io-client";
+import type { InitiativeEncounterState, PlayerInitiativeTrackerView } from "@/lib/auth";
 
 let socket: Socket | null = null;
 type PrivateMessagePayload = {
@@ -20,6 +21,8 @@ export type InitiativeTurnPayload = {
   slug: string;
   startedAt: string;
 };
+export type InitiativeStatePayload = InitiativeEncounterState;
+export type PlayerInitiativeStatePayload = PlayerInitiativeTrackerView;
 
 export function getSocket(): Socket {
   if (!socket) {
@@ -168,4 +171,34 @@ export function onInitiativeTurnStart(cb: (payload: InitiativeTurnPayload) => vo
   return () => {
     s.off("initiative:turn-start", handler);
   };
+}
+
+export function joinInitiativeDmRoom() {
+  getSocket().emit("initiative:join-dm");
+}
+
+export function joinInitiativeCharacterRoom(slug: string) {
+  getSocket().emit("initiative:join-character", slug);
+}
+
+export function onInitiativeState(cb: (payload: InitiativeStatePayload) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: InitiativeStatePayload) => cb(payload);
+  s.on("initiative:state", handler);
+  return () => {
+    s.off("initiative:state", handler);
+  };
+}
+
+export function onPlayerInitiativeState(cb: (payload: PlayerInitiativeStatePayload) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: PlayerInitiativeStatePayload) => cb(payload);
+  s.on("initiative:player-state", handler);
+  return () => {
+    s.off("initiative:player-state", handler);
+  };
+}
+
+export function updateInitiativeState(payload: InitiativeEncounterState) {
+  getSocket().emit("initiative:update-state", payload);
 }

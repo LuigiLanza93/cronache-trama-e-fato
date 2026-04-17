@@ -18,15 +18,25 @@ import {
   createEncounterScenarioRequest,
   deleteEncounterScenarioRequest,
   fetchEncounterScenarios,
+  fetchInitiativeTrackerState,
   fetchMonster,
   fetchMonsters,
   updateMonsterCompendiumKnowledgeRequest,
   type EncounterScenario,
   type EncounterScenarioEntry,
+  type InitiativeEncounterState,
+  type InitiativeMonsterPowerTag,
   type MonsterEntry,
   type MonsterSummary,
 } from "@/lib/auth";
-import { fetchCharacter, fetchCharacters, notifyInitiativeTurn } from "@/realtime";
+import {
+  fetchCharacter,
+  fetchCharacters,
+  joinInitiativeDmRoom,
+  notifyInitiativeTurn,
+  onInitiativeState,
+  updateInitiativeState,
+} from "@/realtime";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import {
   BookOpen,
@@ -99,6 +109,7 @@ type EncounterState = {
   round: number;
   currentTurnId: string | null;
   nextSortOrder: number;
+  revealedCombatantIds: string[];
 };
 
 type PlayerCombatant = {
@@ -158,9 +169,7 @@ type PendingMonsterBatch = {
   initiatives: string[];
 };
 
-type MonsterPowerTag = "debolissimo" | "debole" | "forte" | "fortissimo";
-
-const STORAGE_KEY = "dm-initiative-tracker-v1";
+type MonsterPowerTag = InitiativeMonsterPowerTag;
 const STATUS_OPTIONS = [
   "Accecato",
   "Affascinato",
@@ -185,6 +194,7 @@ const emptyEncounterState = (): EncounterState => ({
   round: 1,
   currentTurnId: null,
   nextSortOrder: 1,
+  revealedCombatantIds: [],
 });
 
 const SPELLCASTING_ABILITY_BY_CLASS: Record<string, string> = {
@@ -355,6 +365,9 @@ function parseEncounterState(raw: string | null): EncounterState {
         typeof parsed?.nextSortOrder === "number" && parsed.nextSortOrder > 0
           ? parsed.nextSortOrder
           : 1,
+      revealedCombatantIds: Array.isArray(parsed?.revealedCombatantIds)
+        ? parsed.revealedCombatantIds.filter((value: unknown): value is string => typeof value === "string")
+        : [],
     };
   } catch {
     return emptyEncounterState();
@@ -751,9 +764,8 @@ function DeathSaveTrack({
 }
 
 export default function InitiativeTracker() {
-  const [encounter, setEncounter] = useState<EncounterState>(() =>
-    parseEncounterState(localStorage.getItem(STORAGE_KEY))
-  );
+  const [encounter, setEncounter] = useState<EncounterState>(emptyEncounterState);
+  const [initiativeLoaded, setInitiativeLoaded] = useState(false);
   const [catalogStates, setCatalogStates] = useState<CharacterState[]>([]);
   const [bestiaryCatalog, setBestiaryCatalog] = useState<MonsterSummary[]>([]);
   const [bestiaryById, setBestiaryById] = useState<Record<string, MonsterEntry>>({});
@@ -824,6 +836,7 @@ export default function InitiativeTracker() {
   const [scenarioName, setScenarioName] = useState("");
   const [encounterScenarios, setEncounterScenarios] = useState<EncounterScenario[]>([]);
   const [pendingScenarioCombatants, setPendingScenarioCombatants] = useState<PendingScenarioCombatant[]>([]);
+  const skipNextInitiativePersistRef = useRef(true);
 
   const rollD20 = () => Math.floor(Math.random() * 20) + 1;
 
@@ -936,6 +949,20 @@ export default function InitiativeTracker() {
   useEffect(() => {
     let active = true;
 
+    void fetchInitiativeTrackerState()
+      .then((state) => {
+        if (!active) return;
+        skipNextInitiativePersistRef.current = true;
+        setEncounter(parseEncounterState(JSON.stringify(state)));
+        setInitiativeLoaded(true);
+      })
+      .catch(() => {
+        if (!active) return;
+        skipNextInitiativePersistRef.current = true;
+        setEncounter(emptyEncounterState());
+        setInitiativeLoaded(true);
+      });
+
     void fetchCharacters()
       .then((characters) => {
         if (active) setCatalogStates(Array.isArray(characters) ? characters : []);
@@ -966,8 +993,35 @@ export default function InitiativeTracker() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(encounter));
-  }, [encounter]);
+    joinInitiativeDmRoom();
+    const offInitiative = onInitiativeState((payload) => {
+      skipNextInitiativePersistRef.current = true;
+      setEncounter(parseEncounterState(JSON.stringify(payload)));
+      setInitiativeLoaded(true);
+    });
+
+    return () => {
+      try {
+        offInitiative();
+      } catch {}
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!initiativeLoaded) return;
+    if (skipNextInitiativePersistRef.current) {
+      skipNextInitiativePersistRef.current = false;
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      updateInitiativeState(encounter as InitiativeEncounterState);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [encounter, initiativeLoaded]);
 
   useEffect(() => {
     if (selectedSlugs.length === 0) {
@@ -1057,6 +1111,9 @@ export default function InitiativeTracker() {
     setEncounter((prev) => ({
       ...prev,
       currentTurnId: eligibleCombatants[0]?.id ?? null,
+      revealedCombatantIds: eligibleCombatants[0]
+        ? Array.from(new Set([...prev.revealedCombatantIds, eligibleCombatants[0].id]))
+        : prev.revealedCombatantIds,
     }));
   }, [encounter.started, encounter.currentTurnId, combatants]);
 
@@ -1101,6 +1158,7 @@ export default function InitiativeTracker() {
       ...prev,
       players: prev.players.filter((entry) => entry.slug !== slug),
       currentTurnId: prev.currentTurnId === `player:${slug}` ? null : prev.currentTurnId,
+      revealedCombatantIds: prev.revealedCombatantIds.filter((entryId) => entryId !== `player:${slug}`),
     }));
   };
 
@@ -1376,6 +1434,7 @@ export default function InitiativeTracker() {
       ...prev,
       monsters: prev.monsters.filter((monster) => monster.id !== id),
       currentTurnId: prev.currentTurnId === id ? null : prev.currentTurnId,
+      revealedCombatantIds: prev.revealedCombatantIds.filter((entryId) => entryId !== id),
     }));
   };
 
@@ -1430,13 +1489,15 @@ export default function InitiativeTracker() {
     const eligibleCombatants = combatants.filter(isEligibleForTurn);
     if (eligibleCombatants.length === 0) return;
     const nextCombatant = eligibleCombatants[0] ?? null;
+    const nextTurnId = nextCombatant?.id ?? null;
 
     setSetupSectionsOpen(false);
     setEncounter((prev) => ({
       ...prev,
       started: true,
-      round: prev.round > 0 ? prev.round : 1,
-      currentTurnId: buildCombatants(prev, catalogBySlug, liveCharacterStates).filter(isEligibleForTurn)[0]?.id ?? null,
+      round: 1,
+      currentTurnId: nextTurnId,
+      revealedCombatantIds: nextTurnId ? [nextTurnId] : [],
     }));
     triggerTurnNotification(nextCombatant);
   };
@@ -1453,6 +1514,9 @@ export default function InitiativeTracker() {
       setEncounter((prev) => ({
         ...prev,
         currentTurnId: eligibleCombatants[0]?.id ?? null,
+        revealedCombatantIds: nextCombatant
+          ? Array.from(new Set([...prev.revealedCombatantIds, nextCombatant.id]))
+          : prev.revealedCombatantIds,
       }));
       triggerTurnNotification(nextCombatant);
       return;
@@ -1466,6 +1530,7 @@ export default function InitiativeTracker() {
       ...prev,
       currentTurnId: eligibleCombatants[nextIndex].id,
       round: wrapped ? prev.round + 1 : prev.round,
+      revealedCombatantIds: Array.from(new Set([...prev.revealedCombatantIds, eligibleCombatants[nextIndex].id])),
     }));
     triggerTurnNotification(nextCombatant);
   };
@@ -1476,6 +1541,7 @@ export default function InitiativeTracker() {
       started: false,
       round: 1,
       currentTurnId: null,
+      revealedCombatantIds: [],
     }));
   };
 

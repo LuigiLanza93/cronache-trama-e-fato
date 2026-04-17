@@ -23,6 +23,7 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.resolve(__dirname, "src/data");
 const MONSTERS_DIR = path.resolve(DATA_DIR, "monsters");
 const PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
+const INITIATIVE_TRACKER_FILE = path.resolve(DATA_DIR, "initiative-tracker.json");
 const SESSION_COOKIE = "ctf_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
@@ -3357,6 +3358,216 @@ function writeChats(chats) {
   });
 }
 
+function emptyInitiativeTrackerState() {
+  return {
+    players: [],
+    monsters: [],
+    started: false,
+    round: 1,
+    currentTurnId: null,
+    nextSortOrder: 1,
+    revealedCombatantIds: [],
+    updatedAt: null,
+  };
+}
+
+function normalizeInitiativeTrackerState(raw) {
+  const base = emptyInitiativeTrackerState();
+  const state = raw && typeof raw === "object" ? raw : {};
+
+  return {
+    players: Array.isArray(state.players)
+      ? state.players
+          .map((entry) => ({
+            id: typeof entry?.id === "string" ? entry.id : "",
+            type: "player",
+            slug: typeof entry?.slug === "string" ? entry.slug : "",
+            initiativeRoll: Number.isFinite(Number(entry?.initiativeRoll)) ? Number(entry.initiativeRoll) : 0,
+            initiative: Number.isFinite(Number(entry?.initiative)) ? Number(entry.initiative) : 0,
+            statuses: Array.isArray(entry?.statuses) ? entry.statuses.filter((value) => typeof value === "string") : [],
+            sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : 0,
+          }))
+          .filter((entry) => entry.id && entry.slug)
+      : base.players,
+    monsters: Array.isArray(state.monsters)
+      ? state.monsters
+          .map((entry) => ({
+            id: typeof entry?.id === "string" ? entry.id : "",
+            type: "monster",
+            name: typeof entry?.name === "string" ? entry.name : "Mostro",
+            initiative: Number.isFinite(Number(entry?.initiative)) ? Number(entry.initiative) : 0,
+            armorClass: Number.isFinite(Number(entry?.armorClass)) ? Number(entry.armorClass) : 0,
+            currentHitPoints: Number.isFinite(Number(entry?.currentHitPoints)) ? Number(entry.currentHitPoints) : 0,
+            maxHitPoints: Number.isFinite(Number(entry?.maxHitPoints)) ? Number(entry.maxHitPoints) : 0,
+            statuses: Array.isArray(entry?.statuses) ? entry.statuses.filter((value) => typeof value === "string") : [],
+            sortOrder: Number.isFinite(Number(entry?.sortOrder)) ? Number(entry.sortOrder) : 0,
+            source: entry?.source === "bestiary" ? "bestiary" : "custom",
+            sourceMonsterId: typeof entry?.sourceMonsterId === "string" ? entry.sourceMonsterId : null,
+            powerTag:
+              entry?.powerTag === "debolissimo" ||
+              entry?.powerTag === "debole" ||
+              entry?.powerTag === "forte" ||
+              entry?.powerTag === "fortissimo"
+                ? entry.powerTag
+                : null,
+          }))
+          .filter((entry) => entry.id)
+      : base.monsters,
+    started: !!state.started,
+    round: Number.isFinite(Number(state.round)) && Number(state.round) > 0 ? Number(state.round) : 1,
+    currentTurnId: typeof state.currentTurnId === "string" ? state.currentTurnId : null,
+    nextSortOrder:
+      Number.isFinite(Number(state.nextSortOrder)) && Number(state.nextSortOrder) > 0
+        ? Number(state.nextSortOrder)
+        : 1,
+    revealedCombatantIds: Array.isArray(state.revealedCombatantIds)
+      ? state.revealedCombatantIds.filter((value) => typeof value === "string")
+      : [],
+    updatedAt: typeof state.updatedAt === "string" ? state.updatedAt : null,
+  };
+}
+
+function readInitiativeTrackerState() {
+  try {
+    if (!fs.existsSync(INITIATIVE_TRACKER_FILE)) return emptyInitiativeTrackerState();
+    const raw = fs.readFileSync(INITIATIVE_TRACKER_FILE, "utf8");
+    return normalizeInitiativeTrackerState(JSON.parse(raw));
+  } catch {
+    return emptyInitiativeTrackerState();
+  }
+}
+
+function writeInitiativeTrackerState(state) {
+  const normalized = normalizeInitiativeTrackerState({
+    ...state,
+    updatedAt: new Date().toISOString(),
+  });
+  fs.writeFileSync(INITIATIVE_TRACKER_FILE, JSON.stringify(normalized, null, 2), "utf8");
+  return normalized;
+}
+
+function compareInitiativeEntries(a, b) {
+  if (b.initiative !== a.initiative) return b.initiative - a.initiative;
+  return a.sortOrder - b.sortOrder;
+}
+
+function initiativeHealthTone(currentHitPoints, maxHitPoints) {
+  const current = Math.max(0, Number(currentHitPoints ?? 0) || 0);
+  const max = Math.max(1, Number(maxHitPoints ?? 0) || 1);
+  const pct = (current / max) * 100;
+
+  if (current <= 0) return "down";
+  if (pct <= 25) return "critical";
+  if (pct <= 50) return "wounded";
+  return "healthy";
+}
+
+function buildInitiativeCombatants(state) {
+  const normalized = normalizeInitiativeTrackerState(state);
+
+  const players = normalized.players.map((entry) => {
+    const character = readCharacter(entry.slug);
+    const currentHitPoints = Math.max(0, Number(character?.combatStats?.currentHitPoints ?? 0) || 0);
+    const maxHitPoints = Math.max(1, Number(character?.combatStats?.hitPointMaximum ?? 0) || 1);
+    const name =
+      typeof character?.basicInfo?.characterName === "string" && character.basicInfo.characterName.trim()
+        ? character.basicInfo.characterName.trim()
+        : entry.slug;
+    const deathSaves = {
+      successes: Math.max(0, Math.min(3, Number(character?.combatStats?.deathSaves?.successes ?? 0) || 0)),
+      failures: Math.max(0, Math.min(3, Number(character?.combatStats?.deathSaves?.failures ?? 0) || 0)),
+    };
+
+    return {
+      id: entry.id,
+      type: "player",
+      slug: entry.slug,
+      name,
+      initiative: entry.initiative,
+      sortOrder: entry.sortOrder,
+      statuses: entry.statuses,
+      currentHitPoints,
+      maxHitPoints,
+      sourceMonsterId: null,
+      deathSaves,
+    };
+  });
+
+  const monsters = normalized.monsters.map((entry) => ({
+    id: entry.id,
+    type: "monster",
+    name: entry.name,
+    initiative: entry.initiative,
+    sortOrder: entry.sortOrder,
+    statuses: entry.statuses,
+    currentHitPoints: Math.max(0, Number(entry.currentHitPoints ?? 0) || 0),
+    maxHitPoints: Math.max(1, Number(entry.maxHitPoints ?? 0) || 1),
+    sourceMonsterId: entry.source === "bestiary" ? entry.sourceMonsterId : null,
+    deathSaves: null,
+  }));
+
+  return [...players, ...monsters].sort(compareInitiativeEntries);
+}
+
+function buildPlayerInitiativeTrackerView(state, slug) {
+  const normalized = normalizeInitiativeTrackerState(state);
+  const ownsSeat = normalized.players.some((entry) => entry.slug === slug);
+  const visible = normalized.started && ownsSeat;
+
+  if (!visible) {
+    return {
+      slug,
+      visible: false,
+      started: false,
+      round: 1,
+      currentTurnId: null,
+      entries: [],
+      updatedAt: normalized.updatedAt,
+    };
+  }
+
+  const revealed = new Set(normalized.revealedCombatantIds);
+  const entries = buildInitiativeCombatants(normalized)
+    .filter((entry) => revealed.has(entry.id))
+    .map((entry) => ({
+      id: entry.id,
+      type: entry.type,
+      name: entry.name,
+      initiative: entry.initiative,
+      sortOrder: entry.sortOrder,
+      statuses: entry.statuses,
+      healthTone: initiativeHealthTone(entry.currentHitPoints, entry.maxHitPoints),
+      isCurrentTurn: entry.id === normalized.currentTurnId,
+      sourceMonsterId: entry.type === "monster" ? entry.sourceMonsterId ?? null : null,
+      knowledgeState:
+        entry.type === "monster" && entry.sourceMonsterId
+          ? readMonsterCompendiumKnowledgeState(entry.sourceMonsterId)
+          : null,
+      deathSaves: entry.type === "player" ? entry.deathSaves ?? null : null,
+    }));
+
+  return {
+    slug,
+    visible: true,
+    started: normalized.started,
+    round: normalized.round,
+    currentTurnId: normalized.currentTurnId,
+    entries,
+    updatedAt: normalized.updatedAt,
+  };
+}
+
+function broadcastInitiativeTrackerState(io, providedState = null) {
+  const normalized = normalizeInitiativeTrackerState(providedState ?? readInitiativeTrackerState());
+  io.to("initiative:dm").emit("initiative:state", normalized);
+
+  const ownership = readOwnership();
+  for (const [slug, ownerUserId] of Object.entries(ownership)) {
+    if (!ownerUserId) continue;
+    io.to(`user:${ownerUserId}`).emit("initiative:player-state", buildPlayerInitiativeTrackerView(normalized, slug));
+  }
+}
+
 function readEncounterScenarios() {
   const scenarios = sqlite.prepare(`
     SELECT id, name, createdByUserId, createdAt, updatedAt
@@ -4725,6 +4936,26 @@ async function start() {
     return res.json(Array.isArray(chats[slug]) ? chats[slug] : []);
   });
 
+  app.get("/api/initiative-tracker", requireRole("dm"), (_req, res) => {
+    return res.json(readInitiativeTrackerState());
+  });
+
+  app.put("/api/initiative-tracker", requireRole("dm"), (req, res) => {
+    const nextState = writeInitiativeTrackerState(req.body);
+    broadcastInitiativeTrackerState(io, nextState);
+    return res.json(nextState);
+  });
+
+  app.get("/api/characters/:slug/initiative-tracker", requireAuth, (req, res) => {
+    const slug = req.params.slug;
+    const ownership = readOwnership();
+    if (!canAccessCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    return res.json(buildPlayerInitiativeTrackerView(readInitiativeTrackerState(), slug));
+  });
+
   // ===== Item definitions =====
   app.get("/api/items", requireAuth, (req, res) => {
     const items = readItemDefinitions();
@@ -5941,6 +6172,34 @@ async function start() {
       scheduleWrite(slug, next);
       socket.to(`char:${slug}`).emit("character:patch", { slug, patch });
       socket.emit("character:state", next);
+
+      const initiativeState = readInitiativeTrackerState();
+      if (initiativeState.players.some((entry) => entry.slug === slug)) {
+        setTimeout(() => {
+          try {
+            broadcastInitiativeTrackerState(io);
+          } catch {}
+        }, 60);
+      }
+    });
+
+    socket.on("initiative:join-dm", () => {
+      if (socket.data.user?.role !== "dm") return;
+      socket.join("initiative:dm");
+      socket.emit("initiative:state", readInitiativeTrackerState());
+    });
+
+    socket.on("initiative:join-character", (slug) => {
+      const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
+      const ownership = readOwnership();
+      if (!normalizedSlug || !canAccessCharacter(socket.data.user, normalizedSlug, ownership)) return;
+      socket.emit("initiative:player-state", buildPlayerInitiativeTrackerView(readInitiativeTrackerState(), normalizedSlug));
+    });
+
+    socket.on("initiative:update-state", (payload) => {
+      if (socket.data.user?.role !== "dm") return;
+      const nextState = writeInitiativeTrackerState(payload);
+      broadcastInitiativeTrackerState(io, nextState);
     });
 
     socket.on("dm:private-message", ({ slug, title, message }) => {

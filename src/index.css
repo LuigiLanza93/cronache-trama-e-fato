@@ -227,6 +227,10 @@
   .turn-highlight-active {
     animation: turn-highlight-pulse 1.05s ease-in-out 4;
   }
+
+  .initiative-live-glow {
+    animation: initiative-live-glow 2.4s ease-in-out infinite;
+  }
 }
 
 @keyframes turn-highlight-pulse {
@@ -238,6 +242,24 @@
   }
   55% {
     box-shadow: 0 0 0 10px rgba(214, 74, 61, 0.18), 0 0 30px 14px rgba(214, 74, 61, 0.14);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(214, 74, 61, 0), 0 0 0 0 rgba(214, 74, 61, 0);
+  }
+}
+
+@keyframes initiative-live-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(214, 74, 61, 0), 0 0 0 0 rgba(214, 74, 61, 0);
+  }
+  18% {
+    box-shadow: 0 0 0 2px rgba(214, 74, 61, 0.7), 0 0 18px 4px rgba(214, 74, 61, 0.28);
+  }
+  38% {
+    box-shadow: 0 0 0 7px rgba(214, 74, 61, 0.18), 0 0 28px 10px rgba(214, 74, 61, 0.14);
+  }
+  60% {
+    box-shadow: 0 0 0 0 rgba(214, 74, 61, 0), 0 0 0 0 rgba(214, 74, 61, 0);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(214, 74, 61, 0), 0 0 0 0 rgba(214, 74, 61, 0);

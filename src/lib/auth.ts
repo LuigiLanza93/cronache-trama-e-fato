@@ -234,6 +234,71 @@ export type EncounterScenario = {
   updatedAt: string;
 };
 
+export type InitiativeMonsterPowerTag = "debolissimo" | "debole" | "forte" | "fortissimo";
+
+export type InitiativePlayerEntry = {
+  id: string;
+  type: "player";
+  slug: string;
+  initiativeRoll: number;
+  initiative: number;
+  statuses: string[];
+  sortOrder: number;
+};
+
+export type InitiativeMonsterEntry = {
+  id: string;
+  type: "monster";
+  name: string;
+  initiative: number;
+  armorClass: number;
+  currentHitPoints: number;
+  maxHitPoints: number;
+  statuses: string[];
+  sortOrder: number;
+  source: "custom" | "bestiary";
+  sourceMonsterId: string | null;
+  powerTag?: InitiativeMonsterPowerTag | null;
+};
+
+export type InitiativeEncounterState = {
+  players: InitiativePlayerEntry[];
+  monsters: InitiativeMonsterEntry[];
+  started: boolean;
+  round: number;
+  currentTurnId: string | null;
+  nextSortOrder: number;
+  revealedCombatantIds: string[];
+  updatedAt?: string | null;
+};
+
+export type PlayerInitiativeTrackerEntry = {
+  id: string;
+  type: "player" | "monster";
+  name: string;
+  initiative: number;
+  sortOrder: number;
+  statuses: string[];
+  healthTone: "healthy" | "wounded" | "critical" | "down";
+  isCurrentTurn: boolean;
+  sourceMonsterId?: string | null;
+  knowledgeState?: PlayerMonsterKnowledgeState | null;
+  deathSaves?: {
+    successes: number;
+    failures: number;
+  } | null;
+};
+
+export type PlayerInitiativeTrackerView = {
+  slug: string;
+  visible: boolean;
+  started: boolean;
+  round: number;
+  currentTurnId: string | null;
+  entries: PlayerInitiativeTrackerEntry[];
+  updatedAt: string | null;
+};
+
 export type SpellEntry = {
   name: string;
   level: number;
@@ -699,6 +764,21 @@ export function deleteEncounterScenarioRequest(scenarioId: string) {
   return authFetch<null>(`/api/encounter-scenarios/${scenarioId}`, {
     method: "DELETE",
   });
+}
+
+export function fetchInitiativeTrackerState() {
+  return authFetch<InitiativeEncounterState>("/api/initiative-tracker", { method: "GET" });
+}
+
+export function saveInitiativeTrackerState(payload: InitiativeEncounterState) {
+  return authFetch<InitiativeEncounterState>("/api/initiative-tracker", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchPlayerInitiativeTrackerView(slug: string) {
+  return authFetch<PlayerInitiativeTrackerView>(`/api/characters/${slug}/initiative-tracker`, { method: "GET" });
 }
 
 export function fetchItemDefinitions() {

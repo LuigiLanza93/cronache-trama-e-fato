@@ -30,16 +30,18 @@ import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
 import {
   fetchCurrencyTransactions,
   fetchInventoryTransfers,
+  fetchInitiativeTrackerState,
   fetchItemDefinitions,
   fetchMonsters,
   fetchUsers,
   type CurrencyTransactionEntry,
+  type InitiativeEncounterState,
   type InventoryTransferEntry,
   type ItemDefinitionSummary,
   type ManagedUser,
   type MonsterSummary,
 } from "@/lib/auth";
-import { fetchCharacters, requestPresenceSnapshot, subscribePresence } from "@/realtime";
+import { fetchCharacters, joinInitiativeDmRoom, onInitiativeState, requestPresenceSnapshot, subscribePresence } from "@/realtime";
 
 type CharacterState = Record<string, any>;
 
@@ -78,14 +80,6 @@ type InitiativeMonsterEntry = {
   sortOrder: number;
 };
 
-type InitiativeEncounterState = {
-  players: InitiativePlayerEntry[];
-  monsters: InitiativeMonsterEntry[];
-  started: boolean;
-  round: number;
-  currentTurnId: string | null;
-};
-
 type InitiativeCombatantSummary = {
   id: string;
   name: string;
@@ -101,7 +95,6 @@ type TransactionCardSummary = {
   timestamp: string;
 } | null;
 
-const INITIATIVE_STORAGE_KEY = "dm-initiative-tracker-v1";
 const RARITY_ORDER = ["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY", "UNIQUE"] as const;
 const RARITY_LABELS: Record<string, string> = {
   COMMON: "Comuni",
@@ -255,6 +248,9 @@ function parseInitiativeEncounterState(raw: string | null): InitiativeEncounterS
       started: false,
       round: 1,
       currentTurnId: null,
+      nextSortOrder: 1,
+      revealedCombatantIds: [],
+      updatedAt: null,
     };
   }
 
@@ -283,6 +279,11 @@ function parseInitiativeEncounterState(raw: string | null): InitiativeEncounterS
       started: !!parsed?.started,
       round: typeof parsed?.round === "number" && parsed.round > 0 ? parsed.round : 1,
       currentTurnId: typeof parsed?.currentTurnId === "string" ? parsed.currentTurnId : null,
+      nextSortOrder: typeof parsed?.nextSortOrder === "number" ? parsed.nextSortOrder : 1,
+      revealedCombatantIds: Array.isArray(parsed?.revealedCombatantIds)
+        ? parsed.revealedCombatantIds.filter((value: unknown): value is string => typeof value === "string")
+        : [],
+      updatedAt: typeof parsed?.updatedAt === "string" ? parsed.updatedAt : null,
     };
   } catch {
     return {
@@ -291,6 +292,9 @@ function parseInitiativeEncounterState(raw: string | null): InitiativeEncounterS
       started: false,
       round: 1,
       currentTurnId: null,
+      nextSortOrder: 1,
+      revealedCombatantIds: [],
+      updatedAt: null,
     };
   }
 }
@@ -377,7 +381,7 @@ const Index = () => {
   const [inventoryTransfers, setInventoryTransfers] = useState<InventoryTransferEntry[]>([]);
   const [currencyTransactions, setCurrencyTransactions] = useState<CurrencyTransactionEntry[]>([]);
   const [initiativeEncounter, setInitiativeEncounter] = useState<InitiativeEncounterState>(() =>
-    typeof window === "undefined" ? parseInitiativeEncounterState(null) : parseInitiativeEncounterState(window.localStorage.getItem(INITIATIVE_STORAGE_KEY))
+    parseInitiativeEncounterState(null)
   );
   const [playerCreateDialogOpen, setPlayerCreateDialogOpen] = useState(false);
   const [username, setUsername] = useState("");
@@ -499,21 +503,33 @@ const Index = () => {
   }, [user]);
 
   useEffect(() => {
-    const readInitiativeEncounter = () => {
-      setInitiativeEncounter(parseInitiativeEncounterState(window.localStorage.getItem(INITIATIVE_STORAGE_KEY)));
-    };
+    if (!user || user.role !== "dm") {
+      setInitiativeEncounter(parseInitiativeEncounterState(null));
+      return;
+    }
 
-    readInitiativeEncounter();
-    window.addEventListener("storage", readInitiativeEncounter);
-    window.addEventListener("focus", readInitiativeEncounter);
-    document.addEventListener("visibilitychange", readInitiativeEncounter);
+    let active = true;
+
+    void fetchInitiativeTrackerState()
+      .then((state) => {
+        if (active) setInitiativeEncounter(parseInitiativeEncounterState(JSON.stringify(state)));
+      })
+      .catch(() => {
+        if (active) setInitiativeEncounter(parseInitiativeEncounterState(null));
+      });
+
+    joinInitiativeDmRoom();
+    const offInitiative = onInitiativeState((payload) => {
+      if (active) setInitiativeEncounter(parseInitiativeEncounterState(JSON.stringify(payload)));
+    });
 
     return () => {
-      window.removeEventListener("storage", readInitiativeEncounter);
-      window.removeEventListener("focus", readInitiativeEncounter);
-      document.removeEventListener("visibilitychange", readInitiativeEncounter);
+      active = false;
+      try {
+        offInitiative();
+      } catch {}
     };
-  }, []);
+  }, [user]);
 
   const dmActions = useMemo(
     () => [

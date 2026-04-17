@@ -106,6 +106,7 @@ import Features from "@/components/characterSheet/features";
 import Inventory from "@/components/characterSheet/inventory";
 import Languages from "@/components/characterSheet/languages";
 import FloatingCharacterChat from "@/components/chat/floating-character-chat";
+import FloatingCharacterInitiative from "@/components/initiative/floating-character-initiative";
 import { SheetCardStateProvider } from "@/components/characterSheet/sheet-card-state";
 
 type InputEl = HTMLInputElement | HTMLTextAreaElement;
@@ -2419,11 +2420,14 @@ const CharacterSheet = () => {
           }
         />
         {characterData.characterType !== "png" ? (
-          <FloatingCharacterChat
-            slug={characterData.slug}
-            title={characterData.basicInfo.characterName}
-            avatarUrl={characterData.basicInfo.portraitUrl}
-          />
+          <>
+            <FloatingCharacterChat
+              slug={characterData.slug}
+              title={characterData.basicInfo.characterName}
+              avatarUrl={characterData.basicInfo.portraitUrl}
+            />
+            <FloatingCharacterInitiative slug={characterData.slug} />
+          </>
         ) : null}
         <SheetCardStateProvider
           value={{
