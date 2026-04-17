@@ -38,17 +38,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import SectionCard from "@/components/characterSheet/section-card";
 import {
   fetchItemDefinition,
+  type CharacterInventoryItemEntry,
   type EquipResolutionDetails,
   type EquipResolutionOption,
   type ItemDefinitionEntry,
 } from "@/lib/auth";
+import type { PactBladeWeaponTemplate } from "@/data/pact-blade-weapons";
 
 /** Select minimale, senza dipendenze extra */
 function Select({
@@ -375,6 +377,14 @@ const Inventory = ({
   setCurrencyHistoryOpen,
   currencyHistoryEntries,
   currencyHistoryLoading,
+  showPactBladeSection,
+  pactBladeState,
+  pactBladeBondedWeapon,
+  pactBladeTemplates,
+  onBindPactBladeWeapon,
+  onClearPactBladeBond,
+  onRequestSummonPactBlade,
+  onDismissPactBlade,
 }: any) => {
   const COIN_KEYS = {
     mr: "cp",
@@ -508,6 +518,7 @@ const Inventory = ({
   const [catalogMode, setCatalogMode] = useState<"catalog" | "custom">("catalog");
   const [selectedCatalogItemId, setSelectedCatalogItemId] = useState("");
   const [selectedCatalogItemDetail, setSelectedCatalogItemDetail] = useState<ItemDefinitionEntry | null>(null);
+  const [inventoryItemDetailsById, setInventoryItemDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [assignQuantity, setAssignQuantity] = useState("1");
   const [assignNotes, setAssignNotes] = useState("");
   const [assignError, setAssignError] = useState("");
@@ -550,6 +561,13 @@ const Inventory = ({
   const [equipResolutionError, setEquipResolutionError] = useState("");
   const [editingTarget, setEditingTarget] = useState<InventoryTarget | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pactBladeBindOpen, setPactBladeBindOpen] = useState(false);
+  const [selectedPactBladeBondId, setSelectedPactBladeBondId] = useState("");
+  const [pactBladeTemplateOpen, setPactBladeTemplateOpen] = useState(false);
+  const [selectedPactBladeTemplateId, setSelectedPactBladeTemplateId] = useState("");
+  const [pactBladeConfirmOpen, setPactBladeConfirmOpen] = useState(false);
+  const [pactBladeConfirmPayload, setPactBladeConfirmPayload] = useState<any>(null);
+  const [pactBladeConflictLabels, setPactBladeConflictLabels] = useState<string[]>([]);
 
   // === helpers per skills ===
   const addSkillToCurrentType = (raw: string) => {
@@ -610,6 +628,12 @@ const Inventory = ({
     >
     | undefined;
   const relationalItems = Array.isArray(relationalInventoryItems) ? relationalInventoryItems : [];
+  const allRelationalWeapons = relationalItems.filter((item) => item?.itemCategory === "WEAPON" && !(item as any)?.isVirtualPactBlade);
+  const allRelationalMeleeWeapons = allRelationalWeapons.filter((item) => {
+    if (!item?.itemDefinitionId) return false;
+    const detail = inventoryItemDetailsById[item.itemDefinitionId];
+    return !!detail?.attacks?.some((attack) => attack.kind === "MELEE_WEAPON");
+  });
   const relationalWeapons = relationalItems.filter((item) => item?.itemCategory === "WEAPON" && !item?.isEquipped);
   const relationalConsumables = relationalItems.filter((item) =>
     item?.itemCategory === "CONSUMABLE" || item?.itemCategory === "AMMUNITION"
@@ -618,6 +642,34 @@ const Inventory = ({
     !item?.isEquipped && !["WEAPON", "CONSUMABLE", "AMMUNITION"].includes(String(item?.itemCategory ?? ""))
   );
   const catalogItems = Array.isArray(itemDefinitions) ? itemDefinitions : [];
+  const pactBladeTemplatesList = Array.isArray(pactBladeTemplates) ? pactBladeTemplates as PactBladeWeaponTemplate[] : [];
+  const pactBladeBondedItem = pactBladeBondedWeapon as CharacterInventoryItemEntry | null;
+  const pactBladeActiveMode =
+    pactBladeState?.activeSummon?.mode === "template"
+      ? "template"
+      : pactBladeState?.activeSummon?.mode === "bonded" && pactBladeBondedItem?.isEquipped
+        ? "bonded"
+        : null;
+  const pactBladeActiveSummary = useMemo(() => {
+    if (pactBladeActiveMode === "bonded") {
+      return pactBladeBondedItem ? `Evocata: ${pactBladeBondedItem.itemName}` : "Evocata: arma legata";
+    }
+    if (pactBladeActiveMode === "template") {
+      const template = pactBladeTemplatesList.find((entry) => entry.id === pactBladeState?.activeSummon?.templateId);
+      return template ? `Evocata: ${template.name}` : "Evocata: arma del patto";
+    }
+    return null;
+  }, [pactBladeActiveMode, pactBladeBondedItem, pactBladeState?.activeSummon?.templateId, pactBladeTemplatesList]);
+
+  function getPactBladeTemplateSummary(template: PactBladeWeaponTemplate) {
+    const handLabel =
+      template.weaponHandling === "TWO_HANDED"
+        ? "2 mani"
+        : template.weaponHandling === "VERSATILE"
+          ? "versatile"
+          : "1 mano";
+    return `${template.damageDice} ${template.damageType} · ${handLabel}`;
+  }
 
   type MetaIconSpec = {
     key: string;
@@ -1215,6 +1267,44 @@ const Inventory = ({
   }, [catalogMode, invOpen, mode, selectedCatalogItemId]);
 
   useEffect(() => {
+    const missingIds = Array.from(
+      new Set(
+        allRelationalWeapons
+          .map((item) => item.itemDefinitionId)
+          .filter((id): id is string => !!id && !inventoryItemDetailsById[id])
+      )
+    );
+
+    if (missingIds.length === 0) return;
+
+    let active = true;
+    void Promise.all(
+      missingIds.map(async (id) => {
+        try {
+          const detail = await fetchItemDefinition(id);
+          return [id, detail] as const;
+        } catch {
+          return null;
+        }
+      })
+    ).then((results) => {
+      if (!active) return;
+      const validEntries = results.filter(
+        (entry): entry is readonly [string, ItemDefinitionEntry] => Array.isArray(entry)
+      );
+      if (validEntries.length === 0) return;
+      setInventoryItemDetailsById((prev) => ({
+        ...prev,
+        ...Object.fromEntries(validEntries),
+      }));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [allRelationalWeapons, inventoryItemDetailsById]);
+
+  useEffect(() => {
     const relationalKinds = ["relationalWeapon", "relationalObject", "relationalConsumable"];
     if (!detailTarget || !relationalKinds.includes(detailTarget.kind)) {
       setDetailDefinition(null);
@@ -1379,6 +1469,84 @@ const Inventory = ({
           })}
         </div>
       </div>
+
+      {showPactBladeSection ? (
+        <>
+          <Separator className="my-3" />
+
+          <div className="space-y-2 mb-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-semibold text-primary">Lama del patto</div>
+              <div className="flex items-center gap-2">
+                {!pactBladeActiveMode ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => {
+                      if (pactBladeState?.bondedCharacterItemId) {
+                        void requestPactBladeSummon({ mode: "bonded" });
+                        return;
+                      }
+                      setPactBladeTemplateOpen(true);
+                    }}
+                  >
+                    Evoca arma del patto
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => void onDismissPactBlade?.()}
+                  >
+                    Congeda
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+                  aria-label="Associa arma al patto"
+                  title="Associa arma al patto"
+                  onClick={() => {
+                    setSelectedPactBladeBondId(pactBladeBondedItem?.id ?? allRelationalMeleeWeapons[0]?.id ?? "");
+                    setPactBladeBindOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/70 bg-muted/15 p-3 text-sm">
+              {pactBladeBondedItem ? (
+                <button
+                  type="button"
+                  className="w-full text-left transition hover:opacity-90"
+                  onClick={() => openDetail({ kind: "relationalWeapon", id: pactBladeBondedItem.id })}
+                >
+                  <div className="font-medium">{pactBladeBondedItem.itemName}</div>
+                  {getRelationalItemDescription(pactBladeBondedItem) ? (
+                    <div className="text-muted-foreground">{getRelationalItemDescription(pactBladeBondedItem)}</div>
+                  ) : null}
+                  {renderMetaIcons(buildRelationalItemMetaIcons(pactBladeBondedItem))}
+                </button>
+              ) : !pactBladeActiveSummary ? (
+                <div className="font-medium">Nessuna arma legata al patto</div>
+              ) : null}
+              {pactBladeActiveSummary ? (
+                <div className="mt-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                  {pactBladeActiveSummary}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </>
+      ) : null}
 
       <Separator className="my-3" />
 
@@ -2162,6 +2330,98 @@ const Inventory = ({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={pactBladeBindOpen} onOpenChange={setPactBladeBindOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Associa arma al patto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Arma da legare</Label>
+              <Select value={selectedPactBladeBondId} onChange={setSelectedPactBladeBondId}>
+                <option value="">Seleziona un'arma dall'inventario</option>
+                {allRelationalMeleeWeapons.map((item: any) => (
+                  <option key={item.id} value={item.id}>
+                    {item.itemName}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {allRelationalMeleeWeapons.length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                Nessuna arma da mischia reale disponibile in inventario da legare al patto.
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPactBladeBindOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={() => void handleBindPactBladeWeapon()} disabled={!selectedPactBladeBondId}>
+              Associa
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={pactBladeTemplateOpen} onOpenChange={setPactBladeTemplateOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Evoca arma del patto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Arma da evocare</Label>
+              <Select value={selectedPactBladeTemplateId} onChange={setSelectedPactBladeTemplateId}>
+                <option value="">Seleziona una forma d'arma</option>
+                {pactBladeTemplatesList.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} - {getPactBladeTemplateSummary(template)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPactBladeTemplateOpen(false)}>
+              Annulla
+            </Button>
+            <Button
+              onClick={() => void requestPactBladeSummon({ mode: "template", templateId: selectedPactBladeTemplateId })}
+              disabled={!selectedPactBladeTemplateId}
+            >
+              Evoca
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={pactBladeConfirmOpen} onOpenChange={setPactBladeConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Libera le mani</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pactBladeConflictLabels.length > 0
+                ? `Per evocare la lama del patto devo togliere: ${pactBladeConflictLabels.join(", ")}.`
+                : "Per evocare la lama del patto devo liberare gli slot richiesti."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setPactBladeConfirmPayload(null);
+                setPactBladeConflictLabels([]);
+              }}
+            >
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmPactBladeSummon()}>
+              Togli ed evoca
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog
         open={detailOpen}
         onOpenChange={(open) => {
@@ -2306,6 +2566,11 @@ const Inventory = ({
           )}
 
           <DialogFooter className="mt-2">
+            {isRelationalDetail && pactBladeBondedItem && (getDetailEntry() as any)?.id === pactBladeBondedItem.id ? (
+              <Button variant="outline" onClick={() => void onClearPactBladeBond?.()}>
+                Spezza legame
+              </Button>
+            ) : null}
             {!isRelationalDetail && (
               <>
                 <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
@@ -2561,6 +2826,48 @@ const Inventory = ({
       setEquipResolutionError("");
     } catch (error: any) {
       setEquipResolutionError(String(error?.message ?? "Non sono riuscito a completare l'equipaggiamento."));
+    }
+  }
+
+  async function handleBindPactBladeWeapon() {
+    if (!selectedPactBladeBondId || !onBindPactBladeWeapon) return;
+    await onBindPactBladeWeapon(selectedPactBladeBondId);
+    setPactBladeBindOpen(false);
+    setSelectedPactBladeBondId("");
+  }
+
+  async function requestPactBladeSummon(payload: { mode: "bonded" } | { mode: "template"; templateId: string }) {
+    if (!onRequestSummonPactBlade) return;
+    const result = await onRequestSummonPactBlade(payload);
+    if (result?.ok) {
+      setPactBladeTemplateOpen(false);
+      setSelectedPactBladeTemplateId("");
+      return;
+    }
+    if (result?.requiresConfirmation) {
+      setPactBladeConfirmPayload(payload);
+      setPactBladeConflictLabels(Array.isArray(result.conflicts) ? result.conflicts : []);
+      setPactBladeConfirmOpen(true);
+      return;
+    }
+    if (result?.error) {
+      toast.error(String(result.error));
+    }
+  }
+
+  async function confirmPactBladeSummon() {
+    if (!pactBladeConfirmPayload || !onRequestSummonPactBlade) return;
+    const result = await onRequestSummonPactBlade({ ...pactBladeConfirmPayload, force: true });
+    if (result?.ok) {
+      setPactBladeConfirmOpen(false);
+      setPactBladeConfirmPayload(null);
+      setPactBladeConflictLabels([]);
+      setPactBladeTemplateOpen(false);
+      setSelectedPactBladeTemplateId("");
+      return;
+    }
+    if (result?.error) {
+      toast.error(String(result.error));
     }
   }
 

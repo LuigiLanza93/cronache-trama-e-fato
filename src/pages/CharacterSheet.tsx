@@ -86,6 +86,13 @@ import {
   type SpellSlotTable,
   type SpellsByClass as SpellsByClassFromApi,
 } from "@/lib/auth";
+import {
+  PACT_BLADE_TEMPLATE_ITEM_ID_PREFIX,
+  PACT_BLADE_WEAPON_TEMPLATES,
+  buildPactBladeVirtualDefinition,
+  buildPactBladeVirtualItem,
+  getPactBladeTemplate,
+} from "@/data/pact-blade-weapons";
 import { toast } from "@/components/ui/sonner";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
@@ -224,6 +231,14 @@ type TransferTarget = {
   name: string;
 };
 
+type PactBladeState = {
+  bondedCharacterItemId?: string | null;
+  activeSummon?: {
+    mode?: "bonded" | "template" | null;
+    templateId?: string | null;
+  };
+};
+
 interface Character {
   slug: string;
   basicInfo: {
@@ -281,6 +296,7 @@ interface Character {
   currencyBalance?: Partial<Coins> | null;
   features: Array<{ name: string; description: string; uses?: string }>;
   capabilities?: CapabilityEntry[];
+  pactBlade?: PactBladeState;
 }
 
 type Spell = SpellFromApi;
@@ -752,6 +768,81 @@ const CharacterSheet = () => {
     return normalized;
   }, []);
 
+  const isWarlock = useMemo(
+    () => (characterData?.basicInfo?.class ?? "").trim().toLowerCase() === "warlock",
+    [characterData?.basicInfo?.class]
+  );
+
+  const pactBladeState = useMemo<PactBladeState>(
+    () => ({
+      bondedCharacterItemId: characterData?.pactBlade?.bondedCharacterItemId ?? null,
+      activeSummon: {
+        mode: characterData?.pactBlade?.activeSummon?.mode ?? null,
+        templateId: characterData?.pactBlade?.activeSummon?.templateId ?? null,
+      },
+    }),
+    [characterData?.pactBlade]
+  );
+
+  const persistPactBladeState = useCallback(
+    (nextState: PactBladeState) => {
+      setCharacterData((prev) => (prev ? { ...prev, pactBlade: nextState } : prev));
+      if (character) updateCharacter(character, { pactBlade: nextState });
+    },
+    [character]
+  );
+
+  const bondedPactWeapon = useMemo(
+    () =>
+      relationalInventoryItems.find((item) => item.id === pactBladeState.bondedCharacterItemId) ?? null,
+    [pactBladeState.bondedCharacterItemId, relationalInventoryItems]
+  );
+
+  const activePactBladeTemplate = useMemo(
+    () =>
+      pactBladeState.activeSummon?.mode === "template"
+        ? getPactBladeTemplate(pactBladeState.activeSummon?.templateId)
+        : null,
+    [pactBladeState.activeSummon?.mode, pactBladeState.activeSummon?.templateId]
+  );
+
+  const runtimePactBladeDefinitions = useMemo(() => {
+    if (!activePactBladeTemplate) return {};
+    const detail = buildPactBladeVirtualDefinition(activePactBladeTemplate);
+    return { [detail.id]: detail };
+  }, [activePactBladeTemplate]);
+
+  const allItemDefinitionDetailsById = useMemo(
+    () => ({
+      ...itemDefinitionDetailsById,
+      ...runtimePactBladeDefinitions,
+    }),
+    [itemDefinitionDetailsById, runtimePactBladeDefinitions]
+  );
+
+  const activePactBladeVirtualItem = useMemo(() => {
+    if (!characterData?.slug || !characterData?.basicInfo?.characterName || !activePactBladeTemplate) {
+      return null;
+    }
+    return {
+      ...buildPactBladeVirtualItem(
+        characterData.slug,
+        characterData.slug,
+        characterData.basicInfo.characterName,
+        activePactBladeTemplate
+      ),
+      isVirtualPactBlade: true,
+    };
+  }, [activePactBladeTemplate, characterData?.basicInfo?.characterName, characterData?.slug]);
+
+  const runtimeRelationalInventoryItems = useMemo(() => {
+    const baseItems = Array.isArray(relationalInventoryItems) ? relationalInventoryItems : [];
+    const filteredItems = baseItems.filter(
+      (item) => !String(item.id ?? "").startsWith(PACT_BLADE_TEMPLATE_ITEM_ID_PREFIX)
+    );
+    return activePactBladeVirtualItem ? [...filteredItems, activePactBladeVirtualItem] : filteredItems;
+  }, [activePactBladeVirtualItem, relationalInventoryItems]);
+
   useEffect(() => {
     const nextClass = characterData?.basicInfo?.class?.toLowerCase?.() ?? "";
     setSelectedClass((current) => current || nextClass);
@@ -1138,6 +1229,147 @@ const CharacterSheet = () => {
       throw error;
     }
   };
+
+  const dismissPactBlade = useCallback(async () => {
+    if (!character) return;
+
+    if (pactBladeState.activeSummon?.mode === "bonded" && bondedPactWeapon?.isEquipped) {
+      await updateCharacterInventoryItemRequest(character, bondedPactWeapon.id, { isEquipped: false });
+      await refreshRelationalInventory(character);
+    }
+
+    persistPactBladeState({
+      ...pactBladeState,
+      activeSummon: {
+        mode: null,
+        templateId: null,
+      },
+    });
+  }, [bondedPactWeapon?.id, bondedPactWeapon?.isEquipped, character, pactBladeState, persistPactBladeState, refreshRelationalInventory]);
+
+  const bindPactBladeWeapon = useCallback(
+    (characterItemId: string) => {
+      persistPactBladeState({
+        bondedCharacterItemId: characterItemId,
+        activeSummon:
+          pactBladeState.activeSummon?.mode === "template"
+            ? { mode: null, templateId: null }
+            : pactBladeState.activeSummon,
+      });
+    },
+    [pactBladeState.activeSummon, persistPactBladeState]
+  );
+
+  const clearPactBladeBond = useCallback(() => {
+    persistPactBladeState({
+      bondedCharacterItemId: null,
+      activeSummon:
+        pactBladeState.activeSummon?.mode === "bonded"
+          ? { mode: null, templateId: null }
+          : pactBladeState.activeSummon,
+    });
+  }, [pactBladeState.activeSummon, persistPactBladeState]);
+
+  const requestSummonPactBlade = useCallback(
+    async (
+      payload:
+        | { mode: "bonded"; force?: boolean }
+        | { mode: "template"; templateId: string; force?: boolean }
+    ) => {
+      if (!character) {
+        return { ok: false, error: "Personaggio non disponibile." };
+      }
+
+      const targetSlots =
+        payload.mode === "bonded"
+          ? (() => {
+              if (!bondedPactWeapon?.itemDefinitionId) return [];
+              const detail = allItemDefinitionDetailsById[bondedPactWeapon.itemDefinitionId];
+              return detail?.weaponHandling === "TWO_HANDED"
+                ? ["WEAPON_HAND_RIGHT", "WEAPON_HAND_LEFT"]
+                : ["WEAPON_HAND_RIGHT"];
+            })()
+          : (() => {
+              const template = getPactBladeTemplate(payload.templateId);
+              if (!template) return [];
+              return template.weaponHandling === "TWO_HANDED"
+                ? ["WEAPON_HAND_RIGHT", "WEAPON_HAND_LEFT"]
+                : ["WEAPON_HAND_RIGHT"];
+            })();
+
+      if (targetSlots.length === 0) {
+        return { ok: false, error: "Arma del patto non valida." };
+      }
+
+      const conflictingItems = relationalInventoryItems.filter((item) => {
+        if (!item?.isEquipped) return false;
+        if (!Array.isArray(item.equippedSlots) || item.equippedSlots.length === 0) return false;
+        if (payload.mode === "bonded" && item.id === bondedPactWeapon?.id) return false;
+        return item.equippedSlots.some((slot) => targetSlots.includes(slot));
+      });
+
+      if (conflictingItems.length > 0 && !payload.force) {
+        return {
+          ok: false,
+          requiresConfirmation: true,
+          conflicts: conflictingItems.map((item) => item.itemName),
+        };
+      }
+
+      for (const conflict of conflictingItems) {
+        await updateCharacterInventoryItemRequest(character, conflict.id, { isEquipped: false });
+      }
+
+      if (conflictingItems.length > 0) {
+        await refreshRelationalInventory(character);
+      }
+
+      if (payload.mode === "bonded") {
+        if (!bondedPactWeapon) {
+          return { ok: false, error: "Nessuna arma legata al patto." };
+        }
+
+        await updateCharacterInventoryItemRequest(character, bondedPactWeapon.id, {
+          isEquipped: true,
+          equipConfig: {
+            slots: targetSlots,
+          },
+        });
+        await refreshRelationalInventory(character);
+        persistPactBladeState({
+          bondedCharacterItemId: pactBladeState.bondedCharacterItemId ?? null,
+          activeSummon: {
+            mode: "bonded",
+            templateId: null,
+          },
+        });
+        return { ok: true };
+      }
+
+      const template = getPactBladeTemplate(payload.templateId);
+      if (!template) {
+        return { ok: false, error: "Arma del patto non valida." };
+      }
+
+      persistPactBladeState({
+        bondedCharacterItemId: pactBladeState.bondedCharacterItemId ?? null,
+        activeSummon: {
+          mode: "template",
+          templateId: template.id,
+        },
+      });
+      return { ok: true };
+    },
+    [
+      allItemDefinitionDetailsById,
+      bondedPactWeapon,
+      character,
+      pactBladeState.bondedCharacterItemId,
+      persistPactBladeState,
+      refreshRelationalInventory,
+      relationalInventoryItems,
+    ]
+  );
 
   const decrementRelationalConsumable = async (characterItemId: string) => {
     if (!character) return;
@@ -1536,9 +1768,9 @@ const CharacterSheet = () => {
   }, [relationalInventoryItems, itemDefinitionDetailsById]);
 
   const derivedItemCapabilities = useMemo<CapabilityEntry[]>(() => {
-    return relationalInventoryItems.flatMap((item) => {
+    return runtimeRelationalInventoryItems.flatMap((item) => {
       if (!item.isEquipped || !item.itemDefinitionId) return [];
-      const detail = itemDefinitionDetailsById[item.itemDefinitionId];
+      const detail = allItemDefinitionDetailsById[item.itemDefinitionId];
       if (!detail || !Array.isArray(detail.features) || detail.features.length === 0) return [];
 
       return detail.features.map((feature) => {
@@ -1587,7 +1819,7 @@ const CharacterSheet = () => {
         } satisfies CapabilityEntry;
       });
     });
-  }, [itemDefinitionDetailsById, relationalInventoryItems]);
+  }, [allItemDefinitionDetailsById, runtimeRelationalInventoryItems]);
 
   const passiveEffectCapabilities = useMemo<CapabilityEntry[]>(
     () => [
@@ -1599,17 +1831,17 @@ const CharacterSheet = () => {
 
   const passiveEffectContext = useMemo(
     () => {
-      const equippedItems = relationalInventoryItems.filter((item) => item?.isEquipped && item?.itemDefinitionId);
+      const equippedItems = runtimeRelationalInventoryItems.filter((item) => item?.isEquipped && item?.itemDefinitionId);
       const hasArmorEquipped = equippedItems.some((item) => {
         if (!item?.isEquipped || !item?.itemDefinitionId) return false;
-        return itemDefinitionDetailsById[item.itemDefinitionId]?.category === "ARMOR";
+        return allItemDefinitionDetailsById[item.itemDefinitionId]?.category === "ARMOR";
       });
       const hasShieldEquipped = equippedItems.some((item) => {
         if (!item?.isEquipped || !item?.itemDefinitionId) return false;
-        return itemDefinitionDetailsById[item.itemDefinitionId]?.category === "SHIELD";
+        return allItemDefinitionDetailsById[item.itemDefinitionId]?.category === "SHIELD";
       });
       const equippedWeapons = equippedItems.filter((item) => {
-        const detail = itemDefinitionDetailsById[item.itemDefinitionId];
+        const detail = allItemDefinitionDetailsById[item.itemDefinitionId];
         return detail?.category === "WEAPON";
       });
       const primaryHandWeapon = equippedWeapons.find((item) => item.equippedSlots?.includes("WEAPON_HAND_RIGHT"));
@@ -1621,7 +1853,7 @@ const CharacterSheet = () => {
       const twoHandedWeapon = equippedWeapons.find((item) => {
         const slots = Array.isArray(item.equippedSlots) ? item.equippedSlots : [];
         if (!slots.includes("WEAPON_HAND_RIGHT") || !slots.includes("WEAPON_HAND_LEFT")) return false;
-        const detail = itemDefinitionDetailsById[item.itemDefinitionId];
+        const detail = allItemDefinitionDetailsById[item.itemDefinitionId];
         return detail?.weaponHandling === "TWO_HANDED" || detail?.weaponHandling === "VERSATILE";
       });
       const singleHandWeapon = primaryHandWeapon && primaryHandWeapon.id === secondaryHandWeapon?.id
@@ -1633,7 +1865,7 @@ const CharacterSheet = () => {
         hasExactlyOneWeaponEquipped &&
         !hasShieldEquipped &&
         singleHandWeapon?.itemDefinitionId &&
-        itemDefinitionDetailsById[singleHandWeapon.itemDefinitionId]?.attacks?.some((attack) => attack.kind === "MELEE_WEAPON")
+        allItemDefinitionDetailsById[singleHandWeapon.itemDefinitionId]?.attacks?.some((attack) => attack.kind === "MELEE_WEAPON")
       );
 
       return {
@@ -1644,7 +1876,7 @@ const CharacterSheet = () => {
         hasTwoHandedWeaponEquipped: !!twoHandedWeapon,
       };
     },
-    [itemDefinitionDetailsById, relationalInventoryItems]
+    [allItemDefinitionDetailsById, runtimeRelationalInventoryItems]
   );
 
   useEffect(() => {
@@ -1787,7 +2019,8 @@ const CharacterSheet = () => {
               toggleAttackSkillUsed={toggleAttackSkillUsed}
               toggleEquipItem={toggleEquipItem}
               toggleItemSkillUsed={toggleItemSkillUsed}
-              relationalInventoryItems={relationalInventoryItems}
+              relationalInventoryItems={runtimeRelationalInventoryItems}
+              runtimeItemDefinitions={runtimePactBladeDefinitions}
               toggleEquipRelationalItem={toggleEquipRelationalItem}
               passiveCapabilities={passiveEffectCapabilities}
               passiveEffectContext={passiveEffectContext}
@@ -1872,7 +2105,7 @@ const CharacterSheet = () => {
               removeStructuredItem={removeStructuredItem}
               bumpConsumableQuantity={bumpConsumableQuantity}
               toggleEquipItem={toggleEquipItem}
-              relationalInventoryItems={relationalInventoryItems}
+              relationalInventoryItems={runtimeRelationalInventoryItems}
               itemDefinitions={itemDefinitions}
               assignRelationalInventoryItem={assignRelationalInventoryItem}
               toggleEquipRelationalItem={toggleEquipRelationalItem}
@@ -1885,6 +2118,14 @@ const CharacterSheet = () => {
               setCurrencyHistoryOpen={setCurrencyHistoryOpen}
               currencyHistoryEntries={currencyHistoryEntries}
               currencyHistoryLoading={currencyHistoryLoading}
+              showPactBladeSection={isWarlock}
+              pactBladeState={pactBladeState}
+              pactBladeBondedWeapon={bondedPactWeapon}
+              pactBladeTemplates={PACT_BLADE_WEAPON_TEMPLATES}
+              onBindPactBladeWeapon={bindPactBladeWeapon}
+              onClearPactBladeBond={clearPactBladeBond}
+              onRequestSummonPactBlade={requestSummonPactBlade}
+              onDismissPactBlade={dismissPactBlade}
             />
           ),
         },
@@ -1899,9 +2140,11 @@ const CharacterSheet = () => {
       coinQty,
       coinReason,
       coinSubmitting,
+      clearPactBladeBond,
       currencyHistoryEntries,
       currencyHistoryLoading,
       currencyHistoryOpen,
+      dismissPactBlade,
       coinTransferTargetSlug,
       coinType,
       coins,
@@ -1913,6 +2156,7 @@ const CharacterSheet = () => {
       incrementRelationalConsumable,
       invError,
       invOpen,
+      isWarlock,
       itemAtkBonus,
       itemConsumableSubtype,
       itemDefinitions,
@@ -1927,10 +2171,16 @@ const CharacterSheet = () => {
       itemSkillType,
       itemSkillsByType,
       mode,
+      bondedPactWeapon,
+      bindPactBladeWeapon,
+      pactBladeState,
       potionDice,
       relationalInventoryItems,
+      requestSummonPactBlade,
       removeAttack,
       resetInvForm,
+      runtimePactBladeDefinitions,
+      runtimeRelationalInventoryItems,
       openCurrencyHistory,
       setCoinFlow,
       setCoinCounterpartyName,

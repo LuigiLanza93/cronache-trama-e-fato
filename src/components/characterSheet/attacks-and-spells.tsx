@@ -672,6 +672,7 @@ const AttacksAndSpells = ({
   toggleEquipItem,
   toggleItemSkillUsed,
   relationalInventoryItems = [],
+  runtimeItemDefinitions = {},
   toggleEquipRelationalItem,
   passiveCapabilities = [],
   passiveEffectContext = {},
@@ -682,6 +683,7 @@ const AttacksAndSpells = ({
   toggleEquipItem?: (i: number) => void;
   toggleItemSkillUsed?: (itemIndex: number, type: SkillType, skillIndex: number) => void;
   relationalInventoryItems?: CharacterInventoryItemEntry[];
+  runtimeItemDefinitions?: Record<string, ItemDefinitionEntry>;
   toggleEquipRelationalItem?: (
     characterItemId: string,
     payload?: {
@@ -710,6 +712,13 @@ const AttacksAndSpells = ({
     () => resolveCharacterAbilityScores(characterData, passiveCapabilities, passiveEffectContext),
     [characterData, passiveCapabilities, passiveEffectContext]
   );
+  const allItemDetailsById = useMemo(
+    () => ({
+      ...itemDetailsById,
+      ...(runtimeItemDefinitions ?? {}),
+    }),
+    [itemDetailsById, runtimeItemDefinitions]
+  );
 
   const equippedRelationalItems = useMemo(
     () =>
@@ -724,7 +733,7 @@ const AttacksAndSpells = ({
       new Set(
         equippedRelationalItems
           .map((item) => item.itemDefinitionId)
-          .filter((id): id is string => !!id && !itemDetailsById[id])
+          .filter((id): id is string => !!id && !allItemDetailsById[id])
       )
     );
 
@@ -756,14 +765,14 @@ const AttacksAndSpells = ({
     return () => {
       active = false;
     };
-  }, [equippedRelationalItems, itemDetailsById]);
+  }, [allItemDetailsById, equippedRelationalItems]);
 
   const relationalAttacks = useMemo<RelationalAttackRow[]>(() => {
-    const handAssignments = getWeaponHandAssignments(equippedRelationalItems, itemDetailsById);
+    const handAssignments = getWeaponHandAssignments(equippedRelationalItems, allItemDetailsById);
     const derivedAttacks = equippedRelationalItems.flatMap((item) => {
       const definitionId = item.itemDefinitionId;
       if (!definitionId) return [];
-      const detail = itemDetailsById[definitionId];
+      const detail = allItemDetailsById[definitionId];
       if (!detail?.attacks?.length) return [];
 
       return detail.attacks
@@ -820,8 +829,8 @@ const AttacksAndSpells = ({
 
     const hasEquippedWeapon = equippedRelationalItems.some((item) => {
       if (!item?.itemDefinitionId) return false;
-      return itemDetailsById[item.itemDefinitionId]?.category === "WEAPON";
-    });
+        return allItemDetailsById[item.itemDefinitionId]?.category === "WEAPON";
+      });
 
     if (!hasEquippedWeapon && derivedAttacks.length === 0) {
       const math = buildRelationalAttackMath(
@@ -851,7 +860,7 @@ const AttacksAndSpells = ({
   }, [
     characterData,
     equippedRelationalItems,
-    itemDetailsById,
+    allItemDetailsById,
     passiveCapabilities,
     passiveEffectContext,
     resolvedAbilityData.scores,
@@ -861,7 +870,7 @@ const AttacksAndSpells = ({
     const bucket = new Map<string, Array<{ item: CharacterInventoryItemEntry; detail?: ItemDefinitionEntry }>>();
 
     equippedRelationalItems.forEach((item) => {
-      const detail = item.itemDefinitionId ? itemDetailsById[item.itemDefinitionId] : undefined;
+      const detail = item.itemDefinitionId ? allItemDetailsById[item.itemDefinitionId] : undefined;
       const slots = Array.isArray(item.equippedSlots) && item.equippedSlots.length > 0
         ? item.equippedSlots
         : getDisplaySlots(detail);
@@ -889,7 +898,7 @@ const AttacksAndSpells = ({
       const bIdx = SLOT_ORDER.indexOf(b[0] as (typeof SLOT_ORDER)[number]);
       return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
     });
-  }, [equippedRelationalItems, itemDetailsById]);
+  }, [allItemDetailsById, equippedRelationalItems]);
 
   const toggleAttackFormula = (rowKey: string) => {
     setExpandedAttackKeys((prev) =>
@@ -903,7 +912,7 @@ const AttacksAndSpells = ({
   );
 
   const detailDefinition = detailItem?.itemDefinitionId
-    ? itemDetailsById[detailItem.itemDefinitionId] ?? null
+    ? allItemDetailsById[detailItem.itemDefinitionId] ?? null
     : null;
 
   function openItemDetail(item: CharacterInventoryItemEntry) {
@@ -1072,13 +1081,25 @@ const AttacksAndSpells = ({
                   </div>
                   <div className="mt-2 space-y-2">
                     {entries.map(({ item, detail }) => (
-                      <div key={`${slot}-${item.id}`} className="flex items-start justify-between gap-3">
+                      <div
+                        key={`${slot}-${item.id}`}
+                        className={`flex items-start justify-between gap-3 rounded-lg px-2 py-2 ${
+                          (item as any).isVirtualPactBlade
+                            ? "border border-cyan-900/70 bg-cyan-950/35"
+                            : ""
+                        }`}
+                      >
                         <button
                           type="button"
                           className="min-w-0 flex-1 text-left transition hover:opacity-90"
                           onClick={() => openItemDetail(item)}
                         >
                           <div className="font-medium">{item.itemName}</div>
+                          {(item as any).isVirtualPactBlade ? (
+                            <div className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-cyan-200/80">
+                              Arma del patto
+                            </div>
+                          ) : null}
                           {slot === "HANDS" && getEquippedHandLabel(item) ? (
                             <div className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/75">
                               {getEquippedHandLabel(item)}
@@ -1091,7 +1112,7 @@ const AttacksAndSpells = ({
                             </div>
                           )}
                         </button>
-                        {toggleEquipRelationalItem && item.equippable ? (
+                            {toggleEquipRelationalItem && item.equippable && !(item as any).isVirtualPactBlade ? (
                           <div className="flex shrink-0 items-center gap-2">
                             {canRepositionEquippedItem(detail) ? (
                               <Button
