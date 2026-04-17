@@ -1,0 +1,10 @@
+{
+  "players": [],
+  "monsters": [],
+  "started": false,
+  "round": 1,
+  "currentTurnId": null,
+  "nextSortOrder": 1,
+  "revealedCombatantIds": [],
+  "updatedAt": "2026-04-17T16:56:54.806Z"
+}
