@@ -39,6 +39,8 @@ type PassiveEffectTarget =
   | "MELEE_DAMAGE_ROLL"
   | "RANGED_ATTACK_ROLL"
   | "RANGED_DAMAGE_ROLL"
+  | "UNARMED_ATTACK_ROLL"
+  | "UNARMED_DAMAGE_ROLL"
   | "OFF_HAND_DAMAGE_ROLL"
   | "CUSTOM";
 type PassiveEffectTrigger =
@@ -56,6 +58,8 @@ type PassiveEffectValueMode =
   | "PROFICIENCY_BONUS"
   | "CHARACTER_LEVEL";
 type PassiveEffectRounding = "FLOOR" | "CEIL";
+type PassiveEffectOperationType = "BONUS" | "SET";
+type PassiveEffectSetMode = "ABSOLUTE" | "MINIMUM_FLOOR";
 type PassiveEffectSourceAbility =
   | "STRENGTH"
   | "DEXTERITY"
@@ -66,8 +70,12 @@ type PassiveEffectSourceAbility =
 
 type PassiveEffectEntry = {
   target: PassiveEffectTarget;
+  operationType?: PassiveEffectOperationType;
   valueMode?: PassiveEffectValueMode;
-  value: number;
+  value: number | string;
+  setMode?: PassiveEffectSetMode;
+  setValue?: number | string;
+  capValue?: number | string;
   sourceAbility?: PassiveEffectSourceAbility;
   multiplierNumerator?: number;
   multiplierDenominator?: number;
@@ -152,6 +160,8 @@ const PASSIVE_TARGET_LABELS: Record<PassiveEffectTarget, string> = {
   MELEE_DAMAGE_ROLL: "Danni in mischia",
   RANGED_ATTACK_ROLL: "Tiri per colpire a distanza",
   RANGED_DAMAGE_ROLL: "Danni a distanza",
+  UNARMED_ATTACK_ROLL: "Tiri per colpire senz'armi",
+  UNARMED_DAMAGE_ROLL: "Danni senz'armi",
   OFF_HAND_DAMAGE_ROLL: "Danni mano secondaria",
   CUSTOM: "Altro",
 };
@@ -187,12 +197,32 @@ const PASSIVE_ROUNDING_LABELS: Record<PassiveEffectRounding, string> = {
   FLOOR: "Per difetto",
   CEIL: "Per eccesso",
 };
+const PASSIVE_OPERATION_LABELS: Record<PassiveEffectOperationType, string> = {
+  BONUS: "Bonus",
+  SET: "Valore impostato",
+};
+const PASSIVE_SET_MODE_LABELS: Record<PassiveEffectSetMode, string> = {
+  ABSOLUTE: "Assoluto",
+  MINIMUM_FLOOR: "Minimo garantito",
+};
+const ABILITY_SCORE_TARGETS = new Set<PassiveEffectTarget>([
+  "STRENGTH_SCORE",
+  "DEXTERITY_SCORE",
+  "CONSTITUTION_SCORE",
+  "INTELLIGENCE_SCORE",
+  "WISDOM_SCORE",
+  "CHARISMA_SCORE",
+]);
 
 function newPassiveEffect(): PassiveEffectEntry {
   return {
     target: "ARMOR_CLASS",
+    operationType: "BONUS",
     valueMode: "FLAT",
     value: 1,
+    setMode: "MINIMUM_FLOOR",
+    setValue: undefined,
+    capValue: undefined,
     sourceAbility: "DEXTERITY",
     multiplierNumerator: 1,
     multiplierDenominator: 1,
@@ -202,6 +232,26 @@ function newPassiveEffect(): PassiveEffectEntry {
     customTriggerLabel: "",
     notes: "",
   };
+}
+
+function getAllowedValueModesForTarget(target: PassiveEffectTarget) {
+  if (ABILITY_SCORE_TARGETS.has(target)) {
+    return Object.entries(PASSIVE_VALUE_MODE_LABELS).filter(
+      ([value]) => value !== "ABILITY_MODIFIER" && value !== "ABILITY_SCORE"
+    );
+  }
+
+  return Object.entries(PASSIVE_VALUE_MODE_LABELS);
+}
+
+function isEditableSignedInteger(value: string) {
+  return /^-?\d*$/.test(value);
+}
+
+function normalizeDraftSignedInteger(value: number | string | undefined) {
+  if (value === undefined || value === "" || value === "-") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function passiveEffectSummary(effect: PassiveEffectEntry) {
@@ -214,6 +264,7 @@ function passiveEffectSummary(effect: PassiveEffectEntry) {
       ? effect.customTriggerLabel?.trim() || "Trigger personalizzato"
       : PASSIVE_TRIGGER_LABELS[effect.trigger];
   const mode = effect.valueMode ?? "FLAT";
+  const operationType = effect.operationType ?? "BONUS";
   const offset = Number(effect.value ?? 0);
   const signedOffset = offset >= 0 ? `+${offset}` : `${offset}`;
   const numerator = Number(effect.multiplierNumerator ?? 1);
@@ -226,21 +277,28 @@ function passiveEffectSummary(effect: PassiveEffectEntry) {
         }`;
 
   let valueLabel = signedOffset;
-  switch (mode) {
-    case "ABILITY_MODIFIER":
-      valueLabel = `${PASSIVE_SOURCE_ABILITY_LABELS[effect.sourceAbility ?? "DEXTERITY"]} mod${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
-      break;
-    case "ABILITY_SCORE":
-      valueLabel = `${PASSIVE_SOURCE_ABILITY_LABELS[effect.sourceAbility ?? "DEXTERITY"]}${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
-      break;
-    case "PROFICIENCY_BONUS":
-      valueLabel = `B. Comp.${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
-      break;
-    case "CHARACTER_LEVEL":
-      valueLabel = `Livello${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
-      break;
-    default:
-      break;
+  if (operationType === "SET") {
+    valueLabel = `${PASSIVE_OPERATION_LABELS.SET}: ${effect.setValue ?? "?"} (${PASSIVE_SET_MODE_LABELS[effect.setMode ?? "MINIMUM_FLOOR"]})`;
+  } else {
+    switch (mode) {
+      case "ABILITY_MODIFIER":
+        valueLabel = `${PASSIVE_SOURCE_ABILITY_LABELS[effect.sourceAbility ?? "DEXTERITY"]} mod${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
+        break;
+      case "ABILITY_SCORE":
+        valueLabel = `${PASSIVE_SOURCE_ABILITY_LABELS[effect.sourceAbility ?? "DEXTERITY"]}${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
+        break;
+      case "PROFICIENCY_BONUS":
+        valueLabel = `B. Comp.${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
+        break;
+      case "CHARACTER_LEVEL":
+        valueLabel = `Livello${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
+        break;
+      default:
+        break;
+    }
+    if (effect.capValue != null) {
+      valueLabel = `${valueLabel} (max ${effect.capValue})`;
+    }
   }
 
   return `${targetLabel} ${valueLabel} - ${triggerLabel}`;
@@ -381,16 +439,25 @@ export default function Capabilities({
       const passiveEffects = form.passiveEffects
         .map((effect) => ({
           ...effect,
+          operationType: effect.operationType ?? "BONUS",
           valueMode: effect.valueMode ?? "FLAT",
+          setMode: effect.setMode ?? "MINIMUM_FLOOR",
+          setValue: normalizeDraftSignedInteger(effect.setValue),
+          capValue: normalizeDraftSignedInteger(effect.capValue),
           sourceAbility: effect.sourceAbility ?? "DEXTERITY",
           multiplierNumerator: Number(effect.multiplierNumerator ?? 1) || 1,
           multiplierDenominator: Math.max(1, Number(effect.multiplierDenominator ?? 1) || 1),
           rounding: effect.rounding ?? "FLOOR",
+          value: normalizeDraftSignedInteger(effect.value) ?? 0,
           customTargetLabel: effect.customTargetLabel?.trim() || undefined,
           customTriggerLabel: effect.customTriggerLabel?.trim() || undefined,
           notes: effect.notes?.trim() || undefined,
         }))
-        .filter((effect) => effect.valueMode !== "FLAT" || effect.value !== 0);
+        .filter((effect) =>
+          effect.operationType === "SET"
+            ? Number.isFinite(Number(effect.setValue))
+            : effect.valueMode !== "FLAT" || effect.value !== 0 || effect.capValue != null
+        );
 
       if (passiveEffects.some((effect) => effect.target === "CUSTOM" && !effect.customTargetLabel)) {
         setFormError("Inserisci un'etichetta per ogni bersaglio personalizzato.");
@@ -410,6 +477,28 @@ export default function Capabilities({
         )
       ) {
         setFormError("Se usi una caratteristica come sorgente, seleziona quale.");
+        return;
+      }
+
+      if (
+        passiveEffects.some(
+          (effect) =>
+            ABILITY_SCORE_TARGETS.has(effect.target) &&
+            (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE")
+        )
+      ) {
+        setFormError("Le caratteristiche non possono derivare da altre caratteristiche tramite effetti passivi.");
+        return;
+      }
+
+      if (
+        passiveEffects.some(
+          (effect) =>
+            effect.operationType === "SET" &&
+            !Number.isFinite(Number(effect.setValue))
+        )
+      ) {
+        setFormError("Inserisci un valore valido per ogni effetto di tipo set.");
         return;
       }
 
@@ -746,6 +835,7 @@ export default function Capabilities({
                           <Label className="mb-1 block">Valore</Label>
                           <select
                             value={effect.valueMode ?? "FLAT"}
+                            disabled={(effect.operationType ?? "BONUS") === "SET"}
                             onChange={(e) =>
                               setForm((prev) => ({
                                 ...prev,
@@ -758,7 +848,7 @@ export default function Capabilities({
                             }
                             className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                           >
-                            {Object.entries(PASSIVE_VALUE_MODE_LABELS).map(([value, label]) => (
+                            {getAllowedValueModesForTarget(effect.target).map(([value, label]) => (
                               <option key={value} value={value}>
                                 {label}
                               </option>
@@ -766,6 +856,32 @@ export default function Capabilities({
                           </select>
                         </div>
 
+                        <div>
+                          <Label className="mb-1 block">Operazione</Label>
+                          <select
+                            value={effect.operationType ?? "BONUS"}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                passiveEffects: prev.passiveEffects.map((row, rowIndex) =>
+                                  rowIndex === index
+                                    ? { ...row, operationType: e.target.value as PassiveEffectOperationType }
+                                    : row
+                                ),
+                              }))
+                            }
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                          >
+                            {Object.entries(PASSIVE_OPERATION_LABELS).map(([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <Label className="mb-1 block">Trigger</Label>
                           <select
@@ -791,7 +907,7 @@ export default function Capabilities({
                         </div>
                       </div>
 
-                      {(effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE") && (
+                      {(effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE") && (
                         <div>
                           <Label className="mb-1 block">Caratteristica sorgente</Label>
                           <select
@@ -817,7 +933,7 @@ export default function Capabilities({
                         </div>
                       )}
 
-                      {(effect.valueMode ?? "FLAT") !== "FLAT" && (
+                      {(effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode ?? "FLAT") !== "FLAT" && (
                         <div className="grid gap-3 sm:grid-cols-3">
                           <div>
                             <Label className="mb-1 block">Rapporto</Label>
@@ -884,26 +1000,98 @@ export default function Capabilities({
                         </div>
                       )}
 
-                      <div>
-                        <Label className="mb-1 block">
-                          {effect.valueMode === "FLAT" ? "Bonus fisso" : "Offset opzionale"}
-                        </Label>
-                        <Input
-                          inputMode="numeric"
-                          value={String(effect.value)}
-                          onChange={(e) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              passiveEffects: prev.passiveEffects.map((row, rowIndex) =>
-                                rowIndex === index
-                                  ? { ...row, value: Number(e.target.value || 0) }
-                                  : row
-                              ),
-                            }))
-                          }
-                          placeholder={effect.valueMode === "FLAT" ? "Es. 1" : "Es. 0"}
-                        />
-                      </div>
+                      {(effect.operationType ?? "BONUS") === "SET" ? (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <Label className="mb-1 block">Modalita set</Label>
+                            <select
+                              value={effect.setMode ?? "MINIMUM_FLOOR"}
+                              onChange={(e) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  passiveEffects: prev.passiveEffects.map((row, rowIndex) =>
+                                    rowIndex === index
+                                      ? { ...row, setMode: e.target.value as PassiveEffectSetMode }
+                                      : row
+                                  ),
+                                }))
+                              }
+                              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                            >
+                              {Object.entries(PASSIVE_SET_MODE_LABELS).map(([value, label]) => (
+                                <option key={value} value={value}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="mb-1 block">Valore impostato</Label>
+                            <Input
+                              inputMode="numeric"
+                              value={effect.setValue == null ? "" : String(effect.setValue)}
+                              onChange={(e) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  passiveEffects: prev.passiveEffects.map((row, rowIndex) =>
+                                    rowIndex === index
+                                      ? isEditableSignedInteger(e.target.value)
+                                        ? { ...row, setValue: e.target.value }
+                                        : row
+                                      : row
+                                  ),
+                                }))
+                              }
+                              placeholder="Es. 19"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <Label className="mb-1 block">
+                              {effect.valueMode === "FLAT" ? "Bonus fisso" : "Offset opzionale"}
+                            </Label>
+                            <Input
+                              inputMode="numeric"
+                              value={String(effect.value)}
+                              onChange={(e) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  passiveEffects: prev.passiveEffects.map((row, rowIndex) =>
+                                    rowIndex === index
+                                      ? isEditableSignedInteger(e.target.value)
+                                        ? { ...row, value: e.target.value }
+                                        : row
+                                      : row
+                                  ),
+                                }))
+                              }
+                              placeholder={effect.valueMode === "FLAT" ? "Es. 1" : "Es. 0"}
+                            />
+                          </div>
+                          <div>
+                            <Label className="mb-1 block">Cap massimo</Label>
+                            <Input
+                              inputMode="numeric"
+                              value={effect.capValue == null ? "" : String(effect.capValue)}
+                              onChange={(e) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  passiveEffects: prev.passiveEffects.map((row, rowIndex) =>
+                                    rowIndex === index
+                                      ? isEditableSignedInteger(e.target.value)
+                                        ? { ...row, capValue: e.target.value }
+                                        : row
+                                      : row
+                                  ),
+                                }))
+                              }
+                              placeholder="Opzionale"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       {effect.target === "CUSTOM" && (
                         <div>

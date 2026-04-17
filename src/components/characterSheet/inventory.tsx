@@ -275,8 +275,8 @@ const EQUIPMENT_SLOT_LABELS: Record<string, string> = {
   RING_10: "Anello",
   NECK: "Collana",
   FEET: "Scarpe",
-  WEAPON_HAND_LEFT: "Mano sinistra",
-  WEAPON_HAND_RIGHT: "Mano destra",
+  WEAPON_HAND_LEFT: "Mano secondaria",
+  WEAPON_HAND_RIGHT: "Mano principale",
 };
 
 function formatEquipOptionLabel(option: EquipResolutionOption) {

@@ -35,7 +35,12 @@ import {
   type ItemAttackEntry,
   type ItemDefinitionEntry,
 } from "@/lib/auth";
-import { proficiencyBonus as getProficiencyBonus } from "@/utils";
+import {
+  proficiencyBonus as getProficiencyBonus,
+  resolveCharacterAbilityScores,
+  isPassiveTriggerActive,
+  resolvePassiveEffectScalarValue,
+} from "@/utils";
 
 type SkillType = "volonta" | "incontro" | "riposoBreve" | "riposoLungo";
 
@@ -64,8 +69,8 @@ const SLOT_LABELS: Record<string, string> = {
   GLOVE_RIGHT: "Guanto destro",
   NECK: "Collana",
   FEET: "Scarpe",
-  WEAPON_HAND_RIGHT: "Mano destra",
-  WEAPON_HAND_LEFT: "Mano sinistra",
+  WEAPON_HAND_RIGHT: "Mano principale",
+  WEAPON_HAND_LEFT: "Mano secondaria",
   RINGS: "Anelli",
 };
 
@@ -95,6 +100,17 @@ function getEquipOptionLabel(option: EquipResolutionOption) {
       ? ` - sostituisce ${option.conflicts.map((conflict) => conflict.itemName).join(", ")}`
       : "";
   return `${slotLabel}${conflictLabel}`;
+}
+
+function getEquippedHandLabel(item: CharacterInventoryItemEntry) {
+  const slots = Array.isArray(item.equippedSlots) ? item.equippedSlots : [];
+  const inPrimaryHand = slots.includes("WEAPON_HAND_RIGHT");
+  const inSecondaryHand = slots.includes("WEAPON_HAND_LEFT");
+
+  if (inPrimaryHand && inSecondaryHand) return "Mano principale e secondaria";
+  if (inPrimaryHand) return "Mano principale";
+  if (inSecondaryHand) return "Mano secondaria";
+  return null;
 }
 
 function parseLegacyDamage(s: string | undefined): { dice?: string; type?: string } {
@@ -253,13 +269,130 @@ function getDefaultAbilityForAttackKind(kind: string | null | undefined) {
   }
 }
 
-function buildRelationalAttackMath(attack: ItemAttackEntry, characterData: any) {
+function getAttackRollPassiveBonus(
+  attack: ItemAttackEntry,
+  characterData: any,
+  resolvedAbilityScores: Record<string, number>,
+  passiveCapabilities: any[],
+  passiveEffectContext: any,
+  options?: {
+    isUnarmedAttack?: boolean;
+  }
+) {
+  const kind = String(attack?.kind ?? "").trim().toUpperCase();
+  const specificTargets = new Set<string>(["ATTACK_ROLL"]);
+  if (options?.isUnarmedAttack) {
+    specificTargets.add("UNARMED_ATTACK_ROLL");
+  }
+  const specificTarget =
+    kind === "MELEE_WEAPON"
+      ? "MELEE_ATTACK_ROLL"
+      : kind === "RANGED_WEAPON" || kind === "THROWN"
+        ? "RANGED_ATTACK_ROLL"
+        : null;
+  if (specificTarget) {
+    specificTargets.add(specificTarget);
+  }
+
+  return (Array.isArray(passiveCapabilities) ? passiveCapabilities : []).reduce(
+    (total: number, capability: any) => {
+      if (String(capability?.kind ?? "").toLowerCase() !== "passive") return total;
+      if (!Array.isArray(capability?.passiveEffects)) return total;
+
+      return total + capability.passiveEffects.reduce((sum: number, effect: any) => {
+        if (!isPassiveTriggerActive(effect?.trigger, passiveEffectContext)) return sum;
+        const target = String(effect?.target ?? "").trim().toUpperCase();
+        if (!specificTargets.has(target)) return sum;
+
+        const value = resolvePassiveEffectScalarValue(effect, characterData, resolvedAbilityScores);
+        if (!Number.isFinite(value) || value === 0) return sum;
+        return sum + value;
+      }, 0);
+    },
+    0
+  );
+}
+
+function getDamageRollPassiveBonus(
+  attack: ItemAttackEntry,
+  characterData: any,
+  resolvedAbilityScores: Record<string, number>,
+  passiveCapabilities: any[],
+  passiveEffectContext: any,
+  options: {
+    isOffHandAttack: boolean;
+    isUnarmedAttack?: boolean;
+  }
+) {
+  const kind = String(attack?.kind ?? "").trim().toUpperCase();
+  const specificTargets = new Set<string>(["DAMAGE_ROLL"]);
+  if (kind === "MELEE_WEAPON") specificTargets.add("MELEE_DAMAGE_ROLL");
+  if (kind === "RANGED_WEAPON" || kind === "THROWN") specificTargets.add("RANGED_DAMAGE_ROLL");
+  if (options.isUnarmedAttack) specificTargets.add("UNARMED_DAMAGE_ROLL");
+  if (options.isOffHandAttack) specificTargets.add("OFF_HAND_DAMAGE_ROLL");
+
+  return (Array.isArray(passiveCapabilities) ? passiveCapabilities : []).reduce(
+    (total: number, capability: any) => {
+      if (String(capability?.kind ?? "").toLowerCase() !== "passive") return total;
+      if (!Array.isArray(capability?.passiveEffects)) return total;
+
+      return total + capability.passiveEffects.reduce((sum: number, effect: any) => {
+        if (!isPassiveTriggerActive(effect?.trigger, passiveEffectContext)) return sum;
+        const target = String(effect?.target ?? "").trim().toUpperCase();
+        if (!specificTargets.has(target)) return sum;
+
+        const value = resolvePassiveEffectScalarValue(effect, characterData, resolvedAbilityScores);
+        if (!Number.isFinite(value) || value === 0) return sum;
+        return sum + value;
+      }, 0);
+    },
+    0
+  );
+}
+
+function getWeaponHandAssignments(
+  equippedRelationalItems: CharacterInventoryItemEntry[],
+  itemDetailsById: Record<string, ItemDefinitionEntry>
+) {
+  const primaryWeaponItem = equippedRelationalItems.find((item) => {
+    if (!item?.itemDefinitionId) return false;
+    if (!item.equippedSlots?.includes("WEAPON_HAND_RIGHT")) return false;
+    return itemDetailsById[item.itemDefinitionId]?.category === "WEAPON";
+  });
+
+  const secondaryWeaponItem = equippedRelationalItems.find((item) => {
+    if (!item?.itemDefinitionId) return false;
+    if (!item.equippedSlots?.includes("WEAPON_HAND_LEFT")) return false;
+    return itemDetailsById[item.itemDefinitionId]?.category === "WEAPON";
+  });
+
+  return {
+    primaryWeaponItemId: primaryWeaponItem?.id ?? null,
+    secondaryWeaponItemId: secondaryWeaponItem?.id ?? null,
+    hasDualWeapons:
+      !!primaryWeaponItem?.id &&
+      !!secondaryWeaponItem?.id &&
+      primaryWeaponItem.id !== secondaryWeaponItem.id,
+  };
+}
+
+function buildRelationalAttackMath(
+  attack: ItemAttackEntry,
+  characterData: any,
+  resolvedAbilityScores: Record<string, number>,
+  passiveCapabilities: any[],
+  passiveEffectContext: any,
+  options: {
+    isOffHandAttack: boolean;
+    isUnarmedAttack?: boolean;
+  }
+) {
   const abilityKey =
     normalizeAbilityKey(attack.ability) ?? getDefaultAbilityForAttackKind(attack.kind);
   const abilityScore =
-    abilityKey && characterData?.abilityScores
-      ? characterData.abilityScores[abilityKey] ??
-        characterData.abilityScores[abilityKey.toLowerCase()] ??
+    abilityKey
+      ? resolvedAbilityScores[abilityKey.toLowerCase()] ??
+        resolvedAbilityScores[abilityKey] ??
         null
       : null;
   const abilityModifier = getAbilityModifier(abilityScore);
@@ -269,6 +402,22 @@ function buildRelationalAttackMath(attack: ItemAttackEntry, characterData: any) 
       : getProficiencyBonus(Number(characterData?.basicInfo?.level ?? 1));
   const weaponAttackBonus =
     attack.attackBonus !== null && attack.attackBonus !== undefined ? attack.attackBonus : 0;
+  const passiveAttackBonus = getAttackRollPassiveBonus(
+    attack,
+    characterData,
+    resolvedAbilityScores,
+    passiveCapabilities,
+    passiveEffectContext,
+    options
+  );
+  const passiveDamageBonus = getDamageRollPassiveBonus(
+    attack,
+    characterData,
+    resolvedAbilityScores,
+    passiveCapabilities,
+    passiveEffectContext,
+    options
+  );
 
   const hitParts = ["1d20"];
   if (weaponAttackBonus !== 0) {
@@ -280,14 +429,18 @@ function buildRelationalAttackMath(attack: ItemAttackEntry, characterData: any) 
   if (abilityKey) {
     hitParts.push(`${ABILITY_LABELS[abilityKey]} (${formatSigned(abilityModifier)})`);
   }
+  if (passiveAttackBonus !== 0) {
+    hitParts.push(`Effetti passivi (${formatSigned(passiveAttackBonus)})`);
+  }
 
-  const totalHitBonus = weaponAttackBonus + proficiencyBonus + (abilityKey ? abilityModifier : 0);
+  const totalHitBonus =
+    weaponAttackBonus + proficiencyBonus + (abilityKey ? abilityModifier : 0) + passiveAttackBonus;
   const totalDamageBonus =
     abilityKey && ["MELEE_WEAPON", "RANGED_WEAPON", "THROWN"].includes(attack.kind)
       ? abilityModifier
       : 0;
   const parsedDamage = parseDiceExpressionParts(attack.damageDice);
-  const totalDamageFlatBonus = parsedDamage.flatBonus + totalDamageBonus;
+  const totalDamageFlatBonus = parsedDamage.flatBonus + totalDamageBonus + passiveDamageBonus;
 
   const damageParts = [parsedDamage.dicePart];
   if (parsedDamage.flatBonus !== 0) {
@@ -295,6 +448,9 @@ function buildRelationalAttackMath(attack: ItemAttackEntry, characterData: any) 
   }
   if (abilityKey && ["MELEE_WEAPON", "RANGED_WEAPON", "THROWN"].includes(attack.kind)) {
     damageParts.push(`${ABILITY_LABELS[abilityKey]} (${formatSigned(abilityModifier)})`);
+  }
+  if (passiveDamageBonus !== 0) {
+    damageParts.push(`Effetti passivi (${formatSigned(passiveDamageBonus)})`);
   }
   if (attack.damageType) {
     damageParts.push(attack.damageType);
@@ -481,6 +637,21 @@ type RelationalAttackRow = {
   damageLine: string | null;
 };
 
+const UNARMED_ATTACK: ItemAttackEntry = {
+  id: "__unarmed_attack__",
+  name: "Colpo senz'armi",
+  kind: "MELEE_WEAPON",
+  handRequirement: "ANY",
+  ability: "STRENGTH",
+  attackBonus: 0,
+  damageDice: "1",
+  damageType: "contundente",
+  rangeNormal: 1,
+  rangeLong: null,
+  conditionText: null,
+  sortOrder: 0,
+};
+
 function canRepositionEquippedItem(detail?: ItemDefinitionEntry) {
   if (!detail?.slotRules?.length) return false;
 
@@ -502,6 +673,8 @@ const AttacksAndSpells = ({
   toggleItemSkillUsed,
   relationalInventoryItems = [],
   toggleEquipRelationalItem,
+  passiveCapabilities = [],
+  passiveEffectContext = {},
 }: {
   characterData: any;
   toggleEquipAttack: (i: number) => void;
@@ -520,6 +693,8 @@ const AttacksAndSpells = ({
       };
     }
   ) => Promise<unknown> | unknown;
+  passiveCapabilities?: any[];
+  passiveEffectContext?: any;
 }) => {
   const [itemDetailsById, setItemDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [expandedAttackKeys, setExpandedAttackKeys] = useState<string[]>([]);
@@ -531,6 +706,10 @@ const AttacksAndSpells = ({
   const [equipResolutionError, setEquipResolutionError] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailItemId, setDetailItemId] = useState("");
+  const resolvedAbilityData = useMemo(
+    () => resolveCharacterAbilityScores(characterData, passiveCapabilities, passiveEffectContext),
+    [characterData, passiveCapabilities, passiveEffectContext]
+  );
 
   const equippedRelationalItems = useMemo(
     () =>
@@ -580,7 +759,8 @@ const AttacksAndSpells = ({
   }, [equippedRelationalItems, itemDetailsById]);
 
   const relationalAttacks = useMemo<RelationalAttackRow[]>(() => {
-    return equippedRelationalItems.flatMap((item) => {
+    const handAssignments = getWeaponHandAssignments(equippedRelationalItems, itemDetailsById);
+    const derivedAttacks = equippedRelationalItems.flatMap((item) => {
       const definitionId = item.itemDefinitionId;
       if (!definitionId) return [];
       const detail = itemDetailsById[definitionId];
@@ -608,8 +788,18 @@ const AttacksAndSpells = ({
                 ? `Gittata ${attack.rangeNormal}/${attack.rangeLong}`
                 : `Gittata ${attack.rangeNormal}`
               : null;
+          const isOffHandAttack =
+            handAssignments.hasDualWeapons &&
+            handAssignments.secondaryWeaponItemId === item.id;
 
-          const math = buildRelationalAttackMath(attack, characterData);
+          const math = buildRelationalAttackMath(
+            attack,
+            characterData,
+            resolvedAbilityData.scores,
+            passiveCapabilities,
+            passiveEffectContext,
+            { isOffHandAttack, isUnarmedAttack: false }
+          );
           const attackName = attack.name || item.itemName;
 
           return {
@@ -627,7 +817,45 @@ const AttacksAndSpells = ({
           };
         });
     });
-  }, [characterData, equippedRelationalItems, itemDetailsById]);
+
+    const hasEquippedWeapon = equippedRelationalItems.some((item) => {
+      if (!item?.itemDefinitionId) return false;
+      return itemDetailsById[item.itemDefinitionId]?.category === "WEAPON";
+    });
+
+    if (!hasEquippedWeapon && derivedAttacks.length === 0) {
+      const math = buildRelationalAttackMath(
+        UNARMED_ATTACK,
+        characterData,
+        resolvedAbilityData.scores,
+        passiveCapabilities,
+        passiveEffectContext,
+        { isOffHandAttack: false, isUnarmedAttack: true }
+      );
+
+      derivedAttacks.push({
+        rowKey: "unarmed-base",
+        sourceName: "",
+        attackName: UNARMED_ATTACK.name,
+        showSourceName: false,
+        detailLine: "Mischia",
+        secondaryLine: "Portata 1 quadretto",
+        hitSummaryLine: math.hitSummaryLine,
+        damageSummaryLine: math.damageSummaryLine,
+        formulaLine: math.formulaLine,
+        damageLine: math.damageLine,
+      });
+    }
+
+    return derivedAttacks;
+  }, [
+    characterData,
+    equippedRelationalItems,
+    itemDetailsById,
+    passiveCapabilities,
+    passiveEffectContext,
+    resolvedAbilityData.scores,
+  ]);
 
   const equipmentBySlot = useMemo(() => {
     const bucket = new Map<string, Array<{ item: CharacterInventoryItemEntry; detail?: ItemDefinitionEntry }>>();
@@ -851,6 +1079,11 @@ const AttacksAndSpells = ({
                           onClick={() => openItemDetail(item)}
                         >
                           <div className="font-medium">{item.itemName}</div>
+                          {slot === "HANDS" && getEquippedHandLabel(item) ? (
+                            <div className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/75">
+                              {getEquippedHandLabel(item)}
+                            </div>
+                          ) : null}
                           <EquipmentSymbols detail={detail} />
                           {getArmorClassSummary(detail) && (
                             <div className="mt-1 text-muted-foreground">

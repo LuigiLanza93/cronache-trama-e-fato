@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { updateCharacter } from "@/realtime";
 import { Check, Eye, Settings2, X } from "lucide-react";
 import SectionCard from "@/components/characterSheet/section-card";
+import { resolveCharacterAbilityScores } from "@/utils";
 
 const SAVING_THROW_ORDER = [
     { key: "strength", short: "For", matches: ["strength", "forza", "for"] },
@@ -27,6 +28,8 @@ const Proficiencies = ({
     setDeathSaves,
     calculateSkillValues,
     skillsCatalog,
+    passiveCapabilities = [],
+    passiveEffectContext = {},
 }: any) => {
     // ===== Edit mode per le ABILITÃ€ =====
     const [editingSkills, setEditingSkills] = useState(false);
@@ -81,7 +84,17 @@ const Proficiencies = ({
     };
 
     const profBonus = proficiencyBonus(characterData.basicInfo.level);
-    const skillsCalc = calculateSkillValues(characterData, skillsCatalog) || [];
+    const resolvedAbilityData = useMemo(
+        () => resolveCharacterAbilityScores(characterData, passiveCapabilities, passiveEffectContext),
+        [characterData, passiveCapabilities, passiveEffectContext]
+    );
+    const resolvedAbilityScores = resolvedAbilityData.scores;
+    const skillsCalc =
+        calculateSkillValues(characterData, skillsCatalog, {
+            passiveCapabilities,
+            passiveEffectContext,
+            resolvedAbilityScores,
+        }) || [];
     const normalizedClass = (characterData?.basicInfo?.class ?? "").trim().toLowerCase();
 
     const spellcastingAbilityByClass: Record<string, string> = {
@@ -104,7 +117,7 @@ const Proficiencies = ({
     const spellcastingAbility = spellcastingAbilityByClass[normalizedClass];
     const spellSaveDc =
         spellcastingAbility
-            ? 8 + profBonus + abilityModifier(characterData?.abilityScores?.[spellcastingAbility] ?? 10)
+            ? 8 + profBonus + abilityModifier(resolvedAbilityScores[spellcastingAbility] ?? 10)
             : null;
 
     // ===== Percezione passiva =====
@@ -122,7 +135,7 @@ const Proficiencies = ({
         typeof save === "string" ? save.trim().toLowerCase() : ""
     );
     const savingThrows = SAVING_THROW_ORDER.map(({ key, short, matches }) => {
-        const modifier = abilityModifier(characterData?.abilityScores?.[key] ?? 10);
+        const modifier = abilityModifier(resolvedAbilityScores[key] ?? 10);
         const proficient = matches.some((match) => savingThrowProficiencies.includes(match));
         const total = modifier + (proficient ? profBonus : 0);
 

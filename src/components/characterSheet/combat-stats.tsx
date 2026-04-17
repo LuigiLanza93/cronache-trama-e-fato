@@ -9,7 +9,7 @@ import {
   type ItemDefinitionEntry,
   type RaceSpeedEntry,
 } from "@/lib/auth";
-import { proficiencyBonus as getProficiencyBonus } from "@/utils";
+import { proficiencyBonus as getProficiencyBonus, resolveCharacterAbilityScores } from "@/utils";
 
 function formatSigned(value: number) {
   return value >= 0 ? `+${value}` : `${value}`;
@@ -195,62 +195,31 @@ function getFlatEquippedModifiers(details: ItemDefinitionEntry[], target: string
   }, 0);
 }
 
-function resolveAbilityScore(characterData: any, ability: string | undefined) {
+function resolveAbilityScore(resolvedScores: Record<string, number>, ability: string | undefined) {
   switch (ability) {
     case "STRENGTH":
-      return (
-        characterData?.abilityScores?.STRENGTH ??
-        characterData?.abilityScores?.strength ??
-        characterData?.abilityScores?.STR ??
-        characterData?.abilityScores?.str ??
-        10
-      );
+      return resolvedScores.strength ?? 10;
     case "DEXTERITY":
-      return (
-        characterData?.abilityScores?.DEXTERITY ??
-        characterData?.abilityScores?.dexterity ??
-        characterData?.abilityScores?.DEX ??
-        characterData?.abilityScores?.dex ??
-        10
-      );
+      return resolvedScores.dexterity ?? 10;
     case "CONSTITUTION":
-      return (
-        characterData?.abilityScores?.CONSTITUTION ??
-        characterData?.abilityScores?.constitution ??
-        characterData?.abilityScores?.CON ??
-        characterData?.abilityScores?.con ??
-        10
-      );
+      return resolvedScores.constitution ?? 10;
     case "INTELLIGENCE":
-      return (
-        characterData?.abilityScores?.INTELLIGENCE ??
-        characterData?.abilityScores?.intelligence ??
-        characterData?.abilityScores?.INT ??
-        characterData?.abilityScores?.int ??
-        10
-      );
+      return resolvedScores.intelligence ?? 10;
     case "WISDOM":
-      return (
-        characterData?.abilityScores?.WISDOM ??
-        characterData?.abilityScores?.wisdom ??
-        characterData?.abilityScores?.WIS ??
-        characterData?.abilityScores?.wis ??
-        10
-      );
+      return resolvedScores.wisdom ?? 10;
     case "CHARISMA":
-      return (
-        characterData?.abilityScores?.CHARISMA ??
-        characterData?.abilityScores?.charisma ??
-        characterData?.abilityScores?.CHA ??
-        characterData?.abilityScores?.cha ??
-        10
-      );
+      return resolvedScores.charisma ?? 10;
     default:
       return 10;
   }
 }
 
-function resolvePassiveEffectValue(characterData: any, effect: any, abilityModifier: any) {
+function resolvePassiveEffectValue(
+  characterData: any,
+  effect: any,
+  abilityModifier: any,
+  resolvedScores: Record<string, number>
+) {
   const mode = effect?.valueMode ?? "FLAT";
   const offset = Number(effect?.value ?? 0);
   const numerator = Math.max(1, Number(effect?.multiplierNumerator ?? 1) || 1);
@@ -266,9 +235,9 @@ function resolvePassiveEffectValue(characterData: any, effect: any, abilityModif
 
   switch (mode) {
     case "ABILITY_MODIFIER":
-      return applyScale(abilityModifier(resolveAbilityScore(characterData, effect?.sourceAbility)));
+      return applyScale(abilityModifier(resolveAbilityScore(resolvedScores, effect?.sourceAbility)));
     case "ABILITY_SCORE":
-      return applyScale(resolveAbilityScore(characterData, effect?.sourceAbility));
+      return applyScale(resolveAbilityScore(resolvedScores, effect?.sourceAbility));
     case "PROFICIENCY_BONUS":
       return applyScale(getProficiencyBonus(Number(characterData?.basicInfo?.level ?? 1)));
     case "CHARACTER_LEVEL":
@@ -279,16 +248,16 @@ function resolvePassiveEffectValue(characterData: any, effect: any, abilityModif
 }
 
 function getCapabilityBonus(
+  capabilities: any[],
   characterData: any,
   target: string,
   abilityModifier: any,
+  resolvedScores: Record<string, number>,
   conditions: {
     hasArmorEquipped: boolean;
     hasShieldEquipped: boolean;
   }
 ) {
-  const capabilities = Array.isArray(characterData?.capabilities) ? characterData.capabilities : [];
-
   return capabilities.reduce((total: number, capability: any) => {
     if (capability?.kind !== "passive" || !Array.isArray(capability?.passiveEffects)) {
       return total;
@@ -296,7 +265,7 @@ function getCapabilityBonus(
 
     const nextBonus = capability.passiveEffects.reduce((sum: number, effect: any) => {
       if (effect?.target !== target) return sum;
-      const value = resolvePassiveEffectValue(characterData, effect, abilityModifier);
+      const value = resolvePassiveEffectValue(characterData, effect, abilityModifier, resolvedScores);
       if (!Number.isFinite(value) || value === 0) return sum;
 
       switch (effect?.trigger) {
@@ -320,6 +289,8 @@ const CombatStats = ({
   makeChangeHandler,
   abilityModifier,
   relationalInventoryItems = [],
+  passiveCapabilities = [],
+  passiveEffectContext = {},
 }: any) => {
   const [itemDetailsById, setItemDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [raceSpeedEntries, setRaceSpeedEntries] = useState<RaceSpeedEntry[]>([]);
@@ -328,6 +299,10 @@ const CombatStats = ({
   const armorDetailsOpen = activeDetail === "armor";
   const initiativeDetailsOpen = activeDetail === "initiative";
   const speedDetailsOpen = activeDetail === "speed";
+  const resolvedAbilityData = useMemo(
+    () => resolveCharacterAbilityScores(characterData, passiveCapabilities, passiveEffectContext),
+    [characterData, passiveCapabilities, passiveEffectContext]
+  );
 
   const equippedRelationalItems = useMemo(
     () =>
@@ -405,12 +380,7 @@ const CombatStats = ({
   );
 
   const armorClassData = useMemo(() => {
-    const dexScore =
-      characterData?.abilityScores?.DEXTERITY ??
-      characterData?.abilityScores?.dexterity ??
-      characterData?.abilityScores?.DEX ??
-      characterData?.abilityScores?.dex ??
-      10;
+    const dexScore = resolvedAbilityData.scores.dexterity ?? 10;
     const dexModifier = abilityModifier(dexScore);
     const equippedArmor =
       equippedDetails.find((detail) => detail.category === "ARMOR") ?? undefined;
@@ -425,9 +395,11 @@ const CombatStats = ({
     );
     const modifierBonus = getFlatEquippedModifiers(equippedDetails, "ARMOR_CLASS");
     const capabilityBonus = getCapabilityBonus(
+      passiveCapabilities,
       characterData,
       "ARMOR_CLASS",
       abilityModifier,
+      resolvedAbilityData.scores,
       { hasArmorEquipped, hasShieldEquipped }
     );
     const totalArmorClass = baseArmorClass + shieldBonus + modifierBonus + capabilityBonus;
@@ -445,12 +417,9 @@ const CombatStats = ({
     };
   }, [
     abilityModifier,
-    characterData?.capabilities,
-    characterData?.abilityScores?.DEXTERITY,
-    characterData?.abilityScores?.dexterity,
-    characterData?.abilityScores?.DEX,
-    characterData?.abilityScores?.dex,
     equippedDetails,
+    passiveCapabilities,
+    resolvedAbilityData.scores.dexterity,
   ]);
 
   const speedData = useMemo(() => {
@@ -463,9 +432,11 @@ const CombatStats = ({
     const hasShieldEquipped = equippedDetails.some((detail) => detail.category === "SHIELD");
     const itemBonus = getFlatEquippedModifiers(equippedDetails, "SPEED");
     const capabilityBonus = getCapabilityBonus(
+      passiveCapabilities,
       characterData,
       "SPEED",
       abilityModifier,
+      resolvedAbilityData.scores,
       { hasArmorEquipped, hasShieldEquipped }
     );
     const totalSpeed = raceEntry.speedMeters + itemBonus + capabilityBonus;
@@ -492,26 +463,23 @@ const CombatStats = ({
   }, [
     abilityModifier,
     characterData?.basicInfo?.race,
-    characterData?.capabilities,
     equippedDetails,
+    passiveCapabilities,
     raceSpeedEntries,
   ]);
 
   const initiativeData = useMemo(() => {
-    const dexScore =
-      characterData?.abilityScores?.DEXTERITY ??
-      characterData?.abilityScores?.dexterity ??
-      characterData?.abilityScores?.DEX ??
-      characterData?.abilityScores?.dex ??
-      10;
+    const dexScore = resolvedAbilityData.scores.dexterity ?? 10;
     const dexModifier = abilityModifier(dexScore);
     const hasArmorEquipped = equippedDetails.some((detail) => detail.category === "ARMOR");
     const hasShieldEquipped = equippedDetails.some((detail) => detail.category === "SHIELD");
     const itemBonus = getFlatEquippedModifiers(equippedDetails, "INITIATIVE");
     const capabilityBonus = getCapabilityBonus(
+      passiveCapabilities,
       characterData,
       "INITIATIVE",
       abilityModifier,
+      resolvedAbilityData.scores,
       { hasArmorEquipped, hasShieldEquipped }
     );
     const totalInitiative = dexModifier + itemBonus + capabilityBonus;
@@ -528,12 +496,9 @@ const CombatStats = ({
     };
   }, [
     abilityModifier,
-    characterData?.capabilities,
-    characterData?.abilityScores?.DEXTERITY,
-    characterData?.abilityScores?.dexterity,
-    characterData?.abilityScores?.DEX,
-    characterData?.abilityScores?.dex,
     equippedDetails,
+    passiveCapabilities,
+    resolvedAbilityData.scores.dexterity,
   ]);
 
   return (

@@ -156,6 +156,8 @@ type PassiveEffectTarget =
   | "MELEE_DAMAGE_ROLL"
   | "RANGED_ATTACK_ROLL"
   | "RANGED_DAMAGE_ROLL"
+  | "UNARMED_ATTACK_ROLL"
+  | "UNARMED_DAMAGE_ROLL"
   | "OFF_HAND_DAMAGE_ROLL"
   | "CUSTOM";
 type PassiveEffectTrigger =
@@ -173,6 +175,8 @@ type PassiveEffectValueMode =
   | "PROFICIENCY_BONUS"
   | "CHARACTER_LEVEL";
 type PassiveEffectRounding = "FLOOR" | "CEIL";
+type PassiveEffectOperationType = "BONUS" | "SET";
+type PassiveEffectSetMode = "ABSOLUTE" | "MINIMUM_FLOOR";
 type PassiveEffectSourceAbility =
   | "STRENGTH"
   | "DEXTERITY"
@@ -182,8 +186,12 @@ type PassiveEffectSourceAbility =
   | "CHARISMA";
 type PassiveEffectEntry = {
   target: PassiveEffectTarget;
+  operationType?: PassiveEffectOperationType;
   valueMode?: PassiveEffectValueMode;
   value: number;
+  setMode?: PassiveEffectSetMode;
+  setValue?: number;
+  capValue?: number;
   sourceAbility?: PassiveEffectSourceAbility;
   multiplierNumerator?: number;
   multiplierDenominator?: number;
@@ -1581,6 +1589,64 @@ const CharacterSheet = () => {
     });
   }, [itemDefinitionDetailsById, relationalInventoryItems]);
 
+  const passiveEffectCapabilities = useMemo<CapabilityEntry[]>(
+    () => [
+      ...((Array.isArray(characterData?.capabilities) ? characterData.capabilities : []) as CapabilityEntry[]),
+      ...derivedItemCapabilities,
+    ],
+    [characterData?.capabilities, derivedItemCapabilities]
+  );
+
+  const passiveEffectContext = useMemo(
+    () => {
+      const equippedItems = relationalInventoryItems.filter((item) => item?.isEquipped && item?.itemDefinitionId);
+      const hasArmorEquipped = equippedItems.some((item) => {
+        if (!item?.isEquipped || !item?.itemDefinitionId) return false;
+        return itemDefinitionDetailsById[item.itemDefinitionId]?.category === "ARMOR";
+      });
+      const hasShieldEquipped = equippedItems.some((item) => {
+        if (!item?.isEquipped || !item?.itemDefinitionId) return false;
+        return itemDefinitionDetailsById[item.itemDefinitionId]?.category === "SHIELD";
+      });
+      const equippedWeapons = equippedItems.filter((item) => {
+        const detail = itemDefinitionDetailsById[item.itemDefinitionId];
+        return detail?.category === "WEAPON";
+      });
+      const primaryHandWeapon = equippedWeapons.find((item) => item.equippedSlots?.includes("WEAPON_HAND_RIGHT"));
+      const secondaryHandWeapon = equippedWeapons.find((item) => item.equippedSlots?.includes("WEAPON_HAND_LEFT"));
+      const hasDualWielding =
+        !!primaryHandWeapon?.id &&
+        !!secondaryHandWeapon?.id &&
+        primaryHandWeapon.id !== secondaryHandWeapon.id;
+      const twoHandedWeapon = equippedWeapons.find((item) => {
+        const slots = Array.isArray(item.equippedSlots) ? item.equippedSlots : [];
+        if (!slots.includes("WEAPON_HAND_RIGHT") || !slots.includes("WEAPON_HAND_LEFT")) return false;
+        const detail = itemDefinitionDetailsById[item.itemDefinitionId];
+        return detail?.weaponHandling === "TWO_HANDED" || detail?.weaponHandling === "VERSATILE";
+      });
+      const singleHandWeapon = primaryHandWeapon && primaryHandWeapon.id === secondaryHandWeapon?.id
+        ? null
+        : primaryHandWeapon ?? secondaryHandWeapon ?? null;
+      const hasExactlyOneWeaponEquipped =
+        equippedWeapons.length === 1 && !!singleHandWeapon;
+      const hasSingleMeleeWeaponEquipped = Boolean(
+        hasExactlyOneWeaponEquipped &&
+        !hasShieldEquipped &&
+        singleHandWeapon?.itemDefinitionId &&
+        itemDefinitionDetailsById[singleHandWeapon.itemDefinitionId]?.attacks?.some((attack) => attack.kind === "MELEE_WEAPON")
+      );
+
+      return {
+        hasArmorEquipped,
+        hasShieldEquipped,
+        hasSingleMeleeWeaponEquipped,
+        hasDualWielding,
+        hasTwoHandedWeaponEquipped: !!twoHandedWeapon,
+      };
+    },
+    [itemDefinitionDetailsById, relationalInventoryItems]
+  );
+
   useEffect(() => {
     if (characterData?.basicInfo?.class) {
       setSelectedClass(characterData.basicInfo.class.toLowerCase());
@@ -1648,6 +1714,8 @@ const CharacterSheet = () => {
               characterData={characterData}
               makeChangeHandler={makeChangeHandler}
               abilityModifier={abilityModifier}
+              passiveCapabilities={passiveEffectCapabilities}
+              passiveEffectContext={passiveEffectContext}
             />
           ),
         },
@@ -1662,6 +1730,8 @@ const CharacterSheet = () => {
               setDeathSaves={setDeathSaves}
               calculateSkillValues={calculateSkillValues}
               skillsCatalog={skillsCatalog}
+              passiveCapabilities={passiveEffectCapabilities}
+              passiveEffectContext={passiveEffectContext}
             />
           ),
         },
@@ -1677,6 +1747,8 @@ const CharacterSheet = () => {
               makeChangeHandler={makeChangeHandler}
               abilityModifier={abilityModifier}
               relationalInventoryItems={relationalInventoryItems}
+              passiveCapabilities={passiveEffectCapabilities}
+              passiveEffectContext={passiveEffectContext}
             />
           ),
         },
@@ -1687,6 +1759,8 @@ const CharacterSheet = () => {
               characterData={characterData}
               setCharacterData={setCharacterData}
               abilityModifier={abilityModifier}
+              passiveCapabilities={passiveEffectCapabilities}
+              passiveEffectContext={passiveEffectContext}
             />
           ),
         },
@@ -1715,6 +1789,8 @@ const CharacterSheet = () => {
               toggleItemSkillUsed={toggleItemSkillUsed}
               relationalInventoryItems={relationalInventoryItems}
               toggleEquipRelationalItem={toggleEquipRelationalItem}
+              passiveCapabilities={passiveEffectCapabilities}
+              passiveEffectContext={passiveEffectContext}
             />
           ),
         },

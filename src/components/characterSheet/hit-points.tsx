@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Heart, ShieldPlus, ShieldX, Sword, Plus, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import SectionCard from "@/components/characterSheet/section-card";
 import { updateCharacter } from "@/realtime";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { resolveCharacterAbilityScores } from "@/utils";
 
 const HIT_DICE_BY_CLASS: Record<string, string> = {
     barbaro: "1d12",
@@ -32,30 +33,132 @@ const HIT_DICE_BY_CLASS: Record<string, string> = {
     wizard: "1d6",
 };
 
+function resolvePassiveHitPointEffectValue(effect: any, resolvedAbilityScores: Record<string, number>, level: number, abilityModifier: any) {
+    if (String(effect?.operationType ?? "BONUS").trim().toUpperCase() === "SET") {
+        return 0;
+    }
+
+    const mode = String(effect?.valueMode ?? "FLAT").trim().toUpperCase();
+    const offset = Number(effect?.value ?? 0) || 0;
+    const numerator = Math.max(1, Number(effect?.multiplierNumerator ?? 1) || 1);
+    const denominator = Math.max(1, Number(effect?.multiplierDenominator ?? 1) || 1);
+    const rounding = String(effect?.rounding ?? "FLOOR").trim().toUpperCase();
+
+    const applyScale = (baseValue: number) => {
+        const scaled = (baseValue * numerator) / denominator;
+        const rounded =
+            denominator === 1
+                ? scaled
+                : rounding === "CEIL"
+                    ? Math.ceil(scaled)
+                    : Math.floor(scaled);
+        return rounded + offset;
+    };
+
+    const sourceAbility = String(effect?.sourceAbility ?? "").trim().toLowerCase();
+    const sourceScore = resolvedAbilityScores[sourceAbility] ?? 10;
+
+    switch (mode) {
+        case "ABILITY_MODIFIER":
+            return applyScale(abilityModifier(sourceScore));
+        case "ABILITY_SCORE":
+            return applyScale(sourceScore);
+        case "PROFICIENCY_BONUS":
+            return applyScale(level >= 17 ? 6 : level >= 13 ? 5 : level >= 9 ? 4 : level >= 5 ? 3 : 2);
+        case "CHARACTER_LEVEL":
+            return applyScale(level);
+        default:
+            return offset;
+    }
+}
+
+function isTriggerActive(trigger: string | undefined, context: any) {
+    switch (String(trigger ?? "ALWAYS").trim().toUpperCase()) {
+        case "ALWAYS":
+            return true;
+        case "WHILE_ARMORED":
+            return !!context?.hasArmorEquipped;
+        case "WHILE_SHIELD_EQUIPPED":
+            return !!context?.hasShieldEquipped;
+        default:
+            return false;
+    }
+}
+
 const HitPoints = ({
     characterData,
     setCharacterData,
     abilityModifier,
+    passiveCapabilities = [],
+    passiveEffectContext = {},
 }: any) => {
     const [hpChangeAmount, setHpChangeAmount] = useState("");
     const [combatToolsOpen, setCombatToolsOpen] = useState(false);
     const normalizedClass = (characterData.basicInfo.class ?? "").trim().toLowerCase();
     const derivedHitDice = HIT_DICE_BY_CLASS[normalizedClass] ?? characterData.combatStats.hitDice;
+    const resolvedAbilityData = resolveCharacterAbilityScores(
+        characterData,
+        passiveCapabilities,
+        passiveEffectContext
+    );
+    const resolvedConstitution = resolvedAbilityData.scores.constitution ?? 10;
+    const hitPointBonusData = useMemo(() => {
+        const level = Number(characterData?.basicInfo?.level ?? 1);
+        const capabilities = Array.isArray(passiveCapabilities) ? passiveCapabilities : [];
+        const activeEffects = capabilities
+            .filter((capability) => String(capability?.kind ?? "passive").toLowerCase() === "passive")
+            .flatMap((capability) =>
+                (Array.isArray(capability?.passiveEffects) ? capability.passiveEffects : [])
+                    .filter((effect) => effect?.target === "HIT_POINT_MAX")
+                    .filter((effect) => isTriggerActive(effect?.trigger, passiveEffectContext))
+                    .map((effect) => {
+                        const value = resolvePassiveHitPointEffectValue(
+                            effect,
+                            resolvedAbilityData.scores,
+                            level,
+                            abilityModifier
+                        );
+                        if (!Number.isFinite(value) || value === 0) return null;
+
+                        const sourceName = String(capability?.name ?? "").trim() || "Effetto passivo";
+                        const sourceLabel = String(capability?.sourceLabel ?? "").trim();
+                        return {
+                            label: sourceLabel ? `${sourceName} (${sourceLabel})` : sourceName,
+                            value,
+                        };
+                    })
+                    .filter(Boolean)
+            ) as Array<{ label: string; value: number }>;
+
+        return {
+            bonusTotal: activeEffects.reduce((sum, effect) => sum + effect.value, 0),
+            breakdown: activeEffects,
+        };
+    }, [
+        abilityModifier,
+        characterData?.basicInfo?.level,
+        passiveCapabilities,
+        passiveEffectContext,
+        resolvedAbilityData.scores,
+    ]);
 
     useEffect(() => {
         // Calculate max HP
-        const conMod = abilityModifier(characterData.abilityScores["constitution"]);
+        const conMod = abilityModifier(resolvedConstitution);
         const dice = parseInt(derivedHitDice.split("d")[1], 10);
-        const maxHP = (conMod + dice) * characterData.basicInfo.level;
+        const baseMaxHP = (conMod + dice) * characterData.basicInfo.level;
+        const maxHP = baseMaxHP + hitPointBonusData.bonusTotal;
         const nextCombatStats = {
             ...characterData.combatStats,
             hitDice: derivedHitDice,
             hitPointMaximum: maxHP,
+            currentHitPoints: Math.min(characterData.combatStats.currentHitPoints ?? 0, maxHP),
         };
 
         if (
             characterData.combatStats.hitPointMaximum !== maxHP ||
-            characterData.combatStats.hitDice !== derivedHitDice
+            characterData.combatStats.hitDice !== derivedHitDice ||
+            (characterData.combatStats.currentHitPoints ?? 0) !== nextCombatStats.currentHitPoints
         ) {
             setCharacterData((prev: any) => ({
                 ...prev,
@@ -68,19 +171,22 @@ const HitPoints = ({
                         combatStats: {
                             hitDice: derivedHitDice,
                             hitPointMaximum: maxHP,
+                            currentHitPoints: nextCombatStats.currentHitPoints,
                         },
                     });
                 }, 500);
             }
         }
     }, [
-        characterData.abilityScores["constitution"],
+        resolvedConstitution,
         derivedHitDice,
+        hitPointBonusData.bonusTotal,
         characterData.basicInfo.level,
         characterData.basicInfo.class,
         setCharacterData,
         characterData.combatStats.hitPointMaximum,
         characterData.combatStats.hitDice,
+        characterData.combatStats.currentHitPoints,
         characterData.slug,
     ]);
 
@@ -186,6 +292,22 @@ const HitPoints = ({
                     </CollapsibleTrigger>
                     <CollapsibleContent className="pt-3">
                         <div className="space-y-3 pt-1">
+                            <div className="space-y-1 text-center">
+                                {hitPointBonusData.bonusTotal !== 0 && (
+                                    <div className="text-xs font-medium text-primary">
+                                        Bonus PF max {hitPointBonusData.bonusTotal >= 0 ? `+${hitPointBonusData.bonusTotal}` : hitPointBonusData.bonusTotal}
+                                    </div>
+                                )}
+                                {hitPointBonusData.breakdown.length > 0 && (
+                                    <div className="space-y-1 text-[11px] text-muted-foreground">
+                                        {hitPointBonusData.breakdown.map((entry, index) => (
+                                            <div key={`hp-bonus-${index}`}>
+                                                {entry.label}: {entry.value >= 0 ? `+${entry.value}` : entry.value}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <div>
                                 <Label className="text-xs text-muted-foreground">Valore</Label>
                                 <Input
