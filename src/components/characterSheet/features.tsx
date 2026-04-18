@@ -19,6 +19,7 @@ const Features = ({
     openFeatureModal,
     setAddSpellOpen,
     spellSlotTable,
+    canEdit = true,
 }: any) => {
     const toggleSlot = (level: number, index: number) => {
         const slots = characterData.combatStats.spellSlots[level];
@@ -147,7 +148,11 @@ const Features = ({
                     className="h-8 w-8 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
                     aria-label="Aggiungi incantesimo"
                     title="Aggiungi incantesimo"
-                    onClick={() => setAddSpellOpen(true)}
+                    onClick={() => {
+                        if (!canEdit) return;
+                        setAddSpellOpen(true);
+                    }}
+                    disabled={!canEdit}
                 >
                     <Plus className="h-4 w-4" />
                 </Button>

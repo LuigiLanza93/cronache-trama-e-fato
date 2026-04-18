@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import ThemeToggle from "@/components/theme-toggle";
 import { AuthProvider, RequireAuth, RequireRole } from "@/components/auth-provider";
+import { GameSessionProvider } from "@/components/game-session-provider";
 import Index from "./pages/Index";
 import DMDashboard from "./pages/DMDashboard";
 import InitiativeTracker from "./pages/InitiativeTracker";
@@ -32,116 +33,118 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Navigate to="/" replace />} />
-              <Route
-                path="/change-password"
-                element={
-                  <RequireAuth>
-                    <ChangePassword />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/dm"
-                element={
-                  <RequireRole role="dm">
-                    <DMDashboard />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/dm/initiative"
-                element={
-                  <RequireRole role="dm">
-                    <InitiativeTracker />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/dm/users"
-                element={
-                  <RequireRole role="dm">
-                    <UserManagement />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/dm/assignments"
-                element={
-                  <RequireRole role="dm">
-                    <CharacterAssignments />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/dm/items"
-                element={
-                  <RequireRole role="dm">
-                    <ItemManagement />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/dm/inventory"
-                element={
-                  <RequireRole role="dm">
-                    <CharacterInventoryManagement />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/dm/inventory/transactions"
-                element={
-                  <RequireRole role="dm">
-                    <InventoryTransactionsPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/dm/currency-transactions"
-                element={
-                  <RequireRole role="dm">
-                    <CurrencyTransactionsPage />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/dm/bestiary"
-                element={
-                  <RequireRole role="dm">
-                    <BestiaryManagement />
-                  </RequireRole>
-                }
-              />
-              <Route
-                path="/characters/new"
-                element={
-                  <RequireAuth>
-                    <NewCharacter />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/compendium/monsters"
-                element={
-                  <RequireAuth>
-                    <PlayerMonsterCompendium />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/:character"
-                element={
-                  <RequireAuth>
-                    <CharacterSheet />
-                  </RequireAuth>
-                }
-              />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <GameSessionProvider>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Navigate to="/" replace />} />
+                <Route
+                  path="/change-password"
+                  element={
+                    <RequireAuth>
+                      <ChangePassword />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/dm"
+                  element={
+                    <RequireRole role="dm">
+                      <DMDashboard />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/dm/initiative"
+                  element={
+                    <RequireRole role="dm">
+                      <InitiativeTracker />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/dm/users"
+                  element={
+                    <RequireRole role="dm">
+                      <UserManagement />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/dm/assignments"
+                  element={
+                    <RequireRole role="dm">
+                      <CharacterAssignments />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/dm/items"
+                  element={
+                    <RequireRole role="dm">
+                      <ItemManagement />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/dm/inventory"
+                  element={
+                    <RequireRole role="dm">
+                      <CharacterInventoryManagement />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/dm/inventory/transactions"
+                  element={
+                    <RequireRole role="dm">
+                      <InventoryTransactionsPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/dm/currency-transactions"
+                  element={
+                    <RequireRole role="dm">
+                      <CurrencyTransactionsPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/dm/bestiary"
+                  element={
+                    <RequireRole role="dm">
+                      <BestiaryManagement />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/characters/new"
+                  element={
+                    <RequireAuth>
+                      <NewCharacter />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/compendium/monsters"
+                  element={
+                    <RequireAuth>
+                      <PlayerMonsterCompendium />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/:character"
+                  element={
+                    <RequireAuth>
+                      <CharacterSheet />
+                    </RequireAuth>
+                  }
+                />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </GameSessionProvider>
           </AuthProvider>
         </BrowserRouter>
         <ThemeToggle />

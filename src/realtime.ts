@@ -1,5 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import type { InitiativeEncounterState, PlayerInitiativeTrackerView } from "@/lib/auth";
+import type { GameSessionState, InitiativeEncounterState, PlayerInitiativeTrackerView } from "@/lib/auth";
 
 let socket: Socket | null = null;
 type PrivateMessagePayload = {
@@ -23,6 +23,13 @@ export type InitiativeTurnPayload = {
 };
 export type InitiativeStatePayload = InitiativeEncounterState;
 export type PlayerInitiativeStatePayload = PlayerInitiativeTrackerView;
+export type GameSessionStatePayload = GameSessionState;
+
+let playerWritesLocked = false;
+
+export function setRealtimePlayerWritesLocked(locked: boolean) {
+  playerWritesLocked = locked;
+}
 
 export function getSocket(): Socket {
   if (!socket) {
@@ -86,6 +93,7 @@ export function onCharacterPatch(cb: (patch: any) => void) {
 }
 
 export function updateCharacter(slug: string, patch: any) {
+  if (playerWritesLocked) return;
   getSocket().emit("character:update", { slug, patch });
 }
 
@@ -196,6 +204,15 @@ export function onPlayerInitiativeState(cb: (payload: PlayerInitiativeStatePaylo
   s.on("initiative:player-state", handler);
   return () => {
     s.off("initiative:player-state", handler);
+  };
+}
+
+export function onGameSessionState(cb: (payload: GameSessionStatePayload) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: GameSessionStatePayload) => cb(payload);
+  s.on("game-session:state", handler);
+  return () => {
+    s.off("game-session:state", handler);
   };
 }
 

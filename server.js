@@ -362,6 +362,45 @@ function createCurrencyTransactionRecord(payload) {
   return transaction;
 }
 
+function readGameSessionState() {
+  ensureGameSessionStateRow();
+  const row = sqlite
+    .prepare('SELECT id, isOpen, updatedAt, updatedByUserId FROM "GameSessionState" WHERE id = 1 LIMIT 1')
+    .get();
+
+  return {
+    isOpen: Number(row?.isOpen ?? 1) === 1,
+    updatedAt: row?.updatedAt ?? null,
+    updatedByUserId: row?.updatedByUserId ?? null,
+  };
+}
+
+function writeGameSessionState(isOpen, updatedByUserId = null) {
+  sqlite
+    .prepare(
+      `UPDATE "GameSessionState"
+       SET "isOpen" = ?, "updatedAt" = CURRENT_TIMESTAMP, "updatedByUserId" = ?
+       WHERE "id" = 1`
+    )
+    .run(isOpen ? 1 : 0, updatedByUserId);
+
+  return readGameSessionState();
+}
+
+function canUserWriteDuringSession(user) {
+  if (!user) return false;
+  if (user.role === "dm") return true;
+  return readGameSessionState().isOpen;
+}
+
+function rejectIfSessionClosedForPlayer(res, user) {
+  if (canUserWriteDuringSession(user)) return false;
+  res.status(423).json({
+    error: "La sessione è chiusa. Per i giocatori sono disponibili solo funzioni di lettura.",
+  });
+  return true;
+}
+
 function isTechnicalCurrencyChangeRow(row) {
   return (
     String(row?.reason ?? "") === "Cambio valuta" &&
@@ -725,8 +764,10 @@ function runInTransaction(work) {
 
 ensureRaceSpeedReferenceTable();
 ensureUserLayoutPreferenceTable();
+ensureGameSessionStateTable();
 ensureCharacterCurrencyBalanceTable();
 ensureCurrencyTransactionTable();
+ensureGameSessionStateRow();
 ensureCharacterCurrencyBalanceRows();
 ensureLegacyCharacterCurrencyBalancesMigrated();
 
@@ -1157,6 +1198,25 @@ function ensureUserLayoutPreferenceTable() {
   sqlite.exec(`
     CREATE INDEX IF NOT EXISTS "UserLayoutPreference_userId_idx"
     ON "UserLayoutPreference"("userId");
+  `);
+}
+
+function ensureGameSessionStateTable() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "GameSessionState" (
+      "id" INTEGER NOT NULL PRIMARY KEY CHECK ("id" = 1),
+      "isOpen" INTEGER NOT NULL DEFAULT 1,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedByUserId" TEXT,
+      FOREIGN KEY ("updatedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+  `);
+}
+
+function ensureGameSessionStateRow() {
+  sqlite.exec(`
+    INSERT OR IGNORE INTO "GameSessionState" ("id", "isOpen", "updatedAt", "updatedByUserId")
+    VALUES (1, 1, CURRENT_TIMESTAMP, NULL)
   `);
 }
 
@@ -4741,6 +4801,17 @@ async function start() {
     return res.json(sanitizeUser(req.user, readOwnership()));
   });
 
+  app.get("/api/game-session", requireAuth, (_req, res) => {
+    return res.json(readGameSessionState());
+  });
+
+  app.put("/api/game-session", requireRole("dm"), (req, res) => {
+    const nextIsOpen = !!req.body?.isOpen;
+    const nextState = writeGameSessionState(nextIsOpen, req.user?.id ?? null);
+    io.emit("game-session:state", nextState);
+    return res.json(nextState);
+  });
+
   app.get("/api/preferences/character-sheet-layout", requireAuth, (req, res) => {
     const preference = readUserLayoutPreference(req.user.id, CHARACTER_SHEET_LAYOUT_KEY);
     return res.json({
@@ -4750,6 +4821,7 @@ async function start() {
   });
 
   app.put("/api/preferences/character-sheet-layout", requireAuth, (req, res) => {
+    if (rejectIfSessionClosedForPlayer(res, req.user)) return;
     const entries = normalizeCharacterSheetLayoutEntries(req.body?.entries);
     const preference = upsertUserLayoutPreference(req.user.id, CHARACTER_SHEET_LAYOUT_KEY, entries);
     return res.json({
@@ -5086,6 +5158,7 @@ async function start() {
     if (!canEditCharacter(req.user, slug, ownership)) {
       return res.status(403).json({ error: "Forbidden" });
     }
+    if (rejectIfSessionClosedForPlayer(res, req.user)) return;
 
     try {
       const items = assignItemDefinitionToCharacter(slug, req.body ?? {}, req.user?.id ?? null);
@@ -5176,13 +5249,14 @@ async function start() {
     });
 
     app.patch("/api/characters/:slug/inventory-items/:characterItemId", requireAuth, (req, res) => {
-    const slug = req.params.slug;
-    const ownership = readOwnership();
-    if (!canEditCharacter(req.user, slug, ownership)) {
-      return res.status(403).json({ error: "Forbidden" });
-    }
+      const slug = req.params.slug;
+      const ownership = readOwnership();
+      if (!canEditCharacter(req.user, slug, ownership)) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      if (rejectIfSessionClosedForPlayer(res, req.user)) return;
 
-    try {
+      try {
       const item = updateCharacterInventoryItem(slug, req.params.characterItemId, req.body ?? {});
       if (!item) {
         return res.status(404).json({ error: "Character item not found" });
@@ -5201,6 +5275,7 @@ async function start() {
     if (!canEditCharacter(req.user, slug, ownership)) {
       return res.status(403).json({ error: "Forbidden" });
     }
+    if (rejectIfSessionClosedForPlayer(res, req.user)) return;
 
     try {
       const items = transferCharacterItemBetweenCharacters(
@@ -5768,6 +5843,7 @@ async function start() {
     if (!canEditCharacter(req.user, slug, ownership)) {
       return res.status(403).json({ error: "Forbidden" });
     }
+    if (rejectIfSessionClosedForPlayer(res, req.user)) return;
 
     const sourceCharacter = getCharacterRecordBySlug(slug);
     if (!sourceCharacter || sourceCharacter.archivedAt) {
@@ -5998,6 +6074,7 @@ async function start() {
   });
 
   app.post("/api/characters", requireAuth, (req, res) => {
+    if (rejectIfSessionClosedForPlayer(res, req.user)) return;
     const name = String(req.body?.name ?? "").trim();
     const requestedType = req.body?.characterType === "png" ? "png" : "pg";
     const className = String(req.body?.className ?? "").trim();
@@ -6093,6 +6170,7 @@ async function start() {
     if (!canEditCharacter(req.user, normalizedSlug, ownership)) {
       return res.status(403).json({ error: "Forbidden" });
     }
+    if (rejectIfSessionClosedForPlayer(res, req.user)) return;
 
     let buffer;
     try {
@@ -6150,6 +6228,7 @@ async function start() {
     socket.data.user = user;
     if (user?.id) {
       socket.join(`user:${user.id}`);
+      socket.emit("game-session:state", readGameSessionState());
     }
 
     socket.on("character:join", (slug) => {
@@ -6166,6 +6245,10 @@ async function start() {
 
       const ownership = readOwnership();
       if (!canEditCharacter(socket.data.user, slug, ownership)) return;
+      if (!canUserWriteDuringSession(socket.data.user)) {
+        socket.emit("game-session:state", readGameSessionState());
+        return;
+      }
 
       const current = readCharacter(slug) || {};
       const next = deepMerge(current, patch);
@@ -6279,6 +6362,8 @@ async function start() {
     socket.on("presence:enter", ({ slug }) => {
       const ownership = readOwnership();
       if (!slug || !canAccessCharacter(socket.data.user, slug, ownership)) return;
+      if (socket.data.user?.role !== "player") return;
+      if (ownership[slug] !== socket.data.user?.id) return;
       if (!viewersBySlug.has(slug)) viewersBySlug.set(slug, new Set());
       viewersBySlug.get(slug).add(socket.id);
       slugBySocket.set(socket.id, slug);

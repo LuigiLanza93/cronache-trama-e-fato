@@ -94,6 +94,8 @@ import {
   getPactBladeTemplate,
 } from "@/data/pact-blade-weapons";
 import { toast } from "@/components/ui/sonner";
+import { useAuth } from "@/components/auth-provider";
+import { useGameSession } from "@/components/game-session-provider";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
 import AbilityScores from "@/components/characterSheet/ability-scores";
@@ -679,6 +681,8 @@ function SortableLayoutCard({
 
 const CharacterSheet = () => {
   const { character } = useParams();
+  const { user } = useAuth();
+  const { sessionState, isPlayerReadOnly } = useGameSession();
   const [characterData, setCharacterData] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -761,6 +765,7 @@ const CharacterSheet = () => {
   const [dragStartLayout, setDragStartLayout] = useState<CharacterSheetLayoutCardEntry[] | null>(null);
   const [collapsedLayoutCards, setCollapsedLayoutCards] = useState<Record<string, boolean>>({});
   const [preEditCollapsedCards, setPreEditCollapsedCards] = useState<Record<string, boolean> | null>(null);
+  const canModifyCharacter = user?.role === "dm" || !isPlayerReadOnly;
 
   const refreshRelationalInventory = useCallback(async (slug: string) => {
     const items = await fetchCharacterInventoryItems(slug);
@@ -768,6 +773,16 @@ const CharacterSheet = () => {
     setRelationalInventoryItems(normalized);
     return normalized;
   }, []);
+
+  useEffect(() => {
+    if (canModifyCharacter) return;
+    setEditMode(false);
+    setLayoutEditMode(false);
+    setInvOpen(false);
+    setAddSpellOpen(false);
+    setConfirmRemoveFeatureOpen(false);
+    setCurrencyHistoryOpen(false);
+  }, [canModifyCharacter]);
 
   const isWarlock = useMemo(
     () => (characterData?.basicInfo?.class ?? "").trim().toLowerCase() === "warlock",
@@ -892,6 +907,7 @@ const CharacterSheet = () => {
   };
 
   const handleAddSpellToFeatures = (spell: Spell) => {
+    if (!canModifyCharacter) return;
     if (!characterData) return;
     const next = [
       ...characterData.features,
@@ -961,6 +977,7 @@ const CharacterSheet = () => {
   };
 
   const removeFeature = (index: number) => {
+    if (!canModifyCharacter) return;
     if (!characterData) return;
     const nextFeatures = characterData.features.filter((_, i) => i !== index);
     setCharacterData((prev) => (prev ? { ...prev, features: nextFeatures } : prev));
@@ -968,6 +985,7 @@ const CharacterSheet = () => {
   };
 
   const addCapability = (entry: CapabilityEntry) => {
+    if (!canModifyCharacter) return;
     if (!characterData) return;
     const nextCapabilities = [...(characterData.capabilities ?? []), entry];
     setCharacterData((prev) => (prev ? { ...prev, capabilities: nextCapabilities } : prev));
@@ -975,6 +993,7 @@ const CharacterSheet = () => {
   };
 
   const updateCapability = (capabilityIndex: number, entry: CapabilityEntry) => {
+    if (!canModifyCharacter) return;
     if (!characterData) return;
     const nextCapabilities = (characterData.capabilities ?? []).map((capability, index) =>
       index === capabilityIndex ? entry : capability
@@ -984,6 +1003,7 @@ const CharacterSheet = () => {
   };
 
   const removeCapability = (capabilityIndex: number) => {
+    if (!canModifyCharacter) return;
     if (!characterData) return;
     const nextCapabilities = (characterData.capabilities ?? []).filter((_, index) => index !== capabilityIndex);
     setCharacterData((prev) => (prev ? { ...prev, capabilities: nextCapabilities } : prev));
@@ -991,6 +1011,7 @@ const CharacterSheet = () => {
   };
 
   const toggleCapabilityUse = (capabilityIndex: number, useIndex: number) => {
+    if (!canModifyCharacter) return;
     if (!characterData) return;
     const currentCapabilities = characterData.capabilities ?? [];
     const capability = currentCapabilities[capabilityIndex];
@@ -1018,6 +1039,7 @@ const CharacterSheet = () => {
     useIndex: number,
     currentUsed: boolean
   ) => {
+    if (!canModifyCharacter) return;
     if (!character) return;
     const item = relationalInventoryItems.find((entry) => entry.id === characterItemId);
     if (!item) return;
@@ -1040,6 +1062,7 @@ const CharacterSheet = () => {
   };
 
   const confirmRemoveFeature = () => {
+    if (!canModifyCharacter) return;
     if (modalFeatureIndex === null) return;
     removeFeature(modalFeatureIndex);
     setConfirmRemoveFeatureOpen(false);
@@ -1949,6 +1972,7 @@ const CharacterSheet = () => {
               abilityModifier={abilityModifier}
               passiveCapabilities={passiveEffectCapabilities}
               passiveEffectContext={passiveEffectContext}
+              canEdit={canModifyCharacter}
             />
           ),
         },
@@ -1965,6 +1989,7 @@ const CharacterSheet = () => {
               skillsCatalog={skillsCatalog}
               passiveCapabilities={passiveEffectCapabilities}
               passiveEffectContext={passiveEffectContext}
+              canEdit={canModifyCharacter}
             />
           ),
         },
@@ -1994,6 +2019,7 @@ const CharacterSheet = () => {
               abilityModifier={abilityModifier}
               passiveCapabilities={passiveEffectCapabilities}
               passiveEffectContext={passiveEffectContext}
+              canEdit={canModifyCharacter}
             />
           ),
         },
@@ -2008,6 +2034,7 @@ const CharacterSheet = () => {
               toggleCapabilityUse={toggleCapabilityUse}
               toggleDerivedCapabilityUse={toggleDerivedCapabilityUse}
               derivedCapabilities={derivedItemCapabilities}
+              canEdit={canModifyCharacter}
             />
           ),
         },
@@ -2040,6 +2067,7 @@ const CharacterSheet = () => {
               openFeatureModal={openFeatureModal}
               setAddSpellOpen={setAddSpellOpen}
               spellSlotTable={spellSlotTable}
+              canEdit={canModifyCharacter}
             />
           ),
         },
@@ -2048,7 +2076,7 @@ const CharacterSheet = () => {
           render: (
         <Inventory
           coins={coins}
-          coinActionsEnabled
+          coinActionsEnabled={canModifyCharacter}
           characterData={characterData}
               setMode={setMode}
               setCoinFlow={setCoinFlow}
@@ -2372,14 +2400,20 @@ const CharacterSheet = () => {
   return (
     <div className="min-h-screen parchment p-6">
       <div className={`max-w-5xl mx-auto space-y-6 rounded-[1.75rem] transition-all ${turnAlertActive ? "turn-highlight-active" : ""}`}>
+        {sessionState?.isOpen === false && user?.role === "player" ? (
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 shadow-sm">
+            Sessione chiusa: la scheda è in sola lettura. Le modifiche dei giocatori sono temporaneamente bloccate.
+          </div>
+        ) : null}
         <CharacterHeader
           characterData={characterData}
           editMode={editMode}
           setEditMode={setEditMode}
           monsterCompendiumHref="/compendium/monsters"
           makeChangeHandler={makeChangeHandler}
+          canEdit={canModifyCharacter}
           layoutActions={
-            layoutEditMode ? (
+            !canModifyCharacter ? null : layoutEditMode ? (
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
@@ -2495,7 +2529,7 @@ const CharacterSheet = () => {
       </div>
 
       {/* ===== Dialog: Aggiungi incantesimo ===== */}
-      <Dialog open={addSpellOpen} onOpenChange={setAddSpellOpen}>
+      <Dialog open={addSpellOpen} onOpenChange={(open) => setAddSpellOpen(canModifyCharacter ? open : false)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Aggiungi incantesimo</DialogTitle>
@@ -2545,7 +2579,7 @@ const CharacterSheet = () => {
                           {s.concentration ? " · Concentrazione" : ""} {s.ritual ? " · Rituale" : ""}
                         </div>
                       </div>
-                      <Button size="sm" onClick={() => handleAddSpellToFeatures(s)}>
+                      <Button size="sm" onClick={() => handleAddSpellToFeatures(s)} disabled={!canModifyCharacter}>
                         Aggiungi
                       </Button>
                     </div>
@@ -2594,7 +2628,11 @@ const CharacterSheet = () => {
             {modalFeatureIndex !== null && (
               <Button
                 variant="destructive"
-                onClick={() => setConfirmRemoveFeatureOpen(true)}
+                onClick={() => {
+                  if (!canModifyCharacter) return;
+                  setConfirmRemoveFeatureOpen(true);
+                }}
+                disabled={!canModifyCharacter}
               >
                 Elimina
               </Button>
@@ -2606,7 +2644,7 @@ const CharacterSheet = () => {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmRemoveFeatureOpen} onOpenChange={setConfirmRemoveFeatureOpen}>
+      <AlertDialog open={confirmRemoveFeatureOpen} onOpenChange={(open) => setConfirmRemoveFeatureOpen(canModifyCharacter ? open : false)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminare questo incantesimo?</AlertDialogTitle>
@@ -2619,6 +2657,7 @@ const CharacterSheet = () => {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={confirmRemoveFeature}
+              disabled={!canModifyCharacter}
             >
               Elimina
             </AlertDialogAction>

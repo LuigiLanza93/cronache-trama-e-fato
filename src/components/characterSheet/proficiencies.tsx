@@ -30,6 +30,7 @@ const Proficiencies = ({
     skillsCatalog,
     passiveCapabilities = [],
     passiveEffectContext = {},
+    canEdit = true,
 }: any) => {
     // ===== Edit mode per le ABILITÃ€ =====
     const [editingSkills, setEditingSkills] = useState(false);
@@ -52,11 +53,12 @@ const Proficiencies = ({
     }, [persistedProfsMap, editingSkills]);
 
     const toggleDraft = (name: string) => {
-        if (!editingSkills) return; // non editabile fuori da edit mode
+        if (!editingSkills || !canEdit) return; // non editabile fuori da edit mode
         setDraftProfs((prev) => ({ ...prev, [name]: !prev[name] }));
     };
 
     const handleSaveSkills = () => {
+        if (!canEdit) return;
         // Costruisco l'array completo delle skill da salvare
         const calcSkills: Array<{ name: string; ability: string; value: number }> =
             calculateSkillValues(characterData, skillsCatalog) || [];
@@ -222,8 +224,9 @@ const Proficiencies = ({
                                         <input
                                             type="checkbox"
                                             checked={checked}
-                                            disabled={i > 0 && !deathSaves.success[i - 1]}
+                                            disabled={!canEdit || (i > 0 && !deathSaves.success[i - 1])}
                                             onChange={() => {
+                                                if (!canEdit) return;
                                                 const next = [...deathSaves.success];
                                                 next[i] = !next[i];
                                                 if (!next[i]) {
@@ -262,8 +265,9 @@ const Proficiencies = ({
                                         <input
                                             type="checkbox"
                                             checked={checked}
-                                            disabled={i > 0 && !deathSaves.fail[i - 1]}
+                                            disabled={!canEdit || (i > 0 && !deathSaves.fail[i - 1])}
                                             onChange={() => {
+                                                if (!canEdit) return;
                                                 const next = [...deathSaves.fail];
                                                 next[i] = !next[i];
                                                 if (!next[i]) {
@@ -305,7 +309,11 @@ const Proficiencies = ({
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
-                                onClick={() => setEditingSkills(true)}
+                                onClick={() => {
+                                    if (!canEdit) return;
+                                    setEditingSkills(true);
+                                }}
+                                disabled={!canEdit}
                                 aria-label="Modifica abilitÃ "
                                 title="Modifica abilitÃ "
                             >
@@ -363,7 +371,7 @@ const Proficiencies = ({
                                         <input
                                             type="checkbox"
                                             checked={isProficient}
-                                            disabled={!editingSkills}
+                                            disabled={!editingSkills || !canEdit}
                                             onChange={() => toggleDraft(name)}
                                             className="h-4 w-4"
                                             aria-label={`Proficienza: ${name}`}

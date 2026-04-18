@@ -334,6 +334,7 @@ export default function Capabilities({
   toggleCapabilityUse,
   toggleDerivedCapabilityUse,
   derivedCapabilities = [],
+  canEdit = true,
 }: {
   characterData: any;
   addCapability: (entry: CapabilityEntry) => void;
@@ -342,6 +343,7 @@ export default function Capabilities({
   toggleCapabilityUse: (capabilityIndex: number, useIndex: number) => void;
   toggleDerivedCapabilityUse?: (characterItemId: string, itemFeatureId: string, useIndex: number, currentUsed: boolean) => void;
   derivedCapabilities?: CapabilityEntry[];
+  canEdit?: boolean;
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -398,11 +400,13 @@ export default function Capabilities({
   };
 
   const openAddForm = () => {
+    if (!canEdit) return;
     resetForm();
     setFormOpen(true);
   };
 
   const openEditForm = () => {
+    if (!canEdit) return;
     if (!detailEntry || detailEntry.source !== "character" || !detailCapability) return;
     setForm(toFormState(detailCapability));
     setFormError("");
@@ -412,6 +416,7 @@ export default function Capabilities({
   };
 
   const submitCapability = () => {
+    if (!canEdit) return;
     const name = form.name.trim();
     const shortDescription = form.shortDescription.trim();
     const category = form.category.trim();
@@ -557,6 +562,7 @@ export default function Capabilities({
   };
 
   const confirmDelete = () => {
+    if (!canEdit) return;
     if (!detailEntry || detailEntry.source !== "character") return;
     removeCapability(detailEntry.index);
     setConfirmDeleteOpen(false);
@@ -565,6 +571,7 @@ export default function Capabilities({
   };
 
   const toggleUsageForEntry = (entry: CapabilityListEntry, useIndex: number) => {
+    if (!canEdit) return;
     if (entry.source === "character") {
       toggleCapabilityUse(entry.index, useIndex);
       return;
@@ -600,6 +607,7 @@ export default function Capabilities({
           variant="ghost"
           size="icon"
           onClick={openAddForm}
+          disabled={!canEdit}
           className="h-8 w-8 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
           aria-label="Aggiungi skill"
           title="Aggiungi skill"
@@ -660,6 +668,7 @@ export default function Capabilities({
                         <input
                           type="checkbox"
                           checked={used}
+                          disabled={!canEdit}
                           onChange={() => toggleUsageForEntry(entry, useIndex)}
                           className="h-4 w-4"
                           aria-label={`${entry.cap.name} uso ${useIndex + 1}`}
@@ -714,7 +723,7 @@ export default function Capabilities({
       <Dialog
         open={formOpen}
         onOpenChange={(open) => {
-          setFormOpen(open);
+          setFormOpen(canEdit ? open : false);
           if (!open) resetForm();
         }}
       >
@@ -1223,7 +1232,7 @@ export default function Capabilities({
             <DialogClose asChild>
               <Button variant="outline">Annulla</Button>
             </DialogClose>
-            <Button onClick={submitCapability}>{editingIndex !== null ? "Salva modifiche" : "Salva"}</Button>
+            <Button onClick={submitCapability} disabled={!canEdit}>{editingIndex !== null ? "Salva modifiche" : "Salva"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1280,6 +1289,7 @@ export default function Capabilities({
                         <input
                           type="checkbox"
                           checked={used}
+                          disabled={!canEdit}
                           onChange={() => {
                             if (detailEntry) toggleUsageForEntry(detailEntry, useIndex);
                           }}
@@ -1296,10 +1306,10 @@ export default function Capabilities({
           <DialogFooter className="mt-2">
             {detailEntry?.source === "character" && (
               <>
-                <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
+                <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)} disabled={!canEdit}>
                   Elimina
                 </Button>
-                <Button variant="outline" onClick={openEditForm}>
+                <Button variant="outline" onClick={openEditForm} disabled={!canEdit}>
                   Modifica
                 </Button>
               </>
@@ -1311,7 +1321,7 @@ export default function Capabilities({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={(open) => setConfirmDeleteOpen(canEdit ? open : false)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Eliminare questa skill?</AlertDialogTitle>
@@ -1324,6 +1334,7 @@ export default function Capabilities({
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={confirmDelete}
+              disabled={!canEdit}
             >
               Elimina
             </AlertDialogAction>

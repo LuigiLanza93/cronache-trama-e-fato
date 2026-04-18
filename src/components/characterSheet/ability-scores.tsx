@@ -31,6 +31,7 @@ const AbilityScores = ({
   abilityModifier,
   passiveCapabilities = [],
   passiveEffectContext = {},
+  canEdit = true,
 }: any) => {
   const persistedScores = useMemo(
     () => ({ ...(characterData?.abilityScores ?? {}) }),
@@ -60,6 +61,7 @@ const AbilityScores = ({
   };
 
   const handleSave = () => {
+    if (!canEdit) return;
     if (scoreChanges.length === 0) {
       setEditingScores(false);
       return;
@@ -69,6 +71,7 @@ const AbilityScores = ({
   };
 
   const handleConfirmSave = () => {
+    if (!canEdit) return;
     const nextScores = Object.fromEntries(
       Object.entries(draftScores).map(([ability, value]) => [
         ability,
@@ -118,7 +121,11 @@ const AbilityScores = ({
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
-              onClick={() => setEditingScores(true)}
+              disabled={!canEdit}
+              onClick={() => {
+                if (!canEdit) return;
+                setEditingScores(true);
+              }}
               aria-label="Modifica punti abilità"
               title="Modifica punti abilità"
             >
@@ -206,6 +213,7 @@ const AbilityScores = ({
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => handleStep(ability, -1)}
+                    disabled={!canEdit}
                     aria-label={`Riduci ${ability}`}
                     title={`Riduci ${ability}`}
                   >
@@ -220,6 +228,7 @@ const AbilityScores = ({
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => handleStep(ability, 1)}
+                    disabled={!canEdit}
                     aria-label={`Aumenta ${ability}`}
                     title={`Aumenta ${ability}`}
                   >
@@ -261,7 +270,7 @@ const AbilityScores = ({
         )}
       </SectionCard>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog open={confirmOpen} onOpenChange={(open) => setConfirmOpen(canEdit ? open : false)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confermi l&apos;aggiornamento delle caratteristiche?</AlertDialogTitle>
@@ -283,7 +292,7 @@ const AbilityScores = ({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSave}>Conferma</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmSave} disabled={!canEdit}>Conferma</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

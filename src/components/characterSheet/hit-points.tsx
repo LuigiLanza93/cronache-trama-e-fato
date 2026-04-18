@@ -91,6 +91,7 @@ const HitPoints = ({
     abilityModifier,
     passiveCapabilities = [],
     passiveEffectContext = {},
+    canEdit = true,
 }: any) => {
     const [hpChangeAmount, setHpChangeAmount] = useState("");
     const [combatToolsOpen, setCombatToolsOpen] = useState(false);
@@ -191,6 +192,7 @@ const HitPoints = ({
     ]);
 
     const applyCombatStatsUpdate = (nextCombatStats: any) => {
+        if (!canEdit) return;
         setCharacterData((prev: any) => ({
             ...prev,
             combatStats: nextCombatStats,
@@ -313,8 +315,12 @@ const HitPoints = ({
                                 <Input
                                     inputMode="numeric"
                                     value={hpChangeAmount}
-                                    onChange={(e) => setHpChangeAmount(e.target.value)}
+                                    onChange={(e) => {
+                                        if (!canEdit) return;
+                                        setHpChangeAmount(e.target.value);
+                                    }}
                                     placeholder="Es. 8"
+                                    disabled={!canEdit}
                                     className="mt-1 text-center"
                                 />
                             </div>
@@ -323,7 +329,7 @@ const HitPoints = ({
                                     size="sm"
                                     variant="outline"
                                     onClick={applyDamage}
-                                    disabled={!validAmount}
+                                    disabled={!canEdit || !validAmount}
                                     className="justify-start"
                                 >
                                     <Sword className="mr-2 h-4 w-4 text-red-600" />
@@ -333,7 +339,7 @@ const HitPoints = ({
                                     size="sm"
                                     variant="outline"
                                     onClick={applyHealing}
-                                    disabled={!validAmount}
+                                    disabled={!canEdit || !validAmount}
                                     className="justify-start"
                                 >
                                     <Plus className="mr-2 h-4 w-4 text-green-600" />
@@ -345,7 +351,7 @@ const HitPoints = ({
                                     size="sm"
                                     variant="outline"
                                     onClick={setTemporaryHitPoints}
-                                    disabled={!validAmount}
+                                    disabled={!canEdit || !validAmount}
                                     className="justify-start"
                                 >
                                     <ShieldPlus className="mr-2 h-4 w-4 text-sky-600" />
@@ -355,7 +361,7 @@ const HitPoints = ({
                                     size="sm"
                                     variant="outline"
                                     onClick={clearTemporaryHitPoints}
-                                    disabled={(characterData.combatStats.temporaryHitPoints ?? 0) <= 0}
+                                    disabled={!canEdit || (characterData.combatStats.temporaryHitPoints ?? 0) <= 0}
                                     className="justify-start"
                                 >
                                     <ShieldX className="mr-2 h-4 w-4 text-muted-foreground" />

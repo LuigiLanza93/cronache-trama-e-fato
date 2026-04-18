@@ -7,6 +7,12 @@ export type AuthUser = {
   ownedCharacters: string[];
 };
 
+export type GameSessionState = {
+  isOpen: boolean;
+  updatedAt: string | null;
+  updatedByUserId?: string | null;
+};
+
 export type ManagedUser = AuthUser & {
   createdAt: string | null;
 };
@@ -539,6 +545,17 @@ export type InventoryTransferEntry = {
   canUndo: boolean;
 };
 
+let playerWritesLocked = false;
+
+export function setPlayerWritesLocked(locked: boolean) {
+  playerWritesLocked = locked;
+}
+
+function assertPlayerWritesAllowed() {
+  if (!playerWritesLocked) return;
+  throw new Error("La sessione è chiusa. Per i giocatori sono disponibili solo funzioni di lettura.");
+}
+
 async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
@@ -576,6 +593,17 @@ async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
 
 export function fetchCurrentUser() {
   return authFetch<AuthUser>("/api/auth/me", { method: "GET" });
+}
+
+export function fetchGameSessionState() {
+  return authFetch<GameSessionState>("/api/game-session", { method: "GET" });
+}
+
+export function updateGameSessionStateRequest(isOpen: boolean) {
+  return authFetch<GameSessionState>("/api/game-session", {
+    method: "PUT",
+    body: JSON.stringify({ isOpen }),
+  });
 }
 
 export function loginRequest(username: string, password: string) {
@@ -634,6 +662,7 @@ export function fetchCharacterTransferTargets() {
 }
 
 export function createCharacterCurrencyTransactionRequest(slug: string, payload: CurrencyTransactionRequestPayload) {
+  assertPlayerWritesAllowed();
   return authFetch<CurrencyTransactionResponse>(`/api/characters/${slug}/currency-transactions`, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -661,6 +690,7 @@ export function createCharacterRequest(payload: {
   alignment: string;
   background: string;
 }) {
+  assertPlayerWritesAllowed();
   return authFetch<{
     slug: string;
     characterType: "pg" | "png";
@@ -792,6 +822,7 @@ export function fetchCharacterSheetLayout() {
 }
 
 export function saveCharacterSheetLayout(entries: CharacterSheetLayoutEntry[]) {
+  assertPlayerWritesAllowed();
   return authFetch<CharacterSheetLayoutPayload>("/api/preferences/character-sheet-layout", {
     method: "PUT",
     body: JSON.stringify({ entries }),
@@ -843,6 +874,7 @@ export function assignItemToCharacterRequest(
     quickCreateItem?: Record<string, unknown>;
   }
 ) {
+  assertPlayerWritesAllowed();
   return authFetch<CharacterInventoryItemEntry[]>(`/api/characters/${slug}/inventory-items`, {
     method: "POST",
     body: JSON.stringify(payload),
@@ -850,6 +882,7 @@ export function assignItemToCharacterRequest(
 }
 
 export function deleteCharacterInventoryItemRequest(slug: string, characterItemId: string) {
+  assertPlayerWritesAllowed();
   return authFetch<null>(`/api/characters/${slug}/inventory-items/${characterItemId}`, {
     method: "DELETE",
   });
@@ -872,6 +905,7 @@ export function updateCharacterInventoryItemRequest(
     };
   }
 ) {
+  assertPlayerWritesAllowed();
   return authFetch<CharacterInventoryItemEntry>(`/api/characters/${slug}/inventory-items/${characterItemId}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
@@ -886,6 +920,7 @@ export function transferCharacterInventoryItemRequest(
     quantity?: number;
   }
 ) {
+  assertPlayerWritesAllowed();
   return authFetch<CharacterInventoryItemEntry[]>(`/api/characters/${slug}/inventory-items/${characterItemId}/transfer`, {
     method: "POST",
     body: JSON.stringify(payload),

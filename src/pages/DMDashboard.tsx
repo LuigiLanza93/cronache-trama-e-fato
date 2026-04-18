@@ -12,11 +12,13 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/components/auth-provider";
+import { useGameSession } from "@/components/game-session-provider";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
 import {
   applyPatch,
@@ -33,6 +35,8 @@ import {
 } from "@/realtime";
 import CharacterChatWindow from "@/components/chat/character-chat-window";
 import { getInitials, normalizePortraitUrl } from "@/lib/character-ui";
+import { updateGameSessionStateRequest } from "@/lib/auth";
+import { toast } from "@/components/ui/sonner";
 
 type CharacterState = Record<string, any>;
 
@@ -218,6 +222,7 @@ function hpBarColor(hp: PlayerCardData["hp"]) {
 
 export default function DMDashboard() {
   const { user } = useAuth();
+  const { sessionState, refresh: refreshGameSession } = useGameSession();
   const [onlineSlugs, setOnlineSlugs] = useState<string[]>([]);
   const [baseCharacterStates, setBaseCharacterStates] = useState<CharacterState[]>([]);
   const [liveStates, setLiveStates] = useState<Record<string, CharacterState>>({});
@@ -226,6 +231,7 @@ export default function DMDashboard() {
   const [openChatSlugs, setOpenChatSlugs] = useState<string[]>([]);
   const [minimizedChatSlugs, setMinimizedChatSlugs] = useState<string[]>([]);
   const [unreadChatCounts, setUnreadChatCounts] = useState<Record<string, number>>({});
+  const [sessionSubmitting, setSessionSubmitting] = useState(false);
   const joinedRoomsRef = useRef<Set<string>>(new Set());
   const joinedChatRoomsRef = useRef<Set<string>>(new Set());
 
@@ -395,6 +401,19 @@ export default function DMDashboard() {
     setMinimizedChatSlugs((prev) => prev.filter((entry) => entry !== slug));
   };
 
+  const handleSessionToggle = async (nextOpen: boolean) => {
+    setSessionSubmitting(true);
+    try {
+      await updateGameSessionStateRequest(nextOpen);
+      await refreshGameSession();
+      toast.success(nextOpen ? "Sessione aperta." : "Sessione chiusa: i player sono ora in sola lettura.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Aggiornamento sessione non riuscito.");
+    } finally {
+      setSessionSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen parchment p-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -455,6 +474,14 @@ export default function DMDashboard() {
               </TooltipTrigger>
               <TooltipContent>Assegna oggetti ai personaggi</TooltipContent>
             </Tooltip>
+            <div className="inline-flex items-center rounded-full border border-border/70 bg-background/70 px-3 py-2 shadow-sm">
+              <Switch
+                checked={sessionState?.isOpen !== false}
+                disabled={sessionSubmitting}
+                onCheckedChange={(checked) => void handleSessionToggle(checked)}
+                aria-label="Apri o chiudi la sessione dei player"
+              />
+            </div>
           </div>
         </section>
 
