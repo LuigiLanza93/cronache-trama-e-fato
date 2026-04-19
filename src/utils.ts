@@ -1,3 +1,5 @@
+import { matchesSkillPassiveEffectTarget } from "@/lib/passive-effect-skills";
+
 function coerce(value: string, kind: "string" | "int" | "float") {
     if (kind === "int") {
         const n = parseInt(value, 10);
@@ -488,11 +490,62 @@ function calculateSkillValues(
             options.passiveCapabilities ?? [],
             options.passiveEffectContext ?? {}
         ).scores;
+    const passiveCapabilities = Array.isArray(options.passiveCapabilities)
+        ? options.passiveCapabilities
+        : [];
+    const passiveEffectContext = options.passiveEffectContext ?? {};
 
     return skillsCatalog.map((skill) => {
         const abilityKey = normalizeAbilityKey(skill.ability) ?? normalizeAbilityKey(String(skill.ability).toUpperCase());
         const mod = abilityModifier(abilityKey ? abilityScores[abilityKey] : 10);
+        const appliedEffects = passiveCapabilities
+            .filter((capability) => String(capability?.kind ?? "passive").toLowerCase() === "passive")
+            .flatMap((capability) =>
+                (Array.isArray(capability?.passiveEffects) ? capability.passiveEffects : [])
+                    .filter((effect) => matchesSkillPassiveEffectTarget(effect?.target, skill?.name))
+                    .filter((effect) => isPassiveTriggerActive(effect?.trigger, passiveEffectContext))
+                    .map((effect) => ({
+                        effect,
+                        resolvedValue: resolvePassiveEffectScalarValue(effect, character, abilityScores),
+                    }))
+            );
+
         let value = mod;
+
+        const setEffects = appliedEffects
+            .filter(({ effect }) => String(effect?.operationType ?? "BONUS").trim().toUpperCase() === "SET")
+            .map(({ effect }) => {
+                const rawSetValue = Number(effect?.setValue);
+                if (!Number.isFinite(rawSetValue)) return null;
+                const setMode = String(effect?.setMode ?? "MINIMUM_FLOOR").trim().toUpperCase();
+                return setMode === "ABSOLUTE" ? rawSetValue : Math.max(mod, rawSetValue);
+            })
+            .filter((entry): entry is number => Number.isFinite(entry));
+
+        if (setEffects.length > 0) {
+            value = Math.max(...setEffects);
+        }
+
+        const bonusEffects = appliedEffects
+            .filter(({ effect, resolvedValue }) =>
+                String(effect?.operationType ?? "BONUS").trim().toUpperCase() !== "SET" &&
+                Number.isFinite(resolvedValue) &&
+                resolvedValue !== 0
+            );
+        const uncappedBonusEffects = bonusEffects.filter(({ effect }) => !Number.isFinite(Number(effect?.capValue)));
+        const cappedBonusEffects = bonusEffects
+            .filter(({ effect }) => Number.isFinite(Number(effect?.capValue)))
+            .sort((a, b) => Number(a.effect?.capValue) - Number(b.effect?.capValue));
+
+        [...uncappedBonusEffects, ...cappedBonusEffects].forEach(({ effect, resolvedValue }) => {
+                const capValue = Number(effect?.capValue);
+                if (Number.isFinite(capValue) && resolvedValue > 0) {
+                    const availableGrowth = Math.max(0, capValue - value);
+                    value += Math.min(resolvedValue, availableGrowth);
+                    return;
+                }
+                value += resolvedValue;
+            });
 
         return {
             ...skill,

@@ -91,6 +91,8 @@ export function buildPactBladeVirtualDefinition(template: PactBladeWeaponTemplat
           },
         ];
 
+  const isAccurate = Array.isArray(template.properties) && template.properties.includes("Accurata");
+
   return {
     id: definitionId,
     slug: `pact-blade-${template.id}`,
@@ -124,7 +126,7 @@ export function buildPactBladeVirtualDefinition(template: PactBladeWeaponTemplat
         name: template.name,
         kind: "MELEE_WEAPON",
         handRequirement: template.weaponHandling === "TWO_HANDED" ? "TWO_HANDED" : "ONE_HANDED",
-        ability: "STRENGTH",
+        ability: isAccurate ? "FINESSE" : "STRENGTH",
         attackBonus: 0,
         damageDice: template.damageDice,
         damageType: template.damageType,
@@ -173,6 +175,7 @@ export function buildPactBladeVirtualItem(
     nameOverride: null,
     descriptionOverride: null,
     notes: "Arma evocata dal Patto della Lama.",
+    data: null,
     featureStates: [],
     createdAt: now,
     updatedAt: now,

@@ -356,9 +356,24 @@ const Proficiencies = ({
                                 ? !!draftProfs[name]
                                 : !!persistedProfsMap[name];
 
+                            const resolvedSkillAbilityKey = String(skill.ability ?? "").trim().toLowerCase();
+                            const baseAbilitySkillValue = abilityModifier(
+                                resolvedAbilityScores[resolvedSkillAbilityKey] ?? 10
+                            );
+                            const passiveSkillBonus = skill.value - baseAbilitySkillValue;
                             const total = skill.value + (isProficient ? profBonus : 0);
                             const totalStr = total >= 0 ? `+${total}` : `${total}`;
-                            const baseStr = skill.value >= 0 ? `+${skill.value}` : `${skill.value}`;
+                            const breakdownParts = [
+                                baseAbilitySkillValue >= 0 ? `+${baseAbilitySkillValue}` : `${baseAbilitySkillValue}`,
+                            ];
+                            if (passiveSkillBonus !== 0) {
+                                breakdownParts.push(
+                                    passiveSkillBonus >= 0 ? `+${passiveSkillBonus}` : `${passiveSkillBonus}`
+                                );
+                            }
+                            if (isProficient) {
+                                breakdownParts.push(`+${profBonus}`);
+                            }
 
                             const rowClass = `flex items-start justify-between rounded px-2 py-1 ${
                                 isProficient ? "bg-primary/5 border border-primary/30" : ""
@@ -384,9 +399,9 @@ const Proficiencies = ({
                                     <div className="text-right">
                                         <div className="font-medium text-foreground">
                                             {totalStr}
-                                            {isProficient && (
+                                            {breakdownParts.length > 1 && (
                                                 <span className="ml-1 text-xs text-muted-foreground">
-                                                    ({baseStr} + {profBonus})
+                                                    ({breakdownParts.join(" ")})
                                                 </span>
                                             )}
                                         </div>

@@ -19,6 +19,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import SectionCard from "@/components/characterSheet/section-card";
+import {
+  PASSIVE_EFFECT_SKILL_TARGET_LABELS,
+  type PassiveEffectSkillTarget,
+} from "@/lib/passive-effect-skills";
 
 type CapabilityKind = "passive" | "active";
 type CapabilityReset = "atWill" | "encounter" | "shortRest" | "longRest" | "custom";
@@ -42,6 +46,7 @@ type PassiveEffectTarget =
   | "UNARMED_ATTACK_ROLL"
   | "UNARMED_DAMAGE_ROLL"
   | "OFF_HAND_DAMAGE_ROLL"
+  | PassiveEffectSkillTarget
   | "CUSTOM";
 type PassiveEffectTrigger =
   | "ALWAYS"
@@ -163,6 +168,7 @@ const PASSIVE_TARGET_LABELS: Record<PassiveEffectTarget, string> = {
   UNARMED_ATTACK_ROLL: "Tiri per colpire senz'armi",
   UNARMED_DAMAGE_ROLL: "Danni senz'armi",
   OFF_HAND_DAMAGE_ROLL: "Danni mano secondaria",
+  ...PASSIVE_EFFECT_SKILL_TARGET_LABELS,
   CUSTOM: "Altro",
 };
 

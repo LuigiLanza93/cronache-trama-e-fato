@@ -23,6 +23,7 @@ export const DND5E_RACES = [
   "Nano",
   "Tiefling",
   "Umano",
+  "Umano variante",
 ] as const;
 
 export const DND5E_ALIGNMENTS = [

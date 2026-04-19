@@ -25,6 +25,11 @@ import {
   type ItemSlotRuleEntry,
   type ItemUseEffectEntry,
 } from "@/lib/auth";
+import {
+  PASSIVE_EFFECT_SKILL_TARGET_LABELS,
+  PASSIVE_EFFECT_SKILL_TARGETS,
+  type PassiveEffectSkillTarget,
+} from "@/lib/passive-effect-skills";
 
 const CATEGORY_OPTIONS = ["WEAPON", "ARMOR", "SHIELD", "WONDROUS_ITEM", "RING", "AMULET", "ROD", "STAFF", "WAND", "TOOL", "CONSUMABLE", "AMMUNITION", "GEAR", "QUEST", "OTHER"];
 const RARITY_OPTIONS = ["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY", "ARTIFACT", "UNIQUE"];
@@ -42,16 +47,62 @@ const EFFECT_CONDITION_OPTIONS = ["ALWAYS", "WHILE_EQUIPPED"];
 const FEATURE_RESET_OPTIONS = ["AT_WILL", "ENCOUNTER", "SHORT_REST", "LONG_REST", "DAILY", "CUSTOM"];
 const FEATURE_KIND_OPTIONS = ["ACTIVE", "PASSIVE"];
 const ABILITY_SCORE_OPTIONS = ["STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA"];
+const ATTACK_ABILITY_OPTIONS = ["STRENGTH", "DEXTERITY", "FINESSE", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA"];
 const USE_EFFECT_TYPE_OPTIONS = ["HEAL", "DAMAGE", "TEMP_HP", "APPLY_CONDITION", "REMOVE_CONDITION", "RESTORE_RESOURCE", "CUSTOM"];
 const USE_TARGET_TYPE_OPTIONS = ["SELF", "CREATURE", "OBJECT", "AREA", "CUSTOM"];
 const USE_SUCCESS_OUTCOME_OPTIONS = ["NONE", "HALF", "NEGATES", "CUSTOM"];
-const PASSIVE_EFFECT_TARGET_OPTIONS = ["ARMOR_CLASS", "INITIATIVE", "SPEED", "HIT_POINT_MAX", "STRENGTH_SCORE", "DEXTERITY_SCORE", "CONSTITUTION_SCORE", "INTELLIGENCE_SCORE", "WISDOM_SCORE", "CHARISMA_SCORE", "ATTACK_ROLL", "DAMAGE_ROLL", "MELEE_ATTACK_ROLL", "MELEE_DAMAGE_ROLL", "RANGED_ATTACK_ROLL", "RANGED_DAMAGE_ROLL", "UNARMED_ATTACK_ROLL", "UNARMED_DAMAGE_ROLL", "OFF_HAND_DAMAGE_ROLL", "CUSTOM"];
+const PASSIVE_EFFECT_TARGET_OPTIONS = [
+  "ARMOR_CLASS",
+  "INITIATIVE",
+  "SPEED",
+  "HIT_POINT_MAX",
+  "STRENGTH_SCORE",
+  "DEXTERITY_SCORE",
+  "CONSTITUTION_SCORE",
+  "INTELLIGENCE_SCORE",
+  "WISDOM_SCORE",
+  "CHARISMA_SCORE",
+  "ATTACK_ROLL",
+  "DAMAGE_ROLL",
+  "MELEE_ATTACK_ROLL",
+  "MELEE_DAMAGE_ROLL",
+  "RANGED_ATTACK_ROLL",
+  "RANGED_DAMAGE_ROLL",
+  "UNARMED_ATTACK_ROLL",
+  "UNARMED_DAMAGE_ROLL",
+  "OFF_HAND_DAMAGE_ROLL",
+  ...PASSIVE_EFFECT_SKILL_TARGETS.map((entry) => entry.target),
+  "CUSTOM",
+] as const;
 const PASSIVE_EFFECT_TRIGGER_OPTIONS = ["ALWAYS", "WHILE_ARMORED", "WHILE_SHIELD_EQUIPPED", "WHILE_WIELDING_SINGLE_MELEE_WEAPON", "WHILE_DUAL_WIELDING", "WHILE_WIELDING_TWO_HANDED_WEAPON", "CUSTOM"];
 const PASSIVE_EFFECT_VALUE_MODE_OPTIONS = ["FLAT", "ABILITY_MODIFIER", "ABILITY_SCORE", "PROFICIENCY_BONUS", "CHARACTER_LEVEL"];
 const PASSIVE_EFFECT_ROUNDING_OPTIONS = ["FLOOR", "CEIL"];
 const PASSIVE_EFFECT_OPERATION_OPTIONS = ["BONUS", "SET"];
 const PASSIVE_EFFECT_SET_MODE_OPTIONS = ["ABSOLUTE", "MINIMUM_FLOOR"];
 const ABILITY_SCORE_TARGET_OPTIONS = ["STRENGTH_SCORE", "DEXTERITY_SCORE", "CONSTITUTION_SCORE", "INTELLIGENCE_SCORE", "WISDOM_SCORE", "CHARISMA_SCORE"];
+const PASSIVE_EFFECT_TARGET_LABELS: Record<(typeof PASSIVE_EFFECT_TARGET_OPTIONS)[number], string> = {
+  ARMOR_CLASS: "Classe Armatura",
+  INITIATIVE: "Iniziativa",
+  SPEED: "Velocita",
+  HIT_POINT_MAX: "Punti ferita massimi",
+  STRENGTH_SCORE: "Forza",
+  DEXTERITY_SCORE: "Destrezza",
+  CONSTITUTION_SCORE: "Costituzione",
+  INTELLIGENCE_SCORE: "Intelligenza",
+  WISDOM_SCORE: "Saggezza",
+  CHARISMA_SCORE: "Carisma",
+  ATTACK_ROLL: "Tiri per colpire",
+  DAMAGE_ROLL: "Tiri danno",
+  MELEE_ATTACK_ROLL: "Tiri per colpire in mischia",
+  MELEE_DAMAGE_ROLL: "Danni in mischia",
+  RANGED_ATTACK_ROLL: "Tiri per colpire a distanza",
+  RANGED_DAMAGE_ROLL: "Danni a distanza",
+  UNARMED_ATTACK_ROLL: "Tiri per colpire senz'armi",
+  UNARMED_DAMAGE_ROLL: "Danni senz'armi",
+  OFF_HAND_DAMAGE_ROLL: "Danni mano secondaria",
+  ...PASSIVE_EFFECT_SKILL_TARGET_LABELS,
+  CUSTOM: "Altro",
+};
 
 type PassiveEffectTarget =
   | "ARMOR_CLASS"
@@ -73,6 +124,7 @@ type PassiveEffectTarget =
   | "UNARMED_ATTACK_ROLL"
   | "UNARMED_DAMAGE_ROLL"
   | "OFF_HAND_DAMAGE_ROLL"
+  | PassiveEffectSkillTarget
   | "CUSTOM";
 type PassiveEffectTrigger =
   | "ALWAYS"
@@ -939,7 +991,30 @@ export default function ItemManagement() {
                               <SelectContent>{ATTACK_HAND_REQUIREMENT_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                             </Select>
                           </div>
-                          <TextRow label="Ability" value={entry.ability} onChange={(value) => setDraftItem({ ...draftItem, attacks: draftItem.attacks.map((row, rowIndex) => rowIndex === index ? { ...row, ability: value || null } : row) })} />
+                          <div className="space-y-2">
+                            <Label>Ability</Label>
+                            <Select
+                              value={entry.ability ?? "__none__"}
+                              onValueChange={(value) =>
+                                setDraftItem({
+                                  ...draftItem,
+                                  attacks: draftItem.attacks.map((row, rowIndex) =>
+                                    rowIndex === index ? { ...row, ability: value === "__none__" ? null : value } : row
+                                  ),
+                                })
+                              }
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">Predefinita dal tipo</SelectItem>
+                                {ATTACK_ABILITY_OPTIONS.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option === "FINESSE" ? "FINESSE (Accurata)" : option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <TextRow label="Attack bonus" value={entry.attackBonus != null ? String(entry.attackBonus) : ""} onChange={(value) => setDraftItem({ ...draftItem, attacks: draftItem.attacks.map((row, rowIndex) => rowIndex === index ? { ...row, attackBonus: value ? Number(value) : null } : row) })} />
                           <TextRow label="Damage dice" value={entry.damageDice} onChange={(value) => setDraftItem({ ...draftItem, attacks: draftItem.attacks.map((row, rowIndex) => rowIndex === index ? { ...row, damageDice: value || null } : row) })} />
                           <TextRow label="Damage type" value={entry.damageType} onChange={(value) => setDraftItem({ ...draftItem, attacks: draftItem.attacks.map((row, rowIndex) => rowIndex === index ? { ...row, damageType: value || null } : row) })} />
@@ -1139,7 +1214,13 @@ export default function ItemManagement() {
                                         }
                                       >
                                         <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>{PASSIVE_EFFECT_TARGET_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                                        <SelectContent>
+                                          {PASSIVE_EFFECT_TARGET_OPTIONS.map((option) => (
+                                            <SelectItem key={option} value={option}>
+                                              {PASSIVE_EFFECT_TARGET_LABELS[option]}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
                                       </Select>
                                     </div>
                                     <div className="space-y-2">

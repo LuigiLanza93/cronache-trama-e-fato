@@ -504,6 +504,7 @@ export type CharacterInventoryItemEntry = {
   nameOverride: string | null;
   descriptionOverride: string | null;
   notes: string | null;
+  data: string | null;
   featureStates: CharacterItemFeatureStateEntry[];
   createdAt: string;
   updatedAt: string;
@@ -894,6 +895,7 @@ export function updateCharacterInventoryItemRequest(
     payload: {
       quantity?: number;
       isEquipped?: boolean;
+      data?: string | Record<string, unknown> | null;
       equipConfig?: {
         optionId?: string;
         slots?: string[];

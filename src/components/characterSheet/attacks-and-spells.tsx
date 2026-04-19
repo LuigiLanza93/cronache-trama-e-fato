@@ -26,9 +26,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { toast } from "@/components/ui/sonner";
 import {
   fetchItemDefinition,
+  updateCharacterInventoryItemRequest,
   type CharacterInventoryItemEntry,
   type EquipResolutionDetails,
   type EquipResolutionOption,
@@ -269,6 +271,35 @@ function getDefaultAbilityForAttackKind(kind: string | null | undefined) {
   }
 }
 
+function parseCharacterItemData(item: CharacterInventoryItemEntry | null | undefined) {
+  if (!item?.data) return {};
+  try {
+    const parsed = JSON.parse(item.data);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function isAccurateAttack(attack: ItemAttackEntry) {
+  return String(attack?.ability ?? "").trim().toUpperCase() === "FINESSE";
+}
+
+function resolveAttackAbilityKey(
+  attack: ItemAttackEntry,
+  item: CharacterInventoryItemEntry | null | undefined
+) {
+  if (isAccurateAttack(attack)) {
+    const parsedData = parseCharacterItemData(item);
+    const savedChoice = normalizeAbilityKey(
+      typeof parsedData?.accurateAbility === "string" ? parsedData.accurateAbility : null
+    );
+    return savedChoice === "DEXTERITY" ? "DEXTERITY" : "STRENGTH";
+  }
+
+  return normalizeAbilityKey(attack.ability) ?? getDefaultAbilityForAttackKind(attack.kind);
+}
+
 function getAttackRollPassiveBonus(
   attack: ItemAttackEntry,
   characterData: any,
@@ -378,6 +409,7 @@ function getWeaponHandAssignments(
 
 function buildRelationalAttackMath(
   attack: ItemAttackEntry,
+  item: CharacterInventoryItemEntry | null | undefined,
   characterData: any,
   resolvedAbilityScores: Record<string, number>,
   passiveCapabilities: any[],
@@ -387,8 +419,7 @@ function buildRelationalAttackMath(
     isUnarmedAttack?: boolean;
   }
 ) {
-  const abilityKey =
-    normalizeAbilityKey(attack.ability) ?? getDefaultAbilityForAttackKind(attack.kind);
+  const abilityKey = resolveAttackAbilityKey(attack, item);
   const abilityScore =
     abilityKey
       ? resolvedAbilityScores[abilityKey.toLowerCase()] ??
@@ -396,10 +427,7 @@ function buildRelationalAttackMath(
         null
       : null;
   const abilityModifier = getAbilityModifier(abilityScore);
-  const proficiencyBonus =
-    typeof characterData?.proficiencies?.proficiencyBonus === "number"
-      ? characterData.proficiencies.proficiencyBonus
-      : getProficiencyBonus(Number(characterData?.basicInfo?.level ?? 1));
+  const proficiencyBonus = getProficiencyBonus(Number(characterData?.basicInfo?.level ?? 1));
   const weaponAttackBonus =
     attack.attackBonus !== null && attack.attackBonus !== undefined ? attack.attackBonus : 0;
   const passiveAttackBonus = getAttackRollPassiveBonus(
@@ -457,6 +485,8 @@ function buildRelationalAttackMath(
   }
 
   return {
+    abilityKey,
+    isAccurate: isAccurateAttack(attack),
     hitSummaryLine: `Tiro per colpire: 1d20 ${formatSigned(totalHitBonus)}`,
     damageSummaryLine: `Danni: ${parsedDamage.dicePart} ${formatSigned(totalDamageFlatBonus)}${attack.damageType ? ` ${attack.damageType}` : ""}`,
     formulaLine: `Tiro per colpire: ${hitParts.join(" + ")}`,
@@ -626,11 +656,14 @@ function EquipmentSymbols({ detail }: { detail?: ItemDefinitionEntry }) {
 
 type RelationalAttackRow = {
   rowKey: string;
+  sourceItemId: string | null;
   sourceName: string;
   attackName: string;
   showSourceName: boolean;
   detailLine: string;
   secondaryLine: string | null;
+  accurateAbility: string | null;
+  isAccurate: boolean;
   hitSummaryLine: string;
   damageSummaryLine: string;
   formulaLine: string | null;
@@ -699,6 +732,7 @@ const AttacksAndSpells = ({
   passiveEffectContext?: any;
 }) => {
   const [itemDetailsById, setItemDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
+  const [inventoryDataOverrides, setInventoryDataOverrides] = useState<Record<string, string | null>>({});
   const [expandedAttackKeys, setExpandedAttackKeys] = useState<string[]>([]);
   const [equipResolutionOpen, setEquipResolutionOpen] = useState(false);
   const [equipResolutionItemId, setEquipResolutionItemId] = useState("");
@@ -708,6 +742,7 @@ const AttacksAndSpells = ({
   const [equipResolutionError, setEquipResolutionError] = useState("");
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailItemId, setDetailItemId] = useState("");
+  const [savingAccurateAttackKey, setSavingAccurateAttackKey] = useState("");
   const resolvedAbilityData = useMemo(
     () => resolveCharacterAbilityScores(characterData, passiveCapabilities, passiveEffectContext),
     [characterData, passiveCapabilities, passiveEffectContext]
@@ -719,13 +754,24 @@ const AttacksAndSpells = ({
     }),
     [itemDetailsById, runtimeItemDefinitions]
   );
+  const effectiveRelationalInventoryItems = useMemo(
+    () =>
+      (Array.isArray(relationalInventoryItems) ? relationalInventoryItems : []).map((item) => ({
+        ...item,
+        data:
+          Object.prototype.hasOwnProperty.call(inventoryDataOverrides, item.id)
+            ? inventoryDataOverrides[item.id]
+            : item.data,
+      })),
+    [inventoryDataOverrides, relationalInventoryItems]
+  );
 
   const equippedRelationalItems = useMemo(
     () =>
-      (Array.isArray(relationalInventoryItems) ? relationalInventoryItems : []).filter(
+      effectiveRelationalInventoryItems.filter(
         (item) => item?.isEquipped && item?.itemDefinitionId
       ),
-    [relationalInventoryItems]
+    [effectiveRelationalInventoryItems]
   );
 
   useEffect(() => {
@@ -803,6 +849,7 @@ const AttacksAndSpells = ({
 
           const math = buildRelationalAttackMath(
             attack,
+            item,
             characterData,
             resolvedAbilityData.scores,
             passiveCapabilities,
@@ -815,10 +862,13 @@ const AttacksAndSpells = ({
             rowKey: `${item.id}-${attack.id}`,
             sourceName: item.itemName,
             attackName,
+            sourceItemId: item.id,
             showSourceName:
               attackName.trim().toLowerCase() !== item.itemName.trim().toLowerCase(),
             detailLine: detailParts.join(" - "),
             secondaryLine,
+            accurateAbility: math.abilityKey,
+            isAccurate: math.isAccurate,
             hitSummaryLine: math.hitSummaryLine,
             damageSummaryLine: math.damageSummaryLine,
             formulaLine: math.formulaLine,
@@ -835,6 +885,7 @@ const AttacksAndSpells = ({
     if (!hasEquippedWeapon && derivedAttacks.length === 0) {
       const math = buildRelationalAttackMath(
         UNARMED_ATTACK,
+        null,
         characterData,
         resolvedAbilityData.scores,
         passiveCapabilities,
@@ -846,9 +897,12 @@ const AttacksAndSpells = ({
         rowKey: "unarmed-base",
         sourceName: "",
         attackName: UNARMED_ATTACK.name,
+        sourceItemId: null,
         showSourceName: false,
         detailLine: "Mischia",
         secondaryLine: "Portata 1 quadretto",
+        accurateAbility: math.abilityKey,
+        isAccurate: math.isAccurate,
         hitSummaryLine: math.hitSummaryLine,
         damageSummaryLine: math.damageSummaryLine,
         formulaLine: math.formulaLine,
@@ -865,6 +919,47 @@ const AttacksAndSpells = ({
     passiveEffectContext,
     resolvedAbilityData.scores,
   ]);
+
+  async function handleAccurateAbilityChange(
+    characterItemId: string,
+    nextAbility: "STRENGTH" | "DEXTERITY"
+  ) {
+    if (!characterData?.slug) return;
+
+    const sourceItem = effectiveRelationalInventoryItems.find((item) => item.id === characterItemId);
+    if (!sourceItem) return;
+
+    const currentData = parseCharacterItemData(sourceItem);
+    const nextData = {
+      ...currentData,
+      accurateAbility: nextAbility,
+    };
+    const rowKey = `${characterItemId}:${nextAbility}`;
+
+    try {
+      setSavingAccurateAttackKey(rowKey);
+      setInventoryDataOverrides((prev) => ({
+        ...prev,
+        [characterItemId]: JSON.stringify(nextData),
+      }));
+      const updated = await updateCharacterInventoryItemRequest(characterData.slug, characterItemId, {
+        data: nextData,
+      });
+      if (!updated) return;
+      setInventoryDataOverrides((prev) => ({
+        ...prev,
+        [characterItemId]: updated.data ?? JSON.stringify(nextData),
+      }));
+    } catch (error: any) {
+      setInventoryDataOverrides((prev) => ({
+        ...prev,
+        [characterItemId]: sourceItem.data ?? null,
+      }));
+      toast.error(String(error?.message ?? "Non sono riuscito a salvare la caratteristica dell'arma accurata."));
+    } finally {
+      setSavingAccurateAttackKey("");
+    }
+  }
 
   const equipmentBySlot = useMemo(() => {
     const bucket = new Map<string, Array<{ item: CharacterInventoryItemEntry; detail?: ItemDefinitionEntry }>>();
@@ -1030,6 +1125,35 @@ const AttacksAndSpells = ({
                         {attack.secondaryLine && (
                           <div className="text-muted-foreground">{attack.secondaryLine}</div>
                         )}
+                        {attack.isAccurate && attack.sourceItemId ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              Accurata
+                            </span>
+                            <ToggleGroup
+                              type="single"
+                              value={attack.accurateAbility ?? "STRENGTH"}
+                              onValueChange={(value) => {
+                                if (value !== "STRENGTH" && value !== "DEXTERITY") return;
+                                void handleAccurateAbilityChange(
+                                  attack.sourceItemId,
+                                  value
+                                );
+                              }}
+                              variant="outline"
+                              size="sm"
+                              disabled={savingAccurateAttackKey.startsWith(`${attack.sourceItemId}:`)}
+                              className="justify-start"
+                            >
+                              <ToggleGroupItem value="STRENGTH" aria-label="Usa Forza">
+                                For
+                              </ToggleGroupItem>
+                              <ToggleGroupItem value="DEXTERITY" aria-label="Usa Destrezza">
+                                Des
+                              </ToggleGroupItem>
+                            </ToggleGroup>
+                          </div>
+                        ) : null}
                         <div className="mt-2 text-muted-foreground">
                           {attack.hitSummaryLine}
                           {isExpanded && attack.formulaLine ? (

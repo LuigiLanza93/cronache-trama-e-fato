@@ -2381,6 +2381,7 @@ function readCharacterInventoryItemsBySlug(slug) {
       ci.isEquipped,
       ci.sortOrder,
       ci.notes,
+      ci.data,
       ci.createdAt,
       ci.updatedAt,
       d.name AS itemDefinitionName,
@@ -2450,6 +2451,7 @@ function readCharacterInventoryItemsBySlug(slug) {
         nameOverride: row.nameOverride ?? null,
         descriptionOverride: row.descriptionOverride ?? null,
         notes: row.notes ?? null,
+        data: row.data ?? null,
       featureStates: Array.isArray(featureStatesByItemId[row.id]) ? featureStatesByItemId[row.id] : [],
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -3186,6 +3188,7 @@ function updateCharacterInventoryItem(characterSlug, characterItemId, payload) {
         ci.characterId,
         ci.itemDefinitionId,
         ci.nameOverride,
+        ci.data,
         ci.quantity,
         ci.isEquipped,
         d.name AS itemDefinitionName,
@@ -3217,6 +3220,14 @@ function updateCharacterInventoryItem(characterSlug, characterItemId, payload) {
     payload?.equipConfig && typeof payload.equipConfig === "object"
       ? payload.equipConfig
       : {};
+  const nextData =
+    payload && Object.prototype.hasOwnProperty.call(payload, "data")
+      ? typeof payload?.data === "string"
+        ? payload.data
+        : payload?.data
+          ? JSON.stringify(payload.data)
+          : null
+      : existing.data ?? null;
 
   const now = new Date().toISOString();
 
@@ -3271,11 +3282,12 @@ function updateCharacterInventoryItem(characterSlug, characterItemId, payload) {
 
       sqlite.prepare(`
         UPDATE "CharacterItem"
-        SET quantity = ?, isEquipped = ?, updatedAt = ?
+        SET quantity = ?, isEquipped = ?, data = ?, updatedAt = ?
         WHERE id = ? AND characterId = ?
       `).run(
       quantity,
       isEquipped ? 1 : 0,
+      nextData,
       now,
       existing.id,
       character.id

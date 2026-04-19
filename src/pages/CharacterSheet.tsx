@@ -93,6 +93,7 @@ import {
   buildPactBladeVirtualItem,
   getPactBladeTemplate,
 } from "@/data/pact-blade-weapons";
+import { type PassiveEffectSkillTarget } from "@/lib/passive-effect-skills";
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/components/auth-provider";
 import { useGameSession } from "@/components/game-session-provider";
@@ -169,6 +170,7 @@ type PassiveEffectTarget =
   | "UNARMED_ATTACK_ROLL"
   | "UNARMED_DAMAGE_ROLL"
   | "OFF_HAND_DAMAGE_ROLL"
+  | PassiveEffectSkillTarget
   | "CUSTOM";
 type PassiveEffectTrigger =
   | "ALWAYS"

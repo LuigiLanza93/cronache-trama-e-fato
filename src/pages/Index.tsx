@@ -630,7 +630,7 @@ const Index = () => {
     }
 
     if (onlinePlayerCount === 0) {
-      return "Nessun giocatore online";
+      return "Nessun personaggio online";
     }
 
     if (onlinePlayerCount === totalPlayers) {
