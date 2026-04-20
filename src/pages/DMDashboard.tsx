@@ -254,6 +254,7 @@ export default function DMDashboard() {
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
   const joinedRoomsRef = useRef<Set<string>>(new Set());
   const joinedChatRoomsRef = useRef<Set<string>>(new Set());
+  const initializedRosterChatsRef = useRef(false);
 
   useEffect(() => {
     document.title = "DM Dashboard | D&D Character Manager";
@@ -480,6 +481,16 @@ export default function DMDashboard() {
       joinedChatRoomsRef.current.add(player.slug);
       joinChatRoom(player.slug);
     });
+  }, [roster]);
+
+  useEffect(() => {
+    if (initializedRosterChatsRef.current) return;
+    if (roster.length === 0) return;
+
+    const rosterSlugs = roster.map((player) => player.slug);
+    setOpenChatSlugs(rosterSlugs);
+    setMinimizedChatSlugs(rosterSlugs);
+    initializedRosterChatsRef.current = true;
   }, [roster]);
 
   useEffect(() => {

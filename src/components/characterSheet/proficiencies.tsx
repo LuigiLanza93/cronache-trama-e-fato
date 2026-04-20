@@ -32,7 +32,7 @@ const Proficiencies = ({
     passiveEffectContext = {},
     canEdit = true,
 }: any) => {
-    // ===== Edit mode per le ABILITÃ€ =====
+    // ===== Edit mode per le ABILITA' =====
     const [editingSkills, setEditingSkills] = useState(false);
 
     // Mappa persistita: { nomeSkill -> proficient:boolean }
@@ -150,7 +150,7 @@ const Proficiencies = ({
     });
 
     return (
-        <SectionCard cardId="proficiencies" title="Competenze & AbilitÃ ">
+        <SectionCard cardId="proficiencies" title="Competenze & Abilità">
             <div className="space-y-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div className="flex min-h-[3.5rem] flex-col justify-between">
@@ -314,8 +314,8 @@ const Proficiencies = ({
                                     setEditingSkills(true);
                                 }}
                                 disabled={!canEdit}
-                                aria-label="Modifica abilitÃ "
-                                title="Modifica abilitÃ "
+                                aria-label="Modifica abilità"
+                                title="Modifica abilità"
                             >
                                 <Settings2 className="h-4 w-4 text-primary" />
                             </Button>
@@ -327,8 +327,8 @@ const Proficiencies = ({
                                     size="icon"
                                     className="h-8 w-8 rounded-full border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90"
                                     onClick={handleSaveSkills}
-                                    aria-label="Salva abilitÃ "
-                                    title="Salva abilitÃ "
+                                    aria-label="Salva abilità"
+                                    title="Salva abilità"
                                 >
                                     <Check className="h-4 w-4" />
                                 </Button>
@@ -338,8 +338,8 @@ const Proficiencies = ({
                                     size="icon"
                                     className="h-8 w-8 rounded-full"
                                     onClick={handleCancelSkills}
-                                    aria-label="Annulla modifiche abilitÃ "
-                                    title="Annulla modifiche abilitÃ "
+                                    aria-label="Annulla modifiche abilità"
+                                    title="Annulla modifiche abilità"
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>

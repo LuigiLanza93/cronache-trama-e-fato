@@ -686,6 +686,141 @@ function crLabel(challengeRating?: { display?: string; fraction?: string }) {
   return challengeRating?.display || challengeRating?.fraction || "-";
 }
 
+const CHALLENGE_RATING_XP_TABLE = [
+  { label: "0", xp: 10, decimal: 0 },
+  { label: "1/8", xp: 25, decimal: 0.125 },
+  { label: "1/4", xp: 50, decimal: 0.25 },
+  { label: "1/2", xp: 100, decimal: 0.5 },
+  { label: "1", xp: 200, decimal: 1 },
+  { label: "2", xp: 450, decimal: 2 },
+  { label: "3", xp: 700, decimal: 3 },
+  { label: "4", xp: 1100, decimal: 4 },
+  { label: "5", xp: 1800, decimal: 5 },
+  { label: "6", xp: 2300, decimal: 6 },
+  { label: "7", xp: 2900, decimal: 7 },
+  { label: "8", xp: 3900, decimal: 8 },
+  { label: "9", xp: 5000, decimal: 9 },
+  { label: "10", xp: 5900, decimal: 10 },
+  { label: "11", xp: 7200, decimal: 11 },
+  { label: "12", xp: 8400, decimal: 12 },
+  { label: "13", xp: 10000, decimal: 13 },
+  { label: "14", xp: 11500, decimal: 14 },
+  { label: "15", xp: 13000, decimal: 15 },
+  { label: "16", xp: 15000, decimal: 16 },
+  { label: "17", xp: 18000, decimal: 17 },
+  { label: "18", xp: 20000, decimal: 18 },
+  { label: "19", xp: 22000, decimal: 19 },
+  { label: "20", xp: 25000, decimal: 20 },
+  { label: "21", xp: 33000, decimal: 21 },
+  { label: "22", xp: 41000, decimal: 22 },
+  { label: "23", xp: 50000, decimal: 23 },
+  { label: "24", xp: 62000, decimal: 24 },
+  { label: "25", xp: 75000, decimal: 25 },
+  { label: "26", xp: 90000, decimal: 26 },
+  { label: "27", xp: 105000, decimal: 27 },
+  { label: "28", xp: 120000, decimal: 28 },
+  { label: "29", xp: 135000, decimal: 29 },
+  { label: "30", xp: 155000, decimal: 30 },
+] as const;
+
+const ENCOUNTER_DIFFICULTY_THRESHOLDS = {
+  1: { easy: 25, medium: 50, hard: 75, deadly: 100 },
+  2: { easy: 50, medium: 100, hard: 150, deadly: 200 },
+  3: { easy: 75, medium: 150, hard: 225, deadly: 400 },
+  4: { easy: 125, medium: 250, hard: 375, deadly: 500 },
+  5: { easy: 250, medium: 500, hard: 750, deadly: 1100 },
+  6: { easy: 300, medium: 600, hard: 900, deadly: 1400 },
+  7: { easy: 350, medium: 750, hard: 1100, deadly: 1700 },
+  8: { easy: 450, medium: 900, hard: 1400, deadly: 2100 },
+  9: { easy: 550, medium: 1100, hard: 1600, deadly: 2400 },
+  10: { easy: 600, medium: 1200, hard: 1900, deadly: 2800 },
+  11: { easy: 800, medium: 1600, hard: 2400, deadly: 3600 },
+  12: { easy: 1000, medium: 2000, hard: 3000, deadly: 4500 },
+  13: { easy: 1100, medium: 2200, hard: 3400, deadly: 5100 },
+  14: { easy: 1250, medium: 2500, hard: 3800, deadly: 5700 },
+  15: { easy: 1400, medium: 2800, hard: 4300, deadly: 6400 },
+  16: { easy: 1600, medium: 3200, hard: 4800, deadly: 7200 },
+  17: { easy: 2000, medium: 3900, hard: 5900, deadly: 8800 },
+  18: { easy: 2100, medium: 4200, hard: 6300, deadly: 9500 },
+  19: { easy: 2400, medium: 4900, hard: 7300, deadly: 10900 },
+  20: { easy: 2800, medium: 5700, hard: 8500, deadly: 12700 },
+} as const;
+
+const ENCOUNTER_MONSTER_MULTIPLIERS = [1, 1.5, 2, 2.5, 3, 4] as const;
+
+function getEncounterMonsterMultiplierIndex(enemyCount: number) {
+  if (enemyCount <= 1) return 0;
+  if (enemyCount === 2) return 1;
+  if (enemyCount <= 6) return 2;
+  if (enemyCount <= 10) return 3;
+  if (enemyCount <= 14) return 4;
+  return 5;
+}
+
+function getEncounterMonsterMultiplier(enemyCount: number, playerCount: number) {
+  const baseIndex = getEncounterMonsterMultiplierIndex(enemyCount);
+  const shiftedIndex =
+    playerCount <= 3
+      ? Math.min(ENCOUNTER_MONSTER_MULTIPLIERS.length - 1, baseIndex + 1)
+      : playerCount >= 6
+      ? Math.max(0, baseIndex - 1)
+      : baseIndex;
+
+  return ENCOUNTER_MONSTER_MULTIPLIERS[shiftedIndex];
+}
+
+function getEncounterThresholdForLevel(level: number) {
+  const safeLevel = Math.max(1, Math.min(20, Math.round(level)));
+  return ENCOUNTER_DIFFICULTY_THRESHOLDS[safeLevel as keyof typeof ENCOUNTER_DIFFICULTY_THRESHOLDS];
+}
+
+function getEncounterDifficultyLabel(adjustedXp: number, thresholds: { easy: number; medium: number; hard: number; deadly: number }) {
+  if (adjustedXp < thresholds.easy) return "Trascurabile";
+  if (adjustedXp < thresholds.medium) return "Facile";
+  if (adjustedXp < thresholds.hard) return "Medio";
+  if (adjustedXp < thresholds.deadly) return "Difficile";
+  return "Mortale";
+}
+
+function getChallengeRatingXp(challengeRating?: { xp?: number | null; decimal?: number | null; fraction?: string; display?: string }) {
+  const directXp = challengeRating?.xp;
+  if (typeof directXp === "number" && Number.isFinite(directXp) && directXp > 0) {
+    return directXp;
+  }
+
+  const decimal = challengeRating?.decimal;
+  if (typeof decimal === "number" && Number.isFinite(decimal)) {
+    const decimalMatch = CHALLENGE_RATING_XP_TABLE.find((entry) => entry.decimal === decimal);
+    if (decimalMatch) return decimalMatch.xp;
+  }
+
+  const normalizedLabel = String(challengeRating?.display || challengeRating?.fraction || "").trim();
+  const labelMatch = CHALLENGE_RATING_XP_TABLE.find((entry) => entry.label === normalizedLabel);
+  return labelMatch?.xp ?? null;
+}
+
+function getNearestChallengeRatingForXp(xp: number) {
+  return CHALLENGE_RATING_XP_TABLE.reduce((closest, entry) => {
+    if (!closest) return entry;
+    const currentDistance = Math.abs(entry.xp - xp);
+    const closestDistance = Math.abs(closest.xp - xp);
+    if (currentDistance < closestDistance) return entry;
+    if (currentDistance === closestDistance && entry.xp < closest.xp) return entry;
+    return closest;
+  }, CHALLENGE_RATING_XP_TABLE[0]);
+}
+
+function formatEncounterNumber(value: number) {
+  return value.toLocaleString("it-IT", {
+    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatEncounterXp(value: number) {
+  return Math.round(value).toLocaleString("it-IT");
+}
+
 function abilityModifierLabel(score: number) {
   const value = abilityModifier(score);
   return `${score} (${value >= 0 ? `+${value}` : value})`;
@@ -1097,6 +1232,73 @@ export default function InitiativeTracker() {
       .filter((entry) => (entry.compendiumKnowledgeState ?? "UNKNOWN") === "UNKNOWN")
       .sort((left, right) => left.name.localeCompare(right.name, "it", { sensitivity: "base" }));
   }, [bestiaryCatalog, encounter.monsters]);
+  const encounterDifficultySummary = useMemo(() => {
+    const bestiaryByMonsterId = new Map(bestiaryCatalog.map((entry) => [entry.id, entry]));
+    const enemyXpValues = encounter.monsters
+      .map((monster) => {
+        if (monster.source !== "bestiary" || !monster.sourceMonsterId) return null;
+        const sourceMonster = bestiaryByMonsterId.get(monster.sourceMonsterId);
+        return sourceMonster ? getChallengeRatingXp(sourceMonster.challengeRating) : null;
+      })
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0);
+    const includedEnemyCount = enemyXpValues.length;
+    const excludedEnemyCount = Math.max(0, encounter.monsters.length - includedEnemyCount);
+
+    const partyLevels = encounter.players
+      .map((player) => {
+        const liveState = liveCharacterStates[player.slug];
+        if (liveState) {
+          const liveEntry = toCharacterCatalogEntry(
+            liveState,
+            liveCharacterInventoryItems[player.slug] ?? [],
+            itemDefinitionsById
+          );
+          return liveEntry?.level ?? null;
+        }
+
+        return catalogBySlug[player.slug]?.level ?? null;
+      })
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0);
+
+    const playerCount = partyLevels.length;
+    const monsterMultiplier = includedEnemyCount > 0 ? getEncounterMonsterMultiplier(includedEnemyCount, playerCount) : 0;
+    const baseXp = enemyXpValues.reduce((total, value) => total + value, 0);
+    const adjustedXp = baseXp * monsterMultiplier;
+    const thresholds = partyLevels.reduce(
+      (total, level) => {
+        const levelThresholds = getEncounterThresholdForLevel(level);
+        return {
+          easy: total.easy + levelThresholds.easy,
+          medium: total.medium + levelThresholds.medium,
+          hard: total.hard + levelThresholds.hard,
+          deadly: total.deadly + levelThresholds.deadly,
+        };
+      },
+      { easy: 0, medium: 0, hard: 0, deadly: 0 }
+    );
+    const effectiveChallengeRating = adjustedXp > 0 ? getNearestChallengeRatingForXp(adjustedXp) : null;
+
+    return {
+      includedEnemyCount,
+      excludedEnemyCount,
+      baseXp,
+      monsterMultiplier,
+      adjustedXp,
+      playerCount,
+      thresholds,
+      effectiveChallengeRating,
+      difficultyLabel:
+        adjustedXp > 0 && playerCount > 0 ? getEncounterDifficultyLabel(adjustedXp, thresholds) : null,
+    };
+  }, [
+    bestiaryCatalog,
+    catalogBySlug,
+    encounter.monsters,
+    encounter.players,
+    itemDefinitionsById,
+    liveCharacterInventoryItems,
+    liveCharacterStates,
+  ]);
   const selectedBestiaryMonsterDetails = useMemo(
     () => (selectedBestiaryMonster ? bestiaryById[selectedBestiaryMonster.id] ?? null : null),
     [bestiaryById, selectedBestiaryMonster]
@@ -2084,6 +2286,55 @@ export default function InitiativeTracker() {
           </div>
         </div>
 
+        <Card className="border-border/70 bg-background/60 p-4">
+          <div className="grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">GS Effettivo</div>
+              <div className="text-2xl font-semibold text-primary">
+                {encounterDifficultySummary.effectiveChallengeRating
+                  ? encounterDifficultySummary.effectiveChallengeRating.label
+                  : "—"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {encounterDifficultySummary.includedEnemyCount > 0
+                  ? `${formatEncounterXp(encounterDifficultySummary.baseXp)} PE base × ${formatEncounterNumber(
+                      encounterDifficultySummary.monsterMultiplier
+                    )} = ${formatEncounterXp(encounterDifficultySummary.adjustedXp)} PE`
+                  : "Aggiungi almeno un mostro del bestiario con GS noto per il calcolo."}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Difficoltà</div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-sm">
+                  {encounterDifficultySummary.difficultyLabel ?? "Non disponibile"}
+                </Badge>
+                {encounterDifficultySummary.adjustedXp > 0 ? (
+                  <span className="text-sm text-foreground/80">
+                    {formatEncounterXp(encounterDifficultySummary.adjustedXp)} PE aggiustati
+                  </span>
+                ) : null}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {encounterDifficultySummary.playerCount > 0
+                  ? `Soglie F ${formatEncounterXp(encounterDifficultySummary.thresholds.easy)} · M ${formatEncounterXp(
+                      encounterDifficultySummary.thresholds.medium
+                    )} · D ${formatEncounterXp(encounterDifficultySummary.thresholds.hard)} · Mo ${formatEncounterXp(
+                      encounterDifficultySummary.thresholds.deadly
+                    )}`
+                  : "Aggiungi almeno un personaggio con scheda per stimare la difficoltà."}
+              </div>
+            </div>
+          </div>
+          {encounterDifficultySummary.excludedEnemyCount > 0 ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {encounterDifficultySummary.excludedEnemyCount} nemic
+              {encounterDifficultySummary.excludedEnemyCount === 1 ? "o" : "i"} senza GS disponibile
+              esclus{encounterDifficultySummary.excludedEnemyCount === 1 ? "o" : "i"} dal calcolo.
+            </p>
+          ) : null}
+        </Card>
+
         <div className="grid gap-6 xl:grid-cols-[0.96fr_1.04fr]">
           <Card className="character-section">
             <Collapsible open={setupSectionsOpen} onOpenChange={setSetupSectionsOpen}>
@@ -2132,12 +2383,12 @@ export default function InitiativeTracker() {
                       <div className="min-w-0">
                         <div className="truncate font-medium text-primary">{source?.name}</div>
                       </div>
-                      <div className="truncate text-xs text-foreground">{source?.className || "â€”"}</div>
-                      <div className="text-xs text-foreground">{source?.level || "â€”"}</div>
+                      <div className="truncate text-xs text-foreground">{source?.className || "—"}</div>
+                      <div className="text-xs text-foreground">{source?.level || "—"}</div>
                       <div className="text-xs text-foreground">
                         {source?.initiativeBonus !== undefined
                           ? `${source.initiativeBonus >= 0 ? "+" : ""}${source.initiativeBonus}`
-                          : "â€”"}
+                          : "—"}
                       </div>
                       <Input
                         ref={(element) => {
