@@ -17,15 +17,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   createEncounterScenarioRequest,
   deleteEncounterScenarioRequest,
+  fetchCharacterInventoryItems,
   fetchEncounterScenarios,
+  fetchItemDefinition,
   fetchInitiativeTrackerState,
   fetchMonster,
   fetchMonsters,
   updateMonsterCompendiumKnowledgeRequest,
+  type CharacterInventoryItemEntry,
   type EncounterScenario,
   type EncounterScenarioEntry,
   type InitiativeEncounterState,
   type InitiativeMonsterPowerTag,
+  type ItemDefinitionEntry,
   type MonsterEntry,
   type MonsterSummary,
 } from "@/lib/auth";
@@ -38,6 +42,16 @@ import {
   updateInitiativeState,
 } from "@/realtime";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  isPassiveTriggerActive,
+  resolveCharacterAbilityScores,
+  resolvePassiveEffectScalarValue,
+} from "@/utils";
+import {
+  getDerivedArmorClass,
+  getDerivedPassivePerception as getCharacterPassivePerception,
+  getDerivedSpellSaveDc as getCharacterSpellSaveDc,
+} from "@/lib/character-derived-stats";
 import {
   BookOpen,
   FolderOpen,
@@ -252,10 +266,155 @@ function getSpellSaveDc(state: CharacterState) {
   return 8 + proficiencyBonus(state?.basicInfo?.level) + abilityModifier(state?.abilityScores?.[spellcastingAbility]);
 }
 
-function getAbilityBonuses(state: CharacterState) {
+function buildDerivedItemPassiveCapabilities(
+  relationalInventoryItems: CharacterInventoryItemEntry[],
+  itemDefinitionsById: Record<string, ItemDefinitionEntry>
+) {
+  return relationalInventoryItems.flatMap((item) => {
+    if (!item?.isEquipped || !item?.itemDefinitionId) return [];
+    const detail = itemDefinitionsById[item.itemDefinitionId];
+    if (!detail || !Array.isArray(detail.features)) return [];
+
+    return detail.features
+      .filter((feature) => String(feature?.kind ?? "").toUpperCase() === "PASSIVE")
+      .map((feature) => ({
+        kind: "passive",
+        passiveEffects: Array.isArray(feature.passiveEffects) ? feature.passiveEffects : [],
+        sourceLabel: item.itemName,
+      }));
+  });
+}
+
+function buildPassiveEffectContext(
+  relationalInventoryItems: CharacterInventoryItemEntry[],
+  itemDefinitionsById: Record<string, ItemDefinitionEntry>
+) {
+  const equippedItems = relationalInventoryItems.filter((item) => item?.isEquipped && item?.itemDefinitionId);
+  const hasArmorEquipped = equippedItems.some((item) => {
+    if (!item?.itemDefinitionId) return false;
+    return itemDefinitionsById[item.itemDefinitionId]?.category === "ARMOR";
+  });
+  const hasShieldEquipped = equippedItems.some((item) => {
+    if (!item?.itemDefinitionId) return false;
+    return itemDefinitionsById[item.itemDefinitionId]?.category === "SHIELD";
+  });
+  const equippedWeapons = equippedItems.filter((item) => {
+    if (!item?.itemDefinitionId) return false;
+    return itemDefinitionsById[item.itemDefinitionId]?.category === "WEAPON";
+  });
+  const primaryHandWeapon = equippedWeapons.find((item) => item.equippedSlots?.includes("WEAPON_HAND_RIGHT"));
+  const secondaryHandWeapon = equippedWeapons.find((item) => item.equippedSlots?.includes("WEAPON_HAND_LEFT"));
+  const hasDualWielding =
+    !!primaryHandWeapon?.id &&
+    !!secondaryHandWeapon?.id &&
+    primaryHandWeapon.id !== secondaryHandWeapon.id;
+  const twoHandedWeapon = equippedWeapons.find((item) => {
+    const slots = Array.isArray(item.equippedSlots) ? item.equippedSlots : [];
+    if (!slots.includes("WEAPON_HAND_RIGHT") || !slots.includes("WEAPON_HAND_LEFT")) return false;
+    const detail = item.itemDefinitionId ? itemDefinitionsById[item.itemDefinitionId] : undefined;
+    return detail?.weaponHandling === "TWO_HANDED" || detail?.weaponHandling === "VERSATILE";
+  });
+  const singleHandWeapon =
+    primaryHandWeapon && primaryHandWeapon.id === secondaryHandWeapon?.id
+      ? null
+      : primaryHandWeapon ?? secondaryHandWeapon ?? null;
+  const hasExactlyOneWeaponEquipped = equippedWeapons.length === 1 && !!singleHandWeapon;
+  const hasSingleMeleeWeaponEquipped = Boolean(
+    hasExactlyOneWeaponEquipped &&
+    !hasShieldEquipped &&
+    singleHandWeapon?.itemDefinitionId &&
+    itemDefinitionsById[singleHandWeapon.itemDefinitionId]?.attacks?.some((attack) => attack.kind === "MELEE_WEAPON")
+  );
+
+  return {
+    hasArmorEquipped,
+    hasShieldEquipped,
+    hasSingleMeleeWeaponEquipped,
+    hasDualWielding,
+    hasTwoHandedWeaponEquipped: !!twoHandedWeapon,
+  };
+}
+
+function getFlatEquippedInitiativeBonus(
+  relationalInventoryItems: CharacterInventoryItemEntry[],
+  itemDefinitionsById: Record<string, ItemDefinitionEntry>
+) {
+  return relationalInventoryItems.reduce((total, item) => {
+    if (!item?.isEquipped || !item?.itemDefinitionId) return total;
+    const detail = itemDefinitionsById[item.itemDefinitionId];
+    if (!detail) return total;
+
+    const itemBonus = (detail.modifiers ?? []).reduce((sum, modifier) => {
+      if (modifier.target !== "INITIATIVE") return sum;
+      if (modifier.type !== "FLAT") return sum;
+      if (modifier.condition !== "WHILE_EQUIPPED" && modifier.condition !== "ALWAYS") return sum;
+      return sum + (modifier.value ?? 0);
+    }, 0);
+
+    return total + itemBonus;
+  }, 0);
+}
+
+function getResolvedCharacterRuntime(
+  state: CharacterState,
+  relationalInventoryItems: CharacterInventoryItemEntry[],
+  itemDefinitionsById: Record<string, ItemDefinitionEntry>
+) {
+  const passiveCapabilities = [
+    ...((Array.isArray(state?.capabilities) ? state.capabilities : []) as any[]),
+    ...buildDerivedItemPassiveCapabilities(relationalInventoryItems, itemDefinitionsById),
+  ];
+  const passiveEffectContext = buildPassiveEffectContext(relationalInventoryItems, itemDefinitionsById);
+  const resolvedAbilityData = resolveCharacterAbilityScores(state, passiveCapabilities, passiveEffectContext);
+
+  return {
+    passiveCapabilities,
+    passiveEffectContext,
+    resolvedAbilityScores: resolvedAbilityData.scores,
+  };
+}
+
+function getDerivedInitiativeBonus(
+  state: CharacterState,
+  relationalInventoryItems: CharacterInventoryItemEntry[],
+  itemDefinitionsById: Record<string, ItemDefinitionEntry>
+) {
+  const { passiveCapabilities, passiveEffectContext, resolvedAbilityScores } = getResolvedCharacterRuntime(
+    state,
+    relationalInventoryItems,
+    itemDefinitionsById
+  );
+  const dexModifier = abilityModifier(resolvedAbilityScores.dexterity);
+  const itemBonus = getFlatEquippedInitiativeBonus(relationalInventoryItems, itemDefinitionsById);
+  const capabilityBonus = passiveCapabilities.reduce((total, capability) => {
+    if (String(capability?.kind ?? "").toLowerCase() !== "passive") return total;
+    if (!Array.isArray(capability?.passiveEffects)) return total;
+
+    return total + capability.passiveEffects.reduce((sum: number, effect: any) => {
+      if (String(effect?.target ?? "").trim().toUpperCase() !== "INITIATIVE") return sum;
+      if (!isPassiveTriggerActive(effect?.trigger, passiveEffectContext)) return sum;
+      const value = resolvePassiveEffectScalarValue(effect, state, resolvedAbilityScores);
+      if (!Number.isFinite(value) || value === 0) return sum;
+      return sum + value;
+    }, 0);
+  }, 0);
+
+  return dexModifier + itemBonus + capabilityBonus;
+}
+
+function getAbilityBonuses(
+  state: CharacterState,
+  relationalInventoryItems: CharacterInventoryItemEntry[],
+  itemDefinitionsById: Record<string, ItemDefinitionEntry>
+) {
+  const { resolvedAbilityScores } = getResolvedCharacterRuntime(
+    state,
+    relationalInventoryItems,
+    itemDefinitionsById
+  );
   return ABILITY_ORDER.map(({ key, label }) => ({
     label,
-    value: abilityModifier(state?.abilityScores?.[key]),
+    value: abilityModifier(resolvedAbilityScores?.[key]),
   }));
 }
 
@@ -298,7 +457,11 @@ function summarizeResourceSlots(
   };
 }
 
-function toCharacterCatalogEntry(state: CharacterState): CharacterCatalogEntry | null {
+function toCharacterCatalogEntry(
+  state: CharacterState,
+  relationalInventoryItems: CharacterInventoryItemEntry[] = [],
+  itemDefinitionsById: Record<string, ItemDefinitionEntry> = {}
+): CharacterCatalogEntry | null {
   const slug = state?.slug;
   if (!slug) return null;
 
@@ -307,11 +470,11 @@ function toCharacterCatalogEntry(state: CharacterState): CharacterCatalogEntry |
     name: state?.basicInfo?.characterName ?? slug,
     className: state?.basicInfo?.class ?? "",
     level: state?.basicInfo?.level ?? 0,
-    initiativeBonus: state?.combatStats?.initiative ?? 0,
-    armorClass: state?.combatStats?.armorClass ?? 0,
-    passivePerception: getPassivePerception(state),
-    spellSaveDc: getSpellSaveDc(state),
-    abilityBonuses: getAbilityBonuses(state),
+    initiativeBonus: getDerivedInitiativeBonus(state, relationalInventoryItems, itemDefinitionsById),
+    armorClass: getDerivedArmorClass(state, relationalInventoryItems, itemDefinitionsById),
+    passivePerception: getCharacterPassivePerception(state, relationalInventoryItems, itemDefinitionsById),
+    spellSaveDc: getCharacterSpellSaveDc(state, relationalInventoryItems, itemDefinitionsById),
+    abilityBonuses: getAbilityBonuses(state, relationalInventoryItems, itemDefinitionsById),
     hp: {
       current: state?.combatStats?.currentHitPoints ?? 0,
       max: state?.combatStats?.hitPointMaximum ?? 0,
@@ -404,12 +567,16 @@ function compareCombatants(a: Combatant, b: Combatant) {
 function buildCombatants(
   encounter: EncounterState,
   catalog: Record<string, CharacterCatalogEntry>,
-  liveStates: Record<string, CharacterState>
+  liveStates: Record<string, CharacterState>,
+  liveInventoryItems: Record<string, CharacterInventoryItemEntry[]>,
+  itemDefinitionsById: Record<string, ItemDefinitionEntry>
 ): Combatant[] {
   const players: Combatant[] = encounter.players
     .map((entry) => {
       const live = liveStates[entry.slug];
-      const source = live ? toCharacterCatalogEntry(live) : catalog[entry.slug];
+      const source = live
+        ? toCharacterCatalogEntry(live, liveInventoryItems[entry.slug] ?? [], itemDefinitionsById)
+        : catalog[entry.slug];
       if (!source) return null;
 
       return {
@@ -770,6 +937,8 @@ export default function InitiativeTracker() {
   const [bestiaryCatalog, setBestiaryCatalog] = useState<MonsterSummary[]>([]);
   const [bestiaryById, setBestiaryById] = useState<Record<string, MonsterEntry>>({});
   const [liveCharacterStates, setLiveCharacterStates] = useState<Record<string, CharacterState>>({});
+  const [liveCharacterInventoryItems, setLiveCharacterInventoryItems] = useState<Record<string, CharacterInventoryItemEntry[]>>({});
+  const [itemDefinitionsById, setItemDefinitionsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [playerRolls, setPlayerRolls] = useState<Record<string, string>>({});
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
   const [monsterHpAdjustments, setMonsterHpAdjustments] = useState<Record<string, string>>({});
@@ -879,10 +1048,16 @@ export default function InitiativeTracker() {
   const catalogList = useMemo(
     () =>
       catalogStates
-        .map((state) => toCharacterCatalogEntry(state))
+        .map((state) =>
+          toCharacterCatalogEntry(
+            state,
+            liveCharacterInventoryItems[state?.slug] ?? [],
+            itemDefinitionsById
+          )
+        )
         .filter(Boolean)
         .sort((a, b) => a!.name.localeCompare(b!.name, undefined, { sensitivity: "base" })) as CharacterCatalogEntry[],
-    [catalogStates]
+    [catalogStates, itemDefinitionsById, liveCharacterInventoryItems]
   );
 
   const catalogBySlug = useMemo(
@@ -892,8 +1067,15 @@ export default function InitiativeTracker() {
 
   const selectedSlugs = useMemo(() => encounter.players.map((entry) => entry.slug), [encounter.players]);
   const combatants = useMemo(
-    () => buildCombatants(encounter, catalogBySlug, liveCharacterStates),
-    [encounter, catalogBySlug, liveCharacterStates]
+    () =>
+      buildCombatants(
+        encounter,
+        catalogBySlug,
+        liveCharacterStates,
+        liveCharacterInventoryItems,
+        itemDefinitionsById
+      ),
+    [encounter, catalogBySlug, itemDefinitionsById, liveCharacterInventoryItems, liveCharacterStates]
   );
   const selectedBestiaryMonster = useMemo(
     () => bestiaryCatalog.find((entry) => entry.id === monsterDraft.selectedMonsterId) ?? null,
@@ -1026,6 +1208,7 @@ export default function InitiativeTracker() {
   useEffect(() => {
     if (selectedSlugs.length === 0) {
       setLiveCharacterStates({});
+      setLiveCharacterInventoryItems({});
       return;
     }
 
@@ -1035,8 +1218,11 @@ export default function InitiativeTracker() {
       const results = await Promise.all(
         selectedSlugs.map(async (slug) => {
           try {
-            const data = await fetchCharacter(slug);
-            return [slug, data] as const;
+            const [data, inventoryItems] = await Promise.all([
+              fetchCharacter(slug),
+              fetchCharacterInventoryItems(slug).catch(() => []),
+            ]);
+            return [slug, data, Array.isArray(inventoryItems) ? inventoryItems : []] as const;
           } catch {
             return null;
           }
@@ -1052,8 +1238,46 @@ export default function InitiativeTracker() {
           acc[slug] = data;
           return acc;
         }, {});
+      const nextInventory = results
+        .filter(Boolean)
+        .reduce<Record<string, CharacterInventoryItemEntry[]>>((acc, entry) => {
+          const [slug, _data, inventoryItems] = entry!;
+          acc[slug] = inventoryItems;
+          return acc;
+        }, {});
+
+      const missingDefinitionIds = Array.from(
+        new Set(
+          Object.values(nextInventory)
+            .flatMap((items) => items)
+            .filter((item) => item?.isEquipped && item?.itemDefinitionId)
+            .map((item) => item.itemDefinitionId)
+            .filter((itemDefinitionId): itemDefinitionId is string => !!itemDefinitionId && !itemDefinitionsById[itemDefinitionId])
+        )
+      );
+
+      const fetchedDefinitions = await Promise.all(
+        missingDefinitionIds.map(async (itemDefinitionId) => {
+          try {
+            const detail = await fetchItemDefinition(itemDefinitionId);
+            return [itemDefinitionId, detail] as const;
+          } catch {
+            return null;
+          }
+        })
+      );
 
       setLiveCharacterStates(nextState);
+      setLiveCharacterInventoryItems(nextInventory);
+      const validDefinitions = fetchedDefinitions.filter(
+        (entry): entry is readonly [string, ItemDefinitionEntry] => Array.isArray(entry)
+      );
+      if (validDefinitions.length > 0) {
+        setItemDefinitionsById((prev) => ({
+          ...prev,
+          ...Object.fromEntries(validDefinitions),
+        }));
+      }
     };
 
     loadCharacters();
@@ -1063,7 +1287,7 @@ export default function InitiativeTracker() {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [selectedSlugs]);
+  }, [itemDefinitionsById, selectedSlugs]);
 
   useEffect(() => {
     if (!monsterDraft.selectedMonsterId) return;
@@ -1127,7 +1351,10 @@ export default function InitiativeTracker() {
   const addPlayer = (slug: string) => {
     if (encounter.players.some((entry) => entry.slug === slug)) return false;
 
-    const source = catalogBySlug[slug];
+    const currentState = liveCharacterStates[slug] ?? catalogStates.find((entry) => entry?.slug === slug) ?? null;
+    const source = currentState
+      ? toCharacterCatalogEntry(currentState, liveCharacterInventoryItems[slug] ?? [], itemDefinitionsById)
+      : catalogBySlug[slug];
     const roll = Number.isFinite(parseInt(playerRolls[slug], 10)) ? parseInt(playerRolls[slug], 10) : NaN;
     if (!Number.isFinite(roll)) return false;
     const totalInitiative = roll + (source?.initiativeBonus ?? 0);
@@ -1883,7 +2110,13 @@ export default function InitiativeTracker() {
                 {catalogList.map((entry) => {
                   const selected = encounter.players.some((player) => player.slug === entry.slug);
                   const currentState = liveCharacterStates[entry.slug];
-                  const source = currentState ? toCharacterCatalogEntry(currentState) : entry;
+                  const source = currentState
+                    ? toCharacterCatalogEntry(
+                        currentState,
+                        liveCharacterInventoryItems[entry.slug] ?? [],
+                        itemDefinitionsById
+                      )
+                    : entry;
                   const initiativeRoll = playerRolls[entry.slug] ?? "";
                   const parsedRoll = Number.isFinite(parseInt(initiativeRoll, 10))
                     ? parseInt(initiativeRoll, 10)

@@ -35,7 +35,20 @@ import {
 } from "@/realtime";
 import CharacterChatWindow from "@/components/chat/character-chat-window";
 import { getInitials, normalizePortraitUrl } from "@/lib/character-ui";
-import { updateGameSessionStateRequest } from "@/lib/auth";
+import {
+  fetchCharacterInventoryItems,
+  fetchItemDefinition,
+  updateGameSessionStateRequest,
+  type CharacterInventoryItemEntry,
+  type ItemDefinitionEntry,
+} from "@/lib/auth";
+import {
+  getDerivedAbilityBonuses,
+  getDerivedArmorClass,
+  getDerivedInitiativeBonus,
+  getDerivedPassivePerception,
+  getDerivedSpellSaveDc,
+} from "@/lib/character-derived-stats";
 import { toast } from "@/components/ui/sonner";
 
 type CharacterState = Record<string, any>;
@@ -166,7 +179,11 @@ function summarizeResourceSlots(
   };
 }
 
-function toPlayerCardData(state: CharacterState): PlayerCardData | null {
+function toPlayerCardData(
+  state: CharacterState,
+  relationalInventoryItems: CharacterInventoryItemEntry[] = [],
+  itemDefinitionsById: Record<string, ItemDefinitionEntry> = {}
+): PlayerCardData | null {
   const slug = typeof state?.slug === "string" ? state.slug : "";
   if (!slug) return null;
 
@@ -178,11 +195,11 @@ function toPlayerCardData(state: CharacterState): PlayerCardData | null {
     portraitUrl: state?.basicInfo?.portraitUrl ?? "",
     className: state?.basicInfo?.class ?? "",
     level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
-    initiativeBonus: state?.combatStats?.initiative ?? 0,
-    armorClass: typeof state?.combatStats?.armorClass === "number" ? state.combatStats.armorClass : null,
-    passivePerception: getPassivePerception(state),
-    spellSaveDc: getSpellSaveDc(state),
-    abilityBonuses: getAbilityBonuses(state),
+    initiativeBonus: getDerivedInitiativeBonus(state, relationalInventoryItems, itemDefinitionsById),
+    armorClass: getDerivedArmorClass(state, relationalInventoryItems, itemDefinitionsById),
+    passivePerception: getDerivedPassivePerception(state, relationalInventoryItems, itemDefinitionsById),
+    spellSaveDc: getDerivedSpellSaveDc(state, relationalInventoryItems, itemDefinitionsById),
+    abilityBonuses: getDerivedAbilityBonuses(state, relationalInventoryItems, itemDefinitionsById),
     resourceSummary: summarizeResourceSlots(state?.basicInfo?.class, state?.combatStats?.spellSlots),
     hp: {
       current: Math.max(0, state?.combatStats?.currentHitPoints ?? 0),
@@ -226,6 +243,9 @@ export default function DMDashboard() {
   const [onlineSlugs, setOnlineSlugs] = useState<string[]>([]);
   const [baseCharacterStates, setBaseCharacterStates] = useState<CharacterState[]>([]);
   const [liveStates, setLiveStates] = useState<Record<string, CharacterState>>({});
+  const [baseInventoryBySlug, setBaseInventoryBySlug] = useState<Record<string, CharacterInventoryItemEntry[]>>({});
+  const [liveInventoryBySlug, setLiveInventoryBySlug] = useState<Record<string, CharacterInventoryItemEntry[]>>({});
+  const [itemDefinitionsById, setItemDefinitionsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [expandedAbilityBonuses, setExpandedAbilityBonuses] = useState<Record<string, boolean>>({});
   const [openChatSlugs, setOpenChatSlugs] = useState<string[]>([]);
@@ -243,8 +263,60 @@ export default function DMDashboard() {
     let active = true;
 
     void fetchCharacters()
-      .then((characters) => {
-        if (active) setBaseCharacterStates(Array.isArray(characters) ? characters : []);
+      .then(async (characters) => {
+        if (!active) return;
+        const nextCharacters = Array.isArray(characters) ? characters : [];
+        setBaseCharacterStates(nextCharacters);
+
+        const inventoryResults = await Promise.all(
+          nextCharacters.map(async (character) => {
+            const slug = String(character?.slug ?? "").trim();
+            if (!slug) return null;
+            try {
+              const items = await fetchCharacterInventoryItems(slug);
+              return [slug, Array.isArray(items) ? items : []] as const;
+            } catch {
+              return [slug, []] as const;
+            }
+          })
+        );
+        if (!active) return;
+
+        const nextInventoryBySlug = Object.fromEntries(
+          inventoryResults.filter((entry): entry is readonly [string, CharacterInventoryItemEntry[]] => Array.isArray(entry))
+        );
+        setBaseInventoryBySlug(nextInventoryBySlug);
+
+        const definitionIds = Array.from(
+          new Set(
+            Object.values(nextInventoryBySlug)
+              .flatMap((items) => items)
+              .filter((item) => item?.isEquipped && item?.itemDefinitionId)
+              .map((item) => item.itemDefinitionId)
+              .filter((itemDefinitionId): itemDefinitionId is string => !!itemDefinitionId)
+          )
+        );
+        const definitions = await Promise.all(
+          definitionIds.map(async (itemDefinitionId) => {
+            try {
+              const detail = await fetchItemDefinition(itemDefinitionId);
+              return [itemDefinitionId, detail] as const;
+            } catch {
+              return null;
+            }
+          })
+        );
+        if (!active) return;
+
+        const validDefinitions = definitions.filter(
+          (entry): entry is readonly [string, ItemDefinitionEntry] => Array.isArray(entry)
+        );
+        if (validDefinitions.length > 0) {
+          setItemDefinitionsById((prev) => ({
+            ...prev,
+            ...Object.fromEntries(validDefinitions),
+          }));
+        }
       })
       .catch(() => {
         if (active) setErrors((prev) => [...prev, "Impossibile caricare il roster iniziale."]);
@@ -280,25 +352,78 @@ export default function DMDashboard() {
       }
     });
 
-    void Promise.all(
-      onlineSlugs.map(async (slug) => {
-        try {
-          const state = await fetchCharacter(slug);
-          return [slug, state] as const;
-        } catch (error: any) {
-          setErrors((prev) => [...prev, `[fetch ${slug}] ${String(error?.message ?? error)}`]);
-          return null;
-        }
-      })
-    ).then((results) => {
-      const nextEntries = results.filter(Boolean) as Array<readonly [string, CharacterState]>;
+    let cancelled = false;
+
+    const loadOnlineCharacters = async () => {
+      const results = await Promise.all(
+        onlineSlugs.map(async (slug) => {
+          try {
+            const [state, inventoryItems] = await Promise.all([
+              fetchCharacter(slug),
+              fetchCharacterInventoryItems(slug).catch(() => []),
+            ]);
+            return [slug, state, Array.isArray(inventoryItems) ? inventoryItems : []] as const;
+          } catch (error: any) {
+            setErrors((prev) => [...prev, `[fetch ${slug}] ${String(error?.message ?? error)}`]);
+            return null;
+          }
+        })
+      );
+      if (cancelled) return;
+
+      const nextEntries = results.filter(
+        (entry): entry is readonly [string, CharacterState, CharacterInventoryItemEntry[]] => Array.isArray(entry)
+      );
       if (nextEntries.length === 0) return;
 
       setLiveStates((prev) => ({
         ...prev,
-        ...Object.fromEntries(nextEntries),
+        ...Object.fromEntries(nextEntries.map(([slug, state]) => [slug, state])),
       }));
-    });
+      setLiveInventoryBySlug((prev) => ({
+        ...prev,
+        ...Object.fromEntries(nextEntries.map(([slug, _state, inventoryItems]) => [slug, inventoryItems])),
+      }));
+
+      const definitionIds = Array.from(
+        new Set(
+          nextEntries
+            .flatMap(([, , inventoryItems]) => inventoryItems)
+            .filter((item) => item?.isEquipped && item?.itemDefinitionId)
+            .map((item) => item.itemDefinitionId)
+            .filter((itemDefinitionId): itemDefinitionId is string => !!itemDefinitionId)
+        )
+      );
+      const definitions = await Promise.all(
+        definitionIds.map(async (itemDefinitionId) => {
+          try {
+            const detail = await fetchItemDefinition(itemDefinitionId);
+            return [itemDefinitionId, detail] as const;
+          } catch {
+            return null;
+          }
+        })
+      );
+      if (cancelled) return;
+
+      const validDefinitions = definitions.filter(
+        (entry): entry is readonly [string, ItemDefinitionEntry] => Array.isArray(entry)
+      );
+      if (validDefinitions.length > 0) {
+        setItemDefinitionsById((prev) => ({
+          ...prev,
+          ...Object.fromEntries(validDefinitions),
+        }));
+      }
+    };
+
+    void loadOnlineCharacters();
+    const interval = window.setInterval(loadOnlineCharacters, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, [onlineSlugs]);
 
   useEffect(() => {
@@ -329,15 +454,21 @@ export default function DMDashboard() {
   const roster = useMemo(
     () =>
       baseCharacterStates
-        .map((state) => toPlayerCardData(state))
+        .map((state) =>
+          toPlayerCardData(state, baseInventoryBySlug[state?.slug] ?? [], itemDefinitionsById)
+        )
         .filter((player): player is PlayerCardData => !!player)
         .filter((player) => player.characterType === "pg")
         .map((basePlayer) => {
-          const livePlayer = toPlayerCardData(liveStates[basePlayer.slug]);
+          const livePlayer = toPlayerCardData(
+            liveStates[basePlayer.slug],
+            liveInventoryBySlug[basePlayer.slug] ?? [],
+            itemDefinitionsById
+          );
           return (livePlayer?.characterType === "pg" ? livePlayer : null) ?? basePlayer;
         })
         .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
-    [baseCharacterStates, liveStates]
+    [baseCharacterStates, baseInventoryBySlug, itemDefinitionsById, liveInventoryBySlug, liveStates]
   );
 
   const onlineCount = onlineSlugs.length;

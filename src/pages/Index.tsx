@@ -28,20 +28,30 @@ import { AppVersionDialog } from "@/components/app-version-dialog";
 import { useAuth } from "@/components/auth-provider";
 import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
 import {
+  fetchCharacterInventoryItems,
   fetchCurrencyTransactions,
   fetchInventoryTransfers,
   fetchInitiativeTrackerState,
+  fetchItemDefinition,
   fetchItemDefinitions,
   fetchMonsters,
   fetchUsers,
+  type CharacterInventoryItemEntry,
   type CurrencyTransactionEntry,
   type InitiativeEncounterState,
+  type ItemDefinitionEntry,
   type InventoryTransferEntry,
   type ItemDefinitionSummary,
   type ManagedUser,
   type MonsterSummary,
 } from "@/lib/auth";
 import { fetchCharacters, joinInitiativeDmRoom, onInitiativeState, requestPresenceSnapshot, subscribePresence } from "@/realtime";
+import {
+  getDerivedArmorClass,
+  getDerivedInitiativeBonus,
+  getDerivedPassivePerception,
+  getDerivedSpellSaveDc,
+} from "@/lib/character-derived-stats";
 
 type CharacterState = Record<string, any>;
 
@@ -347,7 +357,11 @@ function D20Icon(props: ComponentPropsWithoutRef<"svg">) {
   );
 }
 
-function toHomeCharacter(state: CharacterState): HomeCharacter | null {
+function toHomeCharacter(
+  state: CharacterState,
+  relationalInventoryItems: CharacterInventoryItemEntry[] = [],
+  itemDefinitionsById: Record<string, ItemDefinitionEntry> = {}
+): HomeCharacter | null {
   const slug = typeof state?.slug === "string" ? state.slug : "";
   if (!slug) return null;
 
@@ -357,10 +371,10 @@ function toHomeCharacter(state: CharacterState): HomeCharacter | null {
     characterType: state?.characterType === "png" ? "png" : "pg",
     className: state?.basicInfo?.class ?? "",
     level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
-    initiativeBonus: state?.combatStats?.initiative ?? 0,
-    armorClass: typeof state?.combatStats?.armorClass === "number" ? state.combatStats.armorClass : null,
-    passivePerception: getPassivePerception(state),
-    spellSaveDc: getSpellSaveDc(state),
+    initiativeBonus: getDerivedInitiativeBonus(state, relationalInventoryItems, itemDefinitionsById),
+    armorClass: getDerivedArmorClass(state, relationalInventoryItems, itemDefinitionsById),
+    passivePerception: getDerivedPassivePerception(state, relationalInventoryItems, itemDefinitionsById),
+    spellSaveDc: getDerivedSpellSaveDc(state, relationalInventoryItems, itemDefinitionsById),
     resourceSummary: summarizeResourceSlots(state?.basicInfo?.class, state?.combatStats?.spellSlots),
     hp: {
       current: Math.max(0, state?.combatStats?.currentHitPoints ?? 0),
@@ -374,6 +388,8 @@ const Index = () => {
   const { user, logout, loading, login } = useAuth();
   const navigate = useNavigate();
   const [characters, setCharacters] = useState<HomeCharacter[]>([]);
+  const [characterInventoryBySlug, setCharacterInventoryBySlug] = useState<Record<string, CharacterInventoryItemEntry[]>>({});
+  const [characterItemDefinitionsById, setCharacterItemDefinitionsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [onlineCharacterSlugs, setOnlineCharacterSlugs] = useState<string[]>([]);
   const [monsterSummaries, setMonsterSummaries] = useState<MonsterSummary[]>([]);
   const [itemDefinitions, setItemDefinitions] = useState<ItemDefinitionSummary[]>([]);
@@ -396,6 +412,8 @@ const Index = () => {
   useEffect(() => {
     if (!user) {
       setCharacters([]);
+      setCharacterInventoryBySlug({});
+      setCharacterItemDefinitionsById({});
       setMonsterSummaries([]);
       setItemDefinitions([]);
       setManagedUsers([]);
@@ -407,11 +425,68 @@ const Index = () => {
     let active = true;
 
     void fetchCharacters()
-      .then((items) => {
+      .then(async (items) => {
         if (!active) return;
+        const sourceCharacters = Array.isArray(items) ? items : [];
+        const inventoryResults = await Promise.all(
+          sourceCharacters.map(async (character) => {
+            const slug = String(character?.slug ?? "").trim();
+            if (!slug) return null;
+            try {
+              const inventoryItems = await fetchCharacterInventoryItems(slug);
+              return [slug, Array.isArray(inventoryItems) ? inventoryItems : []] as const;
+            } catch {
+              return [slug, []] as const;
+            }
+          })
+        );
+        if (!active) return;
+
+        const nextInventoryBySlug = Object.fromEntries(
+          inventoryResults.filter((entry): entry is readonly [string, CharacterInventoryItemEntry[]] => Array.isArray(entry))
+        );
+        setCharacterInventoryBySlug(nextInventoryBySlug);
+
+        const definitionIds = Array.from(
+          new Set(
+            Object.values(nextInventoryBySlug)
+              .flatMap((entries) => entries)
+              .filter((item) => item?.isEquipped && item?.itemDefinitionId)
+              .map((item) => item.itemDefinitionId)
+              .filter((itemDefinitionId): itemDefinitionId is string => !!itemDefinitionId)
+          )
+        );
+        const definitions = await Promise.all(
+          definitionIds.map(async (itemDefinitionId) => {
+            try {
+              const detail = await fetchItemDefinition(itemDefinitionId);
+              return [itemDefinitionId, detail] as const;
+            } catch {
+              return null;
+            }
+          })
+        );
+        if (!active) return;
+
+        const validDefinitions = definitions.filter(
+          (entry): entry is readonly [string, ItemDefinitionEntry] => Array.isArray(entry)
+        );
+        const mergedDefinitions = {
+          ...characterItemDefinitionsById,
+          ...Object.fromEntries(validDefinitions),
+        };
+        if (validDefinitions.length > 0) {
+          setCharacterItemDefinitionsById((prev) => ({
+            ...prev,
+            ...Object.fromEntries(validDefinitions),
+          }));
+        }
+
         const nextCharacters = Array.isArray(items)
           ? items
-              .map((item) => toHomeCharacter(item))
+              .map((item) =>
+                toHomeCharacter(item, nextInventoryBySlug[item?.slug] ?? [], mergedDefinitions)
+              )
               .filter((item): item is HomeCharacter => !!item)
               .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
           : [];
