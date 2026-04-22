@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BookOpen, Check, Pencil, Settings2, X } from "lucide-react";
+import { BookOpen, Check, Home, Pencil, Settings2, X } from "lucide-react";
 import { updateCharacter } from "@/realtime";
 
 function getInitials(name: string | undefined) {
@@ -160,6 +160,15 @@ const CharacterHeader = ({
                         </div>
                     ) : (
                         <div className="flex items-center gap-2">
+                            <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent">
+                                <a
+                                    href="/"
+                                    aria-label="Torna alla home"
+                                    title="Torna alla home"
+                                >
+                                    <Home className="h-4 w-4 text-primary" />
+                                </a>
+                            </Button>
                             <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent">
                                 <a
                                     href={monsterCompendiumHref}
