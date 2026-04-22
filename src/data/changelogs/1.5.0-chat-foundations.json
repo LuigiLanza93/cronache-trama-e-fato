@@ -1,0 +1,38 @@
+{
+  "version": "1.5.0",
+  "releaseName": "SQLite Release",
+  "releasedAt": "2026-04-22",
+  "summary": "Questa release introduce la nuova base della messaggistica interna, pensata per l'uso al tavolo: conversazioni persistenti, vista coerente per player e DM, nuova rubrica flottante e una UI delle chat molto piu' vicina alle app di messaggistica moderne.",
+  "sections": [
+    {
+      "title": "Messaggistica",
+      "items": [
+        "Nuovo modello dati chat unificato, con conversazioni, partecipanti e messaggi persistenti pensati per sostenere sia le chat DM-player sia le chat tra personaggi.",
+        "Le chat tra personaggi sono ora canoniche e uniche: non vengono duplicate e restano sempre visibili anche al DM come osservatore.",
+        "Il DM puo' intervenire direttamente nelle chat tra player, con messaggi evidenziati in modo dedicato come interventi del master.",
+        "Rubrica chat flottante sia lato player sia lato DM, con accesso rapido alle conversazioni e indicatore discreto dei messaggi non letti.",
+        "Per i player, la rubrica mostra solo gli altri personaggi online oltre al DM; il fatto di avere la scheda aperta determina automaticamente lo stato online.",
+        "Per il DM, la rubrica mostra il roster completo online/offline e anche le eventuali conversazioni gia' avviate tra player."
+      ]
+    },
+    {
+      "title": "UI Chat",
+      "items": [
+        "Nuovo aspetto dei messaggi ispirato alle app di chat moderne: raggruppamento dei messaggi consecutivi, avatar riportato in chiusura gruppo e data separata con divisore dedicato.",
+        "L'orario del messaggio e' stato spostato nel tooltip al passaggio del mouse per mantenere la conversazione piu' pulita e leggibile.",
+        "Nelle chat DM-player lato player la conversazione e' intestata semplicemente come DM e i messaggi del master usano il ritratto dedicato.",
+        "Le immagini profilo delle chat sono cliccabili e possono essere ingrandite direttamente dalla finestra della conversazione.",
+        "Ogni chat aperta mantiene sempre il proprio bubble in basso; i bubble minimizzati possono essere chiusi rapidamente con una x visibile al passaggio del mouse.",
+        "Quando si apre la rubrica, o quando una chat rischia di sovrapporsi ad essa, le finestre vengono minimizzate o riposizionate automaticamente per evitare collisioni visive."
+      ]
+    },
+    {
+      "title": "Stabilita' e supporto tecnico",
+      "items": [
+        "Corretto il reset del socket realtime tra login, logout e cambio sessione, cosi' da associare correttamente i messaggi all'utente e al personaggio attivi.",
+        "Aggiornati endpoint, eventi realtime e componenti frontend per supportare il nuovo ciclo completo delle conversazioni persistenti.",
+        "Pulita la base chat iniziale di test per permettere di partire direttamente con conversazioni reali sul nuovo modello dati."
+      ]
+    }
+  ]
+}

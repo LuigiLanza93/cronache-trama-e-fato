@@ -1,6 +1,7 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { changePasswordRequest, fetchCurrentUser, loginRequest, logoutRequest, type AuthUser } from "@/lib/auth";
+import { resetRealtimeSocket } from "@/realtime";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -30,8 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = async () => {
     try {
       const nextUser = await fetchCurrentUser();
+      resetRealtimeSocket();
       setUser(nextUser);
     } catch {
+      resetRealtimeSocket();
       setUser(null);
     }
   };
@@ -61,15 +64,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login: async (username, password) => {
         const nextUser = await loginRequest(username, password);
+        resetRealtimeSocket();
         setUser(nextUser);
         return nextUser;
       },
       logout: async () => {
         await logoutRequest();
+        resetRealtimeSocket();
         setUser(null);
       },
       changePassword: async (newPassword) => {
         const nextUser = await changePasswordRequest(newPassword);
+        resetRealtimeSocket();
         setUser(nextUser);
         return nextUser;
       },

@@ -37,6 +37,11 @@ enum ChatSenderRole {
   SYSTEM
 }
 
+enum ChatConversationKind {
+  DIRECT
+  GROUP
+}
+
 enum EncounterScenarioEntryType {
   BESTIARY
   MANUAL
@@ -261,7 +266,9 @@ model User {
 
   ownedCharacters   Character[]         @relation("CharacterOwner")
   createdCharacters Character[]         @relation("CharacterCreator")
-  sentMessages      ChatMessage[]       @relation("UserSentMessages")
+  createdChatConversations ChatConversation[] @relation("ChatConversationCreator")
+  chatConversationParticipants ChatConversationParticipant[] @relation("ChatConversationParticipantUser")
+  sentChatMessages  ChatConversationMessage[] @relation("UserSentChatMessages")
   scenarios         EncounterScenario[] @relation("ScenarioCreator")
   sessions          Session[]
   inventoryTransactionsCreated InventoryTransaction[] @relation("InventoryTransactionCreatedBy")
@@ -291,7 +298,9 @@ model Character {
 
   owner     User?         @relation("CharacterOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   createdBy User?         @relation("CharacterCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  messages  ChatMessage[]
+  legacyChatConversation ChatConversation? @relation("LegacyCharacterChatConversation")
+  chatConversationParticipants ChatConversationParticipant[] @relation("ChatConversationParticipantCharacter")
+  sentChatMessages ChatConversationMessage[] @relation("CharacterSentChatMessages")
   currencyBalance CharacterCurrencyBalance?
   currencyTransactionsFrom CurrencyTransaction[] @relation("CurrencyTransactionFromCharacter")
   currencyTransactionsTo   CurrencyTransaction[] @relation("CurrencyTransactionToCharacter")
@@ -778,19 +787,59 @@ model UserLayoutPreference {
   @@index([layoutKey])
 }
 
-model ChatMessage {
-  id           String         @id
-  characterId  String
-  senderUserId String?
-  senderRole   ChatSenderRole
-  text         String
-  createdAt    DateTime       @default(now())
+model ChatConversation {
+  id                String               @id
+  kind              ChatConversationKind
+  title             String?
+  legacyCharacterId String?              @unique
+  createdByUserId   String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
-  character  Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
-  senderUser User?     @relation("UserSentMessages", fields: [senderUserId], references: [id], onDelete: SetNull)
+  legacyCharacter Character?                   @relation("LegacyCharacterChatConversation", fields: [legacyCharacterId], references: [id], onDelete: SetNull)
+  createdBy       User?                        @relation("ChatConversationCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  participants    ChatConversationParticipant[]
+  messages        ChatConversationMessage[]
 
-  @@index([characterId, createdAt])
+  @@index([kind])
+  @@index([createdByUserId])
+  @@index([updatedAt])
+}
+
+model ChatConversationParticipant {
+  id             String   @id
+  conversationId String
+  userId         String?
+  characterId    String?
+  createdAt      DateTime @default(now())
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User?            @relation("ChatConversationParticipantUser", fields: [userId], references: [id], onDelete: Cascade)
+  character    Character?       @relation("ChatConversationParticipantCharacter", fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@unique([conversationId, characterId])
+  @@index([conversationId])
+  @@index([userId])
+  @@index([characterId])
+}
+
+model ChatConversationMessage {
+  id                String         @id
+  conversationId    String
+  senderUserId      String?
+  senderCharacterId String?
+  senderRole        ChatSenderRole
+  text              String
+  createdAt         DateTime       @default(now())
+
+  conversation    ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderUser      User?            @relation("UserSentChatMessages", fields: [senderUserId], references: [id], onDelete: SetNull)
+  senderCharacter Character?       @relation("CharacterSentChatMessages", fields: [senderCharacterId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
   @@index([senderUserId])
+  @@index([senderCharacterId])
 }
 
 model EncounterScenario {

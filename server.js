@@ -835,9 +835,11 @@ ensureUserLayoutPreferenceTable();
 ensureGameSessionStateTable();
 ensureCharacterCurrencyBalanceTable();
 ensureCurrencyTransactionTable();
+ensureChatConversationTables();
 ensureGameSessionStateRow();
 ensureCharacterCurrencyBalanceRows();
 ensureLegacyCharacterCurrencyBalancesMigrated();
+ensureLegacyCharacterChatConversationsMigrated();
 
 function normalizeUserRow(row) {
   if (!row) return null;
@@ -1377,6 +1379,175 @@ function ensureCurrencyTransactionTable() {
     CREATE INDEX IF NOT EXISTS "CurrencyTransaction_operationId_idx"
     ON "CurrencyTransaction"("operationId");
   `);
+}
+
+function ensureChatConversationTables() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "ChatConversation" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "kind" TEXT NOT NULL,
+      "title" TEXT,
+      "legacyCharacterId" TEXT,
+      "createdByUserId" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("legacyCharacterId") REFERENCES "Character"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+      FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+  `);
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "ChatConversation_legacyCharacterId_key"
+    ON "ChatConversation"("legacyCharacterId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "ChatConversation_kind_idx"
+    ON "ChatConversation"("kind");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "ChatConversation_createdByUserId_idx"
+    ON "ChatConversation"("createdByUserId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "ChatConversation_updatedAt_idx"
+    ON "ChatConversation"("updatedAt");
+  `);
+
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "ChatConversationParticipant" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "conversationId" TEXT NOT NULL,
+      "userId" TEXT,
+      "characterId" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("conversationId") REFERENCES "ChatConversation"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY ("characterId") REFERENCES "Character"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    );
+  `);
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "ChatConversationParticipant_conversationId_userId_key"
+    ON "ChatConversationParticipant"("conversationId", "userId");
+  `);
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "ChatConversationParticipant_conversationId_characterId_key"
+    ON "ChatConversationParticipant"("conversationId", "characterId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "ChatConversationParticipant_conversationId_idx"
+    ON "ChatConversationParticipant"("conversationId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "ChatConversationParticipant_userId_idx"
+    ON "ChatConversationParticipant"("userId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "ChatConversationParticipant_characterId_idx"
+    ON "ChatConversationParticipant"("characterId");
+  `);
+
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "ChatConversationMessage" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "conversationId" TEXT NOT NULL,
+      "senderUserId" TEXT,
+      "senderCharacterId" TEXT,
+      "senderRole" TEXT NOT NULL,
+      "text" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("conversationId") REFERENCES "ChatConversation"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY ("senderUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+      FOREIGN KEY ("senderCharacterId") REFERENCES "Character"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "ChatConversationMessage_conversationId_createdAt_idx"
+    ON "ChatConversationMessage"("conversationId", "createdAt");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "ChatConversationMessage_senderUserId_idx"
+    ON "ChatConversationMessage"("senderUserId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "ChatConversationMessage_senderCharacterId_idx"
+    ON "ChatConversationMessage"("senderCharacterId");
+  `);
+}
+
+function ensureLegacyCharacterChatConversationsMigrated() {
+  if (!tableExists("ChatMessage")) return;
+  if (!tableExists("ChatConversation")) return;
+  if (!tableExists("ChatConversationParticipant")) return;
+  if (!tableExists("ChatConversationMessage")) return;
+
+  const legacyRows = sqlite.prepare(`
+    SELECT
+      m.id,
+      m.characterId,
+      m.senderUserId,
+      m.senderRole,
+      m.text,
+      m.createdAt
+    FROM "ChatMessage" m
+    ORDER BY m.createdAt ASC
+  `).all();
+
+  if (legacyRows.length === 0) return;
+
+  const findConversationByLegacyCharacter = sqlite.prepare(`
+    SELECT id
+    FROM "ChatConversation"
+    WHERE legacyCharacterId = ?
+    LIMIT 1
+  `);
+  const insertConversation = sqlite.prepare(`
+    INSERT INTO "ChatConversation" (
+      id, kind, title, legacyCharacterId, createdByUserId, createdAt, updatedAt
+    ) VALUES (?, 'DIRECT', NULL, ?, NULL, ?, ?)
+  `);
+  const insertCharacterParticipant = sqlite.prepare(`
+    INSERT OR IGNORE INTO "ChatConversationParticipant" (
+      id, conversationId, userId, characterId, createdAt
+    ) VALUES (?, ?, NULL, ?, ?)
+  `);
+  const insertMessage = sqlite.prepare(`
+    INSERT OR IGNORE INTO "ChatConversationMessage" (
+      id, conversationId, senderUserId, senderCharacterId, senderRole, text, createdAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const conversationIdByCharacterId = new Map();
+
+  runInTransaction(() => {
+    for (const row of legacyRows) {
+      const characterId = String(row.characterId ?? "").trim();
+      if (!characterId) continue;
+
+      let conversationId = conversationIdByCharacterId.get(characterId);
+      if (!conversationId) {
+        const existingConversation = findConversationByLegacyCharacter.get(characterId);
+        conversationId = String(existingConversation?.id ?? "");
+        if (!conversationId) {
+          conversationId = crypto.randomUUID();
+          const createdAt = row.createdAt ?? new Date().toISOString();
+          insertConversation.run(conversationId, characterId, createdAt, createdAt);
+        }
+        insertCharacterParticipant.run(crypto.randomUUID(), conversationId, characterId, row.createdAt ?? new Date().toISOString());
+        conversationIdByCharacterId.set(characterId, conversationId);
+      }
+
+      const senderRole = String(row.senderRole ?? "").toUpperCase() === "DM" ? "DM" : "PLAYER";
+      const senderCharacterId = senderRole === "PLAYER" ? characterId : null;
+      insertMessage.run(
+        row.id ?? crypto.randomUUID(),
+        conversationId,
+        row.senderUserId ?? null,
+        senderCharacterId,
+        senderRole,
+        row.text ?? "",
+        row.createdAt ?? new Date().toISOString()
+      );
+    }
+  });
 }
 
 function normalizeLegacyCoinsForMigration(value) {
@@ -3440,62 +3611,390 @@ function writeOwnership(ownership) {
   });
 }
 
-function readChats() {
-  const rows = sqlite.prepare(`
-    SELECT
-      m.id,
-      c.slug AS slug,
-      m.senderUserId,
-      m.senderRole,
-      COALESCE(u.displayName, u.username, CASE WHEN m.senderRole = 'DM' THEN 'DM' ELSE 'Player' END) AS senderName,
-      m.text,
-      m.createdAt
-    FROM "ChatMessage" m
-    JOIN "Character" c ON c.id = m.characterId
-    LEFT JOIN "User" u ON u.id = m.senderUserId
-    ORDER BY m.createdAt ASC
-  `).all();
-
-  return rows.reduce((acc, row) => {
-    if (!acc[row.slug]) acc[row.slug] = [];
-    acc[row.slug].push({
-      id: row.id,
-      slug: row.slug,
-      senderUserId: row.senderUserId,
-      senderRole: String(row.senderRole).toLowerCase(),
-      senderName: row.senderName,
-      text: row.text,
-      createdAt: row.createdAt,
-    });
-    return acc;
-  }, {});
+function getChatConversationByLegacyCharacterId(characterId) {
+  if (!characterId) return null;
+  return sqlite.prepare(`
+    SELECT id, kind, title, legacyCharacterId, createdByUserId, createdAt, updatedAt
+    FROM "ChatConversation"
+    WHERE legacyCharacterId = ?
+    LIMIT 1
+  `).get(characterId);
 }
 
-function writeChats(chats) {
-  const deleteAll = sqlite.prepare('DELETE FROM "ChatMessage"');
-  const findCharacterId = sqlite.prepare('SELECT id FROM "Character" WHERE slug = ?');
-  const insert = sqlite.prepare(`
-    INSERT INTO "ChatMessage" (id, characterId, senderUserId, senderRole, text, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
+function ensureCharacterParticipantInConversation(conversationId, characterId, createdAt = new Date().toISOString()) {
+  if (!conversationId || !characterId) return;
+  sqlite.prepare(`
+    INSERT OR IGNORE INTO "ChatConversationParticipant" (
+      id, conversationId, userId, characterId, createdAt
+    ) VALUES (?, ?, NULL, ?, ?)
+  `).run(crypto.randomUUID(), conversationId, characterId, createdAt);
+}
+
+function getOrCreateLegacyCharacterChatConversation(slug, createdByUserId = null) {
+  const character = getCharacterRecordBySlug(slug);
+  if (!character) return null;
+
+  const existingConversation = getChatConversationByLegacyCharacterId(character.id);
+  if (existingConversation) {
+    ensureCharacterParticipantInConversation(
+      existingConversation.id,
+      character.id,
+      existingConversation.createdAt ?? new Date().toISOString()
+    );
+    return {
+      id: existingConversation.id,
+      legacyCharacterId: character.id,
+      slug: character.slug,
+      name: character.name,
+    };
+  }
+
+  const conversationId = crypto.randomUUID();
+  const timestamp = new Date().toISOString();
 
   runInTransaction(() => {
-    deleteAll.run();
-    for (const [slug, messages] of Object.entries(chats ?? {})) {
-      const character = findCharacterId.get(slug);
-      if (!character || !Array.isArray(messages)) continue;
-      for (const message of messages) {
-        insert.run(
-          message.id ?? crypto.randomUUID(),
-          character.id,
-          message.senderUserId ?? null,
-          String(message.senderRole).toLowerCase() === "dm" ? "DM" : "PLAYER",
-          message.text ?? "",
-          message.createdAt ?? new Date().toISOString()
-        );
-      }
-    }
+    sqlite.prepare(`
+      INSERT INTO "ChatConversation" (
+        id, kind, title, legacyCharacterId, createdByUserId, createdAt, updatedAt
+      ) VALUES (?, 'DIRECT', NULL, ?, ?, ?, ?)
+    `).run(conversationId, character.id, createdByUserId ?? null, timestamp, timestamp);
+    ensureCharacterParticipantInConversation(conversationId, character.id, timestamp);
   });
+
+  return {
+    id: conversationId,
+    legacyCharacterId: character.id,
+    slug: character.slug,
+    name: character.name,
+  };
+}
+
+function readLegacyCharacterChatMessages(slug) {
+  const conversation = getOrCreateLegacyCharacterChatConversation(slug);
+  if (!conversation) return [];
+
+  return sqlite.prepare(`
+    SELECT
+      m.id,
+      ? AS slug,
+      m.senderUserId,
+      m.senderRole,
+      COALESCE(sc.name, u.displayName, u.username, CASE
+        WHEN m.senderRole = 'DM' THEN 'DM'
+        WHEN m.senderRole = 'PLAYER' THEN 'Player'
+        ELSE 'System'
+      END) AS senderName,
+      m.text,
+      m.createdAt
+    FROM "ChatConversationMessage" m
+    LEFT JOIN "User" u ON u.id = m.senderUserId
+    LEFT JOIN "Character" sc ON sc.id = m.senderCharacterId
+    WHERE m.conversationId = ?
+    ORDER BY m.createdAt ASC
+  `).all(conversation.slug, conversation.id).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    senderUserId: row.senderUserId,
+    senderRole: String(row.senderRole ?? "").toLowerCase(),
+    senderName: row.senderName,
+    text: row.text,
+    createdAt: row.createdAt,
+  }));
+}
+
+function appendLegacyCharacterChatMessage(slug, user, text) {
+  const conversation = getOrCreateLegacyCharacterChatConversation(slug, user?.id ?? null);
+  if (!conversation) return null;
+
+  const senderRole = user?.role === "dm" ? "DM" : "PLAYER";
+  const senderCharacterId = senderRole === "PLAYER" ? conversation.legacyCharacterId : null;
+  const createdAt = new Date().toISOString();
+  const nextMessage = {
+    id: crypto.randomUUID(),
+    slug: conversation.slug,
+    senderUserId: user?.id ?? null,
+    senderRole: senderRole.toLowerCase(),
+    senderName:
+      senderRole === "DM"
+        ? (user?.displayName ?? user?.username ?? "DM")
+        : (conversation.name ?? user?.displayName ?? user?.username ?? "Player"),
+    text,
+    createdAt,
+  };
+
+  sqlite.prepare(`
+    INSERT INTO "ChatConversationMessage" (
+      id, conversationId, senderUserId, senderCharacterId, senderRole, text, createdAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    nextMessage.id,
+    conversation.id,
+    nextMessage.senderUserId,
+    senderCharacterId,
+    senderRole,
+    nextMessage.text,
+    nextMessage.createdAt
+  );
+
+  sqlite.prepare(`
+    UPDATE "ChatConversation"
+    SET updatedAt = ?
+    WHERE id = ?
+  `).run(nextMessage.createdAt, conversation.id);
+
+  return {
+    ...nextMessage,
+    conversationId: conversation.id,
+  };
+}
+
+function deleteLegacyCharacterChatConversation(slug) {
+  const character = getCharacterRecordBySlug(slug);
+  if (!character) return;
+
+  sqlite.prepare(`
+    DELETE FROM "ChatConversation"
+    WHERE legacyCharacterId = ?
+  `).run(character.id);
+}
+
+function listOwnedCharacterSlugsForUser(user, ownership) {
+  if (!user || user.role === "dm") return [];
+  return Object.entries(ownership)
+    .filter(([_slug, ownerUserId]) => ownerUserId === user.id)
+    .map(([slug]) => slug);
+}
+
+function listChatContactsForUser(user, ownership) {
+  const ownedSlugs = new Set(listOwnedCharacterSlugsForUser(user, ownership));
+  return listCharacters()
+    .filter((character) => character?.characterType === "pg")
+    .filter((character) => user?.role === "dm" || !ownedSlugs.has(character.slug))
+    .map((character) => ({
+      slug: character.slug,
+      name: character.basicInfo?.characterName ?? character.slug,
+      portraitUrl: character.basicInfo?.portraitUrl ?? "",
+      ownerUserId: ownership[character.slug] ?? null,
+    }));
+}
+
+function listConversationCharacterParticipants(conversationId) {
+  return sqlite.prepare(`
+    SELECT
+      c.id,
+      c.slug,
+      c.name,
+      c.ownerUserId,
+      c.portraitUrl
+    FROM "ChatConversationParticipant" p
+    JOIN "Character" c ON c.id = p.characterId
+    WHERE p.conversationId = ?
+      AND p.characterId IS NOT NULL
+      AND c.archivedAt IS NULL
+    ORDER BY c.name COLLATE NOCASE, c.slug COLLATE NOCASE
+  `).all(conversationId).map((row) => ({
+    id: String(row.id ?? ""),
+    slug: String(row.slug ?? ""),
+    name: String(row.name ?? row.slug ?? ""),
+    ownerUserId: row.ownerUserId ?? null,
+    portraitUrl: row.portraitUrl ?? "",
+  }));
+}
+
+function canAccessConversation(user, conversationId, ownership) {
+  if (!user) return false;
+  if (user.role === "dm") return true;
+  const participants = listConversationCharacterParticipants(conversationId);
+  return participants.some((participant) => ownership[participant.slug] === user.id);
+}
+
+function getCanonicalDirectConversationId(slugA, slugB) {
+  const ordered = [String(slugA ?? "").trim(), String(slugB ?? "").trim()]
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
+  if (ordered.length !== 2 || ordered[0] === ordered[1]) return null;
+  return `direct:${ordered[0]}::${ordered[1]}`;
+}
+
+function getConversationRowById(conversationId) {
+  if (!conversationId) return null;
+  return sqlite.prepare(`
+    SELECT id, kind, title, legacyCharacterId, createdByUserId, createdAt, updatedAt
+    FROM "ChatConversation"
+    WHERE id = ?
+    LIMIT 1
+  `).get(conversationId);
+}
+
+function buildConversationSummary(conversationId) {
+  const row = getConversationRowById(conversationId);
+  if (!row) return null;
+  const participants = listConversationCharacterParticipants(conversationId);
+  if (participants.length === 0) return null;
+  return {
+    id: String(row.id),
+    kind: row.legacyCharacterId ? "dm-player" : "player-player",
+    updatedAt: row.updatedAt,
+    participants: participants.map((participant) => ({
+      slug: participant.slug,
+      name: participant.name,
+      portraitUrl: participant.portraitUrl ?? "",
+    })),
+  };
+}
+
+function getOrCreateCanonicalDirectConversation(slugA, slugB, createdByUserId = null) {
+  const conversationId = getCanonicalDirectConversationId(slugA, slugB);
+  if (!conversationId) return null;
+
+  const participants = [slugA, slugB]
+    .map((slug) => getCharacterRecordBySlug(slug))
+    .filter((character) => !!character && String(character.characterType).toUpperCase() === "PG");
+
+  if (participants.length !== 2) return null;
+
+  const existingConversation = getConversationRowById(conversationId);
+  if (!existingConversation) {
+    const timestamp = new Date().toISOString();
+    runInTransaction(() => {
+      sqlite.prepare(`
+        INSERT INTO "ChatConversation" (
+          id, kind, title, legacyCharacterId, createdByUserId, createdAt, updatedAt
+        ) VALUES (?, 'DIRECT', NULL, NULL, ?, ?, ?)
+      `).run(conversationId, createdByUserId ?? null, timestamp, timestamp);
+
+      for (const participant of participants) {
+        ensureCharacterParticipantInConversation(conversationId, participant.id, timestamp);
+      }
+    });
+  } else {
+    for (const participant of participants) {
+      ensureCharacterParticipantInConversation(
+        conversationId,
+        participant.id,
+        existingConversation.createdAt ?? new Date().toISOString()
+      );
+    }
+  }
+
+  return buildConversationSummary(conversationId);
+}
+
+function listAccessiblePlayerConversations(user, ownership) {
+  const allRows = sqlite.prepare(`
+    SELECT id
+    FROM "ChatConversation"
+    WHERE legacyCharacterId IS NULL
+    ORDER BY updatedAt DESC, createdAt DESC
+  `).all();
+
+  return allRows
+    .map((row) => String(row.id ?? "").trim())
+    .filter(Boolean)
+    .filter((conversationId) => canAccessConversation(user, conversationId, ownership))
+    .map((conversationId) => buildConversationSummary(conversationId))
+    .filter(Boolean);
+}
+
+function readConversationMessages(conversationId) {
+  return sqlite.prepare(`
+    SELECT
+      m.id,
+      m.conversationId,
+      m.senderUserId,
+      m.senderRole,
+      m.text,
+      m.createdAt,
+      sc.slug AS senderCharacterSlug,
+      sc.name AS senderCharacterName,
+      COALESCE(sc.name, u.displayName, u.username, CASE
+        WHEN m.senderRole = 'DM' THEN 'DM'
+        WHEN m.senderRole = 'PLAYER' THEN 'Player'
+        ELSE 'System'
+      END) AS senderName
+    FROM "ChatConversationMessage" m
+    LEFT JOIN "User" u ON u.id = m.senderUserId
+    LEFT JOIN "Character" sc ON sc.id = m.senderCharacterId
+    WHERE m.conversationId = ?
+    ORDER BY m.createdAt ASC
+  `).all(conversationId).map((row) => ({
+    id: row.id,
+    conversationId: row.conversationId,
+    senderUserId: row.senderUserId,
+    senderRole: String(row.senderRole ?? "").toLowerCase(),
+    senderName: row.senderName,
+    senderCharacterSlug: row.senderCharacterSlug ?? null,
+    senderCharacterName: row.senderCharacterName ?? null,
+    text: row.text,
+    createdAt: row.createdAt,
+  }));
+}
+
+function appendConversationMessage(conversationId, user, text, ownership) {
+  const conversation = getConversationRowById(conversationId);
+  if (!conversation || !text?.trim() || !user || !canAccessConversation(user, conversationId, ownership)) {
+    return null;
+  }
+
+  const participants = listConversationCharacterParticipants(conversationId);
+  let senderCharacter = null;
+  let senderName = user.displayName ?? user.username ?? "DM";
+  const senderRole = user.role === "dm" ? "DM" : "PLAYER";
+
+  if (senderRole === "PLAYER") {
+    senderCharacter = participants.find((participant) => ownership[participant.slug] === user.id) ?? null;
+    if (!senderCharacter) return null;
+    senderName = senderCharacter.name;
+  }
+
+  const nextMessage = {
+    id: crypto.randomUUID(),
+    conversationId,
+    senderUserId: user.id,
+    senderRole: senderRole.toLowerCase(),
+    senderName,
+    senderCharacterSlug: senderCharacter?.slug ?? null,
+    senderCharacterName: senderCharacter?.name ?? null,
+    text: text.trim(),
+    createdAt: new Date().toISOString(),
+  };
+
+  runInTransaction(() => {
+    sqlite.prepare(`
+      INSERT INTO "ChatConversationMessage" (
+        id, conversationId, senderUserId, senderCharacterId, senderRole, text, createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      nextMessage.id,
+      nextMessage.conversationId,
+      nextMessage.senderUserId,
+      senderCharacter?.id ?? null,
+      senderRole,
+      nextMessage.text,
+      nextMessage.createdAt
+    );
+
+    sqlite.prepare(`
+      UPDATE "ChatConversation"
+      SET updatedAt = ?
+      WHERE id = ?
+    `).run(nextMessage.createdAt, conversationId);
+  });
+
+  return nextMessage;
+}
+
+function listConversationRecipientUserIds(conversationId) {
+  const participantUserIds = listConversationCharacterParticipants(conversationId)
+    .map((participant) => participant.ownerUserId)
+    .filter((userId) => !!userId);
+  const dmUserIds = sqlite.prepare(`
+    SELECT id
+    FROM "User"
+    WHERE role = 'DM'
+  `).all().map((row) => String(row.id ?? "").trim()).filter(Boolean);
+
+  return Array.from(new Set([...participantUserIds, ...dmUserIds]));
 }
 
 function emptyInitiativeTrackerState() {
@@ -5136,8 +5635,72 @@ async function start() {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const chats = readChats();
-    return res.json(Array.isArray(chats[slug]) ? chats[slug] : []);
+    return res.json(readLegacyCharacterChatMessages(slug));
+  });
+
+  app.get("/api/chat/contacts", requireAuth, (req, res) => {
+    const ownership = readOwnership();
+    return res.json(listChatContactsForUser(req.user, ownership));
+  });
+
+  app.get("/api/chat/conversations", requireAuth, (req, res) => {
+    const ownership = readOwnership();
+    return res.json(listAccessiblePlayerConversations(req.user, ownership));
+  });
+
+  app.post("/api/chat/conversations/direct", requireAuth, (req, res) => {
+    const ownership = readOwnership();
+    const sourceSlug = typeof req.body?.sourceSlug === "string" ? req.body.sourceSlug.trim() : "";
+    const targetSlug = typeof req.body?.targetSlug === "string" ? req.body.targetSlug.trim() : "";
+
+    if (!sourceSlug || !targetSlug || sourceSlug === targetSlug) {
+      return res.status(400).json({ error: "Direct conversation requires two distinct characters." });
+    }
+
+    if (req.user?.role !== "dm" && ownership[sourceSlug] !== req.user?.id) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const conversation = getOrCreateCanonicalDirectConversation(sourceSlug, targetSlug, req.user?.id ?? null);
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation target not found." });
+    }
+
+    if (!canAccessConversation(req.user, conversation.id, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    return res.status(201).json(conversation);
+  });
+
+  app.get("/api/chat/conversations/:conversationId", requireAuth, (req, res) => {
+    const ownership = readOwnership();
+    const conversationId = String(req.params.conversationId ?? "").trim();
+    if (!conversationId || !canAccessConversation(req.user, conversationId, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const conversation = buildConversationSummary(conversationId);
+    if (!conversation || conversation.kind !== "player-player") {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
+    return res.json(conversation);
+  });
+
+  app.get("/api/chat/conversations/:conversationId/messages", requireAuth, (req, res) => {
+    const ownership = readOwnership();
+    const conversationId = String(req.params.conversationId ?? "").trim();
+    if (!conversationId || !canAccessConversation(req.user, conversationId, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const conversation = buildConversationSummary(conversationId);
+    if (!conversation || conversation.kind !== "player-player") {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+
+    return res.json(readConversationMessages(conversationId));
   });
 
   app.get("/api/initiative-tracker", requireRole("dm"), (_req, res) => {
@@ -6280,11 +6843,7 @@ async function start() {
       writeOwnership(ownership);
     }
 
-    const chats = readChats();
-    if (slug in chats) {
-      delete chats[slug];
-      writeChats(chats);
-    }
+    deleteLegacyCharacterChatConversation(slug);
 
     return res.status(204).end();
   });
@@ -6438,8 +6997,11 @@ async function start() {
 
     socket.on("chat:join", (slug) => {
       const ownership = readOwnership();
-      if (!slug || !canAccessCharacter(socket.data.user, slug, ownership)) return;
-      socket.join(`chat:${slug}`);
+      const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
+      if (!normalizedSlug || !canAccessCharacter(socket.data.user, normalizedSlug, ownership)) return;
+      const conversation = getOrCreateLegacyCharacterChatConversation(normalizedSlug);
+      if (!conversation) return;
+      socket.join(`chat:${conversation.id}`);
     });
 
     socket.on("chat:message", ({ slug, text }) => {
@@ -6451,22 +7013,39 @@ async function start() {
         return;
       }
 
-      const chats = readChats();
-      const nextMessage = {
-        id: crypto.randomUUID(),
-        slug: normalizedSlug,
-        senderUserId: socket.data.user.id,
-        senderRole: socket.data.user.role,
-        senderName: socket.data.user.displayName ?? socket.data.user.username,
-        text: normalizedText,
-        createdAt: new Date().toISOString(),
-      };
+      const nextMessage = appendLegacyCharacterChatMessage(normalizedSlug, socket.data.user, normalizedText);
+      if (!nextMessage?.conversationId) return;
 
-      const thread = Array.isArray(chats[normalizedSlug]) ? chats[normalizedSlug] : [];
-      chats[normalizedSlug] = [...thread, nextMessage];
-      writeChats(chats);
+      io.to(`chat:${nextMessage.conversationId}`).emit("chat:message", {
+        id: nextMessage.id,
+        slug: nextMessage.slug,
+        senderUserId: nextMessage.senderUserId,
+        senderRole: nextMessage.senderRole,
+        senderName: nextMessage.senderName,
+        text: nextMessage.text,
+        createdAt: nextMessage.createdAt,
+      });
+    });
 
-      io.to(`chat:${normalizedSlug}`).emit("chat:message", nextMessage);
+    socket.on("chat:conversation-message", ({ conversationId, text }) => {
+      const normalizedConversationId = typeof conversationId === "string" ? conversationId.trim() : "";
+      const normalizedText = typeof text === "string" ? text.trim() : "";
+      const ownership = readOwnership();
+
+      if (!normalizedConversationId || !normalizedText) return;
+
+      const nextMessage = appendConversationMessage(
+        normalizedConversationId,
+        socket.data.user,
+        normalizedText,
+        ownership
+      );
+      if (!nextMessage) return;
+
+      const recipientUserIds = listConversationRecipientUserIds(normalizedConversationId);
+      for (const userId of recipientUserIds) {
+        io.to(`user:${userId}`).emit("chat:conversation-message", nextMessage);
+      }
     });
 
     socket.on("initiative:turn-start", ({ slug }) => {

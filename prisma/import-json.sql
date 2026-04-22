@@ -1,5 +1,8 @@
 PRAGMA foreign_keys = OFF;
 BEGIN TRANSACTION;
+DELETE FROM "ChatConversationMessage";
+DELETE FROM "ChatConversationParticipant";
+DELETE FROM "ChatConversation";
 DELETE FROM "ChatMessage";
 DELETE FROM "EncounterScenarioEntry";
 DELETE FROM "EncounterScenario";

@@ -17,6 +17,34 @@ export type ChatMessage = {
   text: string;
   createdAt: string;
 };
+export type ChatContact = {
+  slug: string;
+  name: string;
+  portraitUrl?: string;
+  ownerUserId?: string | null;
+};
+export type ChatConversationParticipant = {
+  slug: string;
+  name: string;
+  portraitUrl?: string;
+};
+export type ChatConversationSummary = {
+  id: string;
+  kind: "player-player" | "dm-player";
+  updatedAt: string;
+  participants: ChatConversationParticipant[];
+};
+export type ChatConversationMessage = {
+  id: string;
+  conversationId: string;
+  senderUserId: string;
+  senderRole: "dm" | "player";
+  senderName: string;
+  senderCharacterSlug?: string | null;
+  senderCharacterName?: string | null;
+  text: string;
+  createdAt: string;
+};
 export type InitiativeTurnPayload = {
   slug: string;
   startedAt: string;
@@ -29,6 +57,14 @@ let playerWritesLocked = false;
 
 export function setRealtimePlayerWritesLocked(locked: boolean) {
   playerWritesLocked = locked;
+}
+
+export function resetRealtimeSocket() {
+  if (!socket) return;
+  try {
+    socket.disconnect();
+  } catch {}
+  socket = null;
 }
 
 export function getSocket(): Socket {
@@ -66,6 +102,32 @@ export async function fetchCharacters() {
 
 export async function fetchChatMessages(slug: string) {
   return fetchJsonOrThrow(`/api/chats/${slug}`) as Promise<ChatMessage[]>;
+}
+
+export async function fetchChatContacts() {
+  return fetchJsonOrThrow("/api/chat/contacts") as Promise<ChatContact[]>;
+}
+
+export async function fetchChatConversations() {
+  return fetchJsonOrThrow("/api/chat/conversations") as Promise<ChatConversationSummary[]>;
+}
+
+export async function fetchChatConversation(conversationId: string) {
+  return fetchJsonOrThrow(`/api/chat/conversations/${conversationId}`) as Promise<ChatConversationSummary>;
+}
+
+export async function fetchChatConversationMessages(conversationId: string) {
+  return fetchJsonOrThrow(`/api/chat/conversations/${conversationId}/messages`) as Promise<ChatConversationMessage[]>;
+}
+
+export async function getOrCreateDirectConversation(sourceSlug: string, targetSlug: string) {
+  return fetchJsonOrThrow("/api/chat/conversations/direct", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ sourceSlug, targetSlug }),
+  }) as Promise<ChatConversationSummary>;
 }
 
 export function joinCharacterRoom(slug: string) {
@@ -165,6 +227,19 @@ export function onChatMessage(cb: (payload: ChatMessage) => void): () => void {
   s.on("chat:message", handler);
   return () => {
     s.off("chat:message", handler);
+  };
+}
+
+export function sendConversationMessage(payload: { conversationId: string; text: string }) {
+  getSocket().emit("chat:conversation-message", payload);
+}
+
+export function onConversationMessage(cb: (payload: ChatConversationMessage) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: ChatConversationMessage) => cb(payload);
+  s.on("chat:conversation-message", handler);
+  return () => {
+    s.off("chat:conversation-message", handler);
   };
 }
 

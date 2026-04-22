@@ -9,6 +9,7 @@ import {
   Shield,
   Swords,
   Users,
+  X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/components/auth-provider";
@@ -22,18 +23,25 @@ import { Switch } from "@/components/ui/switch";
 import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
 import {
   applyPatch,
+  ChatConversationMessage,
+  ChatConversationSummary,
   ChatMessage,
+  fetchChatConversation,
+  fetchChatConversations,
   fetchCharacter,
   fetchCharacters,
   joinChatRoom,
   joinCharacterRoom,
   onChatMessage,
+  onConversationMessage,
   onCharacterPatch,
   onCharacterState,
   requestPresenceSnapshot,
   subscribePresence,
 } from "@/realtime";
 import CharacterChatWindow from "@/components/chat/character-chat-window";
+import ConversationChatWindow from "@/components/chat/conversation-chat-window";
+import SplitChatAvatar from "@/components/chat/split-chat-avatar";
 import { getInitials, normalizePortraitUrl } from "@/lib/character-ui";
 import {
   fetchCharacterInventoryItems,
@@ -103,6 +111,8 @@ const ABILITY_ORDER = [
   { key: "wisdom", label: "Sag" },
   { key: "charisma", label: "Car" },
 ] as const;
+const DM_CHAT_LAUNCHER_WIDTH = 340;
+const FLOATING_PANEL_GAP = 16;
 
 function abilityModifier(score: number | undefined) {
   const safeScore = typeof score === "number" ? score : 10;
@@ -248,13 +258,17 @@ export default function DMDashboard() {
   const [itemDefinitionsById, setItemDefinitionsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [errors, setErrors] = useState<string[]>([]);
   const [expandedAbilityBonuses, setExpandedAbilityBonuses] = useState<Record<string, boolean>>({});
+  const [chatLauncherOpen, setChatLauncherOpen] = useState(false);
   const [openChatSlugs, setOpenChatSlugs] = useState<string[]>([]);
   const [minimizedChatSlugs, setMinimizedChatSlugs] = useState<string[]>([]);
-  const [unreadChatCounts, setUnreadChatCounts] = useState<Record<string, number>>({});
+  const [unreadChatFlags, setUnreadChatFlags] = useState<Record<string, boolean>>({});
+  const [conversations, setConversations] = useState<Record<string, ChatConversationSummary>>({});
+  const [openConversationIds, setOpenConversationIds] = useState<string[]>([]);
+  const [minimizedConversationIds, setMinimizedConversationIds] = useState<string[]>([]);
+  const [unreadConversationFlags, setUnreadConversationFlags] = useState<Record<string, boolean>>({});
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
   const joinedRoomsRef = useRef<Set<string>>(new Set());
   const joinedChatRoomsRef = useRef<Set<string>>(new Set());
-  const initializedRosterChatsRef = useRef(false);
 
   useEffect(() => {
     document.title = "DM Dashboard | D&D Character Manager";
@@ -484,14 +498,17 @@ export default function DMDashboard() {
   }, [roster]);
 
   useEffect(() => {
-    if (initializedRosterChatsRef.current) return;
-    if (roster.length === 0) return;
+    let active = true;
+    void fetchChatConversations().then((items) => {
+      if (!active) return;
+      const nextMap = Object.fromEntries((Array.isArray(items) ? items : []).map((conversation) => [conversation.id, conversation]));
+      setConversations(nextMap);
+    });
 
-    const rosterSlugs = roster.map((player) => player.slug);
-    setOpenChatSlugs(rosterSlugs);
-    setMinimizedChatSlugs(rosterSlugs);
-    initializedRosterChatsRef.current = true;
-  }, [roster]);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const offChat = onChatMessage((message: ChatMessage) => {
@@ -502,10 +519,7 @@ export default function DMDashboard() {
 
       const isVisible = openChatSlugs.includes(message.slug) && !minimizedChatSlugs.includes(message.slug);
       if (!isVisible) {
-        setUnreadChatCounts((prev) => ({
-          ...prev,
-          [message.slug]: (prev[message.slug] ?? 0) + 1,
-        }));
+        setUnreadChatFlags((prev) => ({ ...prev, [message.slug]: true }));
       }
     });
 
@@ -516,13 +530,48 @@ export default function DMDashboard() {
     };
   }, [minimizedChatSlugs, openChatSlugs, roster, user?.id]);
 
+  useEffect(() => {
+    const offConversation = onConversationMessage((message: ChatConversationMessage) => {
+      if (message.senderUserId === user?.id) return;
+
+      const conversationId = message.conversationId;
+      const isVisible = openConversationIds.includes(conversationId) && !minimizedConversationIds.includes(conversationId);
+
+      void (async () => {
+        let conversation = conversations[conversationId];
+        if (!conversation) {
+          try {
+            conversation = await fetchChatConversation(conversationId);
+            if (conversation) {
+              setConversations((prev) => ({ ...prev, [conversation!.id]: conversation! }));
+            }
+          } catch {
+            return;
+          }
+        }
+
+        if (!isVisible) {
+          setOpenConversationIds((prev) => (prev.includes(conversationId) ? prev : [...prev, conversationId]));
+          setMinimizedConversationIds((prev) => (prev.includes(conversationId) ? prev : [...prev, conversationId]));
+          setUnreadConversationFlags((prev) => ({ ...prev, [conversationId]: true }));
+        }
+      })();
+    });
+
+    return () => {
+      try {
+        offConversation();
+      } catch {}
+    };
+  }, [conversations, minimizedConversationIds, openConversationIds, user?.id]);
+
   const openChatWindow = (slug: string) => {
     setOpenChatSlugs((prev) => {
       const next = prev.filter((entry) => entry !== slug);
       return [...next, slug];
     });
     setMinimizedChatSlugs((prev) => prev.filter((entry) => entry !== slug));
-    setUnreadChatCounts((prev) => {
+    setUnreadChatFlags((prev) => {
       if (!prev[slug]) return prev;
       const next = { ...prev };
       delete next[slug];
@@ -541,6 +590,81 @@ export default function DMDashboard() {
   const closeChatWindow = (slug: string) => {
     setOpenChatSlugs((prev) => prev.filter((entry) => entry !== slug));
     setMinimizedChatSlugs((prev) => prev.filter((entry) => entry !== slug));
+    setUnreadChatFlags((prev) => {
+      if (!prev[slug]) return prev;
+      const next = { ...prev };
+      delete next[slug];
+      return next;
+    });
+  };
+
+  const openConversationWindow = (conversationId: string) => {
+    setOpenConversationIds((prev) => {
+      const next = prev.filter((entry) => entry !== conversationId);
+      return [...next, conversationId];
+    });
+    setMinimizedConversationIds((prev) => prev.filter((entry) => entry !== conversationId));
+    setUnreadConversationFlags((prev) => {
+      if (!prev[conversationId]) return prev;
+      const next = { ...prev };
+      delete next[conversationId];
+      return next;
+    });
+  };
+
+  const minimizeConversationWindow = (conversationId: string) => {
+    setMinimizedConversationIds((prev) => (prev.includes(conversationId) ? prev : [...prev, conversationId]));
+  };
+
+  const minimizeAllChatWindows = () => {
+    setMinimizedChatSlugs(openChatSlugs);
+    setMinimizedConversationIds(openConversationIds);
+  };
+
+  const closeConversationWindow = (conversationId: string) => {
+    setOpenConversationIds((prev) => prev.filter((entry) => entry !== conversationId));
+    setMinimizedConversationIds((prev) => prev.filter((entry) => entry !== conversationId));
+    setUnreadConversationFlags((prev) => {
+      if (!prev[conversationId]) return prev;
+      const next = { ...prev };
+      delete next[conversationId];
+      return next;
+    });
+  };
+
+  const playerConversations = useMemo(
+    () =>
+      Object.values(conversations)
+        .filter((conversation) => conversation.kind === "player-player")
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+    [conversations]
+  );
+
+  const hasAnyUnread = useMemo(
+    () => Object.keys(unreadChatFlags).length > 0 || Object.keys(unreadConversationFlags).length > 0,
+    [unreadChatFlags, unreadConversationFlags]
+  );
+  const visibleChatPanelsRightOffset = chatLauncherOpen ? 20 + DM_CHAT_LAUNCHER_WIDTH + FLOATING_PANEL_GAP : 20;
+
+  const floatingConversations = useMemo(
+    () => openConversationIds.map((conversationId) => conversations[conversationId]).filter(Boolean),
+    [conversations, openConversationIds]
+  );
+
+  const buildConversationTitle = (conversation: ChatConversationSummary) =>
+    conversation.participants.map((participant) => participant.name).join(" + ");
+
+  const buildConversationSubtitle = (conversation: ChatConversationSummary) =>
+    `${conversation.participants.length} partecipanti · DM incluso come osservatore`;
+
+  const buildConversationSplitAvatar = (conversation: ChatConversationSummary) => {
+    const [left, right] = conversation.participants;
+    return {
+      leftName: left?.name ?? "?",
+      rightName: right?.name ?? "?",
+      leftAvatarUrl: left?.portraitUrl ?? "",
+      rightAvatarUrl: right?.portraitUrl ?? "",
+    };
   };
 
   const handleSessionToggle = async (nextOpen: boolean) => {
@@ -759,11 +883,7 @@ export default function DMDashboard() {
                       aria-label="Apri chat"
                     >
                       <MessageSquareMore className="h-4 w-4" />
-                      {(unreadChatCounts[player.slug] ?? 0) > 0 ? (
-                        <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
-                          {(unreadChatCounts[player.slug] ?? 0) > 9 ? "9+" : unreadChatCounts[player.slug]}
-                        </span>
-                      ) : null}
+                      {unreadChatFlags[player.slug] ? <Circle className="absolute -right-1 -top-1 h-3 w-3 fill-primary text-primary" /> : null}
                     </Button>
                   </div>
                 </div>
@@ -773,22 +893,149 @@ export default function DMDashboard() {
         </section>
       </div>
 
-      {openChatSlugs.length > 0 ? (
-        <div className="fixed bottom-5 right-20 z-40 flex max-w-[calc(100vw-7rem)] items-end gap-3 overflow-x-auto pb-2 pr-2">
-          {openChatSlugs.map((slug) => {
+      {chatLauncherOpen ? (
+        <div className="fixed bottom-20 right-5 z-[9998] w-[340px] rounded-2xl border border-border/70 bg-card/95 p-3 shadow-2xl backdrop-blur">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold text-foreground">Rubrica chat</div>
+              <div className="text-xs text-muted-foreground">DM-player e chat tra player</div>
+            </div>
+            <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setChatLauncherOpen(false)}>
+              Chiudi
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Personaggi</div>
+              <div className="space-y-1 rounded-xl border border-border/50 bg-background/35 p-1">
+                {roster.map((player) => {
+                  const normalizedAvatar = normalizePortraitUrl(player.portraitUrl);
+                  const isOnline = onlineSet.has(player.slug);
+                  return (
+                    <button
+                      key={`launcher-${player.slug}`}
+                      type="button"
+                      onClick={() => openChatWindow(player.slug)}
+                      className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent"
+                    >
+                      <Avatar className="h-9 w-9 border border-border/60">
+                        {normalizedAvatar ? <AvatarImage src={normalizedAvatar} alt={player.name} className="object-cover" /> : null}
+                        <AvatarFallback className="bg-primary/10 font-heading text-sm font-bold text-primary">
+                          {getInitials(player.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-foreground">{player.name}</div>
+                        <div className="text-xs text-muted-foreground">{isOnline ? "Online" : "Offline"}</div>
+                      </div>
+                      {unreadChatFlags[player.slug] ? <Circle className="h-3 w-3 fill-primary text-primary" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Chat tra player</div>
+              {playerConversations.length > 0 ? (
+                <div className="space-y-1 rounded-xl border border-border/50 bg-background/35 p-1">
+                  {playerConversations.map((conversation) => {
+                    const splitAvatar = buildConversationSplitAvatar(conversation);
+                    return (
+                      <button
+                        key={`conversation-launcher-${conversation.id}`}
+                        type="button"
+                        onClick={() => openConversationWindow(conversation.id)}
+                        className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent"
+                      >
+                        <SplitChatAvatar
+                          className="h-9 w-9"
+                          leftName={splitAvatar.leftName}
+                          rightName={splitAvatar.rightName}
+                          leftAvatarUrl={splitAvatar.leftAvatarUrl}
+                          rightAvatarUrl={splitAvatar.rightAvatarUrl}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-foreground">{buildConversationTitle(conversation)}</div>
+                          <div className="text-xs text-muted-foreground">DM osservatore</div>
+                        </div>
+                        {unreadConversationFlags[conversation.id] ? <Circle className="h-3 w-3 fill-primary text-primary" /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/60 bg-background/30 px-3 py-4 text-center text-xs text-muted-foreground">
+                  Nessuna chat tra player avviata.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {(openChatSlugs.length > 0 || floatingConversations.length > 0) ? (
+        <div
+          className="fixed bottom-20 z-[9997] flex max-w-[calc(100vw-3rem)] items-end gap-3 overflow-x-auto pb-2"
+          style={{ right: `${visibleChatPanelsRightOffset}px` }}
+        >
+          {openChatSlugs
+            .filter((slug) => !minimizedChatSlugs.includes(slug))
+            .map((slug) => {
+              const player = roster.find((entry) => entry.slug === slug);
+              if (!player) return null;
+
+              return (
+                <CharacterChatWindow
+                  key={slug}
+                  slug={slug}
+                  title={player.name}
+                  subtitle={player.playerName || player.slug}
+                  avatarUrl={player.portraitUrl}
+                  onMinimize={() => minimizeChatWindow(slug)}
+                  onClose={() => closeChatWindow(slug)}
+                />
+              );
+            })}
+
+          {floatingConversations
+            .filter((conversation) => !minimizedConversationIds.includes(conversation.id))
+            .map((conversation) => {
+              const splitAvatar = buildConversationSplitAvatar(conversation);
+              return (
+                <ConversationChatWindow
+                  key={conversation.id}
+                  conversation={conversation}
+                  title={buildConversationTitle(conversation)}
+                  subtitle={buildConversationSubtitle(conversation)}
+                  avatarMode="split"
+                  splitAvatar={splitAvatar}
+                  forceReceivedLayout
+                  dmAccessNote="Chat osservata dal DM"
+                  onMinimize={() => minimizeConversationWindow(conversation.id)}
+                  onClose={() => closeConversationWindow(conversation.id)}
+                />
+              );
+            })}
+        </div>
+      ) : null}
+
+      <div className="fixed bottom-5 right-20 z-[9999] flex items-end gap-3">
+        {openChatSlugs
+          .map((slug) => {
             const player = roster.find((entry) => entry.slug === slug);
             if (!player) return null;
-            const isMinimized = minimizedChatSlugs.includes(slug);
-            const unreadCount = unreadChatCounts[slug] ?? 0;
             const normalizedAvatar = normalizePortraitUrl(player.portraitUrl);
-
-            if (isMinimized) {
-              return (
+            const isMinimized = minimizedChatSlugs.includes(slug);
+            return (
+              <div key={`mini-${slug}`} className="group relative">
                 <button
-                  key={slug}
                   type="button"
                   onClick={() => openChatWindow(slug)}
-                  className="relative flex h-14 w-14 items-center justify-center rounded-full border border-border/70 bg-card/95 shadow-xl transition-transform hover:-translate-y-0.5"
+                  className={`relative flex h-14 w-14 items-center justify-center rounded-full border bg-card/95 shadow-xl transition-transform hover:-translate-y-0.5 ${
+                    isMinimized ? "border-border/70" : "border-primary/70 ring-2 ring-primary/20"
+                  }`}
                   title={`Apri chat con ${player.name}`}
                   aria-label={`Apri chat con ${player.name}`}
                 >
@@ -798,29 +1045,76 @@ export default function DMDashboard() {
                       {getInitials(player.name)}
                     </AvatarFallback>
                   </Avatar>
-                  {unreadCount > 0 ? (
-                    <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  ) : null}
+                  {unreadChatFlags[slug] ? <Circle className="absolute -right-1 -top-1 h-3 w-3 fill-primary text-primary" /> : null}
                 </button>
-              );
-            }
-
-            return (
-              <CharacterChatWindow
-                key={slug}
-                slug={slug}
-                title={player.name}
-                subtitle={player.playerName || player.slug}
-                avatarUrl={player.portraitUrl}
-                onMinimize={() => minimizeChatWindow(slug)}
-                onClose={() => closeChatWindow(slug)}
-              />
+                <button
+                  type="button"
+                  onClick={() => closeChatWindow(slug)}
+                  className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-background/95 text-muted-foreground shadow-sm transition-colors hover:text-foreground group-hover:flex"
+                  aria-label={`Chiudi chat con ${player.name}`}
+                  title="Chiudi chat"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
             );
           })}
-        </div>
-      ) : null}
+
+        {floatingConversations
+          .map((conversation) => {
+            const splitAvatar = buildConversationSplitAvatar(conversation);
+            const isMinimized = minimizedConversationIds.includes(conversation.id);
+            return (
+              <div key={`mini-conversation-${conversation.id}`} className="group relative">
+                <button
+                  type="button"
+                  onClick={() => openConversationWindow(conversation.id)}
+                  className={`relative flex h-14 w-14 items-center justify-center rounded-full border bg-card/95 shadow-xl transition-transform hover:-translate-y-0.5 ${
+                    isMinimized ? "border-border/70" : "border-primary/70 ring-2 ring-primary/20"
+                  }`}
+                  title={buildConversationTitle(conversation)}
+                  aria-label={buildConversationTitle(conversation)}
+                >
+                  <SplitChatAvatar
+                    className="h-12 w-12"
+                    leftName={splitAvatar.leftName}
+                    rightName={splitAvatar.rightName}
+                    leftAvatarUrl={splitAvatar.leftAvatarUrl}
+                    rightAvatarUrl={splitAvatar.rightAvatarUrl}
+                  />
+                  {unreadConversationFlags[conversation.id] ? <Circle className="absolute -right-1 -top-1 h-3 w-3 fill-primary text-primary" /> : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => closeConversationWindow(conversation.id)}
+                  className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-background/95 text-muted-foreground shadow-sm transition-colors hover:text-foreground group-hover:flex"
+                  aria-label={`Chiudi ${buildConversationTitle(conversation)}`}
+                  title="Chiudi chat"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="relative h-12 w-12 rounded-full border-2 border-primary/60 bg-card text-primary shadow-2xl backdrop-blur supports-[backdrop-filter]:bg-card/90"
+          onClick={() =>
+            setChatLauncherOpen((prev) => {
+              const next = !prev;
+              if (next) minimizeAllChatWindows();
+              return next;
+            })
+          }
+          aria-label={chatLauncherOpen ? "Chiudi rubrica chat" : "Apri rubrica chat"}
+          title={chatLauncherOpen ? "Chiudi rubrica chat" : "Apri rubrica chat"}
+        >
+          <MessageSquareMore className="h-4 w-4 text-primary" />
+          {hasAnyUnread ? <Circle className="absolute -right-1 -top-1 h-3 w-3 fill-primary text-primary" /> : null}
+        </Button>
+      </div>
     </div>
   );
 }

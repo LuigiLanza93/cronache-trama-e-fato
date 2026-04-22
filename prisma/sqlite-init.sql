@@ -146,15 +146,42 @@ CREATE TABLE "Session" (
 );
 
 -- CreateTable
-CREATE TABLE "ChatMessage" (
+CREATE TABLE "ChatConversation" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "characterId" TEXT NOT NULL,
+    "kind" TEXT NOT NULL,
+    "title" TEXT,
+    "legacyCharacterId" TEXT,
+    "createdByUserId" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "ChatConversation_legacyCharacterId_fkey" FOREIGN KEY ("legacyCharacterId") REFERENCES "Character" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "ChatConversation_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "ChatConversationParticipant" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "conversationId" TEXT NOT NULL,
+    "userId" TEXT,
+    "characterId" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ChatConversationParticipant_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "ChatConversation" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "ChatConversationParticipant_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "ChatConversationParticipant_characterId_fkey" FOREIGN KEY ("characterId") REFERENCES "Character" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "ChatConversationMessage" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "conversationId" TEXT NOT NULL,
     "senderUserId" TEXT,
+    "senderCharacterId" TEXT,
     "senderRole" TEXT NOT NULL,
     "text" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "ChatMessage_characterId_fkey" FOREIGN KEY ("characterId") REFERENCES "Character" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "ChatMessage_senderUserId_fkey" FOREIGN KEY ("senderUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+    CONSTRAINT "ChatConversationMessage_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "ChatConversation" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "ChatConversationMessage_senderUserId_fkey" FOREIGN KEY ("senderUserId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "ChatConversationMessage_senderCharacterId_fkey" FOREIGN KEY ("senderCharacterId") REFERENCES "Character" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -282,10 +309,40 @@ CREATE INDEX "Session_userId_idx" ON "Session"("userId");
 CREATE INDEX "Session_expiresAt_idx" ON "Session"("expiresAt");
 
 -- CreateIndex
-CREATE INDEX "ChatMessage_characterId_createdAt_idx" ON "ChatMessage"("characterId", "createdAt");
+CREATE UNIQUE INDEX "ChatConversation_legacyCharacterId_key" ON "ChatConversation"("legacyCharacterId");
 
 -- CreateIndex
-CREATE INDEX "ChatMessage_senderUserId_idx" ON "ChatMessage"("senderUserId");
+CREATE INDEX "ChatConversation_kind_idx" ON "ChatConversation"("kind");
+
+-- CreateIndex
+CREATE INDEX "ChatConversation_createdByUserId_idx" ON "ChatConversation"("createdByUserId");
+
+-- CreateIndex
+CREATE INDEX "ChatConversation_updatedAt_idx" ON "ChatConversation"("updatedAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ChatConversationParticipant_conversationId_userId_key" ON "ChatConversationParticipant"("conversationId", "userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ChatConversationParticipant_conversationId_characterId_key" ON "ChatConversationParticipant"("conversationId", "characterId");
+
+-- CreateIndex
+CREATE INDEX "ChatConversationParticipant_conversationId_idx" ON "ChatConversationParticipant"("conversationId");
+
+-- CreateIndex
+CREATE INDEX "ChatConversationParticipant_userId_idx" ON "ChatConversationParticipant"("userId");
+
+-- CreateIndex
+CREATE INDEX "ChatConversationParticipant_characterId_idx" ON "ChatConversationParticipant"("characterId");
+
+-- CreateIndex
+CREATE INDEX "ChatConversationMessage_conversationId_createdAt_idx" ON "ChatConversationMessage"("conversationId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "ChatConversationMessage_senderUserId_idx" ON "ChatConversationMessage"("senderUserId");
+
+-- CreateIndex
+CREATE INDEX "ChatConversationMessage_senderCharacterId_idx" ON "ChatConversationMessage"("senderCharacterId");
 
 -- CreateIndex
 CREATE INDEX "EncounterScenario_name_idx" ON "EncounterScenario"("name");
