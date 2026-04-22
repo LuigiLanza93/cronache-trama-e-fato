@@ -1,0 +1,52 @@
+{
+  "version": "1.4.9",
+  "releaseName": "SQLite Release",
+  "releasedAt": "2026-04-22",
+  "summary": "Benvenuti nella nuova versione dell'app. Da questa release in poi trovate un'esperienza molto piu' ricca sia per i player sia per il DM: schede piu' evolute, strumenti di sessione piu' solidi, compendio mostri, gestione oggetti e denaro, nuove note DM e una base generale molto piu' robusta per accompagnare la campagna.",
+  "sections": [
+    {
+      "title": "Per i Player",
+      "items": [
+        "Nuovo accesso all'app con account dedicato, home giocatore personale, sessione persistente e cambio password guidato.",
+        "Home giocatore completamente rifinita: card delle schede piu' ricche, click diretto alla scheda e riepilogo rapido di iniziativa, CA, risorse, Percezione passiva, CD incantesimi e PF.",
+        "Scheda personaggio evoluta con layout personale salvato per utente, statistiche derivate aggiornate dall'equipaggiamento e gestione piu' completa dell'inventario.",
+        "Nuova gestione dell'equipaggiamento relazionale: gli oggetti assegnati dal DM entrano davvero nella scheda, influenzano armatura, velocita', attacchi e altre statistiche derivate.",
+        "Supporto piu' accurato alle armi e al combattimento, inclusa la gestione corretta dell'impugnatura e delle competenze sugli attacchi.",
+        "Supporto dedicato al Patto della Lama del warlock per trattare correttamente le armi rilevanti nella scheda.",
+        "Nuovo sistema di effetti passivi sugli oggetti, con bonus e modificatori applicati automaticamente quando l'oggetto lo prevede.",
+        "Chat privata persistente tra DM e personaggio, consultabile dal lato giocatore durante la sessione.",
+        "Avviso di turno in combattimento con highlight visivo della scheda e vibrazione sui dispositivi compatibili.",
+        "Compendio mostri lato player: pagina dedicata con elenco filtrabile, dettaglio consultabile e informazioni sbloccate in base al livello di conoscenza deciso dal DM.",
+        "Tracker iniziativa lato player con vista del combattimento in corso e accesso rapido al compendio mostri direttamente dall'area iniziativa."
+      ]
+    },
+    {
+      "title": "Per il DM",
+      "items": [
+        "Nuova area DM con autenticazione a ruoli, home dedicata e panoramica piu' utile della campagna subito dopo il login.",
+        "Gestione utenti completa con creazione account, reset password, distinzione tra ruoli DM e player e assegnazione delle schede ai giocatori.",
+        "Gestione schede ampliata: creazione personaggi, supporto a PG e PNG, archiviazione non distruttiva e collegamento degli account ai personaggi.",
+        "Bestiario completo in app con elenco gestibile, filtri, ordinamento, dettaglio in stile Manuale dei Mostri, duplicazione, modifica e creazione di mostri personalizzati.",
+        "Import massivo del bestiario: parser SRD, pipeline JSON e integrazione del Manuale dei Mostri con ampio catalogo custom gia' pronto in archivio.",
+        "Regole di discovery dei mostri piu' strutturate: rarita', skill di scoperta, DC di analisi e DC di ricerca, oltre alla gestione manuale della conoscenza concessa ai player.",
+        "Compendio mostri lato player controllato dal DM, con anteprima dedicata e possibilita' di sbloccare le informazioni sia dal bestiario sia durante gli scontri.",
+        "Tracker iniziativa molto piu' avanzato: aggiunta mostri dal bestiario o manualmente, quantita multiple, iniziativa separata per ogni copia, PF variabili, apertura rapida del dettaglio mostro e salvataggio degli scenari di combattimento.",
+        "Vista presenza e sessione piu' orientata al tavolo: roster online/offline, presenza limitata ai player e blocco sessione DM per capire subito lo stato del gruppo.",
+        "Catalogo oggetti del DM con workflow di assegnazione ai personaggi, gestione dell'inventario relazionale e cronologia dei trasferimenti di equipaggiamento.",
+        "Gestione del denaro piu' completa con saldi aggiornati, dialog dedicato in scheda, transazioni tra personaggi e storico dei movimenti.",
+        "Nuova sezione note DM direttamente in app per consultare appunti della sessione.",
+        "Rifinitura continua della home DM con card interamente cliccabili, riepiloghi live e linguaggio visuale unificato negli header delle principali pagine di gestione."
+      ]
+    },
+    {
+      "title": "Novita' tecniche",
+      "items": [
+        "L'app e' passata da una gestione dati basata su file JSON a una base dati locale piu' solida, con persistenza piu' affidabile delle informazioni di campagna.",
+        "La nuova infrastruttura dati supporta in modo piu' strutturato utenti, schede, mostri, chat, scenari, oggetti, transazioni e sessioni.",
+        "Sono stati introdotti nuovi modelli dati per inventario, catalogo oggetti, denaro e knowledge dei mostri, cosi' da sostenere funzionalita' piu' profonde lato player e lato DM.",
+        "Il sistema di statistiche derivate ed effetti sugli oggetti e' stato reso piu' accurato e coerente con l'equipaggiamento realmente indossato o impugnato dal personaggio.",
+        "La UI delle home e delle principali pagine di gestione e' stata riallineata per offrire un'esperienza piu' coerente, leggibile e stabile durante l'uso al tavolo."
+      ]
+    }
+  ]
+}

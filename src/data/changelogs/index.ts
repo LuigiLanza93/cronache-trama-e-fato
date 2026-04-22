@@ -1,3 +1,4 @@
+import changelog149 from "./1.4.9-cumulative-player-dm.json";
 import changelog100 from "./1.0.0-sqlite-release.json";
 import changelog145 from "./1.4.5-home-login-refinement.json";
 
@@ -14,7 +15,7 @@ export type ChangelogEntry = {
   sections: ChangelogSection[];
 };
 
-const changelogs = [changelog145, changelog100] as ChangelogEntry[];
+const changelogs = [changelog149, changelog145, changelog100] as ChangelogEntry[];
 
 export const changelogEntries = changelogs;
 
