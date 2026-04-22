@@ -20,6 +20,7 @@ import ItemManagement from "./pages/ItemManagement";
 import CharacterInventoryManagement from "./pages/CharacterInventoryManagement";
 import InventoryTransactionsPage from "./pages/InventoryTransactionsPage";
 import CurrencyTransactionsPage from "./pages/CurrencyTransactionsPage";
+import DmNotesPage from "./pages/DmNotesPage";
 import PlayerMonsterCompendium from "./pages/PlayerMonsterCompendium";
 import NotFound from "./pages/NotFound";
 
@@ -106,6 +107,14 @@ const App = () => (
                   element={
                     <RequireRole role="dm">
                       <CurrencyTransactionsPage />
+                    </RequireRole>
+                  }
+                />
+                <Route
+                  path="/dm/notes"
+                  element={
+                    <RequireRole role="dm">
+                      <DmNotesPage />
                     </RequireRole>
                   }
                 />

@@ -27,6 +27,9 @@ const INITIATIVE_TRACKER_FILE = path.resolve(DATA_DIR, "initiative-tracker.json"
 const SESSION_COOKIE = "ctf_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
+const DM_NOTES_ROOT = process.env.DM_NOTES_ROOT
+  ? path.resolve(process.env.DM_NOTES_ROOT)
+  : path.resolve("C:\\Users\\Gscot\\Documents\\Le Cronache della Trama e del Fato\\Le Cronache della Trama e del Fato");
 
 function createSqliteConnection() {
   const connection = new DatabaseSync(SQLITE_DB_FILE);
@@ -115,6 +118,71 @@ function parseJsonString(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function getDmNotesFileType(filePath) {
+  const extension = path.extname(filePath).toLowerCase();
+  if (extension === ".md" || extension === ".markdown") return "markdown";
+  if (extension === ".pdf") return "pdf";
+  if ([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"].includes(extension)) return "image";
+  return "other";
+}
+
+function isSupportedDmNotesFile(filePath) {
+  return getDmNotesFileType(filePath) !== "other";
+}
+
+function resolveDmNotesPath(relativePath = "") {
+  const requestedPath = String(relativePath ?? "").replace(/\\/g, "/").trim();
+  const resolvedPath = path.resolve(DM_NOTES_ROOT, requestedPath);
+  const relativeToRoot = path.relative(DM_NOTES_ROOT, resolvedPath);
+  if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot)) {
+    return null;
+  }
+  return resolvedPath;
+}
+
+function buildDmNotesTree(currentDir, relativeDir = "") {
+  let directoryEntries = [];
+  try {
+    directoryEntries = fs.readdirSync(currentDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  return directoryEntries
+    .filter((entry) => !entry.name.startsWith("."))
+    .map((entry) => {
+      const absolutePath = path.join(currentDir, entry.name);
+      const relativePath = path.posix.join(relativeDir, entry.name).replace(/\\/g, "/");
+
+      if (entry.isDirectory()) {
+        const children = buildDmNotesTree(absolutePath, relativePath);
+        if (children.length === 0) return null;
+        return {
+          kind: "directory",
+          name: entry.name,
+          path: relativePath,
+          children,
+        };
+      }
+
+      if (!entry.isFile() || !isSupportedDmNotesFile(absolutePath)) {
+        return null;
+      }
+
+      return {
+        kind: "file",
+        name: entry.name,
+        path: relativePath,
+        fileType: getDmNotesFileType(absolutePath),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
+      return a.name.localeCompare(b.name, "it", { sensitivity: "base" });
+    });
 }
 
 function normalizeCurrencyBalance(value) {
@@ -4822,6 +4890,58 @@ async function start() {
     const nextState = writeGameSessionState(nextIsOpen, req.user?.id ?? null);
     io.emit("game-session:state", nextState);
     return res.json(nextState);
+  });
+
+  app.get("/api/dm-notes/tree", requireRole("dm"), (_req, res) => {
+    if (!fs.existsSync(DM_NOTES_ROOT)) {
+      return res.status(404).json({ error: "La cartella degli appunti del DM non esiste." });
+    }
+
+    return res.json({
+      rootName: path.basename(DM_NOTES_ROOT),
+      entries: buildDmNotesTree(DM_NOTES_ROOT),
+    });
+  });
+
+  app.get("/api/dm-notes/document", requireRole("dm"), (req, res) => {
+    const resolvedPath = resolveDmNotesPath(req.query?.path);
+    if (!resolvedPath || !fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isFile()) {
+      return res.status(404).json({ error: "Documento non trovato." });
+    }
+
+    const fileType = getDmNotesFileType(resolvedPath);
+    if (fileType !== "markdown") {
+      return res.status(400).json({ error: "Questo endpoint supporta soltanto documenti Markdown." });
+    }
+
+    try {
+      const stat = fs.statSync(resolvedPath);
+      const content = fs.readFileSync(resolvedPath, "utf8");
+      return res.json({
+        name: path.basename(resolvedPath),
+        path: path.relative(DM_NOTES_ROOT, resolvedPath).replace(/\\/g, "/"),
+        fileType,
+        updatedAt: stat.mtime.toISOString(),
+        size: stat.size,
+        content,
+      });
+    } catch {
+      return res.status(500).json({ error: "Impossibile leggere il documento richiesto." });
+    }
+  });
+
+  app.get("/api/dm-notes/asset", requireRole("dm"), (req, res) => {
+    const resolvedPath = resolveDmNotesPath(req.query?.path);
+    if (!resolvedPath || !fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isFile()) {
+      return res.status(404).json({ error: "Risorsa non trovata." });
+    }
+
+    const fileType = getDmNotesFileType(resolvedPath);
+    if (fileType !== "image" && fileType !== "pdf") {
+      return res.status(400).json({ error: "Risorsa non supportata." });
+    }
+
+    return res.sendFile(resolvedPath);
   });
 
   app.get("/api/preferences/character-sheet-layout", requireAuth, (req, res) => {

@@ -546,6 +546,30 @@ export type InventoryTransferEntry = {
   canUndo: boolean;
 };
 
+export type DmNotesFileType = "markdown" | "image" | "pdf" | "other";
+
+export type DmNotesTreeEntry = {
+  kind: "directory" | "file";
+  name: string;
+  path: string;
+  fileType?: DmNotesFileType;
+  children?: DmNotesTreeEntry[];
+};
+
+export type DmNotesTreePayload = {
+  rootName: string;
+  entries: DmNotesTreeEntry[];
+};
+
+export type DmNoteDocument = {
+  name: string;
+  path: string;
+  fileType: DmNotesFileType;
+  updatedAt: string;
+  size: number;
+  content: string;
+};
+
 let playerWritesLocked = false;
 
 export function setPlayerWritesLocked(locked: boolean) {
@@ -953,4 +977,18 @@ export function undoCurrencyTransactionRequest(operationId: string) {
   return authFetch<{ ok: true }>(`/api/currency-transactions/${operationId}/undo`, {
     method: "POST",
   });
+}
+
+export function fetchDmNotesTree() {
+  return authFetch<DmNotesTreePayload>("/api/dm-notes/tree", { method: "GET" });
+}
+
+export function fetchDmNoteDocument(notePath: string) {
+  return authFetch<DmNoteDocument>(`/api/dm-notes/document?path=${encodeURIComponent(notePath)}`, {
+    method: "GET",
+  });
+}
+
+export function getDmNoteAssetUrl(notePath: string) {
+  return `/api/dm-notes/asset?path=${encodeURIComponent(notePath)}`;
 }

@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import {
   Dice6,
   Circle,
+  FolderOpen,
   KeyRound,
   Link2,
   LogIn,
@@ -662,6 +663,12 @@ const Index = () => {
         href: "/dm/currency-transactions",
         icon: Link2,
       },
+      {
+        title: "Appunti del DM",
+        description: "Sfoglia il vault Obsidian con note Markdown, immagini e PDF in una pagina dedicata.",
+        href: "/dm/notes",
+        icon: FolderOpen,
+      },
     ],
     []
   );
@@ -680,7 +687,7 @@ const Index = () => {
   const tertiaryDmActions = ["/dm/inventory", "/dm/users"]
     .map((href) => dmActionMap[href])
     .filter(Boolean);
-  const utilityDmActions = ["/dm/inventory/transactions", "/dm/currency-transactions"]
+  const utilityDmActions = ["/dm/inventory/transactions", "/dm/currency-transactions", "/dm/notes"]
     .map((href) => dmActionMap[href])
     .filter(Boolean);
 
@@ -1189,6 +1196,7 @@ const Index = () => {
                   {utilityDmActions.map((action) => {
                     const Icon = action.icon;
                     const isInventoryTransactionsAction = action.href === "/dm/inventory/transactions";
+                    const isNotesAction = action.href === "/dm/notes";
                     const transactionSummary = isInventoryTransactionsAction
                       ? latestInventoryTransfer
                       : action.href === "/dm/currency-transactions"
@@ -1209,6 +1217,8 @@ const Index = () => {
                                   <div className="truncate text-muted-foreground">{transactionSummary.detail}</div>
                                   <div className="text-muted-foreground/80">{transactionSummary.timestamp}</div>
                                 </div>
+                              ) : isNotesAction ? (
+                                <div className="text-xs leading-4 text-muted-foreground">{action.description}</div>
                               ) : (
                                 <div className="text-xs leading-4 text-muted-foreground">Nessuna transazione registrata</div>
                               )}
@@ -1218,18 +1228,6 @@ const Index = () => {
                       </Link>
                     );
                   })}
-
-                  <Card className="character-section flex h-full min-h-[140px] flex-col justify-between border-dashed border-primary/25 bg-background/40">
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <Sparkles className="h-5 w-5 text-primary" />
-                        <div className="font-heading text-xl font-semibold text-primary">More to come</div>
-                      </div>
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        Nuovi strumenti DM arriveranno qui nelle prossime rifiniture.
-                      </p>
-                    </div>
-                  </Card>
                 </div>
               </div>
             </div>

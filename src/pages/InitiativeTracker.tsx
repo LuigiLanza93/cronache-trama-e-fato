@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
+import { toast } from "@/components/ui/sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   createEncounterScenarioRequest,
@@ -821,6 +822,37 @@ function formatEncounterXp(value: number) {
   return Math.round(value).toLocaleString("it-IT");
 }
 
+function formatEncounterClipboardText(playerLevels: number[], monsterNames: string[]) {
+  const sortedLevels = [...playerLevels].sort((left, right) => left - right);
+  const groupedMonsters = monsterNames.reduce<Map<string, number>>((groups, name) => {
+    const baseName = normalizeMonsterCopyBase(name);
+    groups.set(baseName, (groups.get(baseName) ?? 0) + 1);
+    return groups;
+  }, new Map());
+
+  const playerLine = (() => {
+    if (sortedLevels.length === 0) return "PG: 0";
+
+    const uniqueLevels = Array.from(new Set(sortedLevels));
+    if (uniqueLevels.length === 1) {
+      return `PG: ${sortedLevels.length}, livello ${uniqueLevels[0]}`;
+    }
+
+    return `PG: ${sortedLevels.length}, livelli ${sortedLevels.join(", ")}`;
+  })();
+
+  const enemyLines = Array.from(groupedMonsters.entries())
+    .sort((left, right) => left[0].localeCompare(right[0], "it", { sensitivity: "base", numeric: true }))
+    .map(([name, count]) => `- ${count}x ${name}`);
+
+  return [
+    playerLine,
+    "",
+    "Nemici:",
+    ...(enemyLines.length > 0 ? enemyLines : ["- Nessuno"]),
+  ].join("\n");
+}
+
 function abilityModifierLabel(score: number) {
   const value = abilityModifier(score);
   return `${score} (${value >= 0 ? `+${value}` : value})`;
@@ -1140,7 +1172,11 @@ export default function InitiativeTracker() {
   const [scenarioName, setScenarioName] = useState("");
   const [encounterScenarios, setEncounterScenarios] = useState<EncounterScenario[]>([]);
   const [pendingScenarioCombatants, setPendingScenarioCombatants] = useState<PendingScenarioCombatant[]>([]);
+  const [showFloatingNextTurn, setShowFloatingNextTurn] = useState(false);
   const skipNextInitiativePersistRef = useRef(true);
+  const combatantCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const combatControlsRef = useRef<HTMLDivElement | null>(null);
+  const floatingNextTurnRef = useRef<HTMLDivElement | null>(null);
 
   const rollD20 = () => Math.floor(Math.random() * 20) + 1;
 
@@ -1299,6 +1335,35 @@ export default function InitiativeTracker() {
     liveCharacterInventoryItems,
     liveCharacterStates,
   ]);
+  const encounterClipboardText = useMemo(() => {
+    const playerLevels = encounter.players
+      .map((player) => {
+        const liveState = liveCharacterStates[player.slug];
+        if (liveState) {
+          const liveEntry = toCharacterCatalogEntry(
+            liveState,
+            liveCharacterInventoryItems[player.slug] ?? [],
+            itemDefinitionsById
+          );
+          return liveEntry?.level ?? null;
+        }
+
+        return catalogBySlug[player.slug]?.level ?? null;
+      })
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0);
+
+    return formatEncounterClipboardText(
+      playerLevels,
+      encounter.monsters.map((monster) => monster.name)
+    );
+  }, [
+    catalogBySlug,
+    encounter.monsters,
+    encounter.players,
+    itemDefinitionsById,
+    liveCharacterInventoryItems,
+    liveCharacterStates,
+  ]);
   const selectedBestiaryMonsterDetails = useMemo(
     () => (selectedBestiaryMonster ? bestiaryById[selectedBestiaryMonster.id] ?? null : null),
     [bestiaryById, selectedBestiaryMonster]
@@ -1310,6 +1375,14 @@ export default function InitiativeTracker() {
       .filter((entry) => entry.name.toLocaleLowerCase("it").includes(needle))
       .slice(0, 10);
   }, [bestiaryCatalog, monsterDraft.name]);
+  const copyEncounterSummaryToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(encounterClipboardText);
+      toast.success("Riepilogo combattimento copiato negli appunti.");
+    } catch {
+      toast.error("Non sono riuscito a copiare il riepilogo negli appunti.");
+    }
+  };
   const bestiaryHitPointRange = useMemo(
     () =>
       selectedBestiaryMonsterDetails
@@ -1328,6 +1401,54 @@ export default function InitiativeTracker() {
 
   useEffect(() => {
     document.title = "Iniziativa | D&D Character Manager";
+  }, []);
+
+  useEffect(() => {
+    if (!encounter.started || !encounter.currentTurnId) return;
+
+    const activeCard = combatantCardRefs.current[encounter.currentTurnId];
+    if (!activeCard) return;
+
+    window.requestAnimationFrame(() => {
+      const rect = activeCard.getBoundingClientRect();
+      const topPadding = 96;
+      const floatingOffset =
+        showFloatingNextTurn && window.innerWidth >= 1280
+          ? (floatingNextTurnRef.current?.getBoundingClientRect().height ?? 0) + 32
+          : 0;
+      const maxVisibleBottom = window.innerHeight - floatingOffset;
+
+      if (rect.bottom > maxVisibleBottom) {
+        window.scrollBy({
+          top: rect.bottom - maxVisibleBottom,
+          behavior: "smooth",
+        });
+      } else if (rect.top < topPadding) {
+        window.scrollBy({
+          top: rect.top - topPadding,
+          behavior: "smooth",
+        });
+      }
+
+      activeCard.focus({ preventScroll: true });
+    });
+  }, [encounter.currentTurnId, encounter.started]);
+
+  useEffect(() => {
+    const controls = combatControlsRef.current;
+    if (!controls) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setShowFloatingNextTurn(!entry.isIntersecting);
+      },
+      {
+        threshold: 0.2,
+      }
+    );
+
+    observer.observe(controls);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -2286,16 +2407,29 @@ export default function InitiativeTracker() {
           </div>
         </div>
 
-        <Card className="border-border/70 bg-background/60 p-4">
-          <div className="grid gap-3 md:grid-cols-[1.1fr_0.9fr]">
+        <Card className="border-border/70 bg-background/60 p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Riepilogo incontro</div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 rounded-full px-2.5 text-[11px]"
+              onClick={() => void copyEncounterSummaryToClipboard()}
+            >
+              <Copy className="mr-1.5 h-3.5 w-3.5" />
+              Copia riepilogo
+            </Button>
+          </div>
+          <div className="grid gap-2 md:grid-cols-[1.05fr_0.95fr]">
             <div className="space-y-1">
-              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">GS Effettivo</div>
-              <div className="text-2xl font-semibold text-primary">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">GS Effettivo</div>
+              <div className="text-xl font-semibold leading-none text-primary">
                 {encounterDifficultySummary.effectiveChallengeRating
                   ? encounterDifficultySummary.effectiveChallengeRating.label
                   : "—"}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-[11px] leading-relaxed text-muted-foreground">
                 {encounterDifficultySummary.includedEnemyCount > 0
                   ? `${formatEncounterXp(encounterDifficultySummary.baseXp)} PE base × ${formatEncounterNumber(
                       encounterDifficultySummary.monsterMultiplier
@@ -2306,16 +2440,16 @@ export default function InitiativeTracker() {
             <div className="space-y-1">
               <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Difficoltà</div>
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-sm">
+                <Badge variant="secondary" className="text-xs">
                   {encounterDifficultySummary.difficultyLabel ?? "Non disponibile"}
                 </Badge>
                 {encounterDifficultySummary.adjustedXp > 0 ? (
-                  <span className="text-sm text-foreground/80">
+                  <span className="text-xs text-foreground/80">
                     {formatEncounterXp(encounterDifficultySummary.adjustedXp)} PE aggiustati
                   </span>
                 ) : null}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-[11px] leading-relaxed text-muted-foreground">
                 {encounterDifficultySummary.playerCount > 0
                   ? `Soglie F ${formatEncounterXp(encounterDifficultySummary.thresholds.easy)} · M ${formatEncounterXp(
                       encounterDifficultySummary.thresholds.medium
@@ -2327,7 +2461,7 @@ export default function InitiativeTracker() {
             </div>
           </div>
           {encounterDifficultySummary.excludedEnemyCount > 0 ? (
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="mt-2 text-[11px] text-muted-foreground">
               {encounterDifficultySummary.excludedEnemyCount} nemic
               {encounterDifficultySummary.excludedEnemyCount === 1 ? "o" : "i"} senza GS disponibile
               esclus{encounterDifficultySummary.excludedEnemyCount === 1 ? "o" : "i"} dal calcolo.
@@ -2834,7 +2968,7 @@ export default function InitiativeTracker() {
         </div>
 
         <Card className="character-section">
-          <div className="character-section-title flex items-center justify-between gap-4">
+          <div ref={combatControlsRef} className="character-section-title flex items-center justify-between gap-4">
             <span>Combattimento</span>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">Round {encounter.round}</Badge>
@@ -2889,7 +3023,7 @@ export default function InitiativeTracker() {
               Aggiungi almeno un personaggio o un mostro per preparare l'ordine di iniziativa.
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 xl:pb-24">
               {currentTurn && (
                 <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
                   Turno attuale:
@@ -2912,6 +3046,10 @@ export default function InitiativeTracker() {
                   return (
                     <div
                       key={combatant.id}
+                      ref={(node) => {
+                        combatantCardRefs.current[combatant.id] = node;
+                      }}
+                      tabIndex={active ? -1 : undefined}
                       className={`rounded-md border p-3 transition-colors ${
                         active ? "border-primary bg-primary/5" : "border-border/60 bg-background/40"
                       }`}
@@ -3369,6 +3507,34 @@ export default function InitiativeTracker() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {showFloatingNextTurn && encounter.started && combatants.length > 0 ? (
+        <div
+          ref={floatingNextTurnRef}
+          className="pointer-events-none fixed bottom-6 z-40 hidden xl:block"
+          style={{ right: "max(1rem, calc((100vw - 80rem) / 2 + 1.25rem))" }}
+        >
+          <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-primary/25 bg-card/95 px-3 py-2 shadow-[0_18px_45px_rgba(0,0,0,0.24)] backdrop-blur">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Round {encounter.round}
+              </div>
+              <div className="max-w-[220px] truncate text-sm font-medium text-foreground">
+                {currentTurn?.name ?? "Prossimo turno"}
+              </div>
+            </div>
+            <Button
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              onClick={nextTurn}
+              title="Prossimo turno"
+              aria-label="Prossimo turno"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
