@@ -8,15 +8,6 @@ type PrivateMessagePayload = {
   message: string;
   sentAt: string;
 };
-export type ChatMessage = {
-  id: string;
-  slug: string;
-  senderUserId: string;
-  senderRole: "dm" | "player";
-  senderName: string;
-  text: string;
-  createdAt: string;
-};
 export type ChatContact = {
   slug: string;
   name: string;
@@ -100,10 +91,6 @@ export async function fetchCharacters() {
   return fetchJsonOrThrow("/api/characters");
 }
 
-export async function fetchChatMessages(slug: string) {
-  return fetchJsonOrThrow(`/api/chats/${slug}`) as Promise<ChatMessage[]>;
-}
-
 export async function fetchChatContacts() {
   return fetchJsonOrThrow("/api/chat/contacts") as Promise<ChatContact[]>;
 }
@@ -127,6 +114,16 @@ export async function getOrCreateDirectConversation(sourceSlug: string, targetSl
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ sourceSlug, targetSlug }),
+  }) as Promise<ChatConversationSummary>;
+}
+
+export async function getOrCreateDmConversation(slug: string) {
+  return fetchJsonOrThrow("/api/chat/conversations/dm", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ slug }),
   }) as Promise<ChatConversationSummary>;
 }
 
@@ -210,23 +207,6 @@ export function onPrivateMessage(cb: (payload: PrivateMessagePayload) => void): 
   s.on("dm:private-message", handler);
   return () => {
     s.off("dm:private-message", handler);
-  };
-}
-
-export function joinChatRoom(slug: string) {
-  getSocket().emit("chat:join", slug);
-}
-
-export function sendChatMessage(payload: { slug: string; text: string }) {
-  getSocket().emit("chat:message", payload);
-}
-
-export function onChatMessage(cb: (payload: ChatMessage) => void): () => void {
-  const s = getSocket();
-  const handler = (payload: ChatMessage) => cb(payload);
-  s.on("chat:message", handler);
-  return () => {
-    s.off("chat:message", handler);
   };
 }
 

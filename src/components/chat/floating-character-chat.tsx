@@ -4,19 +4,15 @@ import { Circle, MessageCircleMore, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/components/auth-provider";
-import CharacterChatWindow from "@/components/chat/character-chat-window";
 import ConversationChatWindow from "@/components/chat/conversation-chat-window";
-import SplitChatAvatar from "@/components/chat/split-chat-avatar";
 import {
   ChatContact,
-  ChatConversationMessage,
   ChatConversationSummary,
-  ChatMessage,
   fetchChatContacts,
   fetchChatConversation,
   fetchChatConversations,
+  getOrCreateDmConversation,
   getOrCreateDirectConversation,
-  onChatMessage,
   onConversationMessage,
   requestPresenceSnapshot,
   subscribePresence,
@@ -27,23 +23,13 @@ const DM_CHAT_AVATAR_URL = "/portraits/dm_profile.png";
 const PLAYER_CHAT_LAUNCHER_WIDTH = 300;
 const FLOATING_PANEL_GAP = 16;
 
-type OpenChatDescriptor =
-  | {
-      key: string;
-      type: "legacy";
-      slug: string;
-      title: string;
-      avatarUrl?: string;
-      subtitle?: string;
-    }
-  | {
-      key: string;
-      type: "conversation";
-      conversation: ChatConversationSummary;
-      title: string;
-      subtitle?: string;
-      avatarUrl?: string;
-    };
+type OpenChatDescriptor = {
+  key: string;
+  conversation: ChatConversationSummary;
+  title: string;
+  subtitle?: string;
+  avatarUrl?: string;
+};
 
 type FloatingCharacterChatProps = {
   slug: string;
@@ -55,6 +41,7 @@ function buildConversationWindowTitle(
   conversation: ChatConversationSummary,
   currentSlug: string
 ) {
+  if (conversation.kind === "dm-player") return "DM";
   return conversation.participants.find((participant) => participant.slug !== currentSlug)?.name ?? "Chat";
 }
 
@@ -62,7 +49,12 @@ function buildConversationAvatarUrl(
   conversation: ChatConversationSummary,
   currentSlug: string
 ) {
+  if (conversation.kind === "dm-player") return DM_CHAT_AVATAR_URL;
   return conversation.participants.find((participant) => participant.slug !== currentSlug)?.portraitUrl ?? "";
+}
+
+function buildConversationSubtitle(conversation: ChatConversationSummary) {
+  return conversation.kind === "dm-player" ? "Chat col master" : "Chat (visibile al DM)";
 }
 
 export default function FloatingCharacterChat({ slug }: FloatingCharacterChatProps) {
@@ -95,16 +87,7 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
     });
     requestPresenceSnapshot();
 
-    const offLegacy = onChatMessage((message: ChatMessage) => {
-      if (message.slug !== slug || message.senderUserId === user.id) return;
-      const chatKey = `legacy:${slug}`;
-      const isVisible = openChats.some((chat) => chat.key === chatKey) && !minimizedChatKeys.includes(chatKey);
-      if (!isVisible) {
-        setUnreadKeys((prev) => ({ ...prev, [chatKey]: true }));
-      }
-    });
-
-    const offConversation = onConversationMessage((message: ChatConversationMessage) => {
+    const offConversation = onConversationMessage((message) => {
       if (message.senderUserId === user.id) return;
 
       const chatKey = `conversation:${message.conversationId}`;
@@ -131,10 +114,9 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
               ...prev,
               {
                 key: chatKey,
-                type: "conversation",
                 conversation,
                 title: buildConversationWindowTitle(conversation, slug),
-                subtitle: "Chat (visibile al DM)",
+                subtitle: buildConversationSubtitle(conversation),
                 avatarUrl: buildConversationAvatarUrl(conversation, slug),
               },
             ];
@@ -151,9 +133,6 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
         unsubscribePresence();
       } catch {}
       try {
-        offLegacy();
-      } catch {}
-      try {
         offConversation();
       } catch {}
     };
@@ -166,19 +145,18 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
       .sort((left, right) => left.name.localeCompare(right.name, undefined, { sensitivity: "base" }));
   }, [contacts, onlineSlugs]);
 
-  const openLegacyDmChat = () => {
-    const key = `legacy:${slug}`;
+  const openConversation = (conversation: ChatConversationSummary) => {
+    const key = `conversation:${conversation.id}`;
     setOpenChats((prev) => {
       const withoutExisting = prev.filter((chat) => chat.key !== key);
       return [
         ...withoutExisting,
         {
           key,
-          type: "legacy",
-          slug,
-          title: "DM",
-          avatarUrl: DM_CHAT_AVATAR_URL,
-          subtitle: "Chat col master",
+          conversation,
+          title: buildConversationWindowTitle(conversation, slug),
+          avatarUrl: buildConversationAvatarUrl(conversation, slug),
+          subtitle: buildConversationSubtitle(conversation),
         },
       ];
     });
@@ -191,32 +169,16 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
     });
   };
 
+  const openDmConversationChat = async () => {
+    const conversation = await getOrCreateDmConversation(slug);
+    setConversationMap((prev) => ({ ...prev, [conversation.id]: conversation }));
+    openConversation(conversation);
+  };
+
   const openConversationChat = async (targetSlug: string) => {
     const conversation = await getOrCreateDirectConversation(slug, targetSlug);
     setConversationMap((prev) => ({ ...prev, [conversation.id]: conversation }));
-
-    const key = `conversation:${conversation.id}`;
-    setOpenChats((prev) => {
-      const withoutExisting = prev.filter((chat) => chat.key !== key);
-      return [
-        ...withoutExisting,
-        {
-          key,
-          type: "conversation",
-          conversation,
-          title: buildConversationWindowTitle(conversation, slug),
-          subtitle: "Chat (visibile al DM)",
-          avatarUrl: buildConversationAvatarUrl(conversation, slug),
-        },
-      ];
-    });
-    setMinimizedChatKeys((prev) => prev.filter((entry) => entry !== key));
-    setUnreadKeys((prev) => {
-      if (!prev[key]) return prev;
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
+    openConversation(conversation);
   };
 
   const minimizeChat = (chatKey: string) => {
@@ -252,6 +214,13 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
   if (typeof document === "undefined") return null;
 
   const hasUnread = Object.keys(unreadKeys).length > 0;
+  const hasUnreadDmConversation = Object.entries(unreadKeys).some(([key, unread]) => {
+    if (!unread) return false;
+    const conversationId = key.startsWith("conversation:") ? key.slice("conversation:".length) : "";
+    const conversation =
+      conversationMap[conversationId] ?? openChats.find((chat) => chat.key === key)?.conversation;
+    return conversation?.kind === "dm-player";
+  });
 
   const minimizedChats = openChats.filter((chat) => minimizedChatKeys.includes(chat.key));
   const visibleChats = openChats.filter((chat) => !minimizedChatKeys.includes(chat.key));
@@ -275,7 +244,7 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
             <button
               type="button"
               onClick={() => {
-                openLegacyDmChat();
+                void openDmConversationChat();
                 setLauncherOpen(false);
               }}
               className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-left transition-colors hover:bg-accent"
@@ -288,7 +257,7 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
                 <div className="truncate text-sm font-medium text-foreground">DM</div>
                 <div className="text-xs text-muted-foreground">Chat col master</div>
               </div>
-              {unreadKeys[`legacy:${slug}`] ? <Circle className="h-2.5 w-2.5 fill-primary text-primary" /> : null}
+              {hasUnreadDmConversation ? <Circle className="h-2.5 w-2.5 fill-primary text-primary" /> : null}
             </button>
 
             {onlineContacts.length > 0 ? (
@@ -331,31 +300,19 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
           className="fixed bottom-20 z-[9997] flex max-w-[calc(100vw-3rem)] items-end gap-3 overflow-x-auto pb-2"
           style={{ right: `${visibleChatsRightOffset}px` }}
         >
-          {visibleChats.map((chat) =>
-            chat.type === "legacy" ? (
-              <CharacterChatWindow
-                key={chat.key}
-                slug={chat.slug}
-                title={chat.title}
-                avatarUrl={chat.avatarUrl}
-                subtitle={chat.subtitle}
-                onMinimize={() => minimizeChat(chat.key)}
-                onClose={() => closeChat(chat.key)}
-              />
-            ) : (
-              <ConversationChatWindow
-                key={chat.key}
-                conversation={chat.conversation}
-                title={chat.title}
-                subtitle={chat.subtitle}
-                avatarMode="single"
-                avatarUrl={chat.avatarUrl}
-                dmAccessNote="Visibile al DM"
-                onMinimize={() => minimizeChat(chat.key)}
-                onClose={() => closeChat(chat.key)}
-              />
-            )
-          )}
+          {visibleChats.map((chat) => (
+            <ConversationChatWindow
+              key={chat.key}
+              conversation={chat.conversation}
+              title={chat.title}
+              subtitle={chat.subtitle}
+              avatarMode="single"
+              avatarUrl={chat.avatarUrl}
+              dmAccessNote={chat.conversation.kind === "dm-player" ? undefined : "Visibile al DM"}
+              onMinimize={() => minimizeChat(chat.key)}
+              onClose={() => closeChat(chat.key)}
+            />
+          ))}
         </div>
       ) : null}
 
@@ -363,41 +320,10 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
         {openChats.map((chat) => {
           const unread = !!unreadKeys[chat.key];
           const isMinimized = minimizedChats.some((entry) => entry.key === chat.key);
-          if (chat.type === "legacy") {
-            const normalizedAvatar = normalizePortraitUrl(chat.avatarUrl);
-            return (
-              <div key={chat.key} className="group relative">
-                <button
-                  type="button"
-                  onClick={() => reopenChat(chat.key)}
-                  className={`relative flex h-14 w-14 items-center justify-center rounded-full border bg-card/95 shadow-xl transition-transform hover:-translate-y-0.5 ${
-                    isMinimized ? "border-border/70" : "border-primary/70 ring-2 ring-primary/20"
-                  }`}
-                  title={`Apri chat con ${chat.title}`}
-                  aria-label={`Apri chat con ${chat.title}`}
-                >
-                  <Avatar className="h-12 w-12 border border-border/60">
-                    {normalizedAvatar ? <AvatarImage src={normalizedAvatar} alt={chat.title} className="object-cover" /> : null}
-                    <AvatarFallback className="bg-primary/10 font-heading text-sm font-bold text-primary">
-                      {getInitials(chat.title)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {unread ? <Circle className="absolute -right-1 -top-1 h-3 w-3 fill-primary text-primary" /> : null}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => closeChat(chat.key)}
-                  className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full border border-border/60 bg-background/95 text-muted-foreground shadow-sm transition-colors hover:text-foreground group-hover:flex"
-                  aria-label={`Chiudi chat con ${chat.title}`}
-                  title="Chiudi chat"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            );
-          }
-
           const otherParticipant = chat.conversation.participants.find((participant) => participant.slug !== slug);
+          const bubbleAvatar = chat.conversation.kind === "dm-player"
+            ? DM_CHAT_AVATAR_URL
+            : otherParticipant?.portraitUrl;
           return (
             <div key={chat.key} className="group relative">
               <button
@@ -410,8 +336,8 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
                 aria-label={`Apri chat con ${chat.title}`}
               >
                 <Avatar className="h-12 w-12 border border-border/60">
-                  {normalizePortraitUrl(otherParticipant?.portraitUrl) ? (
-                    <AvatarImage src={normalizePortraitUrl(otherParticipant?.portraitUrl)} alt={chat.title} className="object-cover" />
+                  {normalizePortraitUrl(bubbleAvatar) ? (
+                    <AvatarImage src={normalizePortraitUrl(bubbleAvatar)} alt={chat.title} className="object-cover" />
                   ) : null}
                   <AvatarFallback className="bg-primary/10 font-heading text-sm font-bold text-primary">
                     {getInitials(chat.title)}

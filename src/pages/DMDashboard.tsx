@@ -25,21 +25,18 @@ import {
   applyPatch,
   ChatConversationMessage,
   ChatConversationSummary,
-  ChatMessage,
   fetchChatConversation,
   fetchChatConversations,
   fetchCharacter,
   fetchCharacters,
-  joinChatRoom,
+  getOrCreateDmConversation,
   joinCharacterRoom,
-  onChatMessage,
   onConversationMessage,
   onCharacterPatch,
   onCharacterState,
   requestPresenceSnapshot,
   subscribePresence,
 } from "@/realtime";
-import CharacterChatWindow from "@/components/chat/character-chat-window";
 import ConversationChatWindow from "@/components/chat/conversation-chat-window";
 import SplitChatAvatar from "@/components/chat/split-chat-avatar";
 import { getInitials, normalizePortraitUrl } from "@/lib/character-ui";
@@ -268,7 +265,6 @@ export default function DMDashboard() {
   const [unreadConversationFlags, setUnreadConversationFlags] = useState<Record<string, boolean>>({});
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
   const joinedRoomsRef = useRef<Set<string>>(new Set());
-  const joinedChatRoomsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     document.title = "DM Dashboard | D&D Character Manager";
@@ -490,14 +486,6 @@ export default function DMDashboard() {
   const onlineSet = useMemo(() => new Set(onlineSlugs), [onlineSlugs]);
 
   useEffect(() => {
-    roster.forEach((player) => {
-      if (joinedChatRoomsRef.current.has(player.slug)) return;
-      joinedChatRoomsRef.current.add(player.slug);
-      joinChatRoom(player.slug);
-    });
-  }, [roster]);
-
-  useEffect(() => {
     let active = true;
     void fetchChatConversations().then((items) => {
       if (!active) return;
@@ -509,26 +497,6 @@ export default function DMDashboard() {
       active = false;
     };
   }, []);
-
-  useEffect(() => {
-    const offChat = onChatMessage((message: ChatMessage) => {
-      if (message.senderUserId === user?.id) return;
-
-      const player = roster.find((entry) => entry.slug === message.slug);
-      if (!player) return;
-
-      const isVisible = openChatSlugs.includes(message.slug) && !minimizedChatSlugs.includes(message.slug);
-      if (!isVisible) {
-        setUnreadChatFlags((prev) => ({ ...prev, [message.slug]: true }));
-      }
-    });
-
-    return () => {
-      try {
-        offChat();
-      } catch {}
-    };
-  }, [minimizedChatSlugs, openChatSlugs, roster, user?.id]);
 
   useEffect(() => {
     const offConversation = onConversationMessage((message: ChatConversationMessage) => {
@@ -550,6 +518,18 @@ export default function DMDashboard() {
           }
         }
 
+        if (conversation?.kind === "dm-player") {
+          const participantSlug = conversation.participants[0]?.slug;
+          if (!participantSlug) return;
+
+          const isDmConversationVisible =
+            openChatSlugs.includes(participantSlug) && !minimizedChatSlugs.includes(participantSlug);
+          if (!isDmConversationVisible) {
+            setUnreadChatFlags((prev) => ({ ...prev, [participantSlug]: true }));
+          }
+          return;
+        }
+
         if (!isVisible) {
           setOpenConversationIds((prev) => (prev.includes(conversationId) ? prev : [...prev, conversationId]));
           setMinimizedConversationIds((prev) => (prev.includes(conversationId) ? prev : [...prev, conversationId]));
@@ -565,7 +545,18 @@ export default function DMDashboard() {
     };
   }, [conversations, minimizedConversationIds, openConversationIds, user?.id]);
 
-  const openChatWindow = (slug: string) => {
+  const getDmConversationForSlug = (slug: string) =>
+    Object.values(conversations).find(
+      (conversation) => conversation.kind === "dm-player" && conversation.participants.some((participant) => participant.slug === slug)
+    ) ?? null;
+
+  const openChatWindow = async (slug: string) => {
+    let conversation = getDmConversationForSlug(slug);
+    if (!conversation) {
+      conversation = await getOrCreateDmConversation(slug);
+      setConversations((prev) => ({ ...prev, [conversation!.id]: conversation! }));
+    }
+
     setOpenChatSlugs((prev) => {
       const next = prev.filter((entry) => entry !== slug);
       return [...next, slug];
@@ -652,7 +643,9 @@ export default function DMDashboard() {
   );
 
   const buildConversationTitle = (conversation: ChatConversationSummary) =>
-    conversation.participants.map((participant) => participant.name).join(" + ");
+    conversation.kind === "dm-player"
+      ? (conversation.participants[0]?.name ?? "DM")
+      : conversation.participants.map((participant) => participant.name).join(" + ");
 
   const buildConversationSubtitle = (conversation: ChatConversationSummary) =>
     `${conversation.participants.length} partecipanti · DM incluso come osservatore`;
@@ -666,6 +659,9 @@ export default function DMDashboard() {
       rightAvatarUrl: right?.portraitUrl ?? "",
     };
   };
+
+  const buildDmConversationSubtitle = (slug: string) =>
+    roster.find((player) => player.slug === slug)?.playerName || slug;
 
   const handleSessionToggle = async (nextOpen: boolean) => {
     setSessionSubmitting(true);
@@ -877,7 +873,9 @@ export default function DMDashboard() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => openChatWindow(player.slug)}
+                      onClick={() => {
+                        void openChatWindow(player.slug);
+                      }}
                       className="relative h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
                       title="Apri chat"
                       aria-label="Apri chat"
@@ -916,7 +914,9 @@ export default function DMDashboard() {
                     <button
                       key={`launcher-${player.slug}`}
                       type="button"
-                      onClick={() => openChatWindow(player.slug)}
+                      onClick={() => {
+                        void openChatWindow(player.slug);
+                      }}
                       className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent"
                     >
                       <Avatar className="h-9 w-9 border border-border/60">
@@ -984,15 +984,18 @@ export default function DMDashboard() {
             .filter((slug) => !minimizedChatSlugs.includes(slug))
             .map((slug) => {
               const player = roster.find((entry) => entry.slug === slug);
-              if (!player) return null;
+              const conversation = getDmConversationForSlug(slug);
+              if (!player || !conversation) return null;
 
               return (
-                <CharacterChatWindow
-                  key={slug}
-                  slug={slug}
+                <ConversationChatWindow
+                  key={conversation.id}
+                  conversation={conversation}
                   title={player.name}
-                  subtitle={player.playerName || player.slug}
+                  subtitle={buildDmConversationSubtitle(player.slug)}
+                  avatarMode="single"
                   avatarUrl={player.portraitUrl}
+                  dmAccessNote={undefined}
                   onMinimize={() => minimizeChatWindow(slug)}
                   onClose={() => closeChatWindow(slug)}
                 />

@@ -3884,7 +3884,6 @@ function listAccessiblePlayerConversations(user, ownership) {
   const allRows = sqlite.prepare(`
     SELECT id
     FROM "ChatConversation"
-    WHERE legacyCharacterId IS NULL
     ORDER BY updatedAt DESC, createdAt DESC
   `).all();
 
@@ -5628,16 +5627,6 @@ async function start() {
     return res.json({ slug, userId: ownership[slug] ?? null });
   });
 
-  app.get("/api/chats/:slug", requireAuth, (req, res) => {
-    const slug = req.params.slug;
-    const ownership = readOwnership();
-    if (!canAccessCharacter(req.user, slug, ownership)) {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-
-    return res.json(readLegacyCharacterChatMessages(slug));
-  });
-
   app.get("/api/chat/contacts", requireAuth, (req, res) => {
     const ownership = readOwnership();
     return res.json(listChatContactsForUser(req.user, ownership));
@@ -5673,6 +5662,28 @@ async function start() {
     return res.status(201).json(conversation);
   });
 
+  app.post("/api/chat/conversations/dm", requireAuth, (req, res) => {
+    const ownership = readOwnership();
+    const slug = typeof req.body?.slug === "string" ? req.body.slug.trim() : "";
+
+    if (!slug) {
+      return res.status(400).json({ error: "Character slug required." });
+    }
+
+    if (!canAccessCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const conversation = buildConversationSummary(
+      getOrCreateLegacyCharacterChatConversation(slug, req.user?.id ?? null)?.id
+    );
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found." });
+    }
+
+    return res.status(201).json(conversation);
+  });
+
   app.get("/api/chat/conversations/:conversationId", requireAuth, (req, res) => {
     const ownership = readOwnership();
     const conversationId = String(req.params.conversationId ?? "").trim();
@@ -5681,7 +5692,7 @@ async function start() {
     }
 
     const conversation = buildConversationSummary(conversationId);
-    if (!conversation || conversation.kind !== "player-player") {
+    if (!conversation) {
       return res.status(404).json({ error: "Conversation not found" });
     }
 
@@ -5696,7 +5707,7 @@ async function start() {
     }
 
     const conversation = buildConversationSummary(conversationId);
-    if (!conversation || conversation.kind !== "player-player") {
+    if (!conversation) {
       return res.status(404).json({ error: "Conversation not found" });
     }
 
@@ -6992,38 +7003,6 @@ async function start() {
         title: normalizedTitle || undefined,
         message: normalizedMessage,
         sentAt: new Date().toISOString(),
-      });
-    });
-
-    socket.on("chat:join", (slug) => {
-      const ownership = readOwnership();
-      const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
-      if (!normalizedSlug || !canAccessCharacter(socket.data.user, normalizedSlug, ownership)) return;
-      const conversation = getOrCreateLegacyCharacterChatConversation(normalizedSlug);
-      if (!conversation) return;
-      socket.join(`chat:${conversation.id}`);
-    });
-
-    socket.on("chat:message", ({ slug, text }) => {
-      const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
-      const normalizedText = typeof text === "string" ? text.trim() : "";
-      const ownership = readOwnership();
-
-      if (!normalizedSlug || !normalizedText || !canAccessCharacter(socket.data.user, normalizedSlug, ownership)) {
-        return;
-      }
-
-      const nextMessage = appendLegacyCharacterChatMessage(normalizedSlug, socket.data.user, normalizedText);
-      if (!nextMessage?.conversationId) return;
-
-      io.to(`chat:${nextMessage.conversationId}`).emit("chat:message", {
-        id: nextMessage.id,
-        slug: nextMessage.slug,
-        senderUserId: nextMessage.senderUserId,
-        senderRole: nextMessage.senderRole,
-        senderName: nextMessage.senderName,
-        text: nextMessage.text,
-        createdAt: nextMessage.createdAt,
       });
     });
 

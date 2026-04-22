@@ -2,36 +2,60 @@
   "version": "1.5.0",
   "releaseName": "SQLite Release",
   "releasedAt": "2026-04-22",
-  "summary": "Questa release introduce la nuova base della messaggistica interna, pensata per l'uso al tavolo: conversazioni persistenti, vista coerente per player e DM, nuova rubrica flottante e una UI delle chat molto piu' vicina alle app di messaggistica moderne.",
+  "summary": "Benvenuti nella nuova versione cumulativa dell'app. Da questa release in poi trovate tutto il lavoro fatto dalla grande revisione SQLite fino alla nuova messaggistica interna: schede piu' evolute, strumenti di sessione piu' solidi, compendio mostri, gestione oggetti e denaro, note DM e una chat persistente molto piu' completa sia per i player sia per il master.",
   "sections": [
     {
-      "title": "Messaggistica",
+      "title": "Per i Player",
       "items": [
-        "Nuovo modello dati chat unificato, con conversazioni, partecipanti e messaggi persistenti pensati per sostenere sia le chat DM-player sia le chat tra personaggi.",
-        "Le chat tra personaggi sono ora canoniche e uniche: non vengono duplicate e restano sempre visibili anche al DM come osservatore.",
-        "Il DM puo' intervenire direttamente nelle chat tra player, con messaggi evidenziati in modo dedicato come interventi del master.",
-        "Rubrica chat flottante sia lato player sia lato DM, con accesso rapido alle conversazioni e indicatore discreto dei messaggi non letti.",
-        "Per i player, la rubrica mostra solo gli altri personaggi online oltre al DM; il fatto di avere la scheda aperta determina automaticamente lo stato online.",
-        "Per il DM, la rubrica mostra il roster completo online/offline e anche le eventuali conversazioni gia' avviate tra player."
+        "Nuovo accesso all'app con account dedicato, home giocatore personale, sessione persistente e cambio password guidato.",
+        "Home giocatore completamente rifinita: card delle schede piu' ricche, click diretto alla scheda e riepilogo rapido di iniziativa, CA, risorse, Percezione passiva, CD incantesimi e PF.",
+        "Scheda personaggio evoluta con layout personale salvato per utente, statistiche derivate aggiornate dall'equipaggiamento e gestione piu' completa dell'inventario.",
+        "Nuova gestione dell'equipaggiamento relazionale: gli oggetti assegnati dal DM entrano davvero nella scheda, influenzano armatura, velocita', attacchi e altre statistiche derivate.",
+        "Supporto piu' accurato alle armi e al combattimento, inclusa la gestione corretta dell'impugnatura e delle competenze sugli attacchi.",
+        "Supporto dedicato al Patto della Lama del warlock per trattare correttamente le armi rilevanti nella scheda.",
+        "Nuovo sistema di effetti passivi sugli oggetti, con bonus e modificatori applicati automaticamente quando l'oggetto lo prevede.",
+        "La messaggistica lato player e' stata ampliata: oltre alla chat col DM esistono ora conversazioni persistenti tra personaggi, sempre visibili al master.",
+        "Nuova rubrica chat flottante lato player con il DM e gli altri personaggi online, apertura rapida delle conversazioni e indicatori discreti dei messaggi non letti.",
+        "UI chat completamente rifinita in stile app di messaggistica: gruppi di messaggi, divisori per data, avatar a fine gruppo, orario nel tooltip e possibilita' di ingrandire l'immagine profilo dalla chat.",
+        "Le finestre chat lato player sono piu' ordinate nell'uso al tavolo: bubble sempre disponibili in basso, minimizzazione rapida e gestione automatica delle sovrapposizioni con la rubrica.",
+        "Avviso di turno in combattimento con highlight visivo della scheda e vibrazione sui dispositivi compatibili.",
+        "Compendio mostri lato player: pagina dedicata con elenco filtrabile, dettaglio consultabile e informazioni sbloccate in base al livello di conoscenza deciso dal DM.",
+        "Tracker iniziativa lato player con vista del combattimento in corso e accesso rapido al compendio mostri direttamente dall'area iniziativa."
       ]
     },
     {
-      "title": "UI Chat",
+      "title": "Per il DM",
       "items": [
-        "Nuovo aspetto dei messaggi ispirato alle app di chat moderne: raggruppamento dei messaggi consecutivi, avatar riportato in chiusura gruppo e data separata con divisore dedicato.",
-        "L'orario del messaggio e' stato spostato nel tooltip al passaggio del mouse per mantenere la conversazione piu' pulita e leggibile.",
-        "Nelle chat DM-player lato player la conversazione e' intestata semplicemente come DM e i messaggi del master usano il ritratto dedicato.",
-        "Le immagini profilo delle chat sono cliccabili e possono essere ingrandite direttamente dalla finestra della conversazione.",
-        "Ogni chat aperta mantiene sempre il proprio bubble in basso; i bubble minimizzati possono essere chiusi rapidamente con una x visibile al passaggio del mouse.",
-        "Quando si apre la rubrica, o quando una chat rischia di sovrapporsi ad essa, le finestre vengono minimizzate o riposizionate automaticamente per evitare collisioni visive."
+        "Nuova area DM con autenticazione a ruoli, home dedicata e panoramica piu' utile della campagna subito dopo il login.",
+        "Gestione utenti completa con creazione account, reset password, distinzione tra ruoli DM e player e assegnazione delle schede ai giocatori.",
+        "Gestione schede ampliata: creazione personaggi, supporto a PG e PNG, archiviazione non distruttiva e collegamento degli account ai personaggi.",
+        "Bestiario completo in app con elenco gestibile, filtri, ordinamento, dettaglio in stile Manuale dei Mostri, duplicazione, modifica e creazione di mostri personalizzati.",
+        "Import massivo del bestiario: parser SRD, pipeline JSON e integrazione del Manuale dei Mostri con ampio catalogo custom gia' pronto in archivio.",
+        "Regole di discovery dei mostri piu' strutturate: rarita', skill di scoperta, DC di analisi e DC di ricerca, oltre alla gestione manuale della conoscenza concessa ai player.",
+        "Compendio mostri lato player controllato dal DM, con anteprima dedicata e possibilita' di sbloccare le informazioni sia dal bestiario sia durante gli scontri.",
+        "Tracker iniziativa molto piu' avanzato: aggiunta mostri dal bestiario o manualmente, quantita multiple, iniziativa separata per ogni copia, PF variabili, apertura rapida del dettaglio mostro e salvataggio degli scenari di combattimento.",
+        "Vista presenza e sessione piu' orientata al tavolo: roster online/offline, presenza limitata ai player e blocco sessione DM per capire subito lo stato del gruppo.",
+        "Catalogo oggetti del DM con workflow di assegnazione ai personaggi, gestione dell'inventario relazionale e cronologia dei trasferimenti di equipaggiamento.",
+        "Gestione del denaro piu' completa con saldi aggiornati, dialog dedicato in scheda, transazioni tra personaggi e storico dei movimenti.",
+        "Nuova sezione note DM direttamente in app per consultare appunti della sessione.",
+        "La messaggistica del DM e' stata ripensata su una base molto piu' ampia: il master puo' osservare tutte le conversazioni, aprire una rubrica completa, vedere anche le chat tra player e intervenire direttamente quando serve.",
+        "Le chat tra personaggi sono trattate come conversazioni canoniche e uniche, sempre consultabili dal DM con intestazioni e avatar compositi pensati per distinguere subito i partecipanti.",
+        "Quando il DM scrive dentro una chat tra player il suo intervento viene evidenziato in modo dedicato, cosi' da mantenere chiaro il ruolo di osservatore privilegiato.",
+        "Rifinitura continua della home DM con card interamente cliccabili, riepiloghi live e linguaggio visuale unificato negli header delle principali pagine di gestione."
       ]
     },
     {
-      "title": "Stabilita' e supporto tecnico",
+      "title": "Novita' tecniche",
       "items": [
-        "Corretto il reset del socket realtime tra login, logout e cambio sessione, cosi' da associare correttamente i messaggi all'utente e al personaggio attivi.",
-        "Aggiornati endpoint, eventi realtime e componenti frontend per supportare il nuovo ciclo completo delle conversazioni persistenti.",
-        "Pulita la base chat iniziale di test per permettere di partire direttamente con conversazioni reali sul nuovo modello dati."
+        "L'app e' passata da una gestione dati basata su file JSON a una base dati locale piu' solida, con persistenza piu' affidabile delle informazioni di campagna.",
+        "La nuova infrastruttura dati supporta in modo piu' strutturato utenti, schede, mostri, chat, scenari, oggetti, transazioni e sessioni.",
+        "Sono stati introdotti nuovi modelli dati per inventario, catalogo oggetti, denaro e knowledge dei mostri, cosi' da sostenere funzionalita' piu' profonde lato player e lato DM.",
+        "Il modello dati della chat e' stato rifatto per supportare conversazioni, partecipanti e messaggi persistenti in modo unificato, superando la vecchia logica limitata alla sola chat DM-personaggio.",
+        "Sono stati aggiornati endpoint API, realtime socket ed eventi frontend per gestire il nuovo ciclo completo delle conversazioni canoniche e della rubrica condivisa.",
+        "Il reset del socket realtime tra login, logout e cambio sessione e' stato corretto per associare sempre i messaggi all'utente e al personaggio giusti.",
+        "Il sistema di statistiche derivate ed effetti sugli oggetti e' stato reso piu' accurato e coerente con l'equipaggiamento realmente indossato o impugnato dal personaggio.",
+        "La UI delle home, delle principali pagine di gestione e dell'intera messaggistica e' stata riallineata per offrire un'esperienza piu' coerente, leggibile e stabile durante l'uso al tavolo.",
+        "La base chat iniziale di test e' stata pulita per permettere di partire direttamente da conversazioni reali sul nuovo modello dati."
       ]
     }
   ]
