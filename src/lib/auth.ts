@@ -616,6 +616,21 @@ async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+function cacheRequest<T>(slot: { promise: Promise<T> | null }, factory: () => Promise<T>) {
+  if (!slot.promise) {
+    slot.promise = factory().catch((error) => {
+      slot.promise = null;
+      throw error;
+    });
+  }
+  return slot.promise;
+}
+
+const spellsRequestCache: { promise: Promise<SpellsByClass> | null } = { promise: null };
+const skillsRequestCache: { promise: Promise<SkillsPayload> | null } = { promise: null };
+const raceSpeedsRequestCache: { promise: Promise<RaceSpeedsPayload> | null } = { promise: null };
+const spellSlotsRequestCache: { promise: Promise<SpellSlotTable> | null } = { promise: null };
+
 export function fetchCurrentUser() {
   return authFetch<AuthUser>("/api/auth/me", { method: "GET" });
 }
@@ -731,19 +746,19 @@ export function fetchMonsters() {
 }
 
 export function fetchSpells() {
-  return authFetch<SpellsByClass>("/api/spells", { method: "GET" });
+  return cacheRequest(spellsRequestCache, () => authFetch<SpellsByClass>("/api/spells", { method: "GET" }));
 }
 
 export function fetchSkills() {
-  return authFetch<SkillsPayload>("/api/rules/skills", { method: "GET" });
+  return cacheRequest(skillsRequestCache, () => authFetch<SkillsPayload>("/api/rules/skills", { method: "GET" }));
 }
 
 export function fetchRaceSpeeds() {
-  return authFetch<RaceSpeedsPayload>("/api/rules/race-speeds", { method: "GET" });
+  return cacheRequest(raceSpeedsRequestCache, () => authFetch<RaceSpeedsPayload>("/api/rules/race-speeds", { method: "GET" }));
 }
 
 export function fetchSpellSlots() {
-  return authFetch<SpellSlotTable>("/api/rules/spell-slots", { method: "GET" });
+  return cacheRequest(spellSlotsRequestCache, () => authFetch<SpellSlotTable>("/api/rules/spell-slots", { method: "GET" }));
 }
 
 export function fetchMonster(monsterId: string) {

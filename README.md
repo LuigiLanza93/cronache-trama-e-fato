@@ -80,9 +80,17 @@ Il cruscotto ti permette di:
 
 - avviare, fermare e riavviare il server
 - cambiare e salvare la porta di avvio
+- scegliere la modalita di avvio: sessione giocatori in produzione LAN, solo DM locale, oppure sviluppo locale
+- aggiornare la build di produzione con il pulsante `Build`
 - vedere gli indirizzi locale e di rete
 - copiare uno degli indirizzi da condividere con chi deve collegarsi
 - aprire l'app nel browser
+
+Per giocare con i player usa `Sessione giocatori - produzione LAN`. Prima di usarla dopo modifiche al codice, aggiorna la build dal cruscotto oppure con:
+
+```bash
+npm run build
+```
 
 La configurazione locale del cruscotto viene salvata in:
 

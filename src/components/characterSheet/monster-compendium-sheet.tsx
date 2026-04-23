@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { MonsterStatBlock, PlayerMonsterPreviewCard } from "@/pages/BestiaryManagement";
 
 const COMPENDIUM_GRID = "minmax(168px,1.1fr) 92px 44px 68px minmax(112px,0.85fr) 64px minmax(108px,0.8fr) repeat(6, 78px)";
+const COMPENDIUM_REFRESH_MS = 15000;
 
 type CompendiumSortKey =
   | "name"
@@ -158,7 +159,7 @@ export default function MonsterCompendiumSheet({
       void loadCompendiumList(true);
     };
 
-    const intervalId = window.setInterval(refresh, 4000);
+    const intervalId = window.setInterval(refresh, COMPENDIUM_REFRESH_MS);
     const handleVisibilityChange = () => refresh();
     const handleFocus = () => refresh();
 
@@ -213,7 +214,7 @@ export default function MonsterCompendiumSheet({
         });
     };
 
-    const intervalId = window.setInterval(refreshDetail, 4000);
+    const intervalId = window.setInterval(refreshDetail, COMPENDIUM_REFRESH_MS);
     const handleVisibilityChange = () => refreshDetail();
     const handleFocus = () => refreshDetail();
 

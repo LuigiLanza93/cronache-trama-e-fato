@@ -9,6 +9,7 @@ try {
   $script:BootLog = Join-Path $script:StateDir 'dashboard-startup.log'
   $script:SettingsFile = Join-Path $script:StateDir 'settings.json'
   $script:AppPort = 3000
+  $script:LaunchMode = 'table'
 
   New-Item -ItemType Directory -Path $script:StateDir -Force | Out-Null
   Set-Content -Path $script:BootLog -Value ("[" + (Get-Date).ToString("s") + "] avvio cruscotto") -Encoding UTF8
@@ -18,6 +19,13 @@ try {
 
 function Get-NodePath {
   $cmd = Get-Command node -ErrorAction SilentlyContinue
+  if (-not $cmd) { return $null }
+  return $cmd.Source
+}
+
+function Get-NpmPath {
+  $cmd = Get-Command npm.cmd -ErrorAction SilentlyContinue
+  if (-not $cmd) { $cmd = Get-Command npm -ErrorAction SilentlyContinue }
   if (-not $cmd) { return $null }
   return $cmd.Source
 }
@@ -32,6 +40,9 @@ function Load-Settings {
         $script:AppPort = $loadedPort
       }
     }
+    if ($settings.mode -and @('table', 'private', 'dev') -contains [string]$settings.mode) {
+      $script:LaunchMode = [string]$settings.mode
+    }
   }
   catch {
     Add-Content -Path $script:BootLog -Value ("[" + (Get-Date).ToString("s") + "] settings-load-error: " + $_.Exception.Message) -Encoding UTF8
@@ -39,8 +50,52 @@ function Load-Settings {
 }
 
 function Save-Settings {
-  $payload = @{ port = $script:AppPort } | ConvertTo-Json
+  $payload = @{ port = $script:AppPort; mode = $script:LaunchMode } | ConvertTo-Json
   Set-Content -Path $script:SettingsFile -Value $payload -Encoding UTF8
+}
+
+function Get-LaunchModeProfiles {
+  return @(
+    [PSCustomObject]@{
+      Id = 'table'
+      Label = 'Sessione giocatori - produzione LAN'
+      Description = 'Consigliata al tavolo: usa dist/ e condivide l''app in rete.'
+      NodeEnv = 'production'
+      Host = '0.0.0.0'
+      ShowNetworkUrls = $true
+    },
+    [PSCustomObject]@{
+      Id = 'private'
+      Label = 'Solo DM - produzione locale'
+      Description = 'Usa dist/ ma ascolta solo su questo PC.'
+      NodeEnv = 'production'
+      Host = '127.0.0.1'
+      ShowNetworkUrls = $false
+    },
+    [PSCustomObject]@{
+      Id = 'dev'
+      Label = 'Sviluppo locale - Vite'
+      Description = 'Solo per modificare codice: non condividerla con i player.'
+      NodeEnv = 'development'
+      Host = '127.0.0.1'
+      ShowNetworkUrls = $false
+    }
+  )
+}
+
+function Get-LaunchModeProfile {
+  $profile = Get-LaunchModeProfiles | Where-Object { $_.Id -eq $script:LaunchMode } | Select-Object -First 1
+  if ($profile) { return $profile }
+  $script:LaunchMode = 'table'
+  Save-Settings
+  return Get-LaunchModeProfiles | Where-Object { $_.Id -eq $script:LaunchMode } | Select-Object -First 1
+}
+
+function Set-LaunchMode([string]$modeId) {
+  if (-not (@('table', 'private', 'dev') -contains $modeId)) { return $false }
+  $script:LaunchMode = $modeId
+  Save-Settings
+  return $true
 }
 
 function Try-SetAppPort([string]$candidate) {
@@ -78,8 +133,12 @@ function Test-ServerRunning {
 }
 
 function Get-AppUrls {
+  $profile = Get-LaunchModeProfile
   $urls = New-Object System.Collections.Generic.List[string]
   $urls.Add("Locale: http://localhost:$($script:AppPort)")
+  if (-not $profile.ShowNetworkUrls) {
+    return $urls
+  }
   Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
     Where-Object {
       $_.IPAddress -notlike '127.*' -and
@@ -94,6 +153,7 @@ function Get-AppUrls {
 }
 
 function Start-DevServer {
+  $profile = Get-LaunchModeProfile
   if (Test-ServerRunning) {
     return "Il server è già in esecuzione."
   }
@@ -101,6 +161,10 @@ function Start-DevServer {
   $nodePath = Get-NodePath
   if (-not $nodePath) {
     throw "Non trovo 'node' nel PATH di sistema."
+  }
+
+  if ($profile.NodeEnv -eq 'production' -and -not (Test-Path (Join-Path $script:RootDir 'dist\index.html'))) {
+    throw "Non trovo dist\index.html. Esegui prima 'npm run build' dal terminale, poi riavvia in modalita produzione."
   }
 
   Remove-Item $script:OutLog, $script:ErrLog -Force -ErrorAction SilentlyContinue
@@ -113,8 +177,9 @@ function Start-DevServer {
   $psi.CreateNoWindow = $true
   $psi.RedirectStandardOutput = $true
   $psi.RedirectStandardError = $true
-  $psi.Environment['NODE_ENV'] = 'development'
+  $psi.Environment['NODE_ENV'] = $profile.NodeEnv
   $psi.Environment['PORT'] = [string]$script:AppPort
+  $psi.Environment['HOST'] = $profile.Host
 
   $proc = New-Object System.Diagnostics.Process
   $proc.StartInfo = $psi
@@ -146,7 +211,7 @@ function Start-DevServer {
   $proc.BeginErrorReadLine()
 
   Set-Content -Path $script:PidFile -Value $proc.Id -Encoding UTF8
-  return "Avvio richiesto (PID $($proc.Id))."
+  return "Avvio richiesto (PID $($proc.Id), $($profile.Label))."
 }
 
 function Stop-DevServer {
@@ -164,6 +229,48 @@ function Restart-DevServer {
   [void](Stop-DevServer)
   Start-Sleep -Milliseconds 500
   return Start-DevServer
+}
+
+function Build-App {
+  if (Test-ServerRunning) {
+    throw "Ferma il server prima di aggiornare la build."
+  }
+
+  $npmPath = Get-NpmPath
+  if (-not $npmPath) {
+    throw "Non trovo 'npm' nel PATH di sistema."
+  }
+
+  Remove-Item $script:OutLog, $script:ErrLog -Force -ErrorAction SilentlyContinue
+
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = $npmPath
+  $psi.Arguments = 'run build'
+  $psi.WorkingDirectory = $script:RootDir
+  $psi.UseShellExecute = $false
+  $psi.CreateNoWindow = $true
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+
+  $proc = New-Object System.Diagnostics.Process
+  $proc.StartInfo = $psi
+
+  if (-not $proc.Start()) {
+    throw "Non sono riuscito ad avviare npm run build."
+  }
+
+  $stdout = $proc.StandardOutput.ReadToEnd()
+  $stderr = $proc.StandardError.ReadToEnd()
+  $proc.WaitForExit()
+
+  if ($stdout) { Set-Content -Path $script:OutLog -Value $stdout -Encoding UTF8 }
+  if ($stderr) { Set-Content -Path $script:ErrLog -Value $stderr -Encoding UTF8 }
+
+  if ($proc.ExitCode -ne 0) {
+    throw "Build non riuscita. Controlla i log recenti nel cruscotto."
+  }
+
+  return "Build aggiornata correttamente."
 }
 
 function Read-RecentLogs {
@@ -260,6 +367,32 @@ $savePortButton.BackColor = [System.Drawing.Color]::FromArgb(43, 32, 25)
 $savePortButton.ForeColor = [System.Drawing.Color]::FromArgb(240, 225, 207)
 $form.Controls.Add($savePortButton)
 
+$modeLabel = New-Object System.Windows.Forms.Label
+$modeLabel.Text = 'Modalita'
+$modeLabel.Location = New-Object System.Drawing.Point(560, 132)
+$modeLabel.Size = New-Object System.Drawing.Size(62, 22)
+$modeLabel.Font = New-Object System.Drawing.Font('Segoe UI', 9)
+$form.Controls.Add($modeLabel)
+
+$modeBox = New-Object System.Windows.Forms.ComboBox
+$modeBox.Location = New-Object System.Drawing.Point(626, 129)
+$modeBox.Size = New-Object System.Drawing.Size(156, 24)
+$modeBox.DropDownStyle = 'DropDownList'
+$modeBox.BackColor = [System.Drawing.Color]::FromArgb(36, 26, 20)
+$modeBox.ForeColor = [System.Drawing.Color]::FromArgb(240, 225, 207)
+$modeBox.Font = New-Object System.Drawing.Font('Segoe UI', 9)
+foreach ($profile in Get-LaunchModeProfiles) {
+  [void]$modeBox.Items.Add($profile.Label)
+}
+$form.Controls.Add($modeBox)
+
+$modeHelpLabel = New-Object System.Windows.Forms.Label
+$modeHelpLabel.Location = New-Object System.Drawing.Point(560, 202)
+$modeHelpLabel.Size = New-Object System.Drawing.Size(222, 42)
+$modeHelpLabel.Font = New-Object System.Drawing.Font('Segoe UI', 8)
+$modeHelpLabel.ForeColor = [System.Drawing.Color]::FromArgb(194, 173, 151)
+$form.Controls.Add($modeHelpLabel)
+
 $buttonY = 160
 function New-ActionButton([string]$text, [int]$x) {
   $btn = New-Object System.Windows.Forms.Button
@@ -276,20 +409,21 @@ $startButton = New-ActionButton 'Avvia' 22
 $stopButton = New-ActionButton 'Ferma' 154
 $restartButton = New-ActionButton 'Riavvia' 286
 $openButton = New-ActionButton 'Apri app' 418
+$buildButton = New-ActionButton 'Build' 550
 
-$form.Controls.AddRange(@($startButton, $stopButton, $restartButton, $openButton))
+$form.Controls.AddRange(@($startButton, $stopButton, $restartButton, $openButton, $buildButton))
 
 $urlsTitle = New-Object System.Windows.Forms.Label
 $urlsTitle.Text = 'Indirizzi'
 $urlsTitle.Font = New-Object System.Drawing.Font('Georgia', 12, [System.Drawing.FontStyle]::Bold)
 $urlsTitle.ForeColor = [System.Drawing.Color]::FromArgb(245, 192, 137)
-$urlsTitle.Location = New-Object System.Drawing.Point(22, 220)
+$urlsTitle.Location = New-Object System.Drawing.Point(22, 250)
 $urlsTitle.AutoSize = $true
 $form.Controls.Add($urlsTitle)
 
 $copyUrlButton = New-Object System.Windows.Forms.Button
 $copyUrlButton.Text = 'Copia indirizzo'
-$copyUrlButton.Location = New-Object System.Drawing.Point(640, 214)
+$copyUrlButton.Location = New-Object System.Drawing.Point(640, 244)
 $copyUrlButton.Size = New-Object System.Drawing.Size(142, 32)
 $copyUrlButton.FlatStyle = 'Flat'
 $copyUrlButton.BackColor = [System.Drawing.Color]::FromArgb(43, 32, 25)
@@ -297,7 +431,7 @@ $copyUrlButton.ForeColor = [System.Drawing.Color]::FromArgb(240, 225, 207)
 $form.Controls.Add($copyUrlButton)
 
 $urlsBox = New-Object System.Windows.Forms.ListBox
-$urlsBox.Location = New-Object System.Drawing.Point(22, 250)
+$urlsBox.Location = New-Object System.Drawing.Point(22, 280)
 $urlsBox.Size = New-Object System.Drawing.Size(760, 100)
 $urlsBox.BackColor = [System.Drawing.Color]::FromArgb(36, 26, 20)
 $urlsBox.ForeColor = [System.Drawing.Color]::FromArgb(240, 225, 207)
@@ -307,13 +441,13 @@ $logTitle = New-Object System.Windows.Forms.Label
 $logTitle.Text = 'Log recenti'
 $logTitle.Font = New-Object System.Drawing.Font('Georgia', 12, [System.Drawing.FontStyle]::Bold)
 $logTitle.ForeColor = [System.Drawing.Color]::FromArgb(245, 192, 137)
-$logTitle.Location = New-Object System.Drawing.Point(22, 370)
+$logTitle.Location = New-Object System.Drawing.Point(22, 400)
 $logTitle.AutoSize = $true
 $form.Controls.Add($logTitle)
 
 $logBox = New-Object System.Windows.Forms.TextBox
-$logBox.Location = New-Object System.Drawing.Point(22, 400)
-$logBox.Size = New-Object System.Drawing.Size(760, 180)
+$logBox.Location = New-Object System.Drawing.Point(22, 430)
+$logBox.Size = New-Object System.Drawing.Size(760, 150)
 $logBox.Multiline = $true
 $logBox.ScrollBars = 'Vertical'
 $logBox.ReadOnly = $true
@@ -329,6 +463,7 @@ $refreshTimer.Interval = 2000
 
 function Refresh-Ui {
   $running = Test-ServerRunning
+  $profile = Get-LaunchModeProfile
   $statusLabel.Text = if ($running) { 'Stato: server attivo' } else { 'Stato: server fermo' }
   $statusLabel.ForeColor = if ($running) {
     [System.Drawing.Color]::FromArgb(87, 199, 133)
@@ -340,8 +475,14 @@ function Refresh-Ui {
   $startButton.Enabled = -not $running
   $stopButton.Enabled = $running
   $restartButton.Enabled = $running
+  $buildButton.Enabled = -not $running
   $portBox.Enabled = -not $running
   $savePortButton.Enabled = -not $running
+  $modeBox.Enabled = -not $running
+  if ($modeBox.SelectedItem -ne $profile.Label) {
+    $modeBox.SelectedItem = $profile.Label
+  }
+  $modeHelpLabel.Text = $profile.Description
   if ($portBox.Text -ne [string]$script:AppPort -and -not $portBox.Focused) {
     $portBox.Text = [string]$script:AppPort
   }
@@ -405,6 +546,17 @@ $openButton.Add_Click({
   Open-AppInBrowser
 })
 
+$buildButton.Add_Click({
+  try {
+    Flash-Status('Aggiorno la build...')
+    $form.Refresh()
+    Flash-Status (Build-App)
+  } catch {
+    [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, 'Errore build', 'OK', 'Error') | Out-Null
+  }
+  Refresh-Ui
+})
+
 $savePortButton.Add_Click({
   if (Try-SetAppPort $portBox.Text) {
     Flash-Status ("Porta salvata: " + $script:AppPort)
@@ -415,6 +567,16 @@ $savePortButton.Add_Click({
     $portBox.Text = [string]$script:AppPort
     $portBox.SelectAll()
     $portBox.Focus()
+  }
+})
+
+$modeBox.Add_SelectedIndexChanged({
+  if (Test-ServerRunning) { return }
+  $selectedLabel = [string]$modeBox.SelectedItem
+  $selectedProfile = Get-LaunchModeProfiles | Where-Object { $_.Label -eq $selectedLabel } | Select-Object -First 1
+  if ($selectedProfile -and (Set-LaunchMode $selectedProfile.Id)) {
+    $modeHelpLabel.Text = $selectedProfile.Description
+    Refresh-Ui
   }
 })
 

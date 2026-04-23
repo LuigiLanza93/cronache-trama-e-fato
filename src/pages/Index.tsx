@@ -429,6 +429,19 @@ const Index = () => {
       .then(async (items) => {
         if (!active) return;
         const sourceCharacters = Array.isArray(items) ? items : [];
+
+        if (user.role === "dm") {
+          setCharacterInventoryBySlug({});
+          setCharacterItemDefinitionsById({});
+          setCharacters(
+            sourceCharacters
+              .map((item) => toHomeCharacter(item))
+              .filter((item): item is HomeCharacter => !!item)
+              .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+          );
+          return;
+        }
+
         const inventoryResults = await Promise.all(
           sourceCharacters.map(async (character) => {
             const slug = String(character?.slug ?? "").trim();

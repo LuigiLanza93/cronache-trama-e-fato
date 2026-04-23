@@ -18,6 +18,7 @@ const __dirname = path.dirname(__filename);
 
 const isProd = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || undefined;
 
 // ---- Disk paths ----
 const DATA_DIR = path.resolve(__dirname, "src/data");
@@ -7114,14 +7115,17 @@ async function start() {
     });
   }
 
-  httpServer.listen(PORT, () => {
-    console.log(`Server listening on http://localhost:${PORT}`);
+  httpServer.listen(PORT, HOST, () => {
+    const bindLabel = HOST ?? "0.0.0.0";
+    console.log(`Server listening on http://${bindLabel === "0.0.0.0" ? "localhost" : bindLabel}:${PORT}`);
 
-    const nets = os.networkInterfaces();
-    for (const name of Object.keys(nets)) {
-      for (const net of nets[name] || []) {
-        if (net.family === "IPv4" && !net.internal) {
-          console.log(` -> Network: http://${net.address}:${PORT}`);
+    if (!HOST || HOST === "0.0.0.0" || HOST === "::") {
+      const nets = os.networkInterfaces();
+      for (const name of Object.keys(nets)) {
+        for (const net of nets[name] || []) {
+          if (net.family === "IPv4" && !net.internal) {
+            console.log(` -> Network: http://${net.address}:${PORT}`);
+          }
         }
       }
     }
