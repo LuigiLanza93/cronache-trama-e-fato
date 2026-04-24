@@ -853,6 +853,32 @@ function formatEncounterClipboardText(playerLevels: number[], monsterNames: stri
   ].join("\n");
 }
 
+async function writeClipboardText(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "0";
+  textarea.style.width = "1px";
+  textarea.style.height = "1px";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
 function abilityModifierLabel(score: number) {
   const value = abilityModifier(score);
   return `${score} (${value >= 0 ? `+${value}` : value})`;
@@ -1180,19 +1206,7 @@ export default function InitiativeTracker() {
 
   const rollD20 = () => Math.floor(Math.random() * 20) + 1;
 
-  const handlePlayerRollKeyDown = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-    slug: string,
-    selected: boolean,
-    parsedRoll: number | null
-  ) => {
-    if (event.key !== "Enter") return;
-
-    event.preventDefault();
-    if (selected || parsedRoll === null) return;
-    const added = addPlayer(slug);
-    if (!added) return;
-
+  const focusNextAvailablePlayerRoll = (slug: string) => {
     const nextSlug = catalogList.find(
       (entry) => entry.slug !== slug && !selectedSlugs.includes(entry.slug)
     )?.slug;
@@ -1203,6 +1217,26 @@ export default function InitiativeTracker() {
       playerRollInputRefs.current[nextSlug]?.focus();
       playerRollInputRefs.current[nextSlug]?.select();
     });
+  };
+
+  const confirmPlayerRoll = (slug: string, selected: boolean, parsedRoll: number | null) => {
+    if (selected || parsedRoll === null) return false;
+    const added = addPlayer(slug);
+    if (!added) return false;
+    focusNextAvailablePlayerRoll(slug);
+    return true;
+  };
+
+  const handlePlayerRollKeyDown = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    slug: string,
+    selected: boolean,
+    parsedRoll: number | null
+  ) => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+    confirmPlayerRoll(slug, selected, parsedRoll);
   };
 
   const handleMonsterFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -1377,10 +1411,17 @@ export default function InitiativeTracker() {
   }, [bestiaryCatalog, monsterDraft.name]);
   const copyEncounterSummaryToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(encounterClipboardText);
-      toast.success("Riepilogo combattimento copiato negli appunti.");
+      const copied = await writeClipboardText(encounterClipboardText);
+      if (copied) {
+        toast.success("Riepilogo combattimento copiato negli appunti.");
+        return;
+      }
+
+      window.prompt("Copia manualmente il riepilogo:", encounterClipboardText);
+      toast.info("Il browser non consente la copia automatica: usa il testo selezionato nella finestra.");
     } catch {
-      toast.error("Non sono riuscito a copiare il riepilogo negli appunti.");
+      window.prompt("Copia manualmente il riepilogo:", encounterClipboardText);
+      toast.info("Il browser non consente la copia automatica: usa il testo selezionato nella finestra.");
     }
   };
   const bestiaryHitPointRange = useMemo(
@@ -2528,10 +2569,16 @@ export default function InitiativeTracker() {
                         ref={(element) => {
                           playerRollInputRefs.current[entry.slug] = element;
                         }}
+                        form={`initiative-player-${entry.slug}`}
                         value={initiativeRoll}
                         onChange={(e) =>
                           setPlayerRolls((prev) => ({ ...prev, [entry.slug]: e.target.value }))
                         }
+                        onKeyUp={(e) => {
+                          if (e.key !== "Enter") return;
+                          e.preventDefault();
+                          confirmPlayerRoll(entry.slug, selected, parsedRoll);
+                        }}
                         onKeyDown={(e) => handlePlayerRollKeyDown(e, entry.slug, selected, parsedRoll)}
                         inputMode="numeric"
                         placeholder="Tiro init"
@@ -2552,16 +2599,24 @@ export default function InitiativeTracker() {
                             <X className="h-3.5 w-3.5" />
                           </Button>
                         ) : (
-                          <Button
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => addPlayer(entry.slug)}
-                            disabled={parsedRoll === null}
-                            title={totalInitiative !== null ? `Totale iniziativa ${totalInitiative}` : undefined}
-                            aria-label="Aggiungi al tracker"
+                          <form
+                            id={`initiative-player-${entry.slug}`}
+                            onSubmit={(event) => {
+                              event.preventDefault();
+                              confirmPlayerRoll(entry.slug, selected, parsedRoll);
+                            }}
                           >
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
+                            <Button
+                              type="submit"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={parsedRoll === null}
+                              title={totalInitiative !== null ? `Totale iniziativa ${totalInitiative}` : undefined}
+                              aria-label="Aggiungi al tracker"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          </form>
                         )}
                       </div>
                     </div>
