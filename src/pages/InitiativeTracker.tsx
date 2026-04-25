@@ -35,10 +35,14 @@ import {
   type MonsterSummary,
 } from "@/lib/auth";
 import {
+  applyPatch,
   fetchCharacter,
   fetchCharacters,
+  joinCharacterRoom,
   joinInitiativeDmRoom,
   notifyInitiativeTurn,
+  onCharacterPatch,
+  onCharacterState,
   onInitiativeState,
   updateInitiativeState,
 } from "@/realtime";
@@ -1132,6 +1136,9 @@ export default function InitiativeTracker() {
   const [liveCharacterStates, setLiveCharacterStates] = useState<Record<string, CharacterState>>({});
   const [liveCharacterInventoryItems, setLiveCharacterInventoryItems] = useState<Record<string, CharacterInventoryItemEntry[]>>({});
   const [itemDefinitionsById, setItemDefinitionsById] = useState<Record<string, ItemDefinitionEntry>>({});
+  const itemDefinitionsByIdRef = useRef(itemDefinitionsById);
+  const joinedCharacterRoomsRef = useRef<Set<string>>(new Set());
+  const selectedCharacterRefreshInFlightRef = useRef(false);
   const [playerRolls, setPlayerRolls] = useState<Record<string, string>>({});
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
   const [monsterHpAdjustments, setMonsterHpAdjustments] = useState<Record<string, string>>({});
@@ -1151,6 +1158,10 @@ export default function InitiativeTracker() {
   });
   const [monsterSearchOpen, setMonsterSearchOpen] = useState(false);
   const monsterForm = monsterDraft;
+
+  useEffect(() => {
+    itemDefinitionsByIdRef.current = itemDefinitionsById;
+  }, [itemDefinitionsById]);
   const setMonsterForm = setMonsterDraft;
   const bestiaryMonsterDraft = {
     monsterId: monsterDraft.selectedMonsterId,
@@ -1576,9 +1587,17 @@ export default function InitiativeTracker() {
       return;
     }
 
+    selectedSlugs.forEach((slug) => {
+      if (joinedCharacterRoomsRef.current.has(slug)) return;
+      joinedCharacterRoomsRef.current.add(slug);
+      joinCharacterRoom(slug);
+    });
+
     let cancelled = false;
 
     const loadCharacters = async () => {
+      if (selectedCharacterRefreshInFlightRef.current) return;
+      selectedCharacterRefreshInFlightRef.current = true;
       const results = await Promise.all(
         selectedSlugs.map(async (slug) => {
           try {
@@ -1593,6 +1612,7 @@ export default function InitiativeTracker() {
         })
       );
 
+      selectedCharacterRefreshInFlightRef.current = false;
       if (cancelled) return;
 
       const nextState = results
@@ -1616,7 +1636,7 @@ export default function InitiativeTracker() {
             .flatMap((items) => items)
             .filter((item) => item?.isEquipped && item?.itemDefinitionId)
             .map((item) => item.itemDefinitionId)
-            .filter((itemDefinitionId): itemDefinitionId is string => !!itemDefinitionId && !itemDefinitionsById[itemDefinitionId])
+            .filter((itemDefinitionId): itemDefinitionId is string => !!itemDefinitionId && !itemDefinitionsByIdRef.current[itemDefinitionId])
         )
       );
 
@@ -1644,14 +1664,54 @@ export default function InitiativeTracker() {
       }
     };
 
-    loadCharacters();
-    const interval = window.setInterval(loadCharacters, 3000);
+    void loadCharacters();
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "hidden") return;
+      void loadCharacters();
+    };
+    const interval = window.setInterval(refreshIfVisible, 30000);
+    const handleVisibilityChange = () => refreshIfVisible();
+    const handleFocus = () => refreshIfVisible();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+      selectedCharacterRefreshInFlightRef.current = false;
     };
-  }, [itemDefinitionsById, selectedSlugs]);
+  }, [selectedSlugs]);
+
+  useEffect(() => {
+    const selectedSet = new Set(selectedSlugs);
+
+    const offState = onCharacterState((state: CharacterState) => {
+      const slug = String(state?.slug ?? "").trim();
+      if (!slug || !selectedSet.has(slug)) return;
+      setLiveCharacterStates((prev) => ({ ...prev, [slug]: state }));
+    });
+
+    const offPatch = onCharacterPatch(({ slug, patch }: { slug: string; patch: any }) => {
+      if (!slug || !selectedSet.has(slug)) return;
+      setLiveCharacterStates((prev) => {
+        const current = prev[slug];
+        if (!current) return prev;
+        return { ...prev, [slug]: applyPatch(current, patch) };
+      });
+    });
+
+    return () => {
+      try {
+        offState();
+      } catch {}
+      try {
+        offPatch();
+      } catch {}
+    };
+  }, [selectedSlugs]);
 
   useEffect(() => {
     if (!monsterDraft.selectedMonsterId) return;
@@ -1686,24 +1746,6 @@ export default function InitiativeTracker() {
       active = false;
     };
   }, [monsterDraft.selectedMonsterId, bestiaryById]);
-
-  useEffect(() => {
-    if (!encounter.started || combatants.length === 0) return;
-
-    const eligibleCombatants = combatants.filter(isEligibleForTurn);
-    if (eligibleCombatants.length === 0) return;
-
-    const hasCurrent = eligibleCombatants.some((combatant) => combatant.id === encounter.currentTurnId);
-    if (hasCurrent) return;
-
-    setEncounter((prev) => ({
-      ...prev,
-      currentTurnId: eligibleCombatants[0]?.id ?? null,
-      revealedCombatantIds: eligibleCombatants[0]
-        ? Array.from(new Set([...prev.revealedCombatantIds, eligibleCombatants[0].id]))
-        : prev.revealedCombatantIds,
-    }));
-  }, [encounter.started, encounter.currentTurnId, combatants]);
 
   const currentTurn = combatants.find((combatant) => combatant.id === encounter.currentTurnId) ?? null;
 

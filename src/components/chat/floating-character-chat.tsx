@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Circle, MessageCircleMore, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,21 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
   const [minimizedChatKeys, setMinimizedChatKeys] = useState<string[]>([]);
   const [unreadKeys, setUnreadKeys] = useState<Record<string, boolean>>({});
   const canUseChat = !!user;
+  const conversationMapRef = useRef(conversationMap);
+  const openChatsRef = useRef(openChats);
+  const minimizedChatKeysRef = useRef(minimizedChatKeys);
+
+  useEffect(() => {
+    conversationMapRef.current = conversationMap;
+  }, [conversationMap]);
+
+  useEffect(() => {
+    openChatsRef.current = openChats;
+  }, [openChats]);
+
+  useEffect(() => {
+    minimizedChatKeysRef.current = minimizedChatKeys;
+  }, [minimizedChatKeys]);
 
   useEffect(() => {
     if (!canUseChat || user?.role !== "player") return;
@@ -91,14 +106,20 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
       if (message.senderUserId === user.id) return;
 
       const chatKey = `conversation:${message.conversationId}`;
-      const isVisible = openChats.some((chat) => chat.key === chatKey) && !minimizedChatKeys.includes(chatKey);
+      const isVisible =
+        openChatsRef.current.some((chat) => chat.key === chatKey) &&
+        !minimizedChatKeysRef.current.includes(chatKey);
 
       void (async () => {
-        let conversation = conversationMap[message.conversationId];
+        let conversation = conversationMapRef.current[message.conversationId];
         if (!conversation) {
           try {
             conversation = await fetchChatConversation(message.conversationId);
             if (active && conversation) {
+              conversationMapRef.current = {
+                ...conversationMapRef.current,
+                [conversation.id]: conversation,
+              };
               setConversationMap((prev) => ({ ...prev, [conversation!.id]: conversation! }));
             }
           } catch {
@@ -136,7 +157,7 @@ export default function FloatingCharacterChat({ slug }: FloatingCharacterChatPro
         offConversation();
       } catch {}
     };
-  }, [canUseChat, conversationMap, minimizedChatKeys, openChats, slug, user]);
+  }, [canUseChat, slug, user?.id, user?.role]);
 
   const onlineContacts = useMemo(() => {
     const onlineSet = new Set(onlineSlugs);

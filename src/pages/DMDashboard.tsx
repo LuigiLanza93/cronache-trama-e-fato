@@ -265,6 +265,37 @@ export default function DMDashboard() {
   const [unreadConversationFlags, setUnreadConversationFlags] = useState<Record<string, boolean>>({});
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
   const joinedRoomsRef = useRef<Set<string>>(new Set());
+  const itemDefinitionsByIdRef = useRef(itemDefinitionsById);
+  const onlineRefreshInFlightRef = useRef(false);
+  const conversationsRef = useRef(conversations);
+  const openChatSlugsRef = useRef(openChatSlugs);
+  const minimizedChatSlugsRef = useRef(minimizedChatSlugs);
+  const openConversationIdsRef = useRef(openConversationIds);
+  const minimizedConversationIdsRef = useRef(minimizedConversationIds);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  useEffect(() => {
+    itemDefinitionsByIdRef.current = itemDefinitionsById;
+  }, [itemDefinitionsById]);
+
+  useEffect(() => {
+    openChatSlugsRef.current = openChatSlugs;
+  }, [openChatSlugs]);
+
+  useEffect(() => {
+    minimizedChatSlugsRef.current = minimizedChatSlugs;
+  }, [minimizedChatSlugs]);
+
+  useEffect(() => {
+    openConversationIdsRef.current = openConversationIds;
+  }, [openConversationIds]);
+
+  useEffect(() => {
+    minimizedConversationIdsRef.current = minimizedConversationIds;
+  }, [minimizedConversationIds]);
 
   useEffect(() => {
     document.title = "DM Dashboard | D&D Character Manager";
@@ -366,6 +397,8 @@ export default function DMDashboard() {
     let cancelled = false;
 
     const loadOnlineCharacters = async () => {
+      if (onlineRefreshInFlightRef.current) return;
+      onlineRefreshInFlightRef.current = true;
       const results = await Promise.all(
         onlineSlugs.map(async (slug) => {
           try {
@@ -380,6 +413,7 @@ export default function DMDashboard() {
           }
         })
       );
+      onlineRefreshInFlightRef.current = false;
       if (cancelled) return;
 
       const nextEntries = results.filter(
@@ -402,7 +436,7 @@ export default function DMDashboard() {
             .flatMap(([, , inventoryItems]) => inventoryItems)
             .filter((item) => item?.isEquipped && item?.itemDefinitionId)
             .map((item) => item.itemDefinitionId)
-            .filter((itemDefinitionId): itemDefinitionId is string => !!itemDefinitionId)
+            .filter((itemDefinitionId): itemDefinitionId is string => !!itemDefinitionId && !itemDefinitionsByIdRef.current[itemDefinitionId])
         )
       );
       const definitions = await Promise.all(
@@ -429,11 +463,23 @@ export default function DMDashboard() {
     };
 
     void loadOnlineCharacters();
-    const interval = window.setInterval(loadOnlineCharacters, 5000);
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "hidden") return;
+      void loadOnlineCharacters();
+    };
+    const interval = window.setInterval(refreshIfVisible, 30000);
+    const handleVisibilityChange = () => refreshIfVisible();
+    const handleFocus = () => refreshIfVisible();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+      onlineRefreshInFlightRef.current = false;
     };
   }, [onlineSlugs]);
 
@@ -503,14 +549,20 @@ export default function DMDashboard() {
       if (message.senderUserId === user?.id) return;
 
       const conversationId = message.conversationId;
-      const isVisible = openConversationIds.includes(conversationId) && !minimizedConversationIds.includes(conversationId);
+      const isVisible =
+        openConversationIdsRef.current.includes(conversationId) &&
+        !minimizedConversationIdsRef.current.includes(conversationId);
 
       void (async () => {
-        let conversation = conversations[conversationId];
+        let conversation = conversationsRef.current[conversationId];
         if (!conversation) {
           try {
             conversation = await fetchChatConversation(conversationId);
             if (conversation) {
+              conversationsRef.current = {
+                ...conversationsRef.current,
+                [conversation.id]: conversation,
+              };
               setConversations((prev) => ({ ...prev, [conversation!.id]: conversation! }));
             }
           } catch {
@@ -523,7 +575,8 @@ export default function DMDashboard() {
           if (!participantSlug) return;
 
           const isDmConversationVisible =
-            openChatSlugs.includes(participantSlug) && !minimizedChatSlugs.includes(participantSlug);
+            openChatSlugsRef.current.includes(participantSlug) &&
+            !minimizedChatSlugsRef.current.includes(participantSlug);
           if (!isDmConversationVisible) {
             setUnreadChatFlags((prev) => ({ ...prev, [participantSlug]: true }));
           }
@@ -543,7 +596,7 @@ export default function DMDashboard() {
         offConversation();
       } catch {}
     };
-  }, [conversations, minimizedConversationIds, openConversationIds, user?.id]);
+  }, [user?.id]);
 
   const getDmConversationForSlug = (slug: string) =>
     Object.values(conversations).find(

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowUpDown, BookOpen, Eye } from "lucide-react";
+import { ArrowUpDown, BookOpen, Eye, RefreshCw } from "lucide-react";
 import {
   fetchPlayerCompendiumMonster,
   fetchPlayerCompendiumMonsters,
@@ -7,6 +7,7 @@ import {
   type PlayerCompendiumMonsterSummary,
 } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,7 +16,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { MonsterStatBlock, PlayerMonsterPreviewCard } from "@/pages/BestiaryManagement";
 
 const COMPENDIUM_GRID = "minmax(168px,1.1fr) 92px 44px 68px minmax(112px,0.85fr) 64px minmax(108px,0.8fr) repeat(6, 78px)";
-const COMPENDIUM_REFRESH_MS = 15000;
 
 type CompendiumSortKey =
   | "name"
@@ -113,11 +113,14 @@ export default function MonsterCompendiumSheet({
   const [selectedMonsterId, setSelectedMonsterId] = useState<string | null>(null);
   const [detail, setDetail] = useState<PlayerCompendiumMonsterDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const shouldStayLive = mode === "page" || open;
 
-  const loadCompendiumList = async (background = false) => {
-    if (!background) {
+  const loadCompendiumList = async (manual = false) => {
+    if (manual) {
+      setRefreshing(true);
+    } else {
       setLoading(true);
       setError(null);
     }
@@ -126,14 +129,15 @@ export default function MonsterCompendiumSheet({
       const nextItems = await fetchPlayerCompendiumMonsters();
       setItems(nextItems);
       setHasLoaded(true);
-      if (!background) setError(null);
+      setError(null);
     } catch {
-      if (!background) {
+      if (!manual) {
         setError("Non riesco a leggere il compendio mostri.");
         setHasLoaded(true);
       }
     } finally {
-      if (!background) setLoading(false);
+      if (manual) setRefreshing(false);
+      else setLoading(false);
     }
   };
 
@@ -149,30 +153,6 @@ export default function MonsterCompendiumSheet({
       active = false;
     };
   }, [hasLoaded, loading, shouldStayLive]);
-
-  useEffect(() => {
-    if (!shouldStayLive || !hasLoaded) return;
-
-    let cancelled = false;
-    const refresh = () => {
-      if (document.visibilityState === "hidden" || cancelled) return;
-      void loadCompendiumList(true);
-    };
-
-    const intervalId = window.setInterval(refresh, COMPENDIUM_REFRESH_MS);
-    const handleVisibilityChange = () => refresh();
-    const handleFocus = () => refresh();
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [hasLoaded, shouldStayLive]);
 
   useEffect(() => {
     if (!selectedMonsterId) {
@@ -198,36 +178,6 @@ export default function MonsterCompendiumSheet({
       active = false;
     };
   }, [selectedMonsterId]);
-
-  useEffect(() => {
-    if (!shouldStayLive || !selectedMonsterId) return;
-
-    let cancelled = false;
-    const refreshDetail = () => {
-      if (document.visibilityState === "hidden" || cancelled || !selectedMonsterId) return;
-      void fetchPlayerCompendiumMonster(selectedMonsterId)
-        .then((payload) => {
-          if (!cancelled) setDetail(payload);
-        })
-        .catch(() => {
-          if (!cancelled) setDetail(null);
-        });
-    };
-
-    const intervalId = window.setInterval(refreshDetail, COMPENDIUM_REFRESH_MS);
-    const handleVisibilityChange = () => refreshDetail();
-    const handleFocus = () => refreshDetail();
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, [selectedMonsterId, shouldStayLive]);
 
   const sizeOptions = useMemo(() => Array.from(new Set(items.map((item) => item.size).filter(Boolean))).sort(compareText), [items]);
   const typeOptions = useMemo(() => Array.from(new Set(items.map((item) => item.typeLabel).filter(Boolean))).sort(compareText), [items]);
@@ -320,6 +270,15 @@ export default function MonsterCompendiumSheet({
     });
   };
 
+  const refreshSelectedDetail = () => {
+    if (!selectedMonsterId) return;
+    setDetailLoading(true);
+    void fetchPlayerCompendiumMonster(selectedMonsterId)
+      .then((payload) => setDetail(payload))
+      .catch(() => setDetail(null))
+      .finally(() => setDetailLoading(false));
+  };
+
   const content = (
     <div className="flex h-full flex-col">
       {mode === "sheet" ? (
@@ -355,7 +314,12 @@ export default function MonsterCompendiumSheet({
         <div className="space-y-2"><div className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">Tipo</div><Select value={typeFilter} onValueChange={setTypeFilter}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Tutti</SelectItem>{typeOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
         <div className="space-y-2"><div className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">CA min</div><Input value={armorClassMin} onChange={(event) => setArmorClassMin(event.target.value.replace(/[^\d]/g, ""))} placeholder="Es. 15" inputMode="numeric" /></div>
         <div className="space-y-2"><div className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">PF min</div><Input value={hitPointsMin} onChange={(event) => setHitPointsMin(event.target.value.replace(/[^\d]/g, ""))} placeholder="Es. 50" inputMode="numeric" /></div>
-        <div className="self-center justify-self-end text-sm text-muted-foreground">{filteredItems.length} / {items.length} visibili</div>
+        <div className="flex items-center justify-end gap-3 self-center justify-self-end">
+          <div className="text-sm text-muted-foreground">{filteredItems.length} / {items.length} visibili</div>
+          <Button type="button" variant="outline" size="icon" onClick={() => void loadCompendiumList(true)} disabled={loading || refreshing} title="Aggiorna compendio" aria-label="Aggiorna compendio">
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 px-6 py-5">
@@ -420,7 +384,12 @@ export default function MonsterCompendiumSheet({
       <Dialog open={Boolean(selectedMonsterId)} onOpenChange={(nextOpen) => !nextOpen && setSelectedMonsterId(null)}>
         <DialogContent className="max-w-5xl overflow-hidden border-primary/20 bg-card/95 p-0">
           <DialogHeader className="border-b border-border/60 px-6 py-4">
-            <DialogTitle className="font-heading text-3xl text-primary">{detail?.monster.general.name ?? "Compendio mostri"}</DialogTitle>
+            <div className="flex items-center justify-between gap-4">
+              <DialogTitle className="font-heading text-3xl text-primary">{detail?.monster.general.name ?? "Compendio mostri"}</DialogTitle>
+              <Button type="button" variant="outline" size="icon" onClick={refreshSelectedDetail} disabled={!selectedMonsterId || detailLoading} title="Aggiorna scheda" aria-label="Aggiorna scheda">
+                <RefreshCw className={`h-4 w-4 ${detailLoading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
             <DialogDescription className="flex items-center gap-2"><Eye className="h-4 w-4" /><span>{detail ? `Livello di conoscenza: ${knowledgeLabel(detail.knowledgeState)}` : "Carico la scheda..."}</span></DialogDescription>
           </DialogHeader>
           {detailLoading || !detail ? <div className="px-6 py-8 text-sm text-muted-foreground">Carico la scheda del mostro...</div> : <ScrollArea className="max-h-[78vh]"><div className="space-y-6 px-6 py-6">{detail.knowledgeState === "COMPLETE" ? <MonsterStatBlock monster={detail.monster} /> : <PlayerMonsterPreviewCard monster={detail.monster} state="basic" />}</div></ScrollArea>}

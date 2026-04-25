@@ -5032,7 +5032,20 @@ function parseCookies(cookieHeader = "") {
     }, {});
 }
 
-function serializeSessionCookie(value) {
+function shouldUseSecureSessionCookie(req) {
+  const override = String(process.env.SESSION_COOKIE_SECURE ?? "").trim().toLowerCase();
+  if (override === "true" || override === "1") return true;
+  if (override === "false" || override === "0") return false;
+  if (!isProd) return false;
+
+  const forwardedProto = String(req?.headers?.["x-forwarded-proto"] ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase());
+
+  return req?.secure || forwardedProto.includes("https");
+}
+
+function serializeSessionCookie(value, req) {
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
   const parts = [
     `${SESSION_COOKIE}=${encodeURIComponent(value)}`,
@@ -5043,11 +5056,11 @@ function serializeSessionCookie(value) {
     `Expires=${expiresAt.toUTCString()}`,
   ];
 
-  if (isProd) parts.push("Secure");
+  if (shouldUseSecureSessionCookie(req)) parts.push("Secure");
   return parts.join("; ");
 }
 
-function serializeExpiredSessionCookie() {
+function serializeExpiredSessionCookie(req) {
   const parts = [
     `${SESSION_COOKIE}=`,
     "HttpOnly",
@@ -5056,7 +5069,7 @@ function serializeExpiredSessionCookie() {
     "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
   ];
 
-  if (isProd) parts.push("Secure");
+  if (shouldUseSecureSessionCookie(req)) parts.push("Secure");
   return parts.join("; ");
 }
 
@@ -5472,13 +5485,13 @@ async function start() {
     }
 
     const sessionId = createSession(user.id);
-    res.setHeader("Set-Cookie", serializeSessionCookie(sessionId));
+    res.setHeader("Set-Cookie", serializeSessionCookie(sessionId, req));
     return res.json(sanitizeUser(user, readOwnership()));
   });
 
   app.post("/api/auth/logout", (req, res) => {
     if (req.sessionId) deleteSessionById(req.sessionId);
-    res.setHeader("Set-Cookie", serializeExpiredSessionCookie());
+    res.setHeader("Set-Cookie", serializeExpiredSessionCookie(req));
     return res.status(204).end();
   });
 
@@ -5506,7 +5519,7 @@ async function start() {
 
     deleteSessionsByUserId(req.user.id);
     const sessionId = createSession(updatedUser.id);
-    res.setHeader("Set-Cookie", serializeSessionCookie(sessionId));
+    res.setHeader("Set-Cookie", serializeSessionCookie(sessionId, req));
     return res.json(sanitizeUser(updatedUser, readOwnership()));
   });
 
@@ -6908,14 +6921,53 @@ async function start() {
   });
 
   // ===== Presence state =====
+  const PRESENCE_DISCONNECT_GRACE_MS = 1000 * 60 * 8;
   const viewersBySlug = new Map();
   const slugBySocket = new Map();
+  const pendingPresenceRemovalBySocket = new Map();
 
   const broadcastPresence = () => {
     const payload = Array.from(viewersBySlug.entries())
       .map(([slug, set]) => ({ slug, count: set.size }))
       .filter(({ count }) => count > 0);
     io.emit("presence:update", payload);
+  };
+
+  const cancelPendingPresenceRemoval = (socketId) => {
+    const timer = pendingPresenceRemovalBySocket.get(socketId);
+    if (!timer) return;
+    clearTimeout(timer);
+    pendingPresenceRemovalBySocket.delete(socketId);
+  };
+
+  const removePresenceSocketNow = (socketId, { broadcast = true } = {}) => {
+    cancelPendingPresenceRemoval(socketId);
+    const slug = slugBySocket.get(socketId);
+    if (!slug) return;
+    const set = viewersBySlug.get(slug);
+    if (set) {
+      set.delete(socketId);
+      if (set.size === 0) viewersBySlug.delete(slug);
+    }
+    slugBySocket.delete(socketId);
+    if (broadcast) broadcastPresence();
+  };
+
+  const removePendingPresenceSocketsForSlug = (slug) => {
+    const set = viewersBySlug.get(slug);
+    if (!set) return;
+    for (const socketId of Array.from(set)) {
+      if (!pendingPresenceRemovalBySocket.has(socketId)) continue;
+      removePresenceSocketNow(socketId, { broadcast: false });
+    }
+  };
+
+  const schedulePresenceSocketRemoval = (socketId) => {
+    if (!slugBySocket.has(socketId) || pendingPresenceRemovalBySocket.has(socketId)) return;
+    const timer = setTimeout(() => {
+      removePresenceSocketNow(socketId);
+    }, PRESENCE_DISCONNECT_GRACE_MS);
+    pendingPresenceRemovalBySocket.set(socketId, timer);
   };
 
   function getSocketUser(socket) {
@@ -7055,6 +7107,8 @@ async function start() {
       if (!slug || !canAccessCharacter(socket.data.user, slug, ownership)) return;
       if (socket.data.user?.role !== "player") return;
       if (ownership[slug] !== socket.data.user?.id) return;
+      removePendingPresenceSocketsForSlug(slug);
+      cancelPendingPresenceRemoval(socket.id);
       if (!viewersBySlug.has(slug)) viewersBySlug.set(slug, new Set());
       viewersBySlug.get(slug).add(socket.id);
       slugBySocket.set(socket.id, slug);
@@ -7062,27 +7116,18 @@ async function start() {
     });
 
     socket.on("presence:leave", () => {
-      const slug = slugBySocket.get(socket.id);
-      if (!slug) return;
-      const set = viewersBySlug.get(slug);
-      if (set) {
-        set.delete(socket.id);
-        if (set.size === 0) viewersBySlug.delete(slug);
-      }
-      slugBySocket.delete(socket.id);
-      broadcastPresence();
+      removePresenceSocketNow(socket.id);
     });
 
     socket.on("disconnect", () => {
       const slug = slugBySocket.get(socket.id);
       if (!slug) return;
       const set = viewersBySlug.get(slug);
-      if (set) {
-        set.delete(socket.id);
-        if (set.size === 0) viewersBySlug.delete(slug);
+      if (set && set.size > 1) {
+        removePresenceSocketNow(socket.id);
+        return;
       }
-      slugBySocket.delete(socket.id);
-      broadcastPresence();
+      schedulePresenceSocketRemoval(socket.id);
     });
   });
 

@@ -86,7 +86,12 @@ export default function FloatingCharacterInitiative({ slug }: FloatingCharacterI
   const [monsterDetail, setMonsterDetail] = useState<PlayerCompendiumMonsterDetail | null>(null);
   const [monsterDetailLoading, setMonsterDetailLoading] = useState(false);
   const lastUpdatedAtRef = useRef<string | null>(null);
+  const openRef = useRef(open);
   const currentEntryRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   useEffect(() => {
     if (!user) return;
@@ -101,7 +106,7 @@ export default function FloatingCharacterInitiative({ slug }: FloatingCharacterI
         !!lastUpdatedAtRef.current &&
         next.updatedAt !== lastUpdatedAtRef.current &&
         next.visible &&
-        !open;
+        !openRef.current;
 
       lastUpdatedAtRef.current = next.updatedAt;
       setView(next);
@@ -129,20 +134,29 @@ export default function FloatingCharacterInitiative({ slug }: FloatingCharacterI
 
     joinInitiativeCharacterRoom(slug);
     const offInitiative = onPlayerInitiativeState((payload) => applyView(payload, { markUnread: true }));
-    const interval = window.setInterval(() => {
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "hidden") return;
       void fetchPlayerInitiativeTrackerView(slug)
         .then((payload) => applyView(payload, { markUnread: true }))
         .catch(() => {});
-    }, 2000);
+    };
+
+    const handleVisibilityChange = () => refreshIfVisible();
+    const handleFocus = () => refreshIfVisible();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       active = false;
-      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
       try {
         offInitiative();
       } catch {}
     };
-  }, [open, slug, user]);
+  }, [slug, user]);
 
   useEffect(() => {
     if (open) {

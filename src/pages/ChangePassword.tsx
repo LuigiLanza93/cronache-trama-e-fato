@@ -38,8 +38,14 @@ export default function ChangePassword() {
     try {
       await changePassword(newPassword);
       navigate("/", { replace: true });
-    } catch {
-      setError("Non sono riuscito ad aggiornare la password.");
+    } catch (changeError: any) {
+      if (changeError?.status === 401) {
+        setError("Sessione non valida: effettua di nuovo il login e riprova.");
+      } else if (typeof changeError?.message === "string" && changeError.message.trim()) {
+        setError(`Non sono riuscito ad aggiornare la password: ${changeError.message.trim()}.`);
+      } else {
+        setError("Non sono riuscito ad aggiornare la password.");
+      }
     } finally {
       setSubmitting(false);
     }
