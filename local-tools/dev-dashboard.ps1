@@ -135,7 +135,7 @@ function Test-ServerRunning {
 function Get-AppUrls {
   $profile = Get-LaunchModeProfile
   $urls = New-Object System.Collections.Generic.List[string]
-  $urls.Add("Locale: http://localhost:$($script:AppPort)")
+  $urls.Add("Locale: http://127.0.0.1:$($script:AppPort)")
   if (-not $profile.ShowNetworkUrls) {
     return $urls
   }
@@ -287,7 +287,7 @@ function Read-RecentLogs {
 }
 
 function Open-AppInBrowser {
-  Start-Process "http://localhost:$($script:AppPort)" | Out-Null
+  Start-Process "http://127.0.0.1:$($script:AppPort)" | Out-Null
 }
 
 function Get-SelectedUrl {

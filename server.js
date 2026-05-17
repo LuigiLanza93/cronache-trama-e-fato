@@ -31,6 +31,15 @@ const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
 const DM_NOTES_ROOT = process.env.DM_NOTES_ROOT
   ? path.resolve(process.env.DM_NOTES_ROOT)
   : path.resolve("C:\\Users\\Gscot\\Documents\\Le Cronache della Trama e del Fato\\Le Cronache della Trama e del Fato");
+const SLOW_REQUEST_THRESHOLD_MS = 1000;
+const PORTRAIT_CACHE_MAX_AGE = "7d";
+const STATIC_CACHE_MAX_AGE = "1y";
+const REQUEST_LOG_PATHS = new Set([
+  "/",
+  "/api/auth/me",
+  "/api/auth/login",
+  "/api/game-session",
+]);
 
 function createSqliteConnection() {
   const connection = new DatabaseSync(SQLITE_DB_FILE);
@@ -5356,7 +5365,30 @@ async function start() {
   const app = express();
   app.use(express.json({ limit: "10mb" }));
   ensureDir(PORTRAIT_DIR);
-  app.use("/portraits", express.static(PORTRAIT_DIR));
+  app.use((req, res, next) => {
+    const startedAt = process.hrtime.bigint();
+    const shouldLogRequest = REQUEST_LOG_PATHS.has(req.path) || req.path.startsWith("/socket.io/");
+    if (shouldLogRequest) {
+      console.log(`[server] request start ${req.method} ${req.originalUrl} from ${req.ip}`);
+    }
+    res.on("finish", () => {
+      const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+      if (shouldLogRequest) {
+        console.log(
+          `[server] request done ${req.method} ${req.originalUrl} ${res.statusCode} ${elapsedMs.toFixed(0)}ms from ${req.ip}`
+        );
+      }
+      if (elapsedMs >= SLOW_REQUEST_THRESHOLD_MS) {
+        console.warn(
+          `[server] slow request ${req.method} ${req.originalUrl} ${res.statusCode} ${elapsedMs.toFixed(0)}ms from ${req.ip}`
+        );
+      }
+    });
+    next();
+  });
+  app.use("/portraits", express.static(PORTRAIT_DIR, {
+    maxAge: PORTRAIT_CACHE_MAX_AGE,
+  }));
 
   app.use((req, res, next) => {
     const cookies = parseCookies(req.headers.cookie);
@@ -6981,6 +7013,7 @@ async function start() {
   io.on("connection", (socket) => {
     const user = getSocketUser(socket);
     socket.data.user = user;
+    console.log(`[server] socket connected ${socket.id} from ${socket.handshake.address} user=${user?.username ?? "anon"}`);
     if (user?.id) {
       socket.join(`user:${user.id}`);
       socket.emit("game-session:state", readGameSessionState());
@@ -7120,6 +7153,7 @@ async function start() {
     });
 
     socket.on("disconnect", () => {
+      console.log(`[server] socket disconnected ${socket.id} from ${socket.handshake.address}`);
       const slug = slugBySocket.get(socket.id);
       if (!slug) return;
       const set = viewersBySlug.get(slug);
@@ -7154,7 +7188,15 @@ async function start() {
     });
   } else {
     app.use(compression());
-    app.use(express.static(path.resolve(__dirname, "dist")));
+    app.use(express.static(path.resolve(__dirname, "dist"), {
+      maxAge: STATIC_CACHE_MAX_AGE,
+      immutable: true,
+      setHeaders(res, filePath) {
+        if (!filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader("Cache-Control", "public, max-age=0");
+        }
+      },
+    }));
     app.get("*", (req, res) => {
       res.sendFile(path.resolve(__dirname, "dist/index.html"));
     });
