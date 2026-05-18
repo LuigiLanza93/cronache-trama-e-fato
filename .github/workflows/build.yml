@@ -1,11 +1,7 @@
 name: Build
 
 on:
-  push:
-    branches:
-      - main
-      - security-deploy-hardening
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
