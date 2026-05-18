@@ -27,6 +27,17 @@ function rowClassName(entry: PlayerInitiativeTrackerView["entries"][number]) {
   return "border-border/60 bg-background/70";
 }
 
+function formatPlayerInitiativeName(entry: PlayerInitiativeTrackerView["entries"][number]) {
+  if (entry.type !== "player") return entry.name;
+
+  const current = Math.max(0, entry.currentHitPoints ?? 0);
+  const max = Math.max(0, entry.maxHitPoints ?? 0);
+  const temporary = Math.max(0, entry.temporaryHitPoints ?? 0);
+  const temporaryLabel = temporary > 0 ? ` + ${temporary}` : "";
+
+  return `${entry.name} (${current}/${max}${temporaryLabel})`;
+}
+
 function DeathSavesRow({
   successes,
   failures,
@@ -275,7 +286,7 @@ export default function FloatingCharacterInitiative({ slug }: FloatingCharacterI
                                 {isDown ? <Skull className="h-3.5 w-3.5" /> : displayOrder}
                               </span>
                               <span className={cn("truncate text-sm font-semibold", toneClassName(entry.healthTone))}>
-                                {entry.name}
+                                {formatPlayerInitiativeName(entry)}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">

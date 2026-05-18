@@ -4271,6 +4271,7 @@ function buildInitiativeCombatants(state) {
     const character = readCharacter(entry.slug);
     const currentHitPoints = Math.max(0, Number(character?.combatStats?.currentHitPoints ?? 0) || 0);
     const maxHitPoints = Math.max(1, Number(character?.combatStats?.hitPointMaximum ?? 0) || 1);
+    const temporaryHitPoints = Math.max(0, Number(character?.combatStats?.temporaryHitPoints ?? 0) || 0);
     const name =
       typeof character?.basicInfo?.characterName === "string" && character.basicInfo.characterName.trim()
         ? character.basicInfo.characterName.trim()
@@ -4290,6 +4291,7 @@ function buildInitiativeCombatants(state) {
       statuses: entry.statuses,
       currentHitPoints,
       maxHitPoints,
+      temporaryHitPoints,
       sourceMonsterId: null,
       deathSaves,
     };
@@ -4340,6 +4342,9 @@ function buildPlayerInitiativeTrackerView(state, slug) {
       statuses: entry.statuses,
       healthTone: initiativeHealthTone(entry.currentHitPoints, entry.maxHitPoints),
       isCurrentTurn: entry.id === normalized.currentTurnId,
+      currentHitPoints: entry.type === "player" ? entry.currentHitPoints : null,
+      maxHitPoints: entry.type === "player" ? entry.maxHitPoints : null,
+      temporaryHitPoints: entry.type === "player" ? entry.temporaryHitPoints ?? 0 : null,
       sourceMonsterId: entry.type === "monster" ? entry.sourceMonsterId ?? null : null,
       knowledgeState:
         entry.type === "monster" && entry.sourceMonsterId

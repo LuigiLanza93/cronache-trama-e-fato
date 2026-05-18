@@ -291,6 +291,9 @@ export type PlayerInitiativeTrackerEntry = {
   statuses: string[];
   healthTone: "healthy" | "wounded" | "critical" | "down";
   isCurrentTurn: boolean;
+  currentHitPoints?: number | null;
+  maxHitPoints?: number | null;
+  temporaryHitPoints?: number | null;
   sourceMonsterId?: string | null;
   knowledgeState?: PlayerMonsterKnowledgeState | null;
   deathSaves?: {
