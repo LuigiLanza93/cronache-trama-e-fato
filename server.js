@@ -33,6 +33,7 @@ const PORTRAIT_DIR = process.env.PORTRAIT_DIR
     ? path.resolve(APP_DATA_DIR, "portraits")
     : DEFAULT_PORTRAIT_DIR;
 const INITIATIVE_TRACKER_FILE = path.resolve(DATA_DIR, "initiative-tracker.json");
+const INITIATIVE_TRACKER_STATE_KEY = "initiative-tracker";
 const SESSION_COOKIE = "ctf_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const SQLITE_DB_FILE = resolveSqliteDbFile();
@@ -996,11 +997,13 @@ function runInTransaction(work) {
 
 ensureRaceSpeedReferenceTable();
 ensureUserLayoutPreferenceTable();
+ensureAppStateTable();
 ensureGameSessionStateTable();
 ensureCharacterCurrencyBalanceTable();
 ensureCurrencyTransactionTable();
 ensureChatConversationTables();
 ensureGameSessionStateRow();
+ensureInitiativeTrackerStateMigrated();
 ensureCharacterCurrencyBalanceRows();
 ensureLegacyCharacterCurrencyBalancesMigrated();
 ensureLegacyCharacterChatConversationsMigrated();
@@ -1432,6 +1435,17 @@ function ensureUserLayoutPreferenceTable() {
   sqlite.exec(`
     CREATE INDEX IF NOT EXISTS "UserLayoutPreference_userId_idx"
     ON "UserLayoutPreference"("userId");
+  `);
+}
+
+function ensureAppStateTable() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "AppState" (
+      "key" TEXT NOT NULL PRIMARY KEY,
+      "value" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 }
 
@@ -4229,14 +4243,65 @@ function normalizeInitiativeTrackerState(raw) {
   };
 }
 
-function readInitiativeTrackerState() {
+function readAppStateValue(key) {
+  if (!tableExists("AppState")) return null;
+  const row = sqlite
+    .prepare('SELECT value FROM "AppState" WHERE "key" = ? LIMIT 1')
+    .get(key);
+  return typeof row?.value === "string" ? row.value : null;
+}
+
+function writeAppStateValue(key, value) {
+  const now = new Date().toISOString();
+  sqlite
+    .prepare(`
+      INSERT INTO "AppState" ("key", "value", "createdAt", "updatedAt")
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT("key") DO UPDATE SET
+        "value" = excluded."value",
+        "updatedAt" = excluded."updatedAt"
+    `)
+    .run(key, value, now, now);
+}
+
+function readJsonAppState(key, fallback) {
+  const value = readAppStateValue(key);
+  if (!value) return fallback;
+
   try {
-    if (!fs.existsSync(INITIATIVE_TRACKER_FILE)) return emptyInitiativeTrackerState();
-    const raw = fs.readFileSync(INITIATIVE_TRACKER_FILE, "utf8");
-    return normalizeInitiativeTrackerState(JSON.parse(raw));
+    return JSON.parse(value);
   } catch {
-    return emptyInitiativeTrackerState();
+    return fallback;
   }
+}
+
+function ensureInitiativeTrackerStateMigrated() {
+  if (readAppStateValue(INITIATIVE_TRACKER_STATE_KEY)) return;
+  if (!fs.existsSync(INITIATIVE_TRACKER_FILE)) {
+    writeAppStateValue(
+      INITIATIVE_TRACKER_STATE_KEY,
+      JSON.stringify(emptyInitiativeTrackerState())
+    );
+    return;
+  }
+
+  try {
+    const raw = fs.readFileSync(INITIATIVE_TRACKER_FILE, "utf8");
+    const normalized = normalizeInitiativeTrackerState(JSON.parse(raw));
+    writeAppStateValue(INITIATIVE_TRACKER_STATE_KEY, JSON.stringify(normalized));
+  } catch {
+    writeAppStateValue(
+      INITIATIVE_TRACKER_STATE_KEY,
+      JSON.stringify(emptyInitiativeTrackerState())
+    );
+  }
+}
+
+function readInitiativeTrackerState() {
+  ensureInitiativeTrackerStateMigrated();
+  return normalizeInitiativeTrackerState(
+    readJsonAppState(INITIATIVE_TRACKER_STATE_KEY, emptyInitiativeTrackerState())
+  );
 }
 
 function writeInitiativeTrackerState(state) {
@@ -4244,7 +4309,7 @@ function writeInitiativeTrackerState(state) {
     ...state,
     updatedAt: new Date().toISOString(),
   });
-  fs.writeFileSync(INITIATIVE_TRACKER_FILE, JSON.stringify(normalized, null, 2), "utf8");
+  writeAppStateValue(INITIATIVE_TRACKER_STATE_KEY, JSON.stringify(normalized));
   return normalized;
 }
 

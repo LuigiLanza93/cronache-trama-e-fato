@@ -25,6 +25,7 @@ dist-ssr
 
 /generated/prisma
 .env
+src/data/initiative-tracker.json
 prisma/dev.db
 prisma/dev.db-journal
 prisma/migration.db
