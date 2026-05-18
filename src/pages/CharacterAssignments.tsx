@@ -61,7 +61,7 @@ export default function CharacterAssignments() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Gestione Schede | D&D Character Manager";
+    document.title = "Gestione Schede | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {

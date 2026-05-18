@@ -298,7 +298,7 @@ export default function DMDashboard() {
   }, [minimizedConversationIds]);
 
   useEffect(() => {
-    document.title = "DM Dashboard | D&D Character Manager";
+    document.title = "DM Dashboard | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {

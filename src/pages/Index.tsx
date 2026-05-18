@@ -407,7 +407,7 @@ const Index = () => {
   const [loginError, setLoginError] = useState("");
 
   useEffect(() => {
-    document.title = "Home | D&D Character Manager";
+    document.title = "Home | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {
@@ -920,7 +920,7 @@ const Index = () => {
             <div className="flex flex-col gap-8 lg:flex-row lg:items-stretch lg:justify-between lg:gap-10">
               <div className="flex max-w-3xl flex-1 flex-col justify-between">
                 <h1 className="mb-6 text-6xl font-heading font-bold text-primary lg:text-[4.25rem]">
-                  D&D Character Manager
+                  Cronache della Trama e del Fato
                 </h1>
                 <p className="text-xl text-muted-foreground">
                   Gestisci personaggi, campagne e sessioni in un unico spazio condiviso. Meno burocrazia, più gioco di ruolo.

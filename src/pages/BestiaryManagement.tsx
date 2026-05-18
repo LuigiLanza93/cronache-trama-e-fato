@@ -919,7 +919,7 @@ export default function BestiaryManagement() {
   const [importFileName, setImportFileName] = useState("");
 
   useEffect(() => {
-    document.title = "Gestione Bestiario | D&D Character Manager";
+    document.title = "Gestione Bestiario | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {

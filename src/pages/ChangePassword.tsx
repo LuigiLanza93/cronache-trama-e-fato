@@ -16,14 +16,14 @@ export default function ChangePassword() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    document.title = "Cambio Password | D&D Character Manager";
+    document.title = "Cambio Password | Cronache della Trama e del Fato";
   }, []);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (newPassword.trim().length < 4) {
-      setError("La nuova password deve contenere almeno 4 caratteri.");
+    if (newPassword.trim().length < 10) {
+      setError("La nuova password deve contenere almeno 10 caratteri.");
       return;
     }
 

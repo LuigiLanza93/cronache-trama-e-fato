@@ -21,7 +21,7 @@ export default function Login() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    document.title = "Login | D&D Character Manager";
+    document.title = "Login | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {

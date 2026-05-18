@@ -58,9 +58,13 @@ export default function UserManagement() {
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<"dm" | "player">("player");
   const [error, setError] = useState("");
+  const [temporaryPasswordNotice, setTemporaryPasswordNotice] = useState<{
+    username: string;
+    password: string;
+  } | null>(null);
 
   useEffect(() => {
-    document.title = "Gestione Utenti | D&D Character Manager";
+    document.title = "Gestione Utenti | Cronache della Trama e del Fato";
   }, []);
 
   const loadUsers = async () => {
@@ -107,7 +111,10 @@ export default function UserManagement() {
       );
       setCreateOpen(false);
       resetCreateForm();
-      toast.success(`Utente ${createdUser.username} creato. Password iniziale: ${createdUser.username}`);
+      if (createdUser.temporaryPassword) {
+        setTemporaryPasswordNotice({ username: createdUser.username, password: createdUser.temporaryPassword });
+      }
+      toast.success(`Utente ${createdUser.username} creato.`);
     } catch (createError: any) {
       setError(createError?.status === 409 ? "Username già esistente." : "Non sono riuscito a creare l'utente.");
     } finally {
@@ -122,7 +129,10 @@ export default function UserManagement() {
     try {
       const updatedUser = await resetUserPasswordRequest(resetTarget.id);
       setUsers((prev) => prev.map((entry) => (entry.id === updatedUser.id ? updatedUser : entry)));
-      toast.success(`Password resettata per ${updatedUser.username}. Password temporanea: ${updatedUser.username}`);
+      if (updatedUser.temporaryPassword) {
+        setTemporaryPasswordNotice({ username: updatedUser.username, password: updatedUser.temporaryPassword });
+      }
+      toast.success(`Password resettata per ${updatedUser.username}.`);
       setResetTarget(null);
     } catch {
       toast.error("Non sono riuscito a resettare la password.");
@@ -154,7 +164,7 @@ export default function UserManagement() {
           <div>
             <h1 className="font-heading text-4xl font-bold text-primary">Gestione utenti</h1>
             <p className="mx-auto mt-2 max-w-3xl text-muted-foreground">
-              Elenco completo delle utenze censite. I nuovi utenti e quelli con password resettata entrano con una password temporanea uguale allo username e devono cambiarla subito dopo il login.
+              Elenco completo delle utenze censite. I nuovi utenti e quelli con password resettata ricevono una password temporanea casuale e devono cambiarla subito dopo il login.
             </p>
           </div>
 
@@ -293,7 +303,7 @@ export default function UserManagement() {
           <DialogHeader>
             <DialogTitle>Nuovo utente</DialogTitle>
             <DialogDescription>
-              La password temporanea sarà uguale allo username. Al primo login verrà richiesto il cambio password.
+              Verrà generata una password temporanea casuale. Al primo login verrà richiesto il cambio password.
             </DialogDescription>
           </DialogHeader>
 
@@ -352,7 +362,7 @@ export default function UserManagement() {
             <AlertDialogTitle>Resettare la password?</AlertDialogTitle>
             <AlertDialogDescription>
               {resetTarget
-                ? `La password temporanea di ${resetTarget.username} tornerà a essere "${resetTarget.username}" e verrà richiesto il cambio password al prossimo login.`
+                ? `Verrà generata una nuova password temporanea per ${resetTarget.username} e verrà richiesto il cambio password al prossimo login.`
                 : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -364,6 +374,25 @@ export default function UserManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!temporaryPasswordNotice} onOpenChange={(open) => !open && setTemporaryPasswordNotice(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Password temporanea</DialogTitle>
+            <DialogDescription>
+              Condividila con {temporaryPasswordNotice?.username}. Non verrà mostrata di nuovo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded border border-border bg-muted/40 px-3 py-2 font-mono text-sm">
+            {temporaryPasswordNotice?.password}
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={() => setTemporaryPasswordNotice(null)}>
+              Ho annotato la password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

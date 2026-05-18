@@ -3,6 +3,9 @@
   "private": true,
   "version": "1.5.0",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "cross-env NODE_ENV=development node server.js",
     "build": "vite build",
@@ -18,6 +21,8 @@
     "items:backfill-features": "node scripts/backfill-item-features.mjs",
     "items:backfill-srd-equipment": "node scripts/backfill-srd-equipment.mjs",
     "db:import-json": "node scripts/import-json-to-sqlite.mjs",
+    "backup:prod-db": "powershell -ExecutionPolicy Bypass -File scripts/backup-prod-db.ps1",
+    "backup:install-task": "powershell -ExecutionPolicy Bypass -File scripts/register-prod-db-backup-task.ps1",
     "lint": "eslint .",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

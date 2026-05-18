@@ -1,6 +1,6 @@
 # Cronache della Trama e del Fato
 
-Applicazione web locale per la gestione di campagne D&D 5e con:
+Applicazione web locale/privata per la gestione di campagne di gioco di ruolo con:
 
 - schede personaggio realtime
 - dashboard DM
@@ -102,6 +102,27 @@ In produzione locale:
 npm run build
 npm run start
 ```
+
+## Configurazione hosting
+
+Per un deploy su Railway o servizi simili, mantieni un volume persistente per database e immagini caricate.
+
+Variabili ambiente consigliate:
+
+```text
+NODE_ENV=production
+HOST=0.0.0.0
+PORT=<assegnata dal provider>
+APP_DATA_DIR=/data
+DATABASE_URL=file:/data/migration.db
+SESSION_COOKIE_SECURE=true
+TRUST_PROXY=1
+APP_ORIGIN=https://tuo-dominio.example
+```
+
+Con `APP_DATA_DIR=/data`, l'app salva i ritratti in `/data/portraits`. `DATABASE_URL` deve puntare a un file SQLite nello stesso volume persistente.
+
+Prima del primo deploy pubblico usa un database di prova o sanificato. Migra il database reale solo dopo aver verificato login, permessi e persistenza del volume.
 
 ## Database
 

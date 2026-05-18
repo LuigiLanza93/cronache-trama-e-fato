@@ -1452,7 +1452,7 @@ export default function InitiativeTracker() {
   const requiresImmediateMonsterInitiative = monsterDraftQuantity === 1;
 
   useEffect(() => {
-    document.title = "Iniziativa | D&D Character Manager";
+    document.title = "Iniziativa | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {

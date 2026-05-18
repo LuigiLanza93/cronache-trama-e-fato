@@ -5,7 +5,7 @@ const NotFound = () => {
   const location = useLocation();
 
   useEffect(() => {
-    document.title = "Pagina non trovata | D&D Character Manager";
+    document.title = "Pagina non trovata | Cronache della Trama e del Fato";
     console.error(
       "404 Error: User attempted to access non-existent route:",
       location.pathname

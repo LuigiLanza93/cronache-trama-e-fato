@@ -323,7 +323,7 @@ const DmNotesPage = () => {
   const [dmNotesError, setDmNotesError] = useState("");
 
   useEffect(() => {
-    document.title = "Appunti del DM | D&D Character Manager";
+    document.title = "Appunti del DM | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {

@@ -334,7 +334,7 @@ export default function ItemManagement() {
   const [categoryFilter, setCategoryFilter] = useState("__all__");
 
   useEffect(() => {
-    document.title = "Gestione Oggetti | D&D Character Manager";
+    document.title = "Gestione Oggetti | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {

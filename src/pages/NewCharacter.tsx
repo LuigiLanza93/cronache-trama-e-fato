@@ -34,7 +34,7 @@ export default function NewCharacter() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    document.title = "Crea Scheda | D&D Character Manager";
+    document.title = "Crea Scheda | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {

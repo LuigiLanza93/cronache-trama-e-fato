@@ -37,7 +37,7 @@ export default function CurrencyTransactionsPage() {
   const [undoingId, setUndoingId] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Transazioni Monete | D&D Character Manager";
+    document.title = "Transazioni Monete | Cronache della Trama e del Fato";
   }, []);
 
   const loadEntries = async (showLoadingState = false) => {

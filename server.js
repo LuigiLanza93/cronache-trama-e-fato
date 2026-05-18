@@ -19,27 +19,120 @@ const __dirname = path.dirname(__filename);
 const isProd = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || undefined;
+const TRUST_PROXY = String(process.env.TRUST_PROXY ?? (isProd ? "1" : "0")).trim();
 
 // ---- Disk paths ----
 const DATA_DIR = path.resolve(__dirname, "src/data");
 const MONSTERS_DIR = path.resolve(DATA_DIR, "monsters");
-const PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
+const DEFAULT_SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
+const DEFAULT_PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
+const APP_DATA_DIR = process.env.APP_DATA_DIR ? path.resolve(process.env.APP_DATA_DIR) : null;
+const PORTRAIT_DIR = process.env.PORTRAIT_DIR
+  ? path.resolve(process.env.PORTRAIT_DIR)
+  : APP_DATA_DIR
+    ? path.resolve(APP_DATA_DIR, "portraits")
+    : DEFAULT_PORTRAIT_DIR;
 const INITIATIVE_TRACKER_FILE = path.resolve(DATA_DIR, "initiative-tracker.json");
 const SESSION_COOKIE = "ctf_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
-const SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
+const SQLITE_DB_FILE = resolveSqliteDbFile();
 const DM_NOTES_ROOT = process.env.DM_NOTES_ROOT
   ? path.resolve(process.env.DM_NOTES_ROOT)
   : path.resolve("C:\\Users\\Gscot\\Documents\\Le Cronache della Trama e del Fato\\Le Cronache della Trama e del Fato");
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
 const PORTRAIT_CACHE_MAX_AGE = "7d";
 const STATIC_CACHE_MAX_AGE = "1y";
+const LOGIN_RATE_LIMIT_WINDOW_MS = 1000 * 60 * 15;
+const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = Number(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS ?? 8);
+const BACKUP_RATE_LIMIT_WINDOW_MS = 1000 * 60 * 15;
+const BACKUP_RATE_LIMIT_MAX_ATTEMPTS = Number(process.env.BACKUP_RATE_LIMIT_MAX_ATTEMPTS ?? 5);
+const PASSWORD_MIN_LENGTH = Number(process.env.PASSWORD_MIN_LENGTH ?? 10);
 const REQUEST_LOG_PATHS = new Set([
   "/",
   "/api/auth/me",
   "/api/auth/login",
   "/api/game-session",
 ]);
+const loginAttempts = new Map();
+const backupAttempts = new Map();
+
+function resolveSqliteDbFile() {
+  const raw = String(process.env.SQLITE_DB_FILE || process.env.DATABASE_PATH || process.env.DATABASE_URL || "").trim();
+  if (!raw) return DEFAULT_SQLITE_DB_FILE;
+  if (!raw.startsWith("file:")) return path.resolve(raw);
+
+  const filePath = decodeURIComponent(raw.slice("file:".length));
+  return path.resolve(__dirname, filePath);
+}
+
+function getAllowedOrigins() {
+  return String(process.env.APP_ORIGIN || process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function getRequestOrigin(req) {
+  const proto = String(req.headers["x-forwarded-proto"] ?? req.protocol ?? "http")
+    .split(",")[0]
+    .trim();
+  const host = req.headers["x-forwarded-host"] || req.headers.host;
+  return host ? `${proto}://${host}` : "";
+}
+
+function getClientIp(req) {
+  const forwardedFor = String(req.headers["x-forwarded-for"] ?? "")
+    .split(",")[0]
+    .trim();
+  return forwardedFor || req.ip || req.socket?.remoteAddress || "unknown";
+}
+
+function generateTemporaryPassword() {
+  return crypto.randomBytes(12).toString("base64url");
+}
+
+function getConfiguredBackupToken() {
+  return String(process.env.DATABASE_BACKUP_TOKEN || process.env.BACKUP_TOKEN || "").trim();
+}
+
+function getBearerToken(req) {
+  const authorization = String(req.headers.authorization || "").trim();
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : "";
+}
+
+function timingSafeStringEqual(a, b) {
+  const left = crypto.createHash("sha256").update(String(a)).digest();
+  const right = crypto.createHash("sha256").update(String(b)).digest();
+  return crypto.timingSafeEqual(left, right);
+}
+
+function getBackupRateLimitStatus(req) {
+  const key = getClientIp(req);
+  const now = Date.now();
+  const entry = backupAttempts.get(key);
+  if (!entry || now >= entry.resetAt) {
+    backupAttempts.set(key, { count: 1, resetAt: now + BACKUP_RATE_LIMIT_WINDOW_MS });
+    return { limited: false, retryAfterSeconds: 0 };
+  }
+
+  entry.count += 1;
+  if (entry.count > BACKUP_RATE_LIMIT_MAX_ATTEMPTS) {
+    return {
+      limited: true,
+      retryAfterSeconds: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)),
+    };
+  }
+  return { limited: false, retryAfterSeconds: 0 };
+}
+
+function clearBackupRateLimit(req) {
+  backupAttempts.delete(getClientIp(req));
+}
+
+function escapeSqliteStringLiteral(value) {
+  return String(value).replace(/'/g, "''");
+}
 
 function createSqliteConnection() {
   const connection = new DatabaseSync(SQLITE_DB_FILE);
@@ -54,6 +147,8 @@ function getSqliteDbMtimeMs() {
     return 0;
   }
 }
+
+bootstrapPersistentStorage();
 
 let sqlite = createSqliteConnection();
 let sqliteLastKnownMtimeMs = getSqliteDbMtimeMs();
@@ -97,6 +192,65 @@ const CURRENCY_EXCHANGE_UP = {
 // ---- Utilities ----
 function ensureDir(p) {
   if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+}
+
+function createSqliteBackupFile() {
+  ensureSqliteConnectionFresh();
+
+  const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const backupDir = APP_DATA_DIR
+    ? path.join(APP_DATA_DIR, ".tmp-db-backups")
+    : path.join(os.tmpdir(), "cronache-db-backups");
+  ensureDir(backupDir);
+
+  const fileName = `cronache-prod-${timestamp}-${crypto.randomBytes(4).toString("hex")}.db`;
+  const backupPath = path.join(backupDir, fileName);
+
+  sqlite.exec(`VACUUM INTO '${escapeSqliteStringLiteral(backupPath)}';`);
+
+  const stat = fs.statSync(backupPath);
+  if (!stat.isFile() || stat.size <= 0) {
+    try {
+      fs.rmSync(backupPath, { force: true });
+    } catch {
+      // Best-effort cleanup; the failing backup response is more important.
+    }
+    throw new Error("SQLite backup file was not created correctly.");
+  }
+
+  const checksum = crypto.createHash("sha256").update(fs.readFileSync(backupPath)).digest("hex");
+  return { backupPath, fileName, size: stat.size, checksum };
+}
+
+function copyDirectoryIfEmpty(sourceDir, targetDir) {
+  if (!fs.existsSync(sourceDir)) return;
+  ensureDir(targetDir);
+
+  const targetHasFiles = fs.readdirSync(targetDir).some((entry) => {
+    const fullPath = path.join(targetDir, entry);
+    return fs.statSync(fullPath).isFile();
+  });
+  if (targetHasFiles) return;
+
+  for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+    const sourcePath = path.join(sourceDir, entry.name);
+    const targetPath = path.join(targetDir, entry.name);
+    if (entry.isDirectory()) {
+      fs.cpSync(sourcePath, targetPath, { recursive: true });
+    } else if (entry.isFile()) {
+      fs.copyFileSync(sourcePath, targetPath);
+    }
+  }
+}
+
+function bootstrapPersistentStorage() {
+  ensureDir(path.dirname(SQLITE_DB_FILE));
+  if (SQLITE_DB_FILE !== DEFAULT_SQLITE_DB_FILE && !fs.existsSync(SQLITE_DB_FILE) && fs.existsSync(DEFAULT_SQLITE_DB_FILE)) {
+    fs.copyFileSync(DEFAULT_SQLITE_DB_FILE, SQLITE_DB_FILE);
+    console.log(`[server] initialized sqlite database at ${SQLITE_DB_FILE}`);
+  }
+
+  copyDirectoryIfEmpty(DEFAULT_PORTRAIT_DIR, PORTRAIT_DIR);
 }
 
 function sanitizeSlug(value = "") {
@@ -5026,6 +5180,49 @@ function verifyPassword(password, user) {
   }
 }
 
+function getLoginRateLimitKeys(req, username) {
+  const ip = getClientIp(req);
+  const normalizedUsername = String(username || "").trim().toLowerCase() || "unknown";
+  return [`ip:${ip}`, `user:${normalizedUsername}`];
+}
+
+function getLoginRateLimitStatus(req, username) {
+  const now = Date.now();
+  const keys = getLoginRateLimitKeys(req, username);
+
+  for (const key of keys) {
+    const entry = loginAttempts.get(key);
+    if (!entry) continue;
+    if (entry.resetAt <= now) {
+      loginAttempts.delete(key);
+      continue;
+    }
+    if (entry.count >= LOGIN_RATE_LIMIT_MAX_ATTEMPTS) {
+      return { limited: true, retryAfterSeconds: Math.ceil((entry.resetAt - now) / 1000) };
+    }
+  }
+
+  return { limited: false, retryAfterSeconds: 0 };
+}
+
+function recordFailedLogin(req, username) {
+  const now = Date.now();
+  for (const key of getLoginRateLimitKeys(req, username)) {
+    const entry = loginAttempts.get(key);
+    if (!entry || entry.resetAt <= now) {
+      loginAttempts.set(key, { count: 1, resetAt: now + LOGIN_RATE_LIMIT_WINDOW_MS });
+      continue;
+    }
+    entry.count += 1;
+  }
+}
+
+function clearLoginRateLimit(req, username) {
+  for (const key of getLoginRateLimitKeys(req, username)) {
+    loginAttempts.delete(key);
+  }
+}
+
 function parseCookies(cookieHeader = "") {
   return String(cookieHeader)
     .split(";")
@@ -5363,8 +5560,36 @@ function scheduleWrite(slug, state) {
 // ---- App ----
 async function start() {
   const app = express();
+  if (TRUST_PROXY !== "0" && TRUST_PROXY.toLowerCase() !== "false") {
+    app.set("trust proxy", TRUST_PROXY === "1" || TRUST_PROXY.toLowerCase() === "true" ? 1 : TRUST_PROXY);
+  }
   app.use(express.json({ limit: "10mb" }));
   ensureDir(PORTRAIT_DIR);
+  app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "no-referrer");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    );
+    if (isProd && shouldUseSecureSessionCookie(req)) {
+      res.setHeader("Strict-Transport-Security", "max-age=15552000; includeSubDomains");
+    }
+    next();
+  });
+  app.use((req, res, next) => {
+    if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
+
+    const origin = req.headers.origin;
+    if (!origin) return next();
+
+    const allowedOrigins = new Set([getRequestOrigin(req), ...getAllowedOrigins()]);
+    if (allowedOrigins.has(origin)) return next();
+
+    return res.status(403).json({ error: "Invalid request origin" });
+  });
   app.use((req, res, next) => {
     const startedAt = process.hrtime.bigint();
     const shouldLogRequest = REQUEST_LOG_PATHS.has(req.path) || req.path.startsWith("/socket.io/");
@@ -5386,10 +5611,6 @@ async function start() {
     });
     next();
   });
-  app.use("/portraits", express.static(PORTRAIT_DIR, {
-    maxAge: PORTRAIT_CACHE_MAX_AGE,
-  }));
-
   app.use((req, res, next) => {
     const cookies = parseCookies(req.headers.cookie);
     const sessionId = cookies[SESSION_COOKIE];
@@ -5416,7 +5637,66 @@ async function start() {
     };
   }
 
+  app.use("/portraits", requireAuth, express.static(PORTRAIT_DIR, {
+    maxAge: PORTRAIT_CACHE_MAX_AGE,
+  }));
+
   // ===== Auth =====
+  app.get("/healthz", (_req, res) => {
+    return res.json({ ok: true });
+  });
+
+  app.post("/api/admin/backups/database", (req, res) => {
+    const rateLimit = getBackupRateLimitStatus(req);
+    if (rateLimit.limited) {
+      res.setHeader("Retry-After", String(rateLimit.retryAfterSeconds));
+      return res.status(429).json({ error: "Too many requests" });
+    }
+
+    const configuredToken = getConfiguredBackupToken();
+    const providedToken = getBearerToken(req);
+    if (
+      configuredToken.length < 32 ||
+      !providedToken ||
+      !timingSafeStringEqual(providedToken, configuredToken)
+    ) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    clearBackupRateLimit(req);
+
+    let backup = null;
+    const cleanup = () => {
+      if (!backup?.backupPath) return;
+      try {
+        fs.rmSync(backup.backupPath, { force: true });
+      } catch (error) {
+        console.warn(`[server] failed to remove temporary database backup ${backup.backupPath}: ${error.message}`);
+      }
+    };
+
+    try {
+      backup = createSqliteBackupFile();
+      console.log(`[server] database backup created for download: ${backup.fileName} (${backup.size} bytes)`);
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("X-Backup-Sha256", backup.checksum);
+      res.setHeader("X-Backup-Size", String(backup.size));
+      res.download(backup.backupPath, backup.fileName, (error) => {
+        cleanup();
+        if (error && !res.headersSent) {
+          return res.status(500).json({ error: "Backup download failed" });
+        }
+        if (error) {
+          console.warn(`[server] database backup download failed: ${error.message}`);
+        }
+      });
+    } catch (error) {
+      cleanup();
+      console.error(`[server] database backup failed: ${error.message}`);
+      return res.status(500).json({ error: "Backup failed" });
+    }
+  });
+
   app.get("/api/auth/me", (req, res) => {
     if (!req.user) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -5509,13 +5789,22 @@ async function start() {
   app.post("/api/auth/login", (req, res) => {
     const username = String(req.body?.username ?? "").trim().toLowerCase();
     const password = String(req.body?.password ?? "");
+    const rateLimit = getLoginRateLimitStatus(req, username);
+
+    if (rateLimit.limited) {
+      res.setHeader("Retry-After", String(rateLimit.retryAfterSeconds));
+      return res.status(429).json({ error: "Too many login attempts. Try again later." });
+    }
+
     const users = readUsers();
     const user = users.find((entry) => String(entry.username).toLowerCase() === username);
 
     if (!user || !verifyPassword(password, user)) {
+      recordFailedLogin(req, username);
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
+    clearLoginRateLimit(req, username);
     const sessionId = createSession(user.id);
     res.setHeader("Set-Cookie", serializeSessionCookie(sessionId, req));
     return res.json(sanitizeUser(user, readOwnership()));
@@ -5530,7 +5819,7 @@ async function start() {
   app.post("/api/auth/change-password", requireAuth, (req, res) => {
     const newPassword = String(req.body?.newPassword ?? "");
 
-    if (newPassword.trim().length < 4) {
+    if (newPassword.trim().length < PASSWORD_MIN_LENGTH) {
       return res.status(400).json({ error: "Password too short" });
     }
 
@@ -5584,6 +5873,7 @@ async function start() {
       return res.status(409).json({ error: "Username already exists" });
     }
 
+    const temporaryPassword = generateTemporaryPassword();
     const passwordSalt = crypto.randomBytes(16).toString("hex");
     const newUser = {
       id: createUserId(username),
@@ -5591,13 +5881,16 @@ async function start() {
       displayName: displayNameRaw || username,
       role,
       passwordSalt,
-      passwordHash: hashPassword(username, passwordSalt),
+      passwordHash: hashPassword(temporaryPassword, passwordSalt),
       mustChangePassword: true,
       createdAt: new Date().toISOString(),
     };
 
     createUserRecord(newUser);
-    return res.status(201).json(sanitizeUserForAdmin(newUser, readOwnership()));
+    return res.status(201).json({
+      ...sanitizeUserForAdmin(newUser, readOwnership()),
+      temporaryPassword,
+    });
   });
 
   app.post("/api/users/:userId/reset-password", requireRole("dm"), (req, res) => {
@@ -5607,11 +5900,11 @@ async function start() {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const nextPassword = currentUser.username;
+    const temporaryPassword = generateTemporaryPassword();
     const passwordSalt = crypto.randomBytes(16).toString("hex");
     const updatedUser = updateUserCredentials(userId, {
       passwordSalt,
-      passwordHash: hashPassword(nextPassword, passwordSalt),
+      passwordHash: hashPassword(temporaryPassword, passwordSalt),
       mustChangePassword: true,
     });
 
@@ -5620,7 +5913,10 @@ async function start() {
     }
 
     deleteSessionsByUserId(userId);
-    return res.json(sanitizeUserForAdmin(updatedUser, readOwnership()));
+    return res.json({
+      ...sanitizeUserForAdmin(updatedUser, readOwnership()),
+      temporaryPassword,
+    });
   });
 
   app.delete("/api/users/:userId", requireRole("dm"), (req, res) => {

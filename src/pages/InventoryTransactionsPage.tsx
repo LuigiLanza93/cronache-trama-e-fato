@@ -40,7 +40,7 @@ export default function InventoryTransactionsPage() {
   const [undoingId, setUndoingId] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "Transazioni Oggetti | D&D Character Manager";
+    document.title = "Transazioni Oggetti | Cronache della Trama e del Fato";
   }, []);
 
   const loadEntries = async (showLoadingState = false) => {

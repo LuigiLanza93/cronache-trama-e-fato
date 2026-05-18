@@ -17,6 +17,10 @@ export type ManagedUser = AuthUser & {
   createdAt: string | null;
 };
 
+export type ManagedUserWithTemporaryPassword = ManagedUser & {
+  temporaryPassword?: string;
+};
+
 export type CharacterOwnership = Record<string, string>;
 export type CurrencyBalance = {
   cp: number;
@@ -675,14 +679,14 @@ export function createUserRequest(payload: {
   displayName?: string;
   role: "dm" | "player";
 }) {
-  return authFetch<ManagedUser>("/api/users", {
+  return authFetch<ManagedUserWithTemporaryPassword>("/api/users", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export function resetUserPasswordRequest(userId: string) {
-  return authFetch<ManagedUser>(`/api/users/${userId}/reset-password`, {
+  return authFetch<ManagedUserWithTemporaryPassword>(`/api/users/${userId}/reset-password`, {
     method: "POST",
   });
 }

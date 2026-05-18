@@ -4,11 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* D&D 5e Design System - Player's Handbook Theme */
+/* Campaign journal design system */
 
 @layer base {
   :root {
-    /* D&D Color Palette - Red/Black/Ivory */
+    /* Campaign palette - red/black/ivory */
     --background: 0 0% 100%; /* Parchment ivory */
     --foreground: 0 0% 8%; /* Deep black */
 
@@ -18,8 +18,8 @@
     --popover: 42 20% 96%;
     --popover-foreground: 0 0% 8%;
 
-    /* D&D Red Primary */
-    --primary: 0 65% 45%; /* D&D crimson red */
+    /* Primary crimson */
+    --primary: 0 65% 45%;
     --primary-foreground: 42 15% 94%;
 
     /* Muted parchment tones */
@@ -36,13 +36,13 @@
     --destructive-foreground: 42 15% 94%;
 
     /* Borders and inputs */
-    --border: 0 0% 25%; /* Dark border for D&D frames */
+    --border: 0 0% 25%;
     --input: 42 20% 92%;
     --ring: 0 65% 45%;
 
-    --radius: 0.25rem; /* Sharper corners for D&D aesthetic */
+    --radius: 0.25rem;
 
-    /* D&D specific design tokens */
+    /* Campaign-specific design tokens */
     --parchment: 42 15% 94%;
     --parchment-dark: 42 12% 88%;
     --gold: 45 90% 60%;
@@ -155,7 +155,7 @@
 }
 
 @layer components {
-  /* D&D Frame Component */
+  /* Framed content component */
   .dnd-frame {
     @apply border-2 border-border bg-card rounded-sm;
     box-shadow: 

@@ -58,7 +58,7 @@ export default function CharacterInventoryManagement() {
   const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
-    document.title = "Assegna Oggetti | D&D Character Manager";
+    document.title = "Assegna Oggetti | Cronache della Trama e del Fato";
   }, []);
 
   useEffect(() => {
