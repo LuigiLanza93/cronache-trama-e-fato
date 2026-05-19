@@ -368,6 +368,34 @@ export type CharacterSheetLayoutPayload = {
 
 export type SpellSlotTable = Record<string, Record<string, Record<string, number>>>;
 
+export type PartyRestType = "short" | "long";
+
+export type PartyRestSummaryEntry = {
+  slug: string;
+  name: string;
+  applied: boolean;
+  reason?: string | null;
+  currentHitPointsBefore: number;
+  currentHitPointsAfter: number;
+  maxHitPoints: number;
+  temporaryHitPointsBefore: number;
+  temporaryHitPointsAfter: number;
+  healingApplied: number;
+  hitDiceSpent: number;
+  hitDiceRemaining: number;
+  hitDiceRemainingAfter: number;
+  maxHitDice: number;
+  shortRestsUsedSinceLongRest: number;
+  shortRestsUsedSinceLongRestAfter: number;
+};
+
+export type PartyRestResponse = {
+  ok: true;
+  type: PartyRestType;
+  updatedCharacters: Array<Record<string, unknown>>;
+  summaries: PartyRestSummaryEntry[];
+};
+
 export type ItemDefinitionSummary = {
   id: string;
   slug: string;
@@ -766,6 +794,20 @@ export function fetchRaceSpeeds() {
 
 export function fetchSpellSlots() {
   return cacheRequest(spellSlotsRequestCache, () => authFetch<SpellSlotTable>("/api/rules/spell-slots", { method: "GET" }));
+}
+
+export function applyPartyRestRequest(type: PartyRestType, slugs?: string[]) {
+  return authFetch<PartyRestResponse>("/api/dm/rests/apply", {
+    method: "POST",
+    body: JSON.stringify({ type, slugs }),
+  });
+}
+
+export function previewPartyRestRequest(type: PartyRestType, slugs?: string[]) {
+  return authFetch<Omit<PartyRestResponse, "updatedCharacters">>("/api/dm/rests/preview", {
+    method: "POST",
+    body: JSON.stringify({ type, slugs }),
+  });
 }
 
 export function fetchMonster(monsterId: string) {

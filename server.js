@@ -5613,6 +5613,237 @@ function deepMerge(target, patch) {
   return patch;
 }
 
+const HIT_DICE_BY_CLASS = {
+  barbaro: "1d12",
+  barbarian: "1d12",
+  guerriero: "1d10",
+  fighter: "1d10",
+  paladino: "1d10",
+  paladin: "1d10",
+  ranger: "1d10",
+  bardo: "1d8",
+  bard: "1d8",
+  chierico: "1d8",
+  cleric: "1d8",
+  druido: "1d8",
+  druid: "1d8",
+  monaco: "1d8",
+  monk: "1d8",
+  ladro: "1d8",
+  rogue: "1d8",
+  warlock: "1d8",
+  stregone: "1d6",
+  sorcerer: "1d6",
+  mago: "1d6",
+  wizard: "1d6",
+};
+
+function normalizeRestClassName(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function parseHitDieSize(hitDice, className) {
+  const fallback = HIT_DICE_BY_CLASS[normalizeRestClassName(className)] ?? "1d8";
+  const source = String(hitDice || fallback);
+  const match = source.match(/d\s*(\d+)/i);
+  const size = match ? Number(match[1]) : 8;
+  return Number.isFinite(size) && size > 0 ? size : 8;
+}
+
+function getFixedHitDieHealing(hitDieSize, constitutionScore) {
+  const conScore = Number.isFinite(Number(constitutionScore)) ? Number(constitutionScore) : 10;
+  const conMod = Math.floor((conScore - 10) / 2);
+  return Math.max(1, Math.floor(hitDieSize / 2) + 1 + conMod);
+}
+
+function resetCapabilityUses(capabilities, restType) {
+  return (Array.isArray(capabilities) ? capabilities : []).map((capability) => {
+    const usage = capability?.usage;
+    if (!usage || !Array.isArray(usage.used)) return capability;
+
+    const resetOn = String(usage.resetOn ?? "").trim();
+    const shouldReset =
+      restType === "long"
+        ? resetOn === "shortRest" || resetOn === "longRest"
+        : resetOn === "shortRest";
+    if (!shouldReset) return capability;
+
+    return {
+      ...capability,
+      usage: {
+        ...usage,
+        used: usage.used.map(() => false),
+      },
+    };
+  });
+}
+
+function resetSpellSlotsForRest(spellSlots, className, restType) {
+  const normalizedClass = normalizeRestClassName(className);
+  const resetOnShortRest = normalizedClass === "warlock" || normalizedClass === "guerriero" || normalizedClass === "fighter";
+  if (restType === "short" && !resetOnShortRest) return spellSlots;
+
+  const next = {};
+  for (const [level, slots] of Object.entries(spellSlots ?? {})) {
+    next[level] = Array.isArray(slots) ? slots.map((slot) => ({ ...slot, active: false })) : slots;
+  }
+  return next;
+}
+
+function applyCharacterRest(character, restType) {
+  const data = character && typeof character === "object" ? character : {};
+  const basicInfo = data.basicInfo ?? {};
+  const combatStats = data.combatStats ?? {};
+  const level = Math.max(1, Math.floor(Number(basicInfo.level ?? 1)) || 1);
+  const maxHp = Math.max(0, Math.floor(Number(combatStats.hitPointMaximum ?? 0)) || 0);
+  const currentHp = Math.max(0, Math.floor(Number(combatStats.currentHitPoints ?? 0)) || 0);
+  const hitDieSize = parseHitDieSize(combatStats.hitDice, basicInfo.class);
+  const restState = combatStats.restState && typeof combatStats.restState === "object" ? combatStats.restState : {};
+  const maxHitDice = Math.max(1, level, Math.floor(Number(restState.maxHitDice ?? level)) || level);
+  const hitDiceRemaining = Math.max(
+    0,
+    Math.min(maxHitDice, Math.floor(Number(restState.hitDiceRemaining ?? maxHitDice)) || 0)
+  );
+  const shortRestsUsed = Math.max(0, Math.floor(Number(restState.shortRestsUsedSinceLongRest ?? 0)) || 0);
+
+  let nextCombatStats = {
+    ...combatStats,
+    deathSaves: { successes: 0, failures: 0 },
+    spellSlots: resetSpellSlotsForRest(combatStats.spellSlots ?? {}, basicInfo.class, restType),
+  };
+  let healingApplied = 0;
+  let hitDiceSpent = 0;
+  let restApplied = true;
+  let blockedReason = null;
+
+  if (restType === "long") {
+    nextCombatStats = {
+      ...nextCombatStats,
+      currentHitPoints: maxHp,
+      temporaryHitPoints: 0,
+      restState: {
+        ...restState,
+        maxHitDice,
+        hitDiceRemaining: maxHitDice,
+        shortRestsUsedSinceLongRest: 0,
+        lastLongRestAt: new Date().toISOString(),
+      },
+    };
+  } else {
+    if (shortRestsUsed >= 2) {
+      restApplied = false;
+      blockedReason = "Limite di 2 riposi brevi raggiunto.";
+    } else {
+      const missingHp = Math.max(0, maxHp - currentHp);
+      const budget = maxHitDice > 0 ? Math.max(1, Math.floor(maxHitDice / 2)) : 0;
+      const usableHitDice = Math.min(budget, hitDiceRemaining);
+      const healingPerDie = getFixedHitDieHealing(hitDieSize, data.abilityScores?.constitution);
+
+      if (missingHp > 0 && usableHitDice > 0) {
+        hitDiceSpent = Math.min(usableHitDice, Math.ceil(missingHp / healingPerDie));
+        healingApplied = Math.min(missingHp, hitDiceSpent * healingPerDie);
+      }
+
+      nextCombatStats = {
+        ...nextCombatStats,
+        currentHitPoints: Math.min(maxHp, currentHp + healingApplied),
+        restState: {
+          ...restState,
+          maxHitDice,
+          hitDiceRemaining: Math.max(0, hitDiceRemaining - hitDiceSpent),
+          shortRestsUsedSinceLongRest: shortRestsUsed + 1,
+          lastShortRestAt: new Date().toISOString(),
+        },
+      };
+    }
+  }
+
+  if (!restApplied) {
+    return {
+      character: data,
+      summary: {
+        slug: data.slug,
+        name: basicInfo.characterName ?? data.slug,
+        applied: false,
+        reason: blockedReason,
+        currentHitPointsBefore: currentHp,
+        currentHitPointsAfter: currentHp,
+        maxHitPoints: maxHp,
+        temporaryHitPointsBefore: Math.max(0, Math.floor(Number(combatStats.temporaryHitPoints ?? 0)) || 0),
+        temporaryHitPointsAfter: Math.max(0, Math.floor(Number(combatStats.temporaryHitPoints ?? 0)) || 0),
+        healingApplied: 0,
+        hitDiceSpent: 0,
+        hitDiceRemaining,
+        hitDiceRemainingAfter: hitDiceRemaining,
+        maxHitDice,
+        shortRestsUsedSinceLongRest: shortRestsUsed,
+        shortRestsUsedSinceLongRestAfter: shortRestsUsed,
+      },
+    };
+  }
+
+  const nextCurrentHp = Math.max(0, Math.floor(Number(nextCombatStats.currentHitPoints ?? currentHp)) || 0);
+  const tempHpBefore = Math.max(0, Math.floor(Number(combatStats.temporaryHitPoints ?? 0)) || 0);
+  const tempHpAfter = Math.max(0, Math.floor(Number(nextCombatStats.temporaryHitPoints ?? tempHpBefore)) || 0);
+  const nextHitDiceRemaining = nextCombatStats.restState?.hitDiceRemaining ?? hitDiceRemaining;
+  const nextShortRestsUsed = nextCombatStats.restState?.shortRestsUsedSinceLongRest ?? shortRestsUsed;
+
+  return {
+    character: {
+      ...data,
+      combatStats: nextCombatStats,
+      capabilities: resetCapabilityUses(data.capabilities, restType),
+    },
+    summary: {
+      slug: data.slug,
+      name: basicInfo.characterName ?? data.slug,
+      applied: true,
+      currentHitPointsBefore: currentHp,
+      currentHitPointsAfter: nextCurrentHp,
+      maxHitPoints: maxHp,
+      temporaryHitPointsBefore: tempHpBefore,
+      temporaryHitPointsAfter: tempHpAfter,
+      healingApplied,
+      hitDiceSpent,
+      hitDiceRemaining,
+      hitDiceRemainingAfter: nextHitDiceRemaining,
+      maxHitDice,
+      shortRestsUsedSinceLongRest: shortRestsUsed,
+      shortRestsUsedSinceLongRestAfter: nextShortRestsUsed,
+    },
+  };
+}
+
+function resetCharacterItemFeatureStatesForRest(characterSlugs, restType) {
+  if (!tableExists("CharacterItemFeatureState")) return;
+  const normalizedSlugs = (Array.isArray(characterSlugs) ? characterSlugs : [])
+    .map((slug) => String(slug ?? "").trim())
+    .filter(Boolean);
+  if (normalizedSlugs.length === 0) return;
+
+  const resetValues =
+    restType === "long"
+      ? ["SHORT_REST", "LONG_REST", "DAILY"]
+      : ["SHORT_REST"];
+  const now = new Date().toISOString();
+  const slugPlaceholders = normalizedSlugs.map(() => "?").join(", ");
+  const resetPlaceholders = resetValues.map(() => "?").join(", ");
+
+  sqlite.prepare(`
+    UPDATE "CharacterItemFeatureState"
+    SET usesSpent = 0, lastResetAt = ?, updatedAt = ?
+    WHERE characterItemId IN (
+      SELECT ci.id
+      FROM "CharacterItem" ci
+      JOIN "Character" c ON c.id = ci.characterId
+      JOIN "ItemFeature" f ON f.itemDefinitionId = ci.itemDefinitionId
+      WHERE c.slug IN (${slugPlaceholders})
+        AND f.id = "CharacterItemFeatureState".itemFeatureId
+        AND f.resetOn IN (${resetPlaceholders})
+    )
+  `).run(now, now, ...normalizedSlugs, ...resetValues);
+}
+
 // Optional: debounce writes per slug to avoid hammering the disk
 const persistTimers = new Map();
 function scheduleWrite(slug, state) {
@@ -6939,6 +7170,96 @@ async function start() {
 
   app.get("/api/characters/transfer-targets", requireAuth, (_req, res) => {
     return res.json(listCharacterTransferTargets());
+  });
+
+  app.post("/api/dm/rests/apply", requireRole("dm"), (req, res) => {
+    const restType = String(req.body?.type ?? "").trim().toLowerCase();
+    if (restType !== "short" && restType !== "long") {
+      return res.status(400).json({ error: "Tipo di riposo non valido." });
+    }
+
+    const requestedSlugs = Array.isArray(req.body?.slugs)
+      ? req.body.slugs.map((slug) => String(slug ?? "").trim()).filter(Boolean)
+      : [];
+    const requestedSet = new Set(requestedSlugs);
+    const targetCharacters = listCharacters()
+      .filter((character) => character.characterType === "pg")
+      .filter((character) => requestedSet.size === 0 || requestedSet.has(character.slug));
+
+    if (targetCharacters.length === 0) {
+      return res.status(400).json({ error: "Nessun PG valido selezionato per il riposo." });
+    }
+
+    const changedCharacters = [];
+    const summaries = [];
+
+    runInTransaction(() => {
+      for (const character of targetCharacters) {
+        const result = applyCharacterRest(character, restType);
+        summaries.push(result.summary);
+        if (!result.summary.applied) continue;
+
+        writeCharacter(result.character.slug, result.character);
+        changedCharacters.push(result.character);
+      }
+
+      resetCharacterItemFeatureStatesForRest(
+        changedCharacters.map((character) => character.slug),
+        restType
+      );
+    });
+
+    for (const character of changedCharacters) {
+      const state = readCharacter(character.slug);
+      if (state) {
+        io.to(`char:${character.slug}`).emit("character:state", state);
+      }
+    }
+
+    const initiativeState = readInitiativeTrackerState();
+    if (
+      changedCharacters.some((character) =>
+        initiativeState.players.some((entry) => entry.slug === character.slug)
+      )
+    ) {
+      broadcastInitiativeTrackerState(io);
+    }
+
+    return res.json({
+      ok: true,
+      type: restType,
+      updatedCharacters: changedCharacters.map((character) => readCharacter(character.slug)).filter(Boolean),
+      summaries,
+    });
+  });
+
+  app.post("/api/dm/rests/preview", requireRole("dm"), (req, res) => {
+    const restType = String(req.body?.type ?? "").trim().toLowerCase();
+    if (restType !== "short" && restType !== "long") {
+      return res.status(400).json({ error: "Tipo di riposo non valido." });
+    }
+
+    const requestedSlugs = Array.isArray(req.body?.slugs)
+      ? req.body.slugs.map((slug) => String(slug ?? "").trim()).filter(Boolean)
+      : [];
+    const requestedSet = new Set(requestedSlugs);
+    const targetCharacters = listCharacters()
+      .filter((character) => character.characterType === "pg")
+      .filter((character) => requestedSet.size === 0 || requestedSet.has(character.slug));
+
+    if (targetCharacters.length === 0) {
+      return res.json({
+        ok: true,
+        type: restType,
+        summaries: [],
+      });
+    }
+
+    return res.json({
+      ok: true,
+      type: restType,
+      summaries: targetCharacters.map((character) => applyCharacterRest(character, restType).summary),
+    });
   });
 
   app.get("/api/characters/:slug", requireAuth, (req, res) => {

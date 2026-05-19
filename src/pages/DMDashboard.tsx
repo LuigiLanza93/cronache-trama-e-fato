@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight,
   Circle,
+  Coffee,
   Home,
   ExternalLink,
   MessageSquareMore,
+  Moon,
   Package,
   Shield,
   Swords,
@@ -20,6 +22,15 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ResourceSummaryBadge } from "@/components/resource-summary-badge";
 import {
   applyPatch,
@@ -41,9 +52,13 @@ import ConversationChatWindow from "@/components/chat/conversation-chat-window";
 import SplitChatAvatar from "@/components/chat/split-chat-avatar";
 import { getInitials, normalizePortraitUrl } from "@/lib/character-ui";
 import {
+  applyPartyRestRequest,
   fetchCharacterInventoryItems,
   fetchItemDefinition,
+  previewPartyRestRequest,
   updateGameSessionStateRequest,
+  type PartyRestSummaryEntry,
+  type PartyRestType,
   type CharacterInventoryItemEntry,
   type ItemDefinitionEntry,
 } from "@/lib/auth";
@@ -264,6 +279,12 @@ export default function DMDashboard() {
   const [minimizedConversationIds, setMinimizedConversationIds] = useState<string[]>([]);
   const [unreadConversationFlags, setUnreadConversationFlags] = useState<Record<string, boolean>>({});
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
+  const [restSubmitting, setRestSubmitting] = useState<PartyRestType | null>(null);
+  const [restDialogOpen, setRestDialogOpen] = useState(false);
+  const [restDialogType, setRestDialogType] = useState<PartyRestType>("short");
+  const [restSelectedSlugs, setRestSelectedSlugs] = useState<string[]>([]);
+  const [restPreview, setRestPreview] = useState<PartyRestSummaryEntry[]>([]);
+  const [restPreviewLoading, setRestPreviewLoading] = useState(false);
   const joinedRoomsRef = useRef<Set<string>>(new Set());
   const itemDefinitionsByIdRef = useRef(itemDefinitionsById);
   const onlineRefreshInFlightRef = useRef(false);
@@ -530,6 +551,13 @@ export default function DMDashboard() {
 
   const onlineCount = onlineSlugs.length;
   const onlineSet = useMemo(() => new Set(onlineSlugs), [onlineSlugs]);
+  const restSelectedSet = useMemo(() => new Set(restSelectedSlugs), [restSelectedSlugs]);
+  const restPreviewBySlug = useMemo(
+    () => Object.fromEntries(restPreview.map((entry) => [entry.slug, entry])),
+    [restPreview]
+  );
+  const restBlockedCount = restPreview.filter((entry) => !entry.applied).length;
+  const restHealingTotal = restPreview.reduce((total, entry) => total + (entry.healingApplied ?? 0), 0);
 
   useEffect(() => {
     let active = true;
@@ -597,6 +625,34 @@ export default function DMDashboard() {
       } catch {}
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!restDialogOpen) return;
+    if (restSelectedSlugs.length === 0) {
+      setRestPreview([]);
+      return;
+    }
+
+    let active = true;
+    setRestPreviewLoading(true);
+    void previewPartyRestRequest(restDialogType, restSelectedSlugs)
+      .then((response) => {
+        if (!active) return;
+        setRestPreview(Array.isArray(response.summaries) ? response.summaries : []);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setRestPreview([]);
+        toast.error(error instanceof Error ? error.message : "Anteprima riposo non disponibile.");
+      })
+      .finally(() => {
+        if (active) setRestPreviewLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [restDialogOpen, restDialogType, restSelectedSlugs]);
 
   const getDmConversationForSlug = (slug: string) =>
     Object.values(conversations).find(
@@ -729,6 +785,69 @@ export default function DMDashboard() {
     }
   };
 
+  const openRestDialog = (type: PartyRestType) => {
+    setRestDialogType(type);
+    setRestSelectedSlugs(roster.map((player) => player.slug));
+    setRestPreview([]);
+    setRestDialogOpen(true);
+  };
+
+  const toggleRestSelection = (slug: string, checked: boolean) => {
+    setRestSelectedSlugs((prev) =>
+      checked
+        ? Array.from(new Set([...prev, slug]))
+        : prev.filter((entry) => entry !== slug)
+    );
+  };
+
+  const setAllRestSelections = (checked: boolean) => {
+    setRestSelectedSlugs(checked ? roster.map((player) => player.slug) : []);
+  };
+
+  const confirmPartyRest = async () => {
+    const type = restDialogType;
+    const label = type === "short" ? "riposo breve" : "riposo lungo";
+    if (restSelectedSlugs.length === 0) {
+      toast.error("Seleziona almeno un PG.");
+      return;
+    }
+
+    setRestSubmitting(type);
+    try {
+      const response = await applyPartyRestRequest(type, restSelectedSlugs);
+      const updatedCharacters = Array.isArray(response.updatedCharacters)
+        ? response.updatedCharacters as CharacterState[]
+        : [];
+
+      if (updatedCharacters.length > 0) {
+        setBaseCharacterStates((prev) =>
+          prev.map((state) => updatedCharacters.find((entry) => entry.slug === state.slug) ?? state)
+        );
+        setLiveStates((prev) => ({
+          ...prev,
+          ...Object.fromEntries(updatedCharacters.map((state) => [state.slug, state])),
+        }));
+      }
+
+      const blocked = response.summaries.filter((entry) => !entry.applied);
+      const healed = response.summaries.reduce((total, entry) => total + (entry.healingApplied ?? 0), 0);
+      if (blocked.length > 0) {
+        toast.warning(
+          `${label} applicato parzialmente: ${blocked.length} PG ha gia raggiunto il limite dei riposi brevi.`
+        );
+      } else if (type === "short") {
+        toast.success(`Riposo breve applicato. Cura totale: ${healed} PF.`);
+      } else {
+        toast.success("Riposo lungo applicato al roster.");
+      }
+      setRestDialogOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : `Impossibile applicare il ${label}.`);
+    } finally {
+      setRestSubmitting(null);
+    }
+  };
+
   return (
     <div className="min-h-screen parchment p-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -789,6 +908,36 @@ export default function DMDashboard() {
               </TooltipTrigger>
               <TooltipContent>Assegna oggetti ai personaggi</TooltipContent>
             </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => openRestDialog("short")}
+                  disabled={!!restSubmitting || roster.length === 0}
+                  aria-label="Applica riposo breve al roster"
+                >
+                  <Coffee className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Riposo breve del roster</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => openRestDialog("long")}
+                  disabled={!!restSubmitting || roster.length === 0}
+                  aria-label="Applica riposo lungo al roster"
+                >
+                  <Moon className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Riposo lungo del roster</TooltipContent>
+            </Tooltip>
             <div className="inline-flex items-center rounded-full border border-border/70 bg-background/70 px-3 py-2 shadow-sm">
               <Switch
                 checked={sessionState?.isOpen !== false}
@@ -805,6 +954,116 @@ export default function DMDashboard() {
             Alcuni aggiornamenti live non sono andati a buon fine. Il roster resta comunque disponibile.
           </Card>
         )}
+
+        <Dialog open={restDialogOpen} onOpenChange={setRestDialogOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                {restDialogType === "short" ? "Riposo breve del roster" : "Riposo lungo del roster"}
+              </DialogTitle>
+              <DialogDescription>
+                Seleziona i PG coinvolti e controlla l'anteprima prima di applicare il riposo.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/40 px-3 py-2">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                  <Checkbox
+                    checked={roster.length > 0 && restSelectedSlugs.length === roster.length}
+                    onCheckedChange={(checked) => setAllRestSelections(checked === true)}
+                  />
+                  Tutto il roster
+                </label>
+                <div className="text-xs text-muted-foreground">
+                  {restSelectedSlugs.length}/{roster.length} PG selezionati
+                  {restDialogType === "short" && restPreview.length > 0 ? ` - cura prevista ${restHealingTotal} PF` : ""}
+                  {restBlockedCount > 0 ? ` - ${restBlockedCount} bloccati` : ""}
+                </div>
+              </div>
+
+              <div className="max-h-[52vh] space-y-2 overflow-y-auto pr-1">
+                {roster.map((player) => {
+                  const preview = restPreviewBySlug[player.slug];
+                  const selected = restSelectedSet.has(player.slug);
+                  const blocked = preview && !preview.applied;
+
+                  return (
+                    <div
+                      key={`rest-${player.slug}`}
+                      className={`rounded-lg border px-3 py-3 ${
+                        selected ? "border-primary/35 bg-background/55" : "border-border/50 bg-muted/20 opacity-70"
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <label className="flex min-w-0 cursor-pointer items-start gap-3">
+                          <Checkbox
+                            checked={selected}
+                            onCheckedChange={(checked) => toggleRestSelection(player.slug, checked === true)}
+                            className="mt-1"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-heading text-xl font-semibold text-primary">{player.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {player.className || "Classe?"} {player.level ? `Lv ${player.level}` : ""}
+                            </div>
+                          </div>
+                        </label>
+
+                        <div className="min-w-[220px] rounded-md border border-border/50 bg-background/45 px-3 py-2 text-xs">
+                          {!selected ? (
+                            <div className="text-muted-foreground">Escluso dal riposo.</div>
+                          ) : restPreviewLoading && !preview ? (
+                            <div className="text-muted-foreground">Calcolo anteprima...</div>
+                          ) : preview ? (
+                            <div className="space-y-1">
+                              {blocked ? (
+                                <div className="font-medium text-amber-700">{preview.reason ?? "Riposo non applicabile."}</div>
+                              ) : null}
+                              <div>
+                                PF: {preview.currentHitPointsBefore}/{preview.maxHitPoints} {"->"}{" "}
+                                {preview.currentHitPointsAfter}/{preview.maxHitPoints}
+                                {preview.healingApplied > 0 ? ` (+${preview.healingApplied})` : ""}
+                              </div>
+                              {(preview.temporaryHitPointsBefore > 0 || preview.temporaryHitPointsAfter > 0) ? (
+                                <div>
+                                  Temp: {preview.temporaryHitPointsBefore} {"->"} {preview.temporaryHitPointsAfter}
+                                </div>
+                              ) : null}
+                              <div>
+                                Dadi Vita: {preview.hitDiceRemaining}/{preview.maxHitDice} {"->"}{" "}
+                                {preview.hitDiceRemainingAfter}/{preview.maxHitDice}
+                                {preview.hitDiceSpent > 0 ? ` (${preview.hitDiceSpent} spesi)` : ""}
+                              </div>
+                              <div>
+                                Riposi brevi: {preview.shortRestsUsedSinceLongRest} {"->"}{" "}
+                                {preview.shortRestsUsedSinceLongRestAfter}/2
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-muted-foreground">Anteprima non disponibile.</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRestDialogOpen(false)}>
+                Annulla
+              </Button>
+              <Button
+                onClick={() => void confirmPartyRest()}
+                disabled={!!restSubmitting || restPreviewLoading || restSelectedSlugs.length === 0}
+              >
+                {restSubmitting ? "Applico..." : "Conferma riposo"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <section className="grid gap-4">
           {roster.map((player) => {
