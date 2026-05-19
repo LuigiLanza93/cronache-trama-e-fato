@@ -73,6 +73,15 @@ export type CurrencyTransactionEntry = {
   operationType: "ADD" | "REMOVE" | "TRANSFER" | "CONVERT";
 };
 
+export type CharacterBackstory = {
+  slug: string;
+  characterId: string;
+  contentMarkdown: string;
+  hasBackstory: boolean;
+  updatedAt: string | null;
+  updatedByUserId: string | null;
+};
+
 export type PlayerCurrencyTransactionEntry = {
   id: string;
   actionLabel: string;
@@ -754,6 +763,17 @@ export function updateCharacterOwnership(slug: string, userId: string | null) {
 export function archiveCharacterRequest(slug: string) {
   return authFetch<null>(`/api/characters/${slug}`, {
     method: "DELETE",
+  });
+}
+
+export function fetchCharacterBackstoryRequest(slug: string) {
+  return authFetch<CharacterBackstory>(`/api/characters/${slug}/backstory`, { method: "GET" });
+}
+
+export function updateCharacterBackstoryRequest(slug: string, contentMarkdown: string) {
+  return authFetch<CharacterBackstory>(`/api/dm/characters/${slug}/backstory`, {
+    method: "PUT",
+    body: JSON.stringify({ contentMarkdown }),
   });
 }
 

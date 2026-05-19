@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Home, Link2, PlusCircle, Shield, Trash2, UserRound, Users } from "lucide-react";
+import { Home, Link2, NotebookText, PlusCircle, Shield, Trash2, UserRound, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,12 +19,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { fetchCharacters } from "@/realtime";
 import {
   archiveCharacterRequest,
+  fetchCharacterBackstoryRequest,
   fetchCharacterOwnership,
   fetchUsers,
+  updateCharacterBackstoryRequest,
   updateCharacterOwnership,
   type ManagedUser,
 } from "@/lib/auth";
 import { toast } from "@/components/ui/sonner";
+import CharacterBackstoryDialog from "@/components/character-backstory-dialog";
 
 type CharacterState = Record<string, any>;
 
@@ -34,6 +37,10 @@ type CharacterRow = {
   className: string;
   level: number | null;
   characterType: "pg" | "png";
+  race: string;
+  background: string;
+  alignment: string;
+  portraitUrl: string;
 };
 
 function toCharacterRow(state: CharacterState): CharacterRow | null {
@@ -46,6 +53,10 @@ function toCharacterRow(state: CharacterState): CharacterRow | null {
     className: state?.basicInfo?.class ?? "",
     level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
     characterType: state?.characterType === "png" ? "png" : "pg",
+    race: state?.basicInfo?.race ?? "",
+    background: state?.basicInfo?.background ?? "",
+    alignment: state?.basicInfo?.alignment ?? "",
+    portraitUrl: state?.basicInfo?.portraitUrl ?? "",
   };
 }
 
@@ -58,6 +69,10 @@ export default function CharacterAssignments() {
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
   const [archivingSlug, setArchivingSlug] = useState<string | null>(null);
   const [pendingArchive, setPendingArchive] = useState<CharacterRow | null>(null);
+  const [backstoryCharacter, setBackstoryCharacter] = useState<CharacterRow | null>(null);
+  const [backstoryContent, setBackstoryContent] = useState("");
+  const [backstoryLoading, setBackstoryLoading] = useState(false);
+  const [backstorySaving, setBackstorySaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -160,13 +175,45 @@ export default function CharacterAssignments() {
     }
   };
 
+  const openBackstoryEditor = async (character: CharacterRow) => {
+    setBackstoryCharacter(character);
+    setBackstoryContent("");
+    setBackstoryLoading(true);
+
+    try {
+      const payload = await fetchCharacterBackstoryRequest(character.slug);
+      setBackstoryContent(payload.contentMarkdown ?? "");
+    } catch (error) {
+      setBackstoryContent("");
+      toast.error(error instanceof Error ? error.message : "Non sono riuscito a caricare la backstory.");
+    } finally {
+      setBackstoryLoading(false);
+    }
+  };
+
+  const saveBackstory = async (contentMarkdown: string) => {
+    if (!backstoryCharacter) return;
+    setBackstorySaving(true);
+
+    try {
+      const payload = await updateCharacterBackstoryRequest(backstoryCharacter.slug, contentMarkdown);
+      setBackstoryContent(payload.contentMarkdown ?? "");
+      toast.success(`Backstory aggiornata per ${backstoryCharacter.name}.`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Non sono riuscito a salvare la backstory.");
+      throw error;
+    } finally {
+      setBackstorySaving(false);
+    }
+  };
+
   const renderCharacterCard = (character: CharacterRow) => {
     const assignedUserId = ownership[character.slug] ?? NONE_VALUE;
     const selectedUser = users.find((user) => user.id === ownership[character.slug]) ?? null;
 
     return (
       <Card key={character.slug} className="character-section">
-        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(220px,0.9fr)_minmax(0,1.2fr)_280px_120px] lg:items-center">
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(220px,0.9fr)_minmax(0,1.2fr)_280px_160px] lg:items-center">
           <div>
             <div className="font-heading text-2xl font-semibold text-primary">{character.name}</div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -226,7 +273,21 @@ export default function CharacterAssignments() {
             </Select>
           </div>
 
-          <div className="flex justify-end lg:justify-self-end">
+          <div className="flex justify-end gap-1 lg:justify-self-end">
+            {character.characterType === "pg" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-full text-muted-foreground hover:text-primary"
+                title="Modifica backstory"
+                aria-label="Modifica backstory"
+                disabled={archivingSlug === character.slug}
+                onClick={() => void openBackstoryEditor(character)}
+              >
+                <NotebookText className="h-4 w-4" />
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="ghost"
@@ -353,6 +414,34 @@ export default function CharacterAssignments() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        <CharacterBackstoryDialog
+          open={!!backstoryCharacter}
+          onOpenChange={(open) => {
+            if (!open) setBackstoryCharacter(null);
+          }}
+          character={
+            backstoryCharacter
+              ? {
+                  slug: backstoryCharacter.slug,
+                  name: backstoryCharacter.name,
+                  className: backstoryCharacter.className,
+                  level: backstoryCharacter.level,
+                  race: backstoryCharacter.race,
+                  background: backstoryCharacter.background,
+                  alignment: backstoryCharacter.alignment,
+                  portraitUrl: backstoryCharacter.portraitUrl,
+                }
+              : null
+          }
+          contentMarkdown={backstoryContent}
+          loading={backstoryLoading}
+          editable
+          defaultEditing
+          closeOnSave
+          saving={backstorySaving}
+          onSave={saveBackstory}
+        />
       </div>
     </div>
   );

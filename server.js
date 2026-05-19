@@ -998,6 +998,7 @@ function runInTransaction(work) {
 ensureRaceSpeedReferenceTable();
 ensureUserLayoutPreferenceTable();
 ensureAppStateTable();
+ensureCharacterBackstoryTable();
 ensureGameSessionStateTable();
 ensureCharacterCurrencyBalanceTable();
 ensureCurrencyTransactionTable();
@@ -1446,6 +1447,28 @@ function ensureAppStateTable() {
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+  `);
+}
+
+function ensureCharacterBackstoryTable() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "CharacterBackstory" (
+      "characterId" TEXT NOT NULL PRIMARY KEY,
+      "contentMarkdown" TEXT NOT NULL DEFAULT '',
+      "updatedByUserId" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("characterId") REFERENCES "Character"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY ("updatedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CharacterBackstory_updatedByUserId_idx"
+    ON "CharacterBackstory"("updatedByUserId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CharacterBackstory_updatedAt_idx"
+    ON "CharacterBackstory"("updatedAt");
   `);
 }
 
@@ -5137,6 +5160,55 @@ function listCharacterTransferTargets() {
     }));
 }
 
+function normalizeCharacterBackstoryRow(row, character) {
+  const contentMarkdown = typeof row?.contentMarkdown === "string" ? row.contentMarkdown : "";
+  return {
+    slug: character?.slug ?? row?.slug ?? null,
+    characterId: character?.id ?? row?.characterId ?? null,
+    contentMarkdown,
+    hasBackstory: contentMarkdown.trim().length > 0,
+    updatedAt: row?.updatedAt ?? null,
+    updatedByUserId: row?.updatedByUserId ?? null,
+  };
+}
+
+function getActiveCharacterRecordBySlug(slug) {
+  ensureSqliteConnectionFresh();
+  return sqlite
+    .prepare('SELECT id, slug, characterType, archivedAt FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(slug);
+}
+
+function readCharacterBackstory(slug) {
+  ensureSqliteConnectionFresh();
+  const character = getActiveCharacterRecordBySlug(slug);
+  if (!character) return null;
+
+  const row = sqlite
+    .prepare('SELECT * FROM "CharacterBackstory" WHERE characterId = ? LIMIT 1')
+    .get(character.id);
+  return normalizeCharacterBackstoryRow(row, character);
+}
+
+function writeCharacterBackstory(slug, contentMarkdown, updatedByUserId = null) {
+  ensureSqliteConnectionFresh();
+  const character = getActiveCharacterRecordBySlug(slug);
+  if (!character) return null;
+
+  const now = new Date().toISOString();
+  sqlite.prepare(`
+    INSERT INTO "CharacterBackstory" (
+      "characterId", "contentMarkdown", "updatedByUserId", "createdAt", "updatedAt"
+    ) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT("characterId") DO UPDATE SET
+      "contentMarkdown" = excluded."contentMarkdown",
+      "updatedByUserId" = excluded."updatedByUserId",
+      "updatedAt" = excluded."updatedAt"
+  `).run(character.id, String(contentMarkdown ?? ""), updatedByUserId, now, now);
+
+  return readCharacterBackstory(slug);
+}
+
 function writeCharacter(slug, data) {
   const basicInfo = data?.basicInfo ?? {};
   const createdByUserId = data?.createdBy?.userId ?? null;
@@ -7273,6 +7345,28 @@ async function start() {
     const state = readCharacter(slug);
     if (!state) return res.status(404).json({ error: "Character not found" });
     return res.json(state);
+  });
+
+  app.get("/api/characters/:slug/backstory", requireAuth, (req, res) => {
+    const slug = req.params.slug;
+    const ownership = readOwnership();
+
+    if (!canAccessCharacter(req.user, slug, ownership)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const backstory = readCharacterBackstory(slug);
+    if (!backstory) return res.status(404).json({ error: "Character not found" });
+    return res.json(backstory);
+  });
+
+  app.put("/api/dm/characters/:slug/backstory", requireRole("dm"), (req, res) => {
+    const slug = req.params.slug;
+    const contentMarkdown = String(req.body?.contentMarkdown ?? "");
+
+    const backstory = writeCharacterBackstory(slug, contentMarkdown, req.user?.id ?? null);
+    if (!backstory) return res.status(404).json({ error: "Character not found" });
+    return res.json(backstory);
   });
 
   app.post("/api/characters/:slug/currency-transactions", requireAuth, (req, res) => {

@@ -274,6 +274,7 @@ model User {
   inventoryTransactionsCreated InventoryTransaction[] @relation("InventoryTransactionCreatedBy")
   currencyTransactionsCreated  CurrencyTransaction[]  @relation("CurrencyTransactionCreatedBy")
   layoutPreferences UserLayoutPreference[]
+  updatedBackstories CharacterBackstory[] @relation("CharacterBackstoryUpdatedBy")
 
   @@index([role])
 }
@@ -307,11 +308,26 @@ model Character {
   inventoryItems CharacterItem[]
   inventoryTransactionsFrom InventoryTransaction[] @relation("InventoryTransactionFromCharacter")
   inventoryTransactionsTo   InventoryTransaction[] @relation("InventoryTransactionToCharacter")
+  backstory CharacterBackstory?
 
   @@index([characterType])
   @@index([ownerUserId])
   @@index([createdByUserId])
   @@index([archivedAt])
+}
+
+model CharacterBackstory {
+  characterId     String   @id
+  contentMarkdown String   @default("")
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  updatedBy User?     @relation("CharacterBackstoryUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([updatedByUserId])
+  @@index([updatedAt])
 }
 
 model CharacterCurrencyBalance {
