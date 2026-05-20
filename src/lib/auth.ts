@@ -107,6 +107,30 @@ export type CampaignEventsPayload = {
   events: CampaignEventEntry[];
 };
 
+export type CampaignDocumentEntry = {
+  id: string;
+  title: string;
+  description: string;
+  kind: "text" | "image";
+  language: string;
+  contentMarkdown: string;
+  imageUrl: string | null;
+  unreadableImageUrl: string | null;
+  sessionNumber: number | null;
+  revealEventId: string | null;
+  createdByUserId: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  visibleCharacters: CampaignCharacterVisibility[];
+};
+
+export type CampaignDocumentsPayload = {
+  documents: CampaignDocumentEntry[];
+};
+export type CampaignDocumentImageUpload = {
+  url: string;
+};
+
 export type CampaignSessionStatePayload = {
   currentSessionNumber: number;
   suggestedSessionNumber: number;
@@ -842,6 +866,69 @@ export function fetchDmCampaignEventsRequest() {
   return authFetch<CampaignEventsPayload>("/api/dm/campaign/events", { method: "GET" });
 }
 
+export function fetchDmCampaignDocumentsRequest() {
+  return authFetch<CampaignDocumentsPayload>("/api/dm/campaign/documents", { method: "GET" });
+}
+
+export function createDmCampaignDocumentRequest(payload: {
+  title: string;
+  description: string;
+  kind: "TEXT" | "IMAGE";
+  language: string;
+  contentMarkdown: string;
+  imageUrl?: string | null;
+  unreadableImageUrl?: string | null;
+  characterSlugs?: string[];
+}) {
+  return authFetch<CampaignDocumentEntry>("/api/dm/campaign/documents", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateDmCampaignDocumentRequest(documentId: string, payload: {
+  title: string;
+  description: string;
+  kind: "TEXT" | "IMAGE";
+  language: string;
+  contentMarkdown: string;
+  imageUrl?: string | null;
+  unreadableImageUrl?: string | null;
+  characterSlugs?: string[];
+}) {
+  return authFetch<CampaignDocumentEntry>(`/api/dm/campaign/documents/${encodeURIComponent(documentId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function publishDmCampaignDocumentRequest(documentId: string, payload: {
+  sessionNumber: number;
+  characterSlugs: string[];
+}) {
+  return authFetch<CampaignDocumentEntry>(`/api/dm/campaign/documents/${encodeURIComponent(documentId)}/publish`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteDmCampaignDocumentRequest(documentId: string) {
+  return authFetch<null>(`/api/dm/campaign/documents/${encodeURIComponent(documentId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function uploadDmCampaignDocumentImageRequest(payload: {
+  fileName: string;
+  contentType: string;
+  data: string;
+}) {
+  return authFetch<CampaignDocumentImageUpload>("/api/dm/campaign/documents/upload-image", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createDmCampaignEventRequest(payload: {
   sessionNumber: number;
   sortOrder?: number;
@@ -897,6 +984,10 @@ export function applyDmCampaignEventsImportRequest(payload: unknown) {
 
 export function fetchPlayerCampaignEventsRequest() {
   return authFetch<CampaignEventsPayload>("/api/campaign/events", { method: "GET" });
+}
+
+export function fetchPlayerCampaignDocumentsRequest() {
+  return authFetch<CampaignDocumentsPayload>("/api/campaign/documents", { method: "GET" });
 }
 
 export function createCharacterRequest(payload: {

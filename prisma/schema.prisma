@@ -258,6 +258,11 @@ enum CampaignEventType {
   DOCUMENT_REVEAL
 }
 
+enum CampaignDocumentKind {
+  TEXT
+  IMAGE
+}
+
 model User {
   id                 String   @id
   username           String   @unique
@@ -281,6 +286,7 @@ model User {
   layoutPreferences UserLayoutPreference[]
   updatedBackstories CharacterBackstory[] @relation("CharacterBackstoryUpdatedBy")
   campaignEventsCreated CampaignEvent[] @relation("CampaignEventCreator")
+  campaignDocumentsCreated CampaignDocument[] @relation("CampaignDocumentCreator")
   campaignSessionUpdates CampaignSessionState[] @relation("CampaignSessionUpdatedBy")
 
   @@index([role])
@@ -317,6 +323,7 @@ model Character {
   inventoryTransactionsTo   InventoryTransaction[] @relation("InventoryTransactionToCharacter")
   backstory CharacterBackstory?
   visibleCampaignEvents CampaignEventVisibility[]
+  visibleCampaignDocuments CampaignDocumentVisibility[]
 
   @@index([characterType])
   @@index([ownerUserId])
@@ -360,11 +367,51 @@ model CampaignEvent {
 
   createdBy User?                     @relation("CampaignEventCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   visibility CampaignEventVisibility[]
+  revealedDocuments CampaignDocument[]
 
   @@index([sessionNumber, sortOrder])
   @@index([sortOrder])
   @@index([createdByUserId])
   @@index([eventType])
+}
+
+model CampaignDocument {
+  id              String               @id
+  title           String
+  description     String               @default("")
+  kind            CampaignDocumentKind @default(TEXT)
+  language        String               @default("Comune")
+  contentMarkdown String               @default("")
+  imageUrl        String?
+  unreadableImageUrl String?
+  sessionNumber   Int?
+  revealEventId   String?
+  createdByUserId String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  createdBy  User?                        @relation("CampaignDocumentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  revealEvent CampaignEvent?              @relation(fields: [revealEventId], references: [id], onDelete: SetNull)
+  visibility CampaignDocumentVisibility[]
+
+  @@index([sessionNumber])
+  @@index([kind])
+  @@index([language])
+  @@index([createdByUserId])
+  @@index([revealEventId])
+}
+
+model CampaignDocumentVisibility {
+  id          String @id
+  documentId  String
+  characterId String
+
+  document  CampaignDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  character Character        @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, characterId])
+  @@index([documentId])
+  @@index([characterId])
 }
 
 model CampaignEventVisibility {

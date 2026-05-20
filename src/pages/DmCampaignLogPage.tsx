@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDown, ArrowUp, Check, FileJson, Home, Pencil, Plus, Save, ScrollText, Trash2, Upload, Users, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, FileJson, FileText, Home, ImageIcon, Pencil, Plus, Save, ScrollText, Trash2, Upload, Users, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,12 +12,19 @@ import { toast } from "@/components/ui/sonner";
 import CampaignEventMarkdown from "@/components/campaign-event-markdown";
 import {
   applyDmCampaignEventsImportRequest,
+  createDmCampaignDocumentRequest,
   createDmCampaignEventRequest,
+  deleteDmCampaignDocumentRequest,
   deleteDmCampaignEventRequest,
+  fetchDmCampaignDocumentsRequest,
   fetchDmCampaignEventsRequest,
   fetchDmCampaignSessionRequest,
   previewDmCampaignEventsImportRequest,
+  publishDmCampaignDocumentRequest,
   reorderDmCampaignEventsRequest,
+  updateDmCampaignDocumentRequest,
+  uploadDmCampaignDocumentImageRequest,
+  type CampaignDocumentEntry,
   updateDmCampaignEventRequest,
   updateDmCampaignSessionRequest,
   type CampaignEventEntry,
@@ -42,6 +49,55 @@ type EventDraft = {
   bodyMarkdown: string;
   characterSlugs: string[];
 };
+
+type DocumentDraft = {
+  id: string | null;
+  title: string;
+  description: string;
+  kind: "TEXT" | "IMAGE";
+  language: string;
+  contentMarkdown: string;
+  imageUrl: string;
+  unreadableImageUrl: string;
+  sessionNumber: string;
+  characterSlugs: string[];
+};
+
+const EMPTY_DOCUMENT_DRAFT: DocumentDraft = {
+  id: null,
+  title: "",
+  description: "",
+  kind: "TEXT",
+  language: "Comune",
+  contentMarkdown: "",
+  imageUrl: "",
+  unreadableImageUrl: "",
+  sessionNumber: "",
+  characterSlugs: [],
+};
+
+const DND_LANGUAGES = [
+  "Comune",
+  "Elfico",
+  "Nanico",
+  "Halfling",
+  "Gnomesco",
+  "Draconico",
+  "Goblin",
+  "Orchesco",
+  "Gigante",
+  "Abissale",
+  "Celestiale",
+  "Infernale",
+  "Primordiale",
+  "Silvano",
+  "Sottocomune",
+  "Gergo Ladresco",
+  "Auran",
+  "Aquan",
+  "Ignan",
+  "Terran",
+];
 
 function toCampaignPg(state: CharacterState): CampaignPg | null {
   const slug = typeof state?.slug === "string" ? state.slug : "";
@@ -72,9 +128,22 @@ function sortCampaignEvents(events: CampaignEventEntry[]) {
     );
 }
 
+function readFileAsBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      resolve(result.includes(",") ? result.slice(result.indexOf(",") + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Lettura file fallita."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function DmCampaignLogPage() {
   const [characters, setCharacters] = useState<CampaignPg[]>([]);
   const [events, setEvents] = useState<CampaignEventEntry[]>([]);
+  const [documents, setDocuments] = useState<CampaignDocumentEntry[]>([]);
   const [sessionState, setSessionState] = useState<CampaignSessionStatePayload | null>(null);
   const [sessionDraft, setSessionDraft] = useState("1");
   const [eventSession, setEventSession] = useState("1");
@@ -95,6 +164,11 @@ export default function DmCampaignLogPage() {
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
   const [sessionFilter, setSessionFilter] = useState<string>("all");
+  const [documentDraft, setDocumentDraft] = useState<DocumentDraft>(EMPTY_DOCUMENT_DRAFT);
+  const [documentSaving, setDocumentSaving] = useState(false);
+  const [documentImageUploading, setDocumentImageUploading] = useState<"image" | "unreadable" | null>(null);
+  const [documentPublishingId, setDocumentPublishingId] = useState<string | null>(null);
+  const [documentDeletingId, setDocumentDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Diario della Campagna | Cronache della Trama e del Fato";
@@ -102,8 +176,8 @@ export default function DmCampaignLogPage() {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([fetchCharacters(), fetchDmCampaignSessionRequest(), fetchDmCampaignEventsRequest()])
-      .then(([characterItems, nextSessionState, eventsPayload]) => {
+    void Promise.all([fetchCharacters(), fetchDmCampaignSessionRequest(), fetchDmCampaignEventsRequest(), fetchDmCampaignDocumentsRequest()])
+      .then(([characterItems, nextSessionState, eventsPayload, documentsPayload]) => {
         if (!active) return;
         const nextCharacters = Array.isArray(characterItems)
           ? characterItems
@@ -115,7 +189,9 @@ export default function DmCampaignLogPage() {
         setSessionState(nextSessionState);
         setSessionDraft(String(nextSessionState.currentSessionNumber));
         setEventSession(String(nextSessionState.currentSessionNumber || nextSessionState.suggestedSessionNumber || 1));
+        setDocumentDraft((prev) => ({ ...prev, sessionNumber: String(nextSessionState.currentSessionNumber || nextSessionState.suggestedSessionNumber || 1) }));
         setEvents(sortCampaignEvents(Array.isArray(eventsPayload.events) ? eventsPayload.events : []));
+        setDocuments(Array.isArray(documentsPayload.documents) ? documentsPayload.documents : []);
       })
       .catch((error) => {
         if (active) toast.error(error instanceof Error ? error.message : "Non sono riuscito a caricare il diario.");
@@ -131,6 +207,10 @@ export default function DmCampaignLogPage() {
 
   const selectedSet = useMemo(() => new Set(selectedSlugs), [selectedSlugs]);
   const allSelected = characters.length > 0 && selectedSlugs.length === characters.length;
+  const documentLanguageOptions = useMemo(
+    () => Array.from(new Set([...DND_LANGUAGES, documentDraft.language].filter(Boolean))),
+    [documentDraft.language]
+  );
   const sessionOptions = useMemo(
     () => Array.from(new Set(events.map((event) => event.sessionNumber))).sort((a, b) => b - a),
     [events]
@@ -139,6 +219,8 @@ export default function DmCampaignLogPage() {
     () => sessionFilter === "all" ? events : events.filter((event) => String(event.sessionNumber) === sessionFilter),
     [events, sessionFilter]
   );
+  const documentSelectedSet = useMemo(() => new Set(documentDraft.characterSlugs), [documentDraft.characterSlugs]);
+  const documentAllSelected = characters.length > 0 && documentDraft.characterSlugs.length === characters.length;
 
   const toggleCharacter = (slug: string, checked: boolean) => {
     setSelectedSlugs((prev) => checked ? Array.from(new Set([...prev, slug])) : prev.filter((entry) => entry !== slug));
@@ -373,6 +455,153 @@ export default function DmCampaignLogPage() {
     }
   };
 
+  const resetDocumentDraft = () => {
+    setDocumentDraft({
+      ...EMPTY_DOCUMENT_DRAFT,
+      sessionNumber: String(sessionState?.currentSessionNumber ?? 1),
+    });
+  };
+
+  const editDocument = (document: CampaignDocumentEntry) => {
+    setDocumentDraft({
+      id: document.id,
+      title: document.title,
+      description: document.description,
+      kind: document.kind === "image" ? "IMAGE" : "TEXT",
+      language: document.language || "Comune",
+      contentMarkdown: document.contentMarkdown,
+      imageUrl: document.imageUrl ?? "",
+      unreadableImageUrl: document.unreadableImageUrl ?? "",
+      sessionNumber: document.sessionNumber ? String(document.sessionNumber) : String(sessionState?.currentSessionNumber ?? 1),
+      characterSlugs: document.visibleCharacters.map((character) => character.slug),
+    });
+  };
+
+  const toggleDocumentCharacter = (slug: string, checked: boolean) => {
+    setDocumentDraft((prev) => ({
+      ...prev,
+      characterSlugs: checked
+        ? Array.from(new Set([...prev.characterSlugs, slug]))
+        : prev.characterSlugs.filter((entry) => entry !== slug),
+    }));
+  };
+
+  const uploadDocumentImage = async (file: File | null, target: "image" | "unreadable") => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Seleziona un file immagine.");
+      return;
+    }
+    setDocumentImageUploading(target);
+    try {
+      const data = await readFileAsBase64(file);
+      const uploaded = await uploadDmCampaignDocumentImageRequest({
+        fileName: file.name,
+        contentType: file.type,
+        data,
+      });
+      setDocumentDraft((prev) => ({
+        ...prev,
+        kind: "IMAGE",
+        [target === "image" ? "imageUrl" : "unreadableImageUrl"]: uploaded.url,
+      }));
+      toast.success(target === "image" ? "Immagine documento caricata." : "Variante illeggibile caricata.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Non sono riuscito a caricare l'immagine.");
+    } finally {
+      setDocumentImageUploading(null);
+    }
+  };
+
+  const saveDocument = async () => {
+    if (!documentDraft.title.trim()) {
+      toast.error("Inserisci un titolo documento.");
+      return;
+    }
+    if (documentDraft.kind === "IMAGE" && !documentDraft.imageUrl.trim()) {
+      toast.error("Per un documento immagine serve un URL immagine.");
+      return;
+    }
+
+    const payload = {
+      title: documentDraft.title.trim(),
+      description: documentDraft.description.trim(),
+      kind: documentDraft.kind,
+      language: documentDraft.language.trim() || "Comune",
+      contentMarkdown: documentDraft.contentMarkdown,
+      imageUrl: documentDraft.imageUrl.trim() || null,
+      unreadableImageUrl: documentDraft.unreadableImageUrl.trim() || null,
+      characterSlugs: documentDraft.characterSlugs,
+    };
+
+    setDocumentSaving(true);
+    try {
+      const saved = documentDraft.id
+        ? await updateDmCampaignDocumentRequest(documentDraft.id, payload)
+        : await createDmCampaignDocumentRequest(payload);
+      setDocuments((prev) => {
+        const exists = prev.some((document) => document.id === saved.id);
+        return exists ? prev.map((document) => document.id === saved.id ? saved : document) : [saved, ...prev];
+      });
+      setDocumentDraft((prev) => ({ ...prev, id: saved.id }));
+      toast.success(documentDraft.id ? "Documento aggiornato." : "Documento salvato in bozza.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Non sono riuscito a salvare il documento.");
+    } finally {
+      setDocumentSaving(false);
+    }
+  };
+
+  const publishDocument = async (document?: CampaignDocumentEntry) => {
+    const sourceId = document?.id ?? documentDraft.id;
+    if (!sourceId) {
+      toast.error("Salva prima il documento come bozza.");
+      return;
+    }
+    const sessionNumber = Number.parseInt(document ? String(document.sessionNumber ?? sessionState?.currentSessionNumber ?? 1) : documentDraft.sessionNumber, 10);
+    const characterSlugs = document ? document.visibleCharacters.map((character) => character.slug) : documentDraft.characterSlugs;
+    if (!Number.isFinite(sessionNumber) || sessionNumber <= 0) {
+      toast.error("Numero sessione documento non valido.");
+      return;
+    }
+    if (characterSlugs.length === 0) {
+      toast.error("Seleziona almeno un PG destinatario.");
+      return;
+    }
+
+    setDocumentPublishingId(sourceId);
+    try {
+      const published = await publishDmCampaignDocumentRequest(sourceId, { sessionNumber, characterSlugs });
+      setDocuments((prev) => prev.map((entry) => entry.id === published.id ? published : entry));
+      const refreshedEvents = await fetchDmCampaignEventsRequest();
+      setEvents(sortCampaignEvents(Array.isArray(refreshedEvents.events) ? refreshedEvents.events : []));
+      toast.success("Documento pubblicato nell'Archivio e registrato nel Diario.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Non sono riuscito a pubblicare il documento.");
+    } finally {
+      setDocumentPublishingId(null);
+    }
+  };
+
+  const deleteDocument = async (document: CampaignDocumentEntry) => {
+    const confirmed = window.confirm(`Eliminare "${document.title}" dall'Archivio documenti?`);
+    if (!confirmed) return;
+
+    setDocumentDeletingId(document.id);
+    try {
+      await deleteDmCampaignDocumentRequest(document.id);
+      setDocuments((prev) => prev.filter((entry) => entry.id !== document.id));
+      if (documentDraft.id === document.id) resetDocumentDraft();
+      const refreshedEvents = await fetchDmCampaignEventsRequest();
+      setEvents(sortCampaignEvents(Array.isArray(refreshedEvents.events) ? refreshedEvents.events : []));
+      toast.success("Documento eliminato.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Non sono riuscito a eliminare il documento.");
+    } finally {
+      setDocumentDeletingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen parchment px-6 py-10">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -510,6 +739,184 @@ export default function DmCampaignLogPage() {
 
               <Card className="character-section space-y-4">
                 <div className="flex items-center gap-2">
+                  {documentDraft.kind === "IMAGE" ? <ImageIcon className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-primary" />}
+                  <h2 className="font-heading text-2xl font-semibold text-primary">Documento</h2>
+                </div>
+                <div className="grid gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="campaign-document-title">Titolo</Label>
+                    <Input
+                      id="campaign-document-title"
+                      value={documentDraft.title}
+                      onChange={(event) => setDocumentDraft((prev) => ({ ...prev, title: event.target.value }))}
+                      placeholder="Lettera macchiata di cera"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="campaign-document-kind">Tipo</Label>
+                      <select
+                        id="campaign-document-kind"
+                        value={documentDraft.kind}
+                        onChange={(event) => setDocumentDraft((prev) => ({ ...prev, kind: event.target.value === "IMAGE" ? "IMAGE" : "TEXT" }))}
+                        className="h-10 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="TEXT">Testo</option>
+                        <option value="IMAGE">Immagine</option>
+                      </select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="campaign-document-language">Lingua</Label>
+                      <select
+                        id="campaign-document-language"
+                        value={documentDraft.language}
+                        onChange={(event) => setDocumentDraft((prev) => ({ ...prev, language: event.target.value }))}
+                        className="h-10 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {documentLanguageOptions.map((language) => (
+                          <option key={language} value={language}>
+                            {language}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="campaign-document-description">Descrizione breve</Label>
+                    <Textarea
+                      id="campaign-document-description"
+                      value={documentDraft.description}
+                      onChange={(event) => setDocumentDraft((prev) => ({ ...prev, description: event.target.value }))}
+                      className="min-h-20 bg-background/80"
+                      placeholder="Appunto interno per descrivere il documento nel registro."
+                    />
+                  </div>
+                  {documentDraft.kind === "TEXT" ? (
+                    <div className="grid gap-2">
+                      <Label htmlFor="campaign-document-content">Testo Markdown</Label>
+                      <Textarea
+                        id="campaign-document-content"
+                        value={documentDraft.contentMarkdown}
+                        onChange={(event) => setDocumentDraft((prev) => ({ ...prev, contentMarkdown: event.target.value }))}
+                        className="min-h-44 bg-background/80"
+                        placeholder="Contenuto del documento..."
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="campaign-document-image-file">Immagine documento</Label>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <Input
+                            id="campaign-document-image-file"
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            onChange={(event) => {
+                              void uploadDocumentImage(event.target.files?.[0] ?? null, "image");
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                          {documentImageUploading === "image" ? (
+                            <span className="text-sm text-muted-foreground">Carico...</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="campaign-document-image">URL immagine</Label>
+                        <Input
+                          id="campaign-document-image"
+                          value={documentDraft.imageUrl}
+                          onChange={(event) => setDocumentDraft((prev) => ({ ...prev, imageUrl: event.target.value }))}
+                          placeholder="/campaign-documents/pergamena.png"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="campaign-document-unreadable-file">Variante illeggibile</Label>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                          <Input
+                            id="campaign-document-unreadable-file"
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            onChange={(event) => {
+                              void uploadDocumentImage(event.target.files?.[0] ?? null, "unreadable");
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                          {documentImageUploading === "unreadable" ? (
+                            <span className="text-sm text-muted-foreground">Carico...</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="campaign-document-unreadable-image">URL variante illeggibile</Label>
+                        <Input
+                          id="campaign-document-unreadable-image"
+                          value={documentDraft.unreadableImageUrl}
+                          onChange={(event) => setDocumentDraft((prev) => ({ ...prev, unreadableImageUrl: event.target.value }))}
+                          placeholder="Opzionale"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid gap-2">
+                    <Label htmlFor="campaign-document-session">Sessione di conferimento</Label>
+                    <Input
+                      id="campaign-document-session"
+                      type="number"
+                      min={1}
+                      value={documentDraft.sessionNumber}
+                      onChange={(event) => setDocumentDraft((prev) => ({ ...prev, sessionNumber: event.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>Destinatari pubblicazione</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setDocumentDraft((prev) => ({
+                            ...prev,
+                            characterSlugs: documentAllSelected ? [] : characters.map((character) => character.slug),
+                          }))
+                        }
+                      >
+                        <Users className="mr-2 h-4 w-4" />
+                        {documentAllSelected ? "Deseleziona tutti" : "Tutti i PG"}
+                      </Button>
+                    </div>
+                    <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border border-border/70 bg-background/45 p-2">
+                      {characters.map((character) => (
+                        <label key={`document-${character.slug}`} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-accent/40">
+                          <Checkbox
+                            checked={documentSelectedSet.has(character.slug)}
+                            onCheckedChange={(checked) => toggleDocumentCharacter(character.slug, checked === true)}
+                          />
+                          <span className="min-w-0 flex-1 truncate text-sm">{character.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" onClick={() => void saveDocument()} disabled={documentSaving}>
+                      <Save className="mr-2 h-4 w-4" />
+                      {documentSaving ? "Salvo..." : documentDraft.id ? "Aggiorna bozza" : "Salva bozza"}
+                    </Button>
+                    <Button type="button" onClick={() => void publishDocument()} disabled={!documentDraft.id || documentPublishingId === documentDraft.id}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      {documentPublishingId === documentDraft.id ? "Pubblico..." : "Pubblica"}
+                    </Button>
+                    <Button type="button" variant="ghost" onClick={resetDocumentDraft}>
+                      <X className="mr-2 h-4 w-4" />
+                      Nuovo
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="character-section space-y-4">
+                <div className="flex items-center gap-2">
                   <FileJson className="h-5 w-5 text-primary" />
                   <h2 className="font-heading text-2xl font-semibold text-primary">Import JSON</h2>
                 </div>
@@ -592,6 +999,72 @@ export default function DmCampaignLogPage() {
             </div>
 
             <section className="space-y-4">
+              <div>
+                <h2 className="font-heading text-2xl font-bold text-primary">Archivio documenti</h2>
+                <p className="text-sm text-muted-foreground">{documents.length} documenti censiti.</p>
+              </div>
+              {documents.length === 0 ? (
+                <Card className="character-section">
+                  <div className="text-sm text-muted-foreground">Nessun documento ancora censito.</div>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {documents.map((document) => (
+                    <Card key={document.id} className="character-section space-y-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant={document.sessionNumber ? "default" : "outline"}>
+                              {document.sessionNumber ? `Sessione ${document.sessionNumber}` : "Bozza"}
+                            </Badge>
+                            <Badge variant="secondary">{document.kind === "image" ? "Immagine" : "Testo"}</Badge>
+                            <Badge variant="outline">{document.language}</Badge>
+                          </div>
+                          <h3 className="mt-2 font-heading text-2xl font-semibold text-primary">{document.title}</h3>
+                          {document.description ? (
+                            <p className="mt-1 text-sm text-muted-foreground">{document.description}</p>
+                          ) : null}
+                        </div>
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          {document.visibleCharacters.map((character) => (
+                            <Badge key={`${document.id}-${character.slug}`} variant="secondary">{character.name}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                      {document.kind === "image" && document.imageUrl ? (
+                        <img
+                          src={document.imageUrl}
+                          alt={document.title}
+                          className="max-h-72 rounded-md border border-border/70 object-contain"
+                        />
+                      ) : document.contentMarkdown ? (
+                        <CampaignEventMarkdown content={document.contentMarkdown} />
+                      ) : null}
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => editDocument(document)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Modifica
+                        </Button>
+                        <Button type="button" size="sm" onClick={() => void publishDocument(document)} disabled={document.visibleCharacters.length === 0 || documentPublishingId === document.id}>
+                          <Upload className="mr-2 h-4 w-4" />
+                          {document.sessionNumber ? "Ripubblica" : "Pubblica"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void deleteDocument(document)}
+                          disabled={documentDeletingId === document.id}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Elimina
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h2 className="font-heading text-2xl font-bold text-primary">Cronologia</h2>

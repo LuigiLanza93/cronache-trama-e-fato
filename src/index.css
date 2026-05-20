@@ -1,8 +1,32 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Grenze+Gotisch:wght@400;600;700&family=Noto+Sans+Runic&family=Noto+Sans+Symbols+2&family=Noto+Sans+Old+Italic&family=Uncial+Antiqua&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: "Alcarin Tengwar";
+  src: url("/fonts/alcarin-tengwar/AlcarinTengwar-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Alcarin Tengwar";
+  src: url("/fonts/alcarin-tengwar/AlcarinTengwar-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "LSW Drachenklaue";
+  src: url("/fonts/lsw-drachenklaue/LSW-Drachenklaue.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Campaign journal design system */
 
@@ -222,6 +246,46 @@
   .character-section-title {
     @apply text-lg font-semibold text-primary border-b border-border pb-1;
     font-family: var(--font-heading);
+  }
+
+  .font-obfuscation-runic {
+    font-family: "Noto Sans Runic", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: 0.04em;
+  }
+
+  .font-obfuscation-symbols {
+    font-family: "Noto Sans Symbols 2", "Noto Sans Symbols", ui-serif, Georgia, serif;
+    letter-spacing: 0.05em;
+  }
+
+  .font-obfuscation-ancient {
+    font-family: "Noto Sans Old Italic", "Noto Sans Symbols 2", ui-serif, Georgia, serif;
+    letter-spacing: 0.04em;
+  }
+
+  .font-obfuscation-draconic {
+    font-family: "LSW Drachenklaue", "Noto Sans Symbols 2", ui-serif, Georgia, serif;
+    letter-spacing: 0.08em;
+    font-size: 1.08em;
+  }
+
+  .font-obfuscation-infernal {
+    font-family: "Noto Sans Old Italic", "Grenze Gotisch", ui-serif, Georgia, serif;
+    letter-spacing: 0.08em;
+    font-size: 1.06em;
+    font-weight: 600;
+  }
+
+  .font-obfuscation-celestial {
+    font-family: "Uncial Antiqua", "Noto Sans Symbols 2", ui-serif, Georgia, serif;
+    letter-spacing: 0.07em;
+    font-size: 1.06em;
+  }
+
+  .font-obfuscation-script {
+    font-family: "Alcarin Tengwar", "Noto Sans Runic", "Cinzel", ui-serif, Georgia, serif;
+    letter-spacing: 0.08em;
+    font-size: 1.08em;
   }
 
   .turn-highlight-active {

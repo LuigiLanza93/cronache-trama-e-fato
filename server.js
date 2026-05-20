@@ -26,12 +26,18 @@ const DATA_DIR = path.resolve(__dirname, "src/data");
 const MONSTERS_DIR = path.resolve(DATA_DIR, "monsters");
 const DEFAULT_SQLITE_DB_FILE = path.resolve(__dirname, "prisma", "migration.db");
 const DEFAULT_PORTRAIT_DIR = path.resolve(__dirname, "public/portraits");
+const DEFAULT_CAMPAIGN_DOCUMENT_DIR = path.resolve(__dirname, "app-data", "campaign-documents");
 const APP_DATA_DIR = process.env.APP_DATA_DIR ? path.resolve(process.env.APP_DATA_DIR) : null;
 const PORTRAIT_DIR = process.env.PORTRAIT_DIR
   ? path.resolve(process.env.PORTRAIT_DIR)
   : APP_DATA_DIR
     ? path.resolve(APP_DATA_DIR, "portraits")
     : DEFAULT_PORTRAIT_DIR;
+const CAMPAIGN_DOCUMENT_DIR = process.env.CAMPAIGN_DOCUMENT_DIR
+  ? path.resolve(process.env.CAMPAIGN_DOCUMENT_DIR)
+  : APP_DATA_DIR
+    ? path.resolve(APP_DATA_DIR, "campaign-documents")
+    : DEFAULT_CAMPAIGN_DOCUMENT_DIR;
 const INITIATIVE_TRACKER_FILE = path.resolve(DATA_DIR, "initiative-tracker.json");
 const INITIATIVE_TRACKER_STATE_KEY = "initiative-tracker";
 const SESSION_COOKIE = "ctf_session";
@@ -43,6 +49,7 @@ const DM_NOTES_ROOT = process.env.DM_NOTES_ROOT
 const SLOW_REQUEST_THRESHOLD_MS = 1000;
 const PORTRAIT_CACHE_MAX_AGE = "7d";
 const STATIC_CACHE_MAX_AGE = "1y";
+const CAMPAIGN_DOCUMENT_CACHE_MAX_AGE = "30d";
 const LOGIN_RATE_LIMIT_WINDOW_MS = 1000 * 60 * 15;
 const LOGIN_RATE_LIMIT_MAX_ATTEMPTS = Number(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS ?? 8);
 const BACKUP_RATE_LIMIT_WINDOW_MS = 1000 * 60 * 15;
@@ -246,6 +253,7 @@ function copyDirectoryIfEmpty(sourceDir, targetDir) {
 
 function bootstrapPersistentStorage() {
   ensureDir(path.dirname(SQLITE_DB_FILE));
+  ensureDir(CAMPAIGN_DOCUMENT_DIR);
   if (SQLITE_DB_FILE !== DEFAULT_SQLITE_DB_FILE && !fs.existsSync(SQLITE_DB_FILE) && fs.existsSync(DEFAULT_SQLITE_DB_FILE)) {
     fs.copyFileSync(DEFAULT_SQLITE_DB_FILE, SQLITE_DB_FILE);
     console.log(`[server] initialized sqlite database at ${SQLITE_DB_FILE}`);
@@ -1001,6 +1009,7 @@ ensureAppStateTable();
 ensureCharacterBackstoryTable();
 ensureCampaignSessionStateTable();
 ensureCampaignEventTables();
+ensureCampaignDocumentTables();
 ensureGameSessionStateTable();
 ensureCharacterCurrencyBalanceTable();
 ensureCurrencyTransactionTable();
@@ -1549,6 +1558,69 @@ function ensureCampaignEventTables() {
   sqlite.exec(`
     CREATE INDEX IF NOT EXISTS "CampaignEventVisibility_characterId_idx"
     ON "CampaignEventVisibility"("characterId");
+  `);
+}
+
+function ensureCampaignDocumentTables() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "CampaignDocument" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "title" TEXT NOT NULL,
+      "description" TEXT NOT NULL DEFAULT '',
+      "kind" TEXT NOT NULL DEFAULT 'TEXT',
+      "language" TEXT NOT NULL DEFAULT 'Comune',
+      "contentMarkdown" TEXT NOT NULL DEFAULT '',
+      "imageUrl" TEXT,
+      "unreadableImageUrl" TEXT,
+      "sessionNumber" INTEGER,
+      "revealEventId" TEXT,
+      "createdByUserId" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("revealEventId") REFERENCES "CampaignEvent"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+      FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignDocument_sessionNumber_idx"
+    ON "CampaignDocument"("sessionNumber");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignDocument_kind_idx"
+    ON "CampaignDocument"("kind");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignDocument_language_idx"
+    ON "CampaignDocument"("language");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignDocument_createdByUserId_idx"
+    ON "CampaignDocument"("createdByUserId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignDocument_revealEventId_idx"
+    ON "CampaignDocument"("revealEventId");
+  `);
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "CampaignDocumentVisibility" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "documentId" TEXT NOT NULL,
+      "characterId" TEXT NOT NULL,
+      FOREIGN KEY ("documentId") REFERENCES "CampaignDocument"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY ("characterId") REFERENCES "Character"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    );
+  `);
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "CampaignDocumentVisibility_documentId_characterId_key"
+    ON "CampaignDocumentVisibility"("documentId", "characterId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignDocumentVisibility_documentId_idx"
+    ON "CampaignDocumentVisibility"("documentId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignDocumentVisibility_characterId_idx"
+    ON "CampaignDocumentVisibility"("characterId");
   `);
 }
 
@@ -5742,6 +5814,292 @@ function importCampaignEvents(rawPayload, createdByUserId = null) {
   };
 }
 
+function normalizeCampaignDocumentRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title ?? "",
+    description: row.description ?? "",
+    kind: String(row.kind ?? "TEXT").toLowerCase() === "image" ? "image" : "text",
+    language: row.language ?? "Comune",
+    contentMarkdown: row.contentMarkdown ?? "",
+    imageUrl: row.imageUrl ?? null,
+    unreadableImageUrl: row.unreadableImageUrl ?? null,
+    sessionNumber: row.sessionNumber == null ? null : Number(row.sessionNumber),
+    revealEventId: row.revealEventId ?? null,
+    createdByUserId: row.createdByUserId ?? null,
+    createdAt: row.createdAt ?? null,
+    updatedAt: row.updatedAt ?? null,
+  };
+}
+
+function readCampaignDocumentVisibility(documentIds) {
+  const ids = (Array.isArray(documentIds) ? documentIds : []).map((id) => String(id ?? "").trim()).filter(Boolean);
+  if (ids.length === 0) return new Map();
+
+  const placeholders = ids.map(() => "?").join(", ");
+  const rows = sqlite.prepare(`
+    SELECT
+      dv.documentId,
+      c.slug,
+      c.name,
+      c.className,
+      c.level,
+      c.characterType
+    FROM "CampaignDocumentVisibility" dv
+    JOIN "Character" c ON c.id = dv.characterId
+    WHERE dv.documentId IN (${placeholders})
+      AND c.archivedAt IS NULL
+    ORDER BY c.name COLLATE NOCASE
+  `).all(...ids);
+
+  const byDocument = new Map(ids.map((id) => [id, []]));
+  for (const row of rows) {
+    const list = byDocument.get(row.documentId) ?? [];
+    list.push({
+      slug: row.slug,
+      name: row.name,
+      className: row.className ?? null,
+      level: row.level == null ? null : Number(row.level),
+      characterType: String(row.characterType).toLowerCase() === "png" ? "png" : "pg",
+    });
+    byDocument.set(row.documentId, list);
+  }
+  return byDocument;
+}
+
+function attachCampaignDocumentVisibility(documents) {
+  const visibilityByDocument = readCampaignDocumentVisibility(documents.map((document) => document.id));
+  return documents.map((document) => ({
+    ...document,
+    visibleCharacters: visibilityByDocument.get(document.id) ?? [],
+  }));
+}
+
+function listCampaignDocumentsForDm() {
+  ensureSqliteConnectionFresh();
+  const documents = sqlite.prepare(`
+    SELECT * FROM "CampaignDocument"
+    ORDER BY COALESCE(sessionNumber, 999999) ASC, title COLLATE NOCASE ASC, createdAt ASC
+  `).all().map(normalizeCampaignDocumentRow).filter(Boolean);
+  return attachCampaignDocumentVisibility(documents);
+}
+
+function listCampaignDocumentsForCharacterSlugs(slugs) {
+  ensureSqliteConnectionFresh();
+  const normalizedSlugs = (Array.isArray(slugs) ? slugs : [])
+    .map((slug) => String(slug ?? "").trim())
+    .filter(Boolean);
+  if (normalizedSlugs.length === 0) return [];
+
+  const placeholders = normalizedSlugs.map(() => "?").join(", ");
+  const documents = sqlite.prepare(`
+    SELECT DISTINCT d.*
+    FROM "CampaignDocument" d
+    JOIN "CampaignDocumentVisibility" dv ON dv.documentId = d.id
+    JOIN "Character" c ON c.id = dv.characterId
+    WHERE c.slug IN (${placeholders})
+      AND c.archivedAt IS NULL
+      AND d.sessionNumber IS NOT NULL
+    ORDER BY d.sessionNumber ASC, d.title COLLATE NOCASE ASC
+  `).all(...normalizedSlugs).map(normalizeCampaignDocumentRow).filter(Boolean);
+  return attachCampaignDocumentVisibility(documents).map((document) => ({
+    ...document,
+    visibleCharacters: document.visibleCharacters.filter((character) => normalizedSlugs.includes(character.slug)),
+  }));
+}
+
+function normalizeCampaignDocumentPayload(payload) {
+  const title = String(payload?.title ?? "").trim();
+  const kind = String(payload?.kind ?? "TEXT").trim().toUpperCase() === "IMAGE" ? "IMAGE" : "TEXT";
+  const language = String(payload?.language ?? "Comune").trim() || "Comune";
+  const description = String(payload?.description ?? "").trim();
+  const contentMarkdown = String(payload?.contentMarkdown ?? payload?.bodyMarkdown ?? "").trim();
+  const imageUrl = String(payload?.imageUrl ?? "").trim() || null;
+  const unreadableImageUrl = String(payload?.unreadableImageUrl ?? "").trim() || null;
+
+  if (!title) {
+    throw new Error("Titolo documento richiesto.");
+  }
+  if (kind === "IMAGE" && !imageUrl) {
+    throw new Error("Per un documento immagine serve un URL immagine.");
+  }
+
+  return {
+    title,
+    kind,
+    language,
+    description,
+    contentMarkdown,
+    imageUrl,
+    unreadableImageUrl,
+  };
+}
+
+function writeCampaignDocumentVisibility(documentId, characterSlugs) {
+  sqlite.prepare('DELETE FROM "CampaignDocumentVisibility" WHERE "documentId" = ?').run(documentId);
+  const slugs = Array.isArray(characterSlugs) ? characterSlugs.filter((slug) => String(slug ?? "").trim()) : [];
+  if (slugs.length === 0) return [];
+
+  const characters = resolveCampaignEventCharacters(slugs);
+  const insertVisibility = sqlite.prepare(`
+    INSERT OR IGNORE INTO "CampaignDocumentVisibility" (id, documentId, characterId)
+    VALUES (?, ?, ?)
+  `);
+  for (const character of characters) {
+    insertVisibility.run(crypto.randomUUID(), documentId, character.id);
+  }
+  return characters;
+}
+
+function readCampaignDocumentById(documentId) {
+  ensureSqliteConnectionFresh();
+  const row = sqlite.prepare('SELECT * FROM "CampaignDocument" WHERE id = ? LIMIT 1').get(String(documentId ?? "").trim());
+  const document = normalizeCampaignDocumentRow(row);
+  return document ? attachCampaignDocumentVisibility([document]).at(0) ?? null : null;
+}
+
+function createCampaignDocument(payload, createdByUserId = null) {
+  ensureSqliteConnectionFresh();
+  const normalized = normalizeCampaignDocumentPayload(payload);
+  const documentId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  runInTransaction(() => {
+    sqlite.prepare(`
+      INSERT INTO "CampaignDocument" (
+        id, title, description, kind, language, contentMarkdown, imageUrl, unreadableImageUrl,
+        sessionNumber, revealEventId, createdByUserId, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?)
+    `).run(
+      documentId,
+      normalized.title,
+      normalized.description,
+      normalized.kind,
+      normalized.language,
+      normalized.contentMarkdown,
+      normalized.imageUrl,
+      normalized.unreadableImageUrl,
+      createdByUserId,
+      now,
+      now
+    );
+    if (Array.isArray(payload?.characterSlugs)) {
+      writeCampaignDocumentVisibility(documentId, payload.characterSlugs);
+    }
+  });
+
+  return readCampaignDocumentById(documentId);
+}
+
+function updateCampaignDocument(documentId, payload) {
+  ensureSqliteConnectionFresh();
+  const id = String(documentId ?? "").trim();
+  const existing = sqlite.prepare('SELECT * FROM "CampaignDocument" WHERE id = ? LIMIT 1').get(id);
+  if (!existing) {
+    const error = new Error("Documento non trovato.");
+    error.status = 404;
+    throw error;
+  }
+
+  const normalized = normalizeCampaignDocumentPayload({ ...existing, ...(payload ?? {}) });
+  const now = new Date().toISOString();
+  runInTransaction(() => {
+    sqlite.prepare(`
+      UPDATE "CampaignDocument"
+      SET
+        "title" = ?,
+        "description" = ?,
+        "kind" = ?,
+        "language" = ?,
+        "contentMarkdown" = ?,
+        "imageUrl" = ?,
+        "unreadableImageUrl" = ?,
+        "updatedAt" = ?
+      WHERE "id" = ?
+    `).run(
+      normalized.title,
+      normalized.description,
+      normalized.kind,
+      normalized.language,
+      normalized.contentMarkdown,
+      normalized.imageUrl,
+      normalized.unreadableImageUrl,
+      now,
+      id
+    );
+    if (Array.isArray(payload?.characterSlugs)) {
+      writeCampaignDocumentVisibility(id, payload.characterSlugs);
+    }
+  });
+
+  return readCampaignDocumentById(id);
+}
+
+function deleteCampaignDocument(documentId) {
+  ensureSqliteConnectionFresh();
+  const id = String(documentId ?? "").trim();
+  const existing = sqlite.prepare('SELECT revealEventId FROM "CampaignDocument" WHERE id = ? LIMIT 1').get(id);
+  if (!existing) return false;
+
+  runInTransaction(() => {
+    sqlite.prepare('DELETE FROM "CampaignDocument" WHERE id = ?').run(id);
+    if (existing.revealEventId) {
+      sqlite.prepare('DELETE FROM "CampaignEvent" WHERE id = ?').run(existing.revealEventId);
+    }
+  });
+  return true;
+}
+
+function buildCampaignDocumentRevealMarkdown(document) {
+  const lines = [`Documento disponibile nell'Archivio documenti: **${document.title}**.`];
+  if (document.description) {
+    lines.push("", document.description);
+  }
+  return lines.join("\n");
+}
+
+function publishCampaignDocument(documentId, payload, createdByUserId = null) {
+  ensureSqliteConnectionFresh();
+  const id = String(documentId ?? "").trim();
+  const existing = readCampaignDocumentById(id);
+  if (!existing) {
+    const error = new Error("Documento non trovato.");
+    error.status = 404;
+    throw error;
+  }
+
+  const sessionNumber = Math.max(1, Math.floor(Number(payload?.sessionNumber ?? existing.sessionNumber)) || 1);
+  const characters = resolveCampaignEventCharacters(payload?.characterSlugs ?? existing.visibleCharacters.map((character) => character.slug));
+  const characterSlugs = characters.map((character) => character.slug);
+  let revealEventId = existing.revealEventId;
+  const now = new Date().toISOString();
+
+  writeCampaignDocumentVisibility(id, characterSlugs);
+
+  const eventPayload = {
+    sessionNumber,
+    title: `Documento: ${existing.title}`,
+    bodyMarkdown: buildCampaignDocumentRevealMarkdown(existing),
+    eventType: "DOCUMENT_REVEAL",
+    characterSlugs,
+  };
+
+  if (revealEventId) {
+    updateCampaignEvent(revealEventId, eventPayload);
+  } else {
+    const event = createCampaignEvent(eventPayload, createdByUserId);
+    revealEventId = event?.id ?? null;
+  }
+
+  sqlite.prepare(`
+    UPDATE "CampaignDocument"
+    SET "sessionNumber" = ?, "revealEventId" = ?, "updatedAt" = ?
+    WHERE "id" = ?
+  `).run(sessionNumber, revealEventId, now, id);
+
+  return readCampaignDocumentById(id);
+}
+
 function writeCharacter(slug, data) {
   const basicInfo = data?.basicInfo ?? {};
   const createdByUserId = data?.createdBy?.userId ?? null;
@@ -6471,6 +6829,7 @@ async function start() {
   }
   app.use(express.json({ limit: "10mb" }));
   ensureDir(PORTRAIT_DIR);
+  ensureDir(CAMPAIGN_DOCUMENT_DIR);
   app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "no-referrer");
@@ -6545,6 +6904,9 @@ async function start() {
 
   app.use("/portraits", requireAuth, express.static(PORTRAIT_DIR, {
     maxAge: PORTRAIT_CACHE_MAX_AGE,
+  }));
+  app.use("/campaign-documents", requireAuth, express.static(CAMPAIGN_DOCUMENT_DIR, {
+    maxAge: CAMPAIGN_DOCUMENT_CACHE_MAX_AGE,
   }));
 
   // ===== Auth =====
@@ -7793,6 +8155,78 @@ async function start() {
     return res.json({ events: listCampaignEventsForDm() });
   });
 
+  app.get("/api/dm/campaign/documents", requireRole("dm"), (_req, res) => {
+    return res.json({ documents: listCampaignDocumentsForDm() });
+  });
+
+  app.post("/api/dm/campaign/documents", requireRole("dm"), (req, res) => {
+    try {
+      const document = createCampaignDocument(req.body ?? {}, req.user?.id ?? null);
+      return res.status(201).json(document);
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.patch("/api/dm/campaign/documents/:documentId", requireRole("dm"), (req, res) => {
+    try {
+      const document = updateCampaignDocument(req.params.documentId, req.body ?? {});
+      return res.json(document);
+    } catch (error) {
+      return res.status(error?.status || 400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/dm/campaign/documents/:documentId/publish", requireRole("dm"), (req, res) => {
+    try {
+      const document = publishCampaignDocument(req.params.documentId, req.body ?? {}, req.user?.id ?? null);
+      return res.json(document);
+    } catch (error) {
+      return res.status(error?.status || 400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.delete("/api/dm/campaign/documents/:documentId", requireRole("dm"), (req, res) => {
+    const deleted = deleteCampaignDocument(req.params.documentId);
+    if (!deleted) return res.status(404).json({ error: "Documento non trovato." });
+    return res.status(204).send();
+  });
+
+  app.post("/api/dm/campaign/documents/upload-image", requireRole("dm"), (req, res) => {
+    const { fileName, contentType, data } = req.body ?? {};
+    const ext = extensionFromType(contentType, fileName);
+
+    if (!data || !ext) {
+      return res.status(400).json({ error: "Upload immagine non valido." });
+    }
+
+    let buffer;
+    try {
+      buffer = Buffer.from(String(data), "base64");
+    } catch {
+      return res.status(400).json({ error: "Codifica immagine non valida." });
+    }
+
+    if (!buffer?.length) {
+      return res.status(400).json({ error: "Immagine vuota." });
+    }
+
+    if (buffer.length > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: "Immagine troppo grande. Limite: 5 MB." });
+    }
+
+    const fileBase = `document-${Date.now()}-${crypto.randomBytes(4).toString("hex")}.${ext}`;
+    const filePath = path.join(CAMPAIGN_DOCUMENT_DIR, fileBase);
+
+    try {
+      fs.writeFileSync(filePath, buffer);
+      return res.json({ url: `/campaign-documents/${fileBase}` });
+    } catch (error) {
+      console.error("[server] campaign document image upload failed:", error);
+      return res.status(500).json({ error: "Upload documento fallito." });
+    }
+  });
+
   app.post("/api/dm/campaign/events", requireRole("dm"), (req, res) => {
     try {
       const event = createCampaignEvent(req.body ?? {}, req.user?.id ?? null);
@@ -7850,6 +8284,18 @@ async function start() {
             .map(([slug]) => slug);
 
     return res.json({ events: listCampaignEventsForCharacterSlugs(visibleSlugs) });
+  });
+
+  app.get("/api/campaign/documents", requireAuth, (req, res) => {
+    const ownership = readOwnership();
+    const visibleSlugs =
+      req.user?.role === "dm"
+        ? listCharacters().filter((character) => character.characterType === "pg").map((character) => character.slug)
+        : Object.entries(ownership)
+            .filter(([, userId]) => userId === req.user?.id)
+            .map(([slug]) => slug);
+
+    return res.json({ documents: listCampaignDocumentsForCharacterSlugs(visibleSlugs) });
   });
 
   app.post("/api/dm/rests/apply", requireRole("dm"), (req, res) => {

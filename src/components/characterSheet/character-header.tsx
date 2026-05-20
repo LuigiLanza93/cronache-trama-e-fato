@@ -426,6 +426,9 @@ const CharacterHeader = ({
                     background: characterData.basicInfo.background,
                     alignment: characterData.basicInfo.alignment,
                     portraitUrl: portraitPreviewUrl || characterData.basicInfo.portraitUrl,
+                    languages: Array.isArray(characterData.proficiencies?.languages)
+                        ? characterData.proficiencies.languages
+                        : [],
                 }}
             />
         </div>
