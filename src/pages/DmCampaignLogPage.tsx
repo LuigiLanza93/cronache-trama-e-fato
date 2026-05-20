@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowDown, ArrowUp, Check, FileJson, FileText, Home, ImageIcon, Pencil, Plus, Save, ScrollText, Trash2, Upload, Users, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, FileJson, FileText, FolderOpen, Home, ImageIcon, Pencil, Plus, Save, ScrollText, Trash2, Upload, Users, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/sonner";
 import CampaignEventMarkdown from "@/components/campaign-event-markdown";
@@ -141,6 +142,7 @@ function readFileAsBase64(file: File) {
 }
 
 export default function DmCampaignLogPage() {
+  const [activeWorkspace, setActiveWorkspace] = useState<"documents" | "events" | "new-event" | "import">("documents");
   const [characters, setCharacters] = useState<CampaignPg[]>([]);
   const [events, setEvents] = useState<CampaignEventEntry[]>([]);
   const [documents, setDocuments] = useState<CampaignDocumentEntry[]>([]);
@@ -344,6 +346,7 @@ export default function DmCampaignLogPage() {
   };
 
   const startEditing = (event: CampaignEventEntry) => {
+    setActiveWorkspace("events");
     setEditingEventId(event.id);
     setEventDraft({
       sessionNumber: String(event.sessionNumber),
@@ -463,6 +466,7 @@ export default function DmCampaignLogPage() {
   };
 
   const editDocument = (document: CampaignDocumentEntry) => {
+    setActiveWorkspace("documents");
     setDocumentDraft({
       id: document.id,
       title: document.title,
@@ -619,12 +623,33 @@ export default function DmCampaignLogPage() {
           </Button>
         </section>
 
+        <Tabs value={activeWorkspace} onValueChange={(value) => setActiveWorkspace(value as typeof activeWorkspace)}>
+          <TabsList className="h-auto flex-wrap justify-start">
+            <TabsTrigger value="documents">
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Documenti
+            </TabsTrigger>
+            <TabsTrigger value="events">
+              <ScrollText className="mr-2 h-4 w-4" />
+              Cronologia
+            </TabsTrigger>
+            <TabsTrigger value="new-event">
+              <Plus className="mr-2 h-4 w-4" />
+              Nuovo evento
+            </TabsTrigger>
+            <TabsTrigger value="import">
+              <FileJson className="mr-2 h-4 w-4" />
+              Import
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         {loading ? (
           <Card className="character-section">
             <div className="text-sm text-muted-foreground">Carico diario della campagna...</div>
           </Card>
         ) : (
-          <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
+          <div className={activeWorkspace === "documents" || activeWorkspace === "events" ? "grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]" : "grid max-w-3xl gap-6"}>
             <div className="space-y-6">
               <Card className="character-section space-y-4">
                 <div className="flex items-center gap-2">
@@ -653,7 +678,7 @@ export default function DmCampaignLogPage() {
                 </div>
               </Card>
 
-              <Card className="character-section space-y-4">
+              <Card className={activeWorkspace === "new-event" ? "character-section space-y-4" : "hidden"}>
                 <div className="flex items-center gap-2">
                   <Plus className="h-5 w-5 text-primary" />
                   <h2 className="font-heading text-2xl font-semibold text-primary">Nuovo Evento</h2>
@@ -737,7 +762,7 @@ export default function DmCampaignLogPage() {
                 </div>
               </Card>
 
-              <Card className="character-section space-y-4">
+              <Card className={activeWorkspace === "documents" ? "character-section space-y-4" : "hidden"}>
                 <div className="flex items-center gap-2">
                   {documentDraft.kind === "IMAGE" ? <ImageIcon className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-primary" />}
                   <h2 className="font-heading text-2xl font-semibold text-primary">Documento</h2>
@@ -915,7 +940,7 @@ export default function DmCampaignLogPage() {
                 </div>
               </Card>
 
-              <Card className="character-section space-y-4">
+              <Card className={activeWorkspace === "import" ? "character-section space-y-4" : "hidden"}>
                 <div className="flex items-center gap-2">
                   <FileJson className="h-5 w-5 text-primary" />
                   <h2 className="font-heading text-2xl font-semibold text-primary">Import JSON</h2>
@@ -998,7 +1023,8 @@ export default function DmCampaignLogPage() {
               </Card>
             </div>
 
-            <section className="space-y-4">
+            <section className={activeWorkspace === "documents" || activeWorkspace === "events" ? "space-y-4" : "hidden"}>
+              <div className={activeWorkspace === "documents" ? "space-y-4" : "hidden"}>
               <div>
                 <h2 className="font-heading text-2xl font-bold text-primary">Archivio documenti</h2>
                 <p className="text-sm text-muted-foreground">{documents.length} documenti censiti.</p>
@@ -1064,7 +1090,9 @@ export default function DmCampaignLogPage() {
                   ))}
                 </div>
               )}
+              </div>
 
+              <div className={activeWorkspace === "events" ? "space-y-4" : "hidden"}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h2 className="font-heading text-2xl font-bold text-primary">Cronologia</h2>
@@ -1254,6 +1282,7 @@ export default function DmCampaignLogPage() {
                   })}
                 </div>
               )}
+              </div>
             </section>
           </div>
         )}

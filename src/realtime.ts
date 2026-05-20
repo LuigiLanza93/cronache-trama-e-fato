@@ -1,5 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import type { GameSessionState, InitiativeEncounterState, PlayerInitiativeTrackerView } from "@/lib/auth";
+import type { CampaignDocumentEntry, GameSessionState, InitiativeEncounterState, PlayerInitiativeTrackerView } from "@/lib/auth";
 
 let socket: Socket | null = null;
 type PrivateMessagePayload = {
@@ -43,6 +43,14 @@ export type InitiativeTurnPayload = {
 export type InitiativeStatePayload = InitiativeEncounterState;
 export type PlayerInitiativeStatePayload = PlayerInitiativeTrackerView;
 export type GameSessionStatePayload = GameSessionState;
+export type CampaignDocumentRevealPayload = {
+  document: CampaignDocumentEntry;
+  character: {
+    slug: string;
+    name: string;
+  };
+  revealedAt: string;
+};
 
 let playerWritesLocked = false;
 
@@ -268,6 +276,15 @@ export function onGameSessionState(cb: (payload: GameSessionStatePayload) => voi
   s.on("game-session:state", handler);
   return () => {
     s.off("game-session:state", handler);
+  };
+}
+
+export function onCampaignDocumentReveal(cb: (payload: CampaignDocumentRevealPayload) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: CampaignDocumentRevealPayload) => cb(payload);
+  s.on("campaign-document:reveal", handler);
+  return () => {
+    s.off("campaign-document:reveal", handler);
   };
 }
 

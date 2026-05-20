@@ -76,7 +76,7 @@ function codepointGlyphs(...codepoints: number[]) {
   return codepoints.map((codepoint) => String.fromCodePoint(codepoint));
 }
 
-const languageObfuscationProfiles: Record<string, LanguageObfuscationProfile> = {
+export const languageObfuscationProfiles: Record<string, LanguageObfuscationProfile> = {
   elfico: {
     glyphs: codepointGlyphs(
       0xe000,
@@ -244,7 +244,7 @@ const languageObfuscationProfiles: Record<string, LanguageObfuscationProfile> = 
   },
 };
 
-function normalizeLanguage(value: string | undefined | null) {
+export function normalizeCampaignDocumentLanguage(value: string | undefined | null) {
   const normalized = String(value ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -254,14 +254,14 @@ function normalizeLanguage(value: string | undefined | null) {
   return LANGUAGE_ALIASES[normalized] ?? normalized;
 }
 
-function canReadDocumentLanguage(documentLanguage: string, knownLanguages: string[] | undefined) {
-  const language = normalizeLanguage(documentLanguage);
+export function canReadDocumentLanguage(documentLanguage: string, knownLanguages: string[] | undefined) {
+  const language = normalizeCampaignDocumentLanguage(documentLanguage);
   if (!language || language === "comune") return true;
-  return (knownLanguages ?? []).some((known) => normalizeLanguage(known) === language);
+  return (knownLanguages ?? []).some((known) => normalizeCampaignDocumentLanguage(known) === language);
 }
 
-function obfuscateMarkdown(content: string, language: string) {
-  const profile = languageObfuscationProfiles[normalizeLanguage(language)] ?? languageObfuscationProfiles.default;
+export function obfuscateMarkdown(content: string, language: string) {
+  const profile = languageObfuscationProfiles[normalizeCampaignDocumentLanguage(language)] ?? languageObfuscationProfiles.default;
   const glyphs = profile.glyphs;
   let index = 0;
   return String(content || "Testo in lingua sconosciuta.")
@@ -508,7 +508,7 @@ export default function CampaignLogDialog({
                     const readableLanguage = canRead ? document.language : "Lingua sconosciuta";
                     const imageUrl = canRead ? document.imageUrl : document.unreadableImageUrl;
                     const obfuscationProfile =
-                      languageObfuscationProfiles[normalizeLanguage(document.language)] ?? languageObfuscationProfiles.default;
+                      languageObfuscationProfiles[normalizeCampaignDocumentLanguage(document.language)] ?? languageObfuscationProfiles.default;
 
                     return (
                     <Collapsible key={document.id}>

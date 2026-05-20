@@ -6100,6 +6100,26 @@ function publishCampaignDocument(documentId, payload, createdByUserId = null) {
   return readCampaignDocumentById(id);
 }
 
+function broadcastCampaignDocumentReveal(io, document) {
+  if (!io || !document) return;
+  const ownership = readOwnership();
+  for (const character of document.visibleCharacters ?? []) {
+    const payload = {
+      document,
+      character: {
+        slug: character.slug,
+        name: character.name,
+      },
+      revealedAt: new Date().toISOString(),
+    };
+    const ownerUserId = ownership[character.slug];
+    if (ownerUserId) {
+      io.to(`user:${ownerUserId}`).emit("campaign-document:reveal", payload);
+    }
+    io.to(`char:${character.slug}`).emit("campaign-document:reveal", payload);
+  }
+}
+
 function writeCharacter(slug, data) {
   const basicInfo = data?.basicInfo ?? {};
   const createdByUserId = data?.createdBy?.userId ?? null;
@@ -8180,6 +8200,7 @@ async function start() {
   app.post("/api/dm/campaign/documents/:documentId/publish", requireRole("dm"), (req, res) => {
     try {
       const document = publishCampaignDocument(req.params.documentId, req.body ?? {}, req.user?.id ?? null);
+      broadcastCampaignDocumentReveal(io, document);
       return res.json(document);
     } catch (error) {
       return res.status(error?.status || 400).json({ error: String(error?.message ?? error) });
