@@ -23,6 +23,8 @@ const CharacterInventoryManagement = lazy(() => import("./pages/CharacterInvento
 const InventoryTransactionsPage = lazy(() => import("./pages/InventoryTransactionsPage"));
 const CurrencyTransactionsPage = lazy(() => import("./pages/CurrencyTransactionsPage"));
 const DmNotesPage = lazy(() => import("./pages/DmNotesPage"));
+const DmCampaignLogPage = lazy(() => import("./pages/DmCampaignLogPage"));
+const PlayerCampaignLogPage = lazy(() => import("./pages/PlayerCampaignLogPage"));
 const PlayerMonsterCompendium = lazy(() => import("./pages/PlayerMonsterCompendium"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -125,6 +127,14 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/dm/campaign-log"
+                    element={
+                      <RequireRole role="dm">
+                        <DmCampaignLogPage />
+                      </RequireRole>
+                    }
+                  />
+                  <Route
                     path="/dm/notes"
                     element={
                       <RequireRole role="dm">
@@ -145,6 +155,14 @@ const App = () => (
                     element={
                       <RequireAuth>
                         <NewCharacter />
+                      </RequireAuth>
+                    }
+                  />
+                  <Route
+                    path="/campaign-log"
+                    element={
+                      <RequireAuth>
+                        <PlayerCampaignLogPage />
                       </RequireAuth>
                     }
                   />

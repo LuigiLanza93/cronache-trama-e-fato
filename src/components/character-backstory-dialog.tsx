@@ -56,7 +56,7 @@ function MarkdownBackstory({ content }: { content: string }) {
   if (!normalized) {
     return (
       <div className="rounded-md border border-dashed border-border/70 bg-muted/20 p-6 text-sm italic text-muted-foreground">
-        Nessuna backstory ancora scritta.
+        Nessun background ancora scritto.
       </div>
     );
   }
@@ -168,7 +168,7 @@ export default function CharacterBackstoryDialog({
     setEditing(defaultEditing);
   }, [contentMarkdown, defaultEditing, open]);
 
-  const title = useMemo(() => (character ? `Storia di ${character.name}` : "Backstory"), [character]);
+  const title = useMemo(() => (character ? `Background di ${character.name}` : "Background"), [character]);
 
   const handleSave = async () => {
     if (!onSave) return;
@@ -200,7 +200,7 @@ export default function CharacterBackstoryDialog({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
           {loading || !character ? (
             <div className="rounded-md border border-border/70 bg-muted/20 p-6 text-sm text-muted-foreground">
-              Carico backstory...
+              Carico background...
             </div>
           ) : editing ? (
             <div className="grid gap-4 lg:grid-cols-2">
@@ -239,7 +239,7 @@ export default function CharacterBackstoryDialog({
             </Button>
             <Button type="button" onClick={() => void handleSave()} disabled={saving}>
               <Save className="mr-2 h-4 w-4" />
-              {saving ? "Salvo..." : "Salva backstory"}
+              {saving ? "Salvo..." : "Salva background"}
             </Button>
           </DialogFooter>
         ) : null}

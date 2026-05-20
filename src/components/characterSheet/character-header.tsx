@@ -4,11 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BookOpen, Check, Home, NotebookText, Pencil, Settings2, X } from "lucide-react";
+import { BookOpen, Check, Home, Pencil, ScrollText, Settings2, X } from "lucide-react";
 import { updateCharacter } from "@/realtime";
-import CharacterBackstoryDialog from "@/components/character-backstory-dialog";
-import { fetchCharacterBackstoryRequest } from "@/lib/auth";
-import { toast } from "@/components/ui/sonner";
+import CampaignLogDialog from "@/components/campaign-log-dialog";
 
 function getInitials(name: string | undefined) {
     return (name ?? "")
@@ -49,9 +47,7 @@ const CharacterHeader = ({
     const [isUploadingPortrait, setIsUploadingPortrait] = useState(false);
     const [uploadError, setUploadError] = useState("");
     const [isPortraitOpen, setIsPortraitOpen] = useState(false);
-    const [isBackstoryOpen, setIsBackstoryOpen] = useState(false);
-    const [backstoryContent, setBackstoryContent] = useState("");
-    const [backstoryLoading, setBackstoryLoading] = useState(false);
+    const [isCampaignLogOpen, setIsCampaignLogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
@@ -135,30 +131,6 @@ const CharacterHeader = ({
 
     const portraitPreviewUrl = portraitUrl.trim();
     const initials = getInitials(characterData.basicInfo.characterName);
-    const backstoryCharacter = {
-        slug: characterData.slug,
-        name: characterData.basicInfo.characterName,
-        className: characterData.basicInfo.class,
-        level: characterData.basicInfo.level,
-        race: characterData.basicInfo.race,
-        background: characterData.basicInfo.background,
-        alignment: characterData.basicInfo.alignment,
-        portraitUrl: portraitPreviewUrl || characterData.basicInfo.portraitUrl,
-    };
-
-    const openBackstory = async () => {
-        setIsBackstoryOpen(true);
-        setBackstoryLoading(true);
-        try {
-            const payload = await fetchCharacterBackstoryRequest(characterData.slug);
-            setBackstoryContent(payload.contentMarkdown ?? "");
-        } catch (error) {
-            setBackstoryContent("");
-            toast.error(error instanceof Error ? error.message : "Backstory non disponibile.");
-        } finally {
-            setBackstoryLoading(false);
-        }
-    };
 
     return (
         <div className="dnd-frame-thick relative p-6">
@@ -215,11 +187,11 @@ const CharacterHeader = ({
                                 variant="ghost"
                                 size="icon"
                                 className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
-                                onClick={() => void openBackstory()}
-                                aria-label="Apri backstory"
-                                title="Apri backstory"
+                                onClick={() => setIsCampaignLogOpen(true)}
+                                aria-label="Apri diario della campagna"
+                                title="Apri diario della campagna"
                             >
-                                <NotebookText className="h-4 w-4 text-primary" />
+                                <ScrollText className="h-4 w-4 text-primary" />
                             </Button>
                             <Button
                                 type="button"
@@ -440,12 +412,21 @@ const CharacterHeader = ({
                 </DialogContent>
             </Dialog>
 
-            <CharacterBackstoryDialog
-                open={isBackstoryOpen}
-                onOpenChange={setIsBackstoryOpen}
-                character={backstoryCharacter}
-                contentMarkdown={backstoryContent}
-                loading={backstoryLoading}
+            <CampaignLogDialog
+                open={isCampaignLogOpen}
+                onOpenChange={setIsCampaignLogOpen}
+                initialCharacterSlug={characterData.slug}
+                characterName={characterData.basicInfo.characterName}
+                characterInfo={{
+                    slug: characterData.slug,
+                    name: characterData.basicInfo.characterName,
+                    className: characterData.basicInfo.class,
+                    level: characterData.basicInfo.level,
+                    race: characterData.basicInfo.race,
+                    background: characterData.basicInfo.background,
+                    alignment: characterData.basicInfo.alignment,
+                    portraitUrl: portraitPreviewUrl || characterData.basicInfo.portraitUrl,
+                }}
             />
         </div>
     );

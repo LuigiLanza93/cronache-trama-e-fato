@@ -253,6 +253,11 @@ enum MonsterKnowledgeState {
   COMPLETE
 }
 
+enum CampaignEventType {
+  NOTE
+  DOCUMENT_REVEAL
+}
+
 model User {
   id                 String   @id
   username           String   @unique
@@ -275,6 +280,8 @@ model User {
   currencyTransactionsCreated  CurrencyTransaction[]  @relation("CurrencyTransactionCreatedBy")
   layoutPreferences UserLayoutPreference[]
   updatedBackstories CharacterBackstory[] @relation("CharacterBackstoryUpdatedBy")
+  campaignEventsCreated CampaignEvent[] @relation("CampaignEventCreator")
+  campaignSessionUpdates CampaignSessionState[] @relation("CampaignSessionUpdatedBy")
 
   @@index([role])
 }
@@ -309,6 +316,7 @@ model Character {
   inventoryTransactionsFrom InventoryTransaction[] @relation("InventoryTransactionFromCharacter")
   inventoryTransactionsTo   InventoryTransaction[] @relation("InventoryTransactionToCharacter")
   backstory CharacterBackstory?
+  visibleCampaignEvents CampaignEventVisibility[]
 
   @@index([characterType])
   @@index([ownerUserId])
@@ -328,6 +336,48 @@ model CharacterBackstory {
 
   @@index([updatedByUserId])
   @@index([updatedAt])
+}
+
+model CampaignSessionState {
+  id                   Int      @id
+  currentSessionNumber Int
+  updatedByUserId      String?
+  updatedAt            DateTime @updatedAt
+
+  updatedBy User? @relation("CampaignSessionUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+}
+
+model CampaignEvent {
+  id              String            @id
+  sessionNumber   Int
+  sortOrder       Int               @default(0)
+  title           String
+  bodyMarkdown    String            @default("")
+  eventType       CampaignEventType @default(NOTE)
+  createdByUserId String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  createdBy User?                     @relation("CampaignEventCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  visibility CampaignEventVisibility[]
+
+  @@index([sessionNumber, sortOrder])
+  @@index([sortOrder])
+  @@index([createdByUserId])
+  @@index([eventType])
+}
+
+model CampaignEventVisibility {
+  id          String @id
+  eventId     String
+  characterId String
+
+  event     CampaignEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  character Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, characterId])
+  @@index([eventId])
+  @@index([characterId])
 }
 
 model CharacterCurrencyBalance {

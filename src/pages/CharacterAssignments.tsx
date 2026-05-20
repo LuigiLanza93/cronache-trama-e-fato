@@ -185,7 +185,7 @@ export default function CharacterAssignments() {
       setBackstoryContent(payload.contentMarkdown ?? "");
     } catch (error) {
       setBackstoryContent("");
-      toast.error(error instanceof Error ? error.message : "Non sono riuscito a caricare la backstory.");
+      toast.error(error instanceof Error ? error.message : "Non sono riuscito a caricare il background.");
     } finally {
       setBackstoryLoading(false);
     }
@@ -198,9 +198,9 @@ export default function CharacterAssignments() {
     try {
       const payload = await updateCharacterBackstoryRequest(backstoryCharacter.slug, contentMarkdown);
       setBackstoryContent(payload.contentMarkdown ?? "");
-      toast.success(`Backstory aggiornata per ${backstoryCharacter.name}.`);
+      toast.success(`Background aggiornato per ${backstoryCharacter.name}.`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Non sono riuscito a salvare la backstory.");
+      toast.error(error instanceof Error ? error.message : "Non sono riuscito a salvare il background.");
       throw error;
     } finally {
       setBackstorySaving(false);
@@ -280,8 +280,8 @@ export default function CharacterAssignments() {
                 variant="ghost"
                 size="icon"
                 className="h-10 w-10 rounded-full text-muted-foreground hover:text-primary"
-                title="Modifica backstory"
-                aria-label="Modifica backstory"
+                title="Modifica background"
+                aria-label="Modifica background"
                 disabled={archivingSlug === character.slug}
                 onClick={() => void openBackstoryEditor(character)}
               >

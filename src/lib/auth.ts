@@ -82,6 +82,56 @@ export type CharacterBackstory = {
   updatedByUserId: string | null;
 };
 
+export type CampaignCharacterVisibility = {
+  slug: string;
+  name: string;
+  className: string | null;
+  level: number | null;
+  characterType: "pg" | "png";
+};
+
+export type CampaignEventEntry = {
+  id: string;
+  sessionNumber: number;
+  sortOrder: number;
+  title: string;
+  bodyMarkdown: string;
+  eventType: "note" | "document_reveal";
+  createdByUserId: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  visibleCharacters: CampaignCharacterVisibility[];
+};
+
+export type CampaignEventsPayload = {
+  events: CampaignEventEntry[];
+};
+
+export type CampaignSessionStatePayload = {
+  currentSessionNumber: number;
+  suggestedSessionNumber: number;
+  lastSessionNumber: number;
+  updatedAt: string | null;
+  updatedByUserId: string | null;
+};
+
+export type CampaignEventImportPreviewEntry = {
+  index: number;
+  sessionNumber: number | null;
+  sortOrder: number | null;
+  title: string;
+  bodyMarkdown: string;
+  characterSlugs: string[];
+  visibleCharacters: Array<{ slug: string; name: string }>;
+};
+
+export type CampaignEventImportResponse = {
+  ok: boolean;
+  errors: string[];
+  events: CampaignEventImportPreviewEntry[];
+  importedEvents?: CampaignEventEntry[];
+};
+
 export type PlayerCurrencyTransactionEntry = {
   id: string;
   actionLabel: string;
@@ -775,6 +825,78 @@ export function updateCharacterBackstoryRequest(slug: string, contentMarkdown: s
     method: "PUT",
     body: JSON.stringify({ contentMarkdown }),
   });
+}
+
+export function fetchDmCampaignSessionRequest() {
+  return authFetch<CampaignSessionStatePayload>("/api/dm/campaign/session", { method: "GET" });
+}
+
+export function updateDmCampaignSessionRequest(currentSessionNumber: number) {
+  return authFetch<CampaignSessionStatePayload>("/api/dm/campaign/session", {
+    method: "PUT",
+    body: JSON.stringify({ currentSessionNumber }),
+  });
+}
+
+export function fetchDmCampaignEventsRequest() {
+  return authFetch<CampaignEventsPayload>("/api/dm/campaign/events", { method: "GET" });
+}
+
+export function createDmCampaignEventRequest(payload: {
+  sessionNumber: number;
+  sortOrder?: number;
+  title: string;
+  bodyMarkdown: string;
+  characterSlugs: string[];
+}) {
+  return authFetch<CampaignEventEntry>("/api/dm/campaign/events", {
+    method: "POST",
+    body: JSON.stringify({ ...payload, eventType: "NOTE" }),
+  });
+}
+
+export function updateDmCampaignEventRequest(eventId: string, payload: {
+  sessionNumber: number;
+  sortOrder: number;
+  title: string;
+  bodyMarkdown: string;
+  characterSlugs: string[];
+}) {
+  return authFetch<CampaignEventEntry>(`/api/dm/campaign/events/${encodeURIComponent(eventId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ ...payload, eventType: "NOTE" }),
+  });
+}
+
+export function deleteDmCampaignEventRequest(eventId: string) {
+  return authFetch<null>(`/api/dm/campaign/events/${encodeURIComponent(eventId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function reorderDmCampaignEventsRequest(eventId: string, targetEventId: string) {
+  return authFetch<CampaignEventsPayload>("/api/dm/campaign/events/order", {
+    method: "PATCH",
+    body: JSON.stringify({ eventId, targetEventId }),
+  });
+}
+
+export function previewDmCampaignEventsImportRequest(payload: unknown) {
+  return authFetch<CampaignEventImportResponse>("/api/dm/campaign/events/import", {
+    method: "POST",
+    body: JSON.stringify({ dryRun: true, payload }),
+  });
+}
+
+export function applyDmCampaignEventsImportRequest(payload: unknown) {
+  return authFetch<CampaignEventImportResponse>("/api/dm/campaign/events/import", {
+    method: "POST",
+    body: JSON.stringify({ dryRun: false, payload }),
+  });
+}
+
+export function fetchPlayerCampaignEventsRequest() {
+  return authFetch<CampaignEventsPayload>("/api/campaign/events", { method: "GET" });
 }
 
 export function createCharacterRequest(payload: {

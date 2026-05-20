@@ -999,10 +999,13 @@ ensureRaceSpeedReferenceTable();
 ensureUserLayoutPreferenceTable();
 ensureAppStateTable();
 ensureCharacterBackstoryTable();
+ensureCampaignSessionStateTable();
+ensureCampaignEventTables();
 ensureGameSessionStateTable();
 ensureCharacterCurrencyBalanceTable();
 ensureCurrencyTransactionTable();
 ensureChatConversationTables();
+ensureCampaignSessionStateRow();
 ensureGameSessionStateRow();
 ensureInitiativeTrackerStateMigrated();
 ensureCharacterCurrencyBalanceRows();
@@ -1469,6 +1472,90 @@ function ensureCharacterBackstoryTable() {
   sqlite.exec(`
     CREATE INDEX IF NOT EXISTS "CharacterBackstory_updatedAt_idx"
     ON "CharacterBackstory"("updatedAt");
+  `);
+}
+
+function ensureCampaignSessionStateTable() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "CampaignSessionState" (
+      "id" INTEGER NOT NULL PRIMARY KEY CHECK ("id" = 1),
+      "currentSessionNumber" INTEGER NOT NULL DEFAULT 1,
+      "updatedByUserId" TEXT,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("updatedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+  `);
+}
+
+function ensureCampaignEventTables() {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "CampaignEvent" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "sessionNumber" INTEGER NOT NULL,
+      "sortOrder" INTEGER NOT NULL DEFAULT 0,
+      "title" TEXT NOT NULL,
+      "bodyMarkdown" TEXT NOT NULL DEFAULT '',
+      "eventType" TEXT NOT NULL DEFAULT 'NOTE',
+      "createdByUserId" TEXT,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
+    );
+  `);
+  const campaignEventColumns = sqlite.prepare(`PRAGMA table_info("CampaignEvent")`).all();
+  if (!campaignEventColumns.some((column) => column.name === "sortOrder")) {
+    sqlite.exec(`ALTER TABLE "CampaignEvent" ADD COLUMN "sortOrder" INTEGER NOT NULL DEFAULT 0`);
+  }
+  sqlite.exec(`
+    UPDATE "CampaignEvent"
+    SET "sortOrder" = (
+      CAST(COALESCE(strftime('%s', "createdAt"), '0') AS INTEGER) * 1000 + rowid
+    )
+    WHERE "sortOrder" = 0
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignEvent_sessionNumber_sortOrder_idx"
+    ON "CampaignEvent"("sessionNumber", "sortOrder");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignEvent_sortOrder_idx"
+    ON "CampaignEvent"("sortOrder");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignEvent_createdByUserId_idx"
+    ON "CampaignEvent"("createdByUserId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignEvent_eventType_idx"
+    ON "CampaignEvent"("eventType");
+  `);
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS "CampaignEventVisibility" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "eventId" TEXT NOT NULL,
+      "characterId" TEXT NOT NULL,
+      FOREIGN KEY ("eventId") REFERENCES "CampaignEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      FOREIGN KEY ("characterId") REFERENCES "Character"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    );
+  `);
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "CampaignEventVisibility_eventId_characterId_key"
+    ON "CampaignEventVisibility"("eventId", "characterId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignEventVisibility_eventId_idx"
+    ON "CampaignEventVisibility"("eventId");
+  `);
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS "CampaignEventVisibility_characterId_idx"
+    ON "CampaignEventVisibility"("characterId");
+  `);
+}
+
+function ensureCampaignSessionStateRow() {
+  sqlite.exec(`
+    INSERT OR IGNORE INTO "CampaignSessionState" ("id", "currentSessionNumber", "updatedByUserId", "updatedAt")
+    VALUES (1, 1, NULL, CURRENT_TIMESTAMP)
   `);
 }
 
@@ -5209,6 +5296,452 @@ function writeCharacterBackstory(slug, contentMarkdown, updatedByUserId = null) 
   return readCharacterBackstory(slug);
 }
 
+function getLatestCampaignSessionNumber() {
+  ensureSqliteConnectionFresh();
+  const row = sqlite.prepare('SELECT MAX(sessionNumber) AS maxSession FROM "CampaignEvent"').get();
+  const latest = Number(row?.maxSession ?? 0);
+  return Number.isFinite(latest) && latest > 0 ? latest : 0;
+}
+
+function readCampaignSessionState() {
+  ensureSqliteConnectionFresh();
+  ensureCampaignSessionStateRow();
+  const row = sqlite.prepare('SELECT * FROM "CampaignSessionState" WHERE id = 1 LIMIT 1').get();
+  const lastSessionNumber = getLatestCampaignSessionNumber();
+  const currentSessionNumber = Math.max(1, Number(row?.currentSessionNumber ?? lastSessionNumber + 1) || 1);
+  return {
+    currentSessionNumber,
+    suggestedSessionNumber: Math.max(1, lastSessionNumber + 1),
+    lastSessionNumber,
+    updatedAt: row?.updatedAt ?? null,
+    updatedByUserId: row?.updatedByUserId ?? null,
+  };
+}
+
+function writeCampaignSessionState(sessionNumber, updatedByUserId = null) {
+  ensureSqliteConnectionFresh();
+  const currentSessionNumber = Math.max(1, Math.floor(Number(sessionNumber)) || 1);
+  const now = new Date().toISOString();
+  sqlite.prepare(`
+    INSERT INTO "CampaignSessionState" ("id", "currentSessionNumber", "updatedByUserId", "updatedAt")
+    VALUES (1, ?, ?, ?)
+    ON CONFLICT("id") DO UPDATE SET
+      "currentSessionNumber" = excluded."currentSessionNumber",
+      "updatedByUserId" = excluded."updatedByUserId",
+      "updatedAt" = excluded."updatedAt"
+  `).run(currentSessionNumber, updatedByUserId, now);
+  return readCampaignSessionState();
+}
+
+function normalizeCampaignEventRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    sessionNumber: Number(row.sessionNumber ?? 1),
+    sortOrder: Number(row.sortOrder ?? 0),
+    title: row.title ?? "",
+    bodyMarkdown: row.bodyMarkdown ?? "",
+    eventType: String(row.eventType ?? "NOTE").toLowerCase() === "document_reveal" ? "document_reveal" : "note",
+    createdByUserId: row.createdByUserId ?? null,
+    createdAt: row.createdAt ?? null,
+    updatedAt: row.updatedAt ?? null,
+  };
+}
+
+function getNextCampaignEventSortOrder(sessionNumber) {
+  ensureSqliteConnectionFresh();
+  const normalizedSessionNumber = Math.max(1, Math.floor(Number(sessionNumber)) || 1);
+  const row = sqlite.prepare('SELECT MAX("sortOrder") AS maxSortOrder FROM "CampaignEvent" WHERE "sessionNumber" = ?').get(normalizedSessionNumber);
+  const maxSortOrder = Number(row?.maxSortOrder ?? 0);
+  return (Number.isFinite(maxSortOrder) ? maxSortOrder : 0) + 100;
+}
+
+function readCampaignEventVisibility(eventIds) {
+  const ids = (Array.isArray(eventIds) ? eventIds : []).map((id) => String(id ?? "").trim()).filter(Boolean);
+  if (ids.length === 0) return new Map();
+
+  const placeholders = ids.map(() => "?").join(", ");
+  const rows = sqlite.prepare(`
+    SELECT
+      ev.eventId,
+      c.slug,
+      c.name,
+      c.className,
+      c.level,
+      c.characterType
+    FROM "CampaignEventVisibility" ev
+    JOIN "Character" c ON c.id = ev.characterId
+    WHERE ev.eventId IN (${placeholders})
+      AND c.archivedAt IS NULL
+    ORDER BY c.name COLLATE NOCASE
+  `).all(...ids);
+
+  const byEvent = new Map(ids.map((id) => [id, []]));
+  for (const row of rows) {
+    const list = byEvent.get(row.eventId) ?? [];
+    list.push({
+      slug: row.slug,
+      name: row.name,
+      className: row.className ?? null,
+      level: row.level == null ? null : Number(row.level),
+      characterType: String(row.characterType).toLowerCase() === "png" ? "png" : "pg",
+    });
+    byEvent.set(row.eventId, list);
+  }
+  return byEvent;
+}
+
+function attachCampaignEventVisibility(events) {
+  const visibilityByEvent = readCampaignEventVisibility(events.map((event) => event.id));
+  return events.map((event) => ({
+    ...event,
+    visibleCharacters: visibilityByEvent.get(event.id) ?? [],
+  }));
+}
+
+function listCampaignEventsForDm() {
+  ensureSqliteConnectionFresh();
+  const events = sqlite.prepare(`
+    SELECT * FROM "CampaignEvent"
+    ORDER BY sessionNumber DESC, sortOrder ASC, createdAt ASC
+  `).all().map(normalizeCampaignEventRow).filter(Boolean);
+  return attachCampaignEventVisibility(events);
+}
+
+function listCampaignEventsForCharacterSlugs(slugs) {
+  ensureSqliteConnectionFresh();
+  const normalizedSlugs = (Array.isArray(slugs) ? slugs : [])
+    .map((slug) => String(slug ?? "").trim())
+    .filter(Boolean);
+  if (normalizedSlugs.length === 0) return [];
+
+  const placeholders = normalizedSlugs.map(() => "?").join(", ");
+  const events = sqlite.prepare(`
+    SELECT DISTINCT e.*
+    FROM "CampaignEvent" e
+    JOIN "CampaignEventVisibility" ev ON ev.eventId = e.id
+    JOIN "Character" c ON c.id = ev.characterId
+    WHERE c.slug IN (${placeholders})
+      AND c.archivedAt IS NULL
+    ORDER BY e.sessionNumber DESC, e.sortOrder ASC, e.createdAt ASC
+  `).all(...normalizedSlugs).map(normalizeCampaignEventRow).filter(Boolean);
+  return attachCampaignEventVisibility(events).map((event) => ({
+    ...event,
+    visibleCharacters: event.visibleCharacters.filter((character) => normalizedSlugs.includes(character.slug)),
+  }));
+}
+
+function createCampaignEvent(payload, createdByUserId = null) {
+  ensureSqliteConnectionFresh();
+  const sessionNumber = Math.max(1, Math.floor(Number(payload?.sessionNumber)) || 1);
+  const title = String(payload?.title ?? "").trim();
+  const bodyMarkdown = String(payload?.bodyMarkdown ?? "").trim();
+  const eventType = String(payload?.eventType ?? "NOTE").trim().toUpperCase() === "DOCUMENT_REVEAL" ? "DOCUMENT_REVEAL" : "NOTE";
+  const requestedSortOrder = Math.floor(Number(payload?.sortOrder));
+  const sortOrder = Number.isFinite(requestedSortOrder) ? requestedSortOrder : getNextCampaignEventSortOrder(sessionNumber);
+  const characterSlugs = Array.from(
+    new Set(
+      (Array.isArray(payload?.characterSlugs) ? payload.characterSlugs : [])
+        .map((slug) => String(slug ?? "").trim())
+        .filter(Boolean)
+    )
+  );
+
+  if (!title) {
+    throw new Error("Titolo evento richiesto.");
+  }
+  if (characterSlugs.length === 0) {
+    throw new Error("Seleziona almeno un PG destinatario.");
+  }
+
+  const placeholders = characterSlugs.map(() => "?").join(", ");
+  const characters = sqlite.prepare(`
+    SELECT id, slug
+    FROM "Character"
+    WHERE slug IN (${placeholders})
+      AND archivedAt IS NULL
+      AND characterType = 'PG'
+  `).all(...characterSlugs);
+
+  if (characters.length === 0) {
+    throw new Error("Nessun PG valido selezionato.");
+  }
+
+  const eventId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  runInTransaction(() => {
+    sqlite.prepare(`
+      INSERT INTO "CampaignEvent" (
+        id, sessionNumber, sortOrder, title, bodyMarkdown, eventType, createdByUserId, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(eventId, sessionNumber, sortOrder, title, bodyMarkdown, eventType, createdByUserId, now, now);
+
+    const insertVisibility = sqlite.prepare(`
+      INSERT OR IGNORE INTO "CampaignEventVisibility" (id, eventId, characterId)
+      VALUES (?, ?, ?)
+    `);
+    for (const character of characters) {
+      insertVisibility.run(crypto.randomUUID(), eventId, character.id);
+    }
+  });
+
+  const created = sqlite.prepare('SELECT * FROM "CampaignEvent" WHERE id = ? LIMIT 1').get(eventId);
+  return attachCampaignEventVisibility([normalizeCampaignEventRow(created)]).at(0) ?? null;
+}
+
+function resolveCampaignEventCharacters(characterSlugs) {
+  ensureSqliteConnectionFresh();
+  const slugs = Array.from(
+    new Set(
+      (Array.isArray(characterSlugs) ? characterSlugs : [])
+        .map((slug) => String(slug ?? "").trim())
+        .filter(Boolean)
+    )
+  );
+  if (slugs.length === 0) {
+    throw new Error("Seleziona almeno un PG destinatario.");
+  }
+
+  const placeholders = slugs.map(() => "?").join(", ");
+  const characters = sqlite.prepare(`
+    SELECT id, slug
+    FROM "Character"
+    WHERE slug IN (${placeholders})
+      AND archivedAt IS NULL
+      AND characterType = 'PG'
+  `).all(...slugs);
+
+  if (characters.length === 0) {
+    throw new Error("Nessun PG valido selezionato.");
+  }
+  return characters;
+}
+
+function readCampaignEventById(eventId) {
+  ensureSqliteConnectionFresh();
+  const row = sqlite.prepare('SELECT * FROM "CampaignEvent" WHERE id = ? LIMIT 1').get(String(eventId ?? ""));
+  const event = normalizeCampaignEventRow(row);
+  return event ? attachCampaignEventVisibility([event]).at(0) ?? null : null;
+}
+
+function updateCampaignEvent(eventId, payload) {
+  ensureSqliteConnectionFresh();
+  const id = String(eventId ?? "").trim();
+  const existing = sqlite.prepare('SELECT * FROM "CampaignEvent" WHERE id = ? LIMIT 1').get(id);
+  if (!existing) {
+    const error = new Error("Evento non trovato.");
+    error.status = 404;
+    throw error;
+  }
+
+  const sessionNumber = Math.max(1, Math.floor(Number(payload?.sessionNumber ?? existing.sessionNumber)) || 1);
+  const title = String(payload?.title ?? existing.title ?? "").trim();
+  const bodyMarkdown = String(payload?.bodyMarkdown ?? existing.bodyMarkdown ?? "").trim();
+  const eventType = String(payload?.eventType ?? existing.eventType ?? "NOTE").trim().toUpperCase() === "DOCUMENT_REVEAL" ? "DOCUMENT_REVEAL" : "NOTE";
+  const sortOrderValue = Math.floor(Number(payload?.sortOrder ?? existing.sortOrder ?? 0));
+  const sortOrder = Number.isFinite(sortOrderValue) ? sortOrderValue : Number(existing.sortOrder ?? 0);
+  const shouldUpdateVisibility = Array.isArray(payload?.characterSlugs);
+  const characters = shouldUpdateVisibility ? resolveCampaignEventCharacters(payload.characterSlugs) : [];
+  if (!title) {
+    throw new Error("Titolo evento richiesto.");
+  }
+
+  const now = new Date().toISOString();
+  runInTransaction(() => {
+    sqlite.prepare(`
+      UPDATE "CampaignEvent"
+      SET
+        "sessionNumber" = ?,
+        "sortOrder" = ?,
+        "title" = ?,
+        "bodyMarkdown" = ?,
+        "eventType" = ?,
+        "updatedAt" = ?
+      WHERE "id" = ?
+    `).run(sessionNumber, sortOrder, title, bodyMarkdown, eventType, now, id);
+
+    if (shouldUpdateVisibility) {
+      sqlite.prepare('DELETE FROM "CampaignEventVisibility" WHERE "eventId" = ?').run(id);
+      const insertVisibility = sqlite.prepare(`
+        INSERT OR IGNORE INTO "CampaignEventVisibility" (id, eventId, characterId)
+        VALUES (?, ?, ?)
+      `);
+      for (const character of characters) {
+        insertVisibility.run(crypto.randomUUID(), id, character.id);
+      }
+    }
+  });
+
+  return readCampaignEventById(id);
+}
+
+function deleteCampaignEvent(eventId) {
+  ensureSqliteConnectionFresh();
+  const info = sqlite.prepare('DELETE FROM "CampaignEvent" WHERE id = ?').run(String(eventId ?? "").trim());
+  return info.changes > 0;
+}
+
+function swapCampaignEventSortOrders(eventId, targetEventId) {
+  ensureSqliteConnectionFresh();
+  const firstId = String(eventId ?? "").trim();
+  const secondId = String(targetEventId ?? "").trim();
+  if (!firstId || !secondId || firstId === secondId) {
+    throw new Error("Eventi da scambiare non validi.");
+  }
+
+  const first = sqlite.prepare('SELECT id, sessionNumber, sortOrder FROM "CampaignEvent" WHERE id = ? LIMIT 1').get(firstId);
+  const second = sqlite.prepare('SELECT id, sessionNumber, sortOrder FROM "CampaignEvent" WHERE id = ? LIMIT 1').get(secondId);
+  if (!first || !second) {
+    throw new Error("Uno o piu eventi non esistono.");
+  }
+  if (Number(first.sessionNumber) !== Number(second.sessionNumber)) {
+    throw new Error("Puoi riordinare solo eventi della stessa sessione.");
+  }
+
+  runInTransaction(() => {
+    const update = sqlite.prepare('UPDATE "CampaignEvent" SET "sortOrder" = ?, "updatedAt" = ? WHERE "id" = ?');
+    const now = new Date().toISOString();
+    update.run(Number(second.sortOrder ?? 0), now, first.id);
+    update.run(Number(first.sortOrder ?? 0), now, second.id);
+  });
+
+  return listCampaignEventsForDm();
+}
+
+function normalizeCampaignImportJson(rawPayload) {
+  if (Array.isArray(rawPayload)) return rawPayload;
+  if (Array.isArray(rawPayload?.events)) return rawPayload.events;
+  if (Array.isArray(rawPayload?.eventi)) return rawPayload.eventi;
+  return null;
+}
+
+function resolveCampaignImportRecipients(rawRecipients, activePgCharacters) {
+  const recipients = Array.isArray(rawRecipients)
+    ? rawRecipients
+    : typeof rawRecipients === "string"
+      ? [rawRecipients]
+      : [];
+
+  const allAliases = new Set(["all", "tutti", "party", "gruppo"]);
+  if (recipients.some((entry) => allAliases.has(String(entry ?? "").trim().toLowerCase()))) {
+    return {
+      slugs: activePgCharacters.map((character) => character.slug),
+      unresolved: [],
+    };
+  }
+
+  const bySlug = new Map(activePgCharacters.map((character) => [String(character.slug).toLowerCase(), character.slug]));
+  const byName = new Map(activePgCharacters.map((character) => [String(character.basicInfo?.characterName ?? character.slug).toLowerCase(), character.slug]));
+  const slugs = [];
+  const unresolved = [];
+
+  for (const rawRecipient of recipients) {
+    const key = String(rawRecipient ?? "").trim();
+    if (!key) continue;
+    const normalized = key.toLowerCase();
+    const slug = bySlug.get(normalized) ?? byName.get(normalized);
+    if (slug) slugs.push(slug);
+    else unresolved.push(key);
+  }
+
+  return {
+    slugs: Array.from(new Set(slugs)),
+    unresolved,
+  };
+}
+
+function previewCampaignEventImportPayload(rawPayload) {
+  ensureSqliteConnectionFresh();
+  const rawEvents = normalizeCampaignImportJson(rawPayload);
+  const activePgCharacters = listCharacters().filter((character) => character.characterType === "pg");
+
+  if (!rawEvents) {
+    return {
+      ok: false,
+      errors: ["Il JSON deve essere un array o un oggetto con proprieta 'events'."],
+      events: [],
+    };
+  }
+
+  const errors = [];
+  const events = rawEvents.map((entry, index) => {
+    const rowNumber = index + 1;
+    const sessionNumber = Math.floor(Number(entry?.sessionNumber ?? entry?.sessione ?? entry?.session));
+    const explicitSortOrder = Math.floor(Number(entry?.sortOrder ?? entry?.order ?? entry?.ordine));
+    const title = String(entry?.title ?? entry?.titolo ?? "").trim();
+    const bodyMarkdown = String(entry?.bodyMarkdown ?? entry?.body ?? entry?.text ?? entry?.testo ?? entry?.description ?? "").trim();
+    const recipients = entry?.characterSlugs ?? entry?.visibleTo ?? entry?.destinatari ?? entry?.pg ?? entry?.characters;
+    const resolved = resolveCampaignImportRecipients(recipients, activePgCharacters);
+
+    if (!Number.isFinite(sessionNumber) || sessionNumber <= 0) {
+      errors.push(`Evento #${rowNumber}: sessionNumber/sessione non valido.`);
+    }
+    if (!title) {
+      errors.push(`Evento #${rowNumber}: titolo mancante.`);
+    }
+    if (resolved.slugs.length === 0) {
+      errors.push(`Evento #${rowNumber}: nessun PG destinatario valido.`);
+    }
+    if (resolved.unresolved.length > 0) {
+      errors.push(`Evento #${rowNumber}: destinatari non riconosciuti: ${resolved.unresolved.join(", ")}.`);
+    }
+
+    return {
+      index: rowNumber,
+      sessionNumber: Number.isFinite(sessionNumber) ? sessionNumber : null,
+      sortOrder: Number.isFinite(explicitSortOrder) ? explicitSortOrder : null,
+      title,
+      bodyMarkdown,
+      characterSlugs: resolved.slugs,
+      visibleCharacters: resolved.slugs.map((slug) => {
+        const character = activePgCharacters.find((entry) => entry.slug === slug);
+        return {
+          slug,
+          name: character?.basicInfo?.characterName ?? slug,
+        };
+      }),
+    };
+  });
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    events,
+  };
+}
+
+function importCampaignEvents(rawPayload, createdByUserId = null) {
+  const preview = previewCampaignEventImportPayload(rawPayload);
+  if (!preview.ok) return { ...preview, importedEvents: [] };
+
+  const nextSortOrderBySession = new Map();
+  const importedEvents = preview.events.map((event) =>
+    {
+      const sessionNumber = Number(event.sessionNumber);
+      if (!nextSortOrderBySession.has(sessionNumber)) {
+        nextSortOrderBySession.set(sessionNumber, getNextCampaignEventSortOrder(sessionNumber));
+      }
+      const fallbackSortOrder = nextSortOrderBySession.get(sessionNumber);
+      nextSortOrderBySession.set(sessionNumber, fallbackSortOrder + 100);
+      return createCampaignEvent(
+        {
+          sessionNumber: event.sessionNumber,
+          sortOrder: event.sortOrder ?? fallbackSortOrder,
+          title: event.title,
+          bodyMarkdown: event.bodyMarkdown,
+          characterSlugs: event.characterSlugs,
+        },
+        createdByUserId
+      );
+    }
+  ).filter(Boolean);
+
+  return {
+    ...preview,
+    importedEvents,
+  };
+}
+
 function writeCharacter(slug, data) {
   const basicInfo = data?.basicInfo ?? {};
   const createdByUserId = data?.createdBy?.userId ?? null;
@@ -7242,6 +7775,81 @@ async function start() {
 
   app.get("/api/characters/transfer-targets", requireAuth, (_req, res) => {
     return res.json(listCharacterTransferTargets());
+  });
+
+  app.get("/api/dm/campaign/session", requireRole("dm"), (_req, res) => {
+    return res.json(readCampaignSessionState());
+  });
+
+  app.put("/api/dm/campaign/session", requireRole("dm"), (req, res) => {
+    const sessionNumber = Math.floor(Number(req.body?.currentSessionNumber ?? req.body?.sessionNumber));
+    if (!Number.isFinite(sessionNumber) || sessionNumber <= 0) {
+      return res.status(400).json({ error: "Numero sessione non valido." });
+    }
+    return res.json(writeCampaignSessionState(sessionNumber, req.user?.id ?? null));
+  });
+
+  app.get("/api/dm/campaign/events", requireRole("dm"), (_req, res) => {
+    return res.json({ events: listCampaignEventsForDm() });
+  });
+
+  app.post("/api/dm/campaign/events", requireRole("dm"), (req, res) => {
+    try {
+      const event = createCampaignEvent(req.body ?? {}, req.user?.id ?? null);
+      return res.status(201).json(event);
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/dm/campaign/events/import", requireRole("dm"), (req, res) => {
+    try {
+      const dryRun = req.body?.dryRun !== false;
+      const payload = req.body?.payload ?? req.body;
+      const result = dryRun
+        ? previewCampaignEventImportPayload(payload)
+        : importCampaignEvents(payload, req.user?.id ?? null);
+
+      return res.json(result);
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.patch("/api/dm/campaign/events/order", requireRole("dm"), (req, res) => {
+    try {
+      const events = swapCampaignEventSortOrders(req.body?.eventId, req.body?.targetEventId);
+      return res.json({ events });
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.patch("/api/dm/campaign/events/:eventId", requireRole("dm"), (req, res) => {
+    try {
+      const event = updateCampaignEvent(req.params.eventId, req.body ?? {});
+      return res.json(event);
+    } catch (error) {
+      return res.status(error?.status || 400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.delete("/api/dm/campaign/events/:eventId", requireRole("dm"), (req, res) => {
+    const deleted = deleteCampaignEvent(req.params.eventId);
+    if (!deleted) return res.status(404).json({ error: "Evento non trovato." });
+    return res.status(204).send();
+  });
+
+  app.get("/api/campaign/events", requireAuth, (req, res) => {
+    const ownership = readOwnership();
+    const visibleSlugs =
+      req.user?.role === "dm"
+        ? listCharacters().filter((character) => character.characterType === "pg").map((character) => character.slug)
+        : Object.entries(ownership)
+            .filter(([, userId]) => userId === req.user?.id)
+            .map(([slug]) => slug);
+
+    return res.json({ events: listCampaignEventsForCharacterSlugs(visibleSlugs) });
   });
 
   app.post("/api/dm/rests/apply", requireRole("dm"), (req, res) => {

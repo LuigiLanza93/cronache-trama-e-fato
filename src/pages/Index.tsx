@@ -677,6 +677,12 @@ const Index = () => {
         icon: Link2,
       },
       {
+        title: "Diario campagna",
+        description: "Crea eventi narrativi, scegli i PG destinatari e prepara la cronologia condivisa.",
+        href: "/dm/campaign-log",
+        icon: ScrollText,
+      },
+      {
         title: "Appunti del DM",
         description: "Sfoglia il vault Obsidian con note Markdown, immagini e PDF in una pagina dedicata.",
         href: "/dm/notes",
@@ -700,7 +706,7 @@ const Index = () => {
   const tertiaryDmActions = ["/dm/inventory", "/dm/users"]
     .map((href) => dmActionMap[href])
     .filter(Boolean);
-  const utilityDmActions = ["/dm/inventory/transactions", "/dm/currency-transactions", "/dm/notes"]
+  const utilityDmActions = ["/dm/inventory/transactions", "/dm/currency-transactions", "/dm/campaign-log", "/dm/notes"]
     .map((href) => dmActionMap[href])
     .filter(Boolean);
 
@@ -1205,11 +1211,12 @@ const Index = () => {
                   })}
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_220px]">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {utilityDmActions.map((action) => {
                     const Icon = action.icon;
                     const isInventoryTransactionsAction = action.href === "/dm/inventory/transactions";
                     const isNotesAction = action.href === "/dm/notes";
+                    const isCampaignLogAction = action.href === "/dm/campaign-log";
                     const transactionSummary = isInventoryTransactionsAction
                       ? latestInventoryTransfer
                       : action.href === "/dm/currency-transactions"
@@ -1230,7 +1237,7 @@ const Index = () => {
                                   <div className="truncate text-muted-foreground">{transactionSummary.detail}</div>
                                   <div className="text-muted-foreground/80">{transactionSummary.timestamp}</div>
                                 </div>
-                              ) : isNotesAction ? (
+                              ) : isNotesAction || isCampaignLogAction ? (
                                 <div className="text-xs leading-4 text-muted-foreground">{action.description}</div>
                               ) : (
                                 <div className="text-xs leading-4 text-muted-foreground">Nessuna transazione registrata</div>
