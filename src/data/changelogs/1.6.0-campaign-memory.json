@@ -1,0 +1,41 @@
+{
+  "version": "1.6.0",
+  "releaseName": "Campaign Memory Release",
+  "releasedAt": "2026-05-20",
+  "summary": "Questa release chiude il pacchetto nato dalle richieste post sessione: piu' informazioni utili durante il combattimento, gestione centralizzata dei riposi, e soprattutto una memoria di campagna consultabile dai player con background, diario, documenti rivelati e lingue gestite per personaggio.",
+  "sections": [
+    {
+      "title": "Per i Player",
+      "items": [
+        "Il tracker iniziativa visibile ai giocatori ora mostra anche i PF degli alleati, inclusi eventuali PF temporanei, cosi' il gruppo legge meglio lo stato del combattimento senza passare dal tracker DM.",
+        "Il pulsante Diario nella scheda apre un'unica area narrativa con background del personaggio, cronologia degli eventi visibili e Archivio documenti.",
+        "Il background del personaggio e' integrato nel Diario con ritratto e dati identitari, al posto di una finestra separata.",
+        "I documenti rivelati dal DM sono consultabili nell'Archivio del personaggio e restano filtrati in base alla visibilita' del PG aperto.",
+        "Quando il DM rivela un documento durante la sessione, il giocatore riceve subito un popup live con il documento gia' aperto in lettura; l'Archivio resta disponibile per riconsultarlo dopo.",
+        "Le lingue dei documenti sono rispettate per personaggio: il Comune e' sempre leggibile, le lingue conosciute mostrano il contenuto reale, quelle sconosciute vengono rese illeggibili o mostrano la variante immagine offuscata se presente."
+      ]
+    },
+    {
+      "title": "Per il DM",
+      "items": [
+        "Nuova gestione dei riposi dalla pagina Roster giocatori, con anteprima e applicazione di riposo breve o lungo su tutto il gruppo o su singoli PG.",
+        "Il riposo breve applica automaticamente cura da Dadi Vita, limiti tra riposi lunghi e reset delle risorse configurate come short rest; il riposo lungo ripristina PF, slot, Dadi Vita, TS morte e risorse long rest.",
+        "Le backstory dei PG si modificano ora direttamente da Gestione Schede, senza entrare nella scheda del personaggio e senza appoggiarsi al vecchio JSON legacy.",
+        "Nuova pagina Diario della Campagna per impostare la sessione corrente, creare eventi Markdown, assegnare la visibilita' ai PG, filtrare e riordinare la cronologia.",
+        "Import JSON degli eventi di campagna con anteprima, validazione, ordinamento per sessione e destinatari indicabili per slug, nome PG o gruppo completo.",
+        "Nuovo Archivio documenti con bozze, testi Markdown, immagini, upload protetto, lingua documento, destinatari e pubblicazione collegata automaticamente al Diario.",
+        "La pagina DM del Diario e' stata riordinata in viste operative: Documenti, Cronologia, Nuovo evento e Import, mantenendo la sessione corrente sempre a portata di mano."
+      ]
+    },
+    {
+      "title": "Novita' tecniche",
+      "items": [
+        "Lo stato del tracker iniziativa e' stato migrato su SQLite tramite tabella AppState, con import iniziale dal vecchio JSON solo quando la chiave non esiste ancora.",
+        "Sono state aggiunte strutture dati dedicate per backstory, sessione corrente, eventi di campagna, visibilita' eventi, documenti e visibilita' documenti.",
+        "Gli upload dei documenti vivono su storage file protetto fuori dal database e fuori dal repository, con route autenticata per la consultazione.",
+        "La rivelazione live dei documenti usa Socket.IO verso il proprietario del PG e verso la stanza realtime della scheda, con deduplica lato client.",
+        "Le nuove strutture sono additive e vengono create in modo compatibile all'avvio del server, cosi' il rilascio puo' essere applicato al database Railway esistente dopo backup."
+      ]
+    }
+  ]
+}
