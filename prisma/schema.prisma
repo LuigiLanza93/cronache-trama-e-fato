@@ -240,6 +240,31 @@ enum CurrencyType {
   PP
 }
 
+enum ShopVisitStatus {
+  ACTIVE
+  CLOSED_BY_DM
+  CLOSED_BY_PLAYER
+  INTERRUPTED
+}
+
+enum ShopTradeDirection {
+  SHOP_TO_CHARACTER
+  CHARACTER_TO_SHOP
+}
+
+enum ShopNegotiationStatus {
+  OPEN
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum ShopTradeSide {
+  SHOP
+  CHARACTER
+}
+
 enum MonsterPowerTag {
   DEBOLISSIMO
   DEBOLE
@@ -288,6 +313,10 @@ model User {
   campaignEventsCreated CampaignEvent[] @relation("CampaignEventCreator")
   campaignDocumentsCreated CampaignDocument[] @relation("CampaignDocumentCreator")
   campaignSessionUpdates CampaignSessionState[] @relation("CampaignSessionUpdatedBy")
+  shopItemsRevealed ShopItemKnowledge[] @relation("ShopItemKnowledgeRevealedBy")
+  shopVisitsOpened ShopVisit[] @relation("ShopVisitOpenedBy")
+  shopVisitsClosed ShopVisit[] @relation("ShopVisitClosedBy")
+  shopOffersProposed ShopOffer[] @relation("ShopOfferProposedBy")
 
   @@index([role])
 }
@@ -324,6 +353,10 @@ model Character {
   backstory CharacterBackstory?
   visibleCampaignEvents CampaignEventVisibility[]
   visibleCampaignDocuments CampaignDocumentVisibility[]
+  shopProfiles ShopCharacterProfile[]
+  shopItemKnowledge ShopItemKnowledge[]
+  shopVisits ShopVisit[]
+  shopNegotiations ShopNegotiation[]
 
   @@index([characterType])
   @@index([ownerUserId])
@@ -443,6 +476,9 @@ model CurrencyTransaction {
   operationId            String?
   fromCharacterId        String?
   toCharacterId          String?
+  fromShopId             String?
+  toShopId               String?
+  shopNegotiationId      String?
   fromExternalName       String?
   toExternalName         String?
   reason                 String?
@@ -460,13 +496,205 @@ model CurrencyTransaction {
   fromCharacter Character? @relation("CurrencyTransactionFromCharacter", fields: [fromCharacterId], references: [id], onDelete: SetNull)
   toCharacter   Character? @relation("CurrencyTransactionToCharacter", fields: [toCharacterId], references: [id], onDelete: SetNull)
   createdBy     User?      @relation("CurrencyTransactionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  fromShop      Shop?      @relation("CurrencyTransactionFromShop", fields: [fromShopId], references: [id], onDelete: SetNull)
+  toShop        Shop?      @relation("CurrencyTransactionToShop", fields: [toShopId], references: [id], onDelete: SetNull)
+  shopNegotiation ShopNegotiation? @relation(fields: [shopNegotiationId], references: [id], onDelete: SetNull)
 
   @@index([fromCharacterId])
   @@index([toCharacterId])
+  @@index([fromShopId])
+  @@index([toShopId])
+  @@index([shopNegotiationId])
   @@index([operationId])
   @@index([createdByUserId])
   @@index([createdAt])
   @@index([reversalOfTransactionId])
+}
+
+model Shop {
+  id               String    @id
+  externalKey      String    @unique
+  name             String
+  description      String    @default("")
+  ownerName        String
+  ownerDescription String    @default("")
+  city             String
+  discountDc       Int?
+  cp               Int       @default(0)
+  sp               Int       @default(0)
+  ep               Int       @default(0)
+  gp               Int       @default(0)
+  archivedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  items ShopItem[]
+  profiles ShopCharacterProfile[]
+  itemKnowledge ShopItemKnowledge[]
+  visits ShopVisit[]
+  inventoryTransactionsFrom InventoryTransaction[] @relation("InventoryTransactionFromShop")
+  inventoryTransactionsTo InventoryTransaction[] @relation("InventoryTransactionToShop")
+  currencyTransactionsFrom CurrencyTransaction[] @relation("CurrencyTransactionFromShop")
+  currencyTransactionsTo CurrencyTransaction[] @relation("CurrencyTransactionToShop")
+
+  @@index([city])
+  @@index([name])
+  @@index([archivedAt])
+}
+
+model ShopItem {
+  id                  String       @id
+  shopId              String
+  itemDefinitionId    String?
+  nameOverride        String?
+  descriptionOverride String?
+  quantity            Int          @default(1)
+  priceCurrency       CurrencyType
+  priceAmount         Int
+  isSecret            Boolean      @default(false)
+  discoveryDc         Int?
+  sortOrder           Int          @default(0)
+  dmNotes             String?
+  instanceNotes       String?
+  data                String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  itemDefinition ItemDefinition? @relation(fields: [itemDefinitionId], references: [id], onDelete: SetNull)
+  featureStates ShopItemFeatureState[]
+  knowledge ShopItemKnowledge[]
+  negotiations ShopNegotiation[]
+
+  @@index([shopId, sortOrder])
+  @@index([itemDefinitionId])
+  @@index([isSecret])
+}
+
+model ShopItemFeatureState {
+  id            String   @id
+  shopItemId    String
+  itemFeatureId String
+  usesSpent     Int      @default(0)
+  lastResetAt   DateTime?
+  updatedAt     DateTime @updatedAt
+
+  shopItem ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
+  itemFeature ItemFeature @relation(fields: [itemFeatureId], references: [id], onDelete: Cascade)
+
+  @@unique([shopItemId, itemFeatureId])
+  @@index([shopItemId])
+  @@index([itemFeatureId])
+}
+
+model ShopCharacterProfile {
+  id                    String    @id
+  shopId                String
+  characterId           String
+  visitCount            Int       @default(0)
+  dmNotes               String    @default("")
+  usualDiscountPercent  Int?
+  lastVisitedAt         DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, characterId])
+  @@index([characterId])
+}
+
+model ShopItemKnowledge {
+  id               String   @id
+  shopId           String
+  shopItemId       String
+  characterId      String
+  revealedByUserId String?
+  revealNote       String?
+  revealedAt       DateTime @default(now())
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopItem ShopItem @relation(fields: [shopItemId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  revealedBy User? @relation("ShopItemKnowledgeRevealedBy", fields: [revealedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([shopItemId, characterId])
+  @@index([shopId, characterId])
+  @@index([revealedByUserId])
+}
+
+model ShopVisit {
+  id                String          @id
+  shopId            String
+  characterId       String
+  status            ShopVisitStatus
+  discountPercent   Int             @default(0)
+  openedByUserId    String?
+  closedByUserId    String?
+  closeReason       String?
+  dmNotes           String          @default("")
+  openedAt          DateTime        @default(now())
+  closedAt          DateTime?
+  updatedAt         DateTime        @updatedAt
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Restrict)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Restrict)
+  openedBy User? @relation("ShopVisitOpenedBy", fields: [openedByUserId], references: [id], onDelete: SetNull)
+  closedBy User? @relation("ShopVisitClosedBy", fields: [closedByUserId], references: [id], onDelete: SetNull)
+  negotiations ShopNegotiation[]
+
+  @@index([shopId, openedAt])
+  @@index([characterId, openedAt])
+  @@index([status])
+  @@index([openedByUserId])
+  @@index([closedByUserId])
+}
+
+model ShopNegotiation {
+  id                  String                @id
+  visitId             String
+  characterId         String
+  direction           ShopTradeDirection
+  shopItemId          String?
+  characterItemId     String?
+  quantity            Int
+  status              ShopNegotiationStatus @default(OPEN)
+  itemNameSnapshot    String
+  itemDetailsSnapshot String?
+  createdAt           DateTime              @default(now())
+  resolvedAt          DateTime?
+  updatedAt           DateTime              @updatedAt
+
+  visit ShopVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  character Character @relation(fields: [characterId], references: [id], onDelete: Restrict)
+  shopItem ShopItem? @relation(fields: [shopItemId], references: [id], onDelete: SetNull)
+  characterItem CharacterItem? @relation(fields: [characterItemId], references: [id], onDelete: SetNull)
+  offers ShopOffer[]
+  inventoryTransactions InventoryTransaction[]
+  currencyTransactions CurrencyTransaction[]
+
+  @@index([visitId, status])
+  @@index([characterId])
+  @@index([shopItemId])
+  @@index([characterItemId])
+}
+
+model ShopOffer {
+  id               String        @id
+  negotiationId    String
+  sequence         Int
+  proposedByUserId String
+  sellerSide       ShopTradeSide
+  currency         CurrencyType
+  amount           Int
+  createdAt        DateTime      @default(now())
+
+  negotiation ShopNegotiation @relation(fields: [negotiationId], references: [id], onDelete: Cascade)
+  proposedBy User @relation("ShopOfferProposedBy", fields: [proposedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([negotiationId, sequence])
+  @@index([proposedByUserId])
 }
 
 model Monster {
@@ -593,6 +821,7 @@ model ItemDefinition {
   useEffects     ItemUseEffect[]
   characterItems CharacterItem[]
   transactionItems InventoryTransactionItem[]
+  shopItems ShopItem[]
 
   @@index([category])
   @@index([name])
@@ -618,6 +847,7 @@ model CharacterItem {
   equippedSlots  CharacterItemEquip[]
   transactionItems InventoryTransactionItem[]
   featureStates CharacterItemFeatureState[]
+  shopNegotiations ShopNegotiation[]
 
   @@index([characterId, sortOrder])
   @@index([itemDefinitionId])
@@ -712,6 +942,7 @@ model ItemFeature {
 
   itemDefinition ItemDefinition @relation(fields: [itemDefinitionId], references: [id], onDelete: Cascade)
   featureStates   CharacterItemFeatureState[]
+  shopFeatureStates ShopItemFeatureState[]
 
   @@index([itemDefinitionId, sortOrder])
 }
@@ -778,6 +1009,10 @@ model InventoryTransaction {
   fromNpcName      String?
   toOwnerType      InventoryOwnerType?
   toCharacterId    String?
+  fromShopId       String?
+  toShopId         String?
+  operationId      String?
+  shopNegotiationId String?
   toNpcName        String?
   notes            String?
   createdByUserId  String?
@@ -786,12 +1021,19 @@ model InventoryTransaction {
   fromCharacter Character?                 @relation("InventoryTransactionFromCharacter", fields: [fromCharacterId], references: [id], onDelete: SetNull)
   toCharacter   Character?                 @relation("InventoryTransactionToCharacter", fields: [toCharacterId], references: [id], onDelete: SetNull)
   createdBy     User?                      @relation("InventoryTransactionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  fromShop      Shop?                      @relation("InventoryTransactionFromShop", fields: [fromShopId], references: [id], onDelete: SetNull)
+  toShop        Shop?                      @relation("InventoryTransactionToShop", fields: [toShopId], references: [id], onDelete: SetNull)
+  shopNegotiation ShopNegotiation?         @relation(fields: [shopNegotiationId], references: [id], onDelete: SetNull)
   items         InventoryTransactionItem[]
   currencies    InventoryTransactionCurrency[]
 
   @@index([type, createdAt])
   @@index([fromCharacterId])
   @@index([toCharacterId])
+  @@index([fromShopId])
+  @@index([toShopId])
+  @@index([operationId])
+  @@index([shopNegotiationId])
   @@index([createdByUserId])
 }
 

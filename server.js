@@ -2133,6 +2133,131 @@ function createEmptyItemDefinition(name = "Nuovo oggetto") {
   };
 }
 
+const SHOP_CURRENCIES = new Set(["CP", "SP", "EP", "GP"]);
+
+function requireShopTables() {
+  if (!tableExists("Shop") || !tableExists("ShopItem")) {
+    throw new Error("Shop database migration has not been applied");
+  }
+}
+
+function normalizeShopInteger(value, field, { min = 0, max = 1_000_000_000, nullable = false } = {}) {
+  if (nullable && (value === null || value === undefined || value === "")) return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${field} must be an integer between ${min} and ${max}`);
+  }
+  return parsed;
+}
+
+function createUniqueShopExternalKey(name) {
+  const base = sanitizeSlug(name);
+  let candidate = base;
+  let suffix = 2;
+  const exists = sqlite.prepare('SELECT 1 FROM "Shop" WHERE externalKey = ? LIMIT 1');
+  while (exists.get(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+function serializeDmShop(row, items = []) {
+  return {
+    id: row.id, externalKey: row.externalKey, name: row.name, description: row.description,
+    ownerName: row.ownerName, ownerDescription: row.ownerDescription, city: row.city,
+    discountDc: row.discountDc ?? null,
+    balance: { cp: Number(row.cp), sp: Number(row.sp), ep: Number(row.ep), gp: Number(row.gp) },
+    archivedAt: row.archivedAt ?? null, createdAt: row.createdAt, updatedAt: row.updatedAt, items,
+  };
+}
+
+function serializeDmShopItem(row) {
+  const definition = row.itemDefinitionId ? readItemDefinition(row.itemDefinitionId) : null;
+  return {
+    id: row.id, shopId: row.shopId, itemDefinitionId: row.itemDefinitionId ?? null,
+    nameOverride: row.nameOverride ?? null, descriptionOverride: row.descriptionOverride ?? null,
+    quantity: Number(row.quantity), price: { currency: row.priceCurrency, amount: Number(row.priceAmount) },
+    isSecret: !!row.isSecret, discoveryDc: row.discoveryDc ?? null, sortOrder: Number(row.sortOrder),
+    dmNotes: row.dmNotes ?? null, instanceNotes: row.instanceNotes ?? null,
+    data: parseJsonString(row.data, null), createdAt: row.createdAt, updatedAt: row.updatedAt,
+    definition,
+  };
+}
+
+function readDmShops({ includeArchived = false } = {}) {
+  requireShopTables();
+  const rows = sqlite.prepare(`SELECT * FROM "Shop" ${includeArchived ? "" : "WHERE archivedAt IS NULL"} ORDER BY city COLLATE NOCASE, name COLLATE NOCASE`).all();
+  const itemStatement = sqlite.prepare('SELECT * FROM "ShopItem" WHERE shopId = ? ORDER BY sortOrder, createdAt');
+  return rows.map((row) => serializeDmShop(row, itemStatement.all(row.id).map(serializeDmShopItem)));
+}
+
+function readDmShop(shopId) {
+  requireShopTables();
+  const row = sqlite.prepare('SELECT * FROM "Shop" WHERE id = ?').get(shopId);
+  if (!row) return null;
+  const items = sqlite.prepare('SELECT * FROM "ShopItem" WHERE shopId = ? ORDER BY sortOrder, createdAt').all(shopId).map(serializeDmShopItem);
+  return serializeDmShop(row, items);
+}
+
+function normalizeShopPayload(payload, { partial = false } = {}) {
+  const text = (key, required = false) => {
+    if (partial && payload?.[key] === undefined) return undefined;
+    const value = String(payload?.[key] ?? "").trim();
+    if (required && !value) throw new Error(`${key} is required`);
+    return value;
+  };
+  const result = {
+    externalKey: text("externalKey"), name: text("name", true), description: text("description"),
+    ownerName: text("ownerName", true), ownerDescription: text("ownerDescription"), city: text("city", true),
+  };
+  if (result.externalKey && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(result.externalKey)) {
+    throw new Error("externalKey must use kebab-case");
+  }
+  if (!partial || payload?.discountDc !== undefined) result.discountDc = normalizeShopInteger(payload?.discountDc, "discountDc", { min: 1, max: 1000, nullable: true });
+  const balance = payload?.balance ?? payload;
+  for (const currency of ["cp", "sp", "ep", "gp"]) {
+    if (!partial || balance?.[currency] !== undefined) result[currency] = normalizeShopInteger(balance?.[currency] ?? 0, currency);
+  }
+  return Object.fromEntries(Object.entries(result).filter(([, value]) => value !== undefined));
+}
+
+function normalizeShopItemPayload(payload, { partial = false } = {}) {
+  const result = {};
+  if (!partial || payload?.itemDefinitionId !== undefined) {
+    const id = String(payload?.itemDefinitionId ?? "").trim();
+    if (!id || !readItemDefinition(id)) throw new Error("A valid itemDefinitionId is required");
+    result.itemDefinitionId = id;
+  }
+  for (const key of ["nameOverride", "descriptionOverride", "dmNotes", "instanceNotes"]) {
+    if (!partial || payload?.[key] !== undefined) result[key] = payload?.[key] == null ? null : String(payload[key]).trim() || null;
+  }
+  if (!partial || payload?.quantity !== undefined) result.quantity = normalizeShopInteger(payload?.quantity ?? 1, "quantity", { min: 1 });
+  const price = payload?.price ?? payload;
+  if (!partial || price?.currency !== undefined || payload?.priceCurrency !== undefined) {
+    const currency = String(price?.currency ?? payload?.priceCurrency ?? "").toUpperCase();
+    if (!SHOP_CURRENCIES.has(currency)) throw new Error("price currency must be CP, SP, EP or GP");
+    result.priceCurrency = currency;
+  }
+  if (!partial || price?.amount !== undefined || payload?.priceAmount !== undefined) result.priceAmount = normalizeShopInteger(price?.amount ?? payload?.priceAmount, "price amount", { min: 1 });
+  if (!partial || payload?.isSecret !== undefined) result.isSecret = payload?.isSecret ? 1 : 0;
+  if (!partial || payload?.discoveryDc !== undefined) result.discoveryDc = normalizeShopInteger(payload?.discoveryDc, "discoveryDc", { min: 1, max: 1000, nullable: true });
+  if (!partial || payload?.sortOrder !== undefined) result.sortOrder = normalizeShopInteger(payload?.sortOrder ?? 0, "sortOrder", { min: 0 });
+  if (!partial || payload?.data !== undefined) result.data = payload?.data == null ? null : JSON.stringify(payload.data);
+  return result;
+}
+
+function validateShopItemInstance(definition, quantity, data, currentShopItemId = null) {
+  const hasPerCopyFeatures = definition?.features?.some((feature) => Number(feature.maxUses ?? 0) > 0);
+  if ((!definition?.stackable || hasPerCopyFeatures || data != null) && quantity !== 1) {
+    throw new Error("This item carries per-copy state and must have quantity 1");
+  }
+  if (String(definition?.rarity ?? "").toUpperCase() !== "UNIQUE") return;
+  const characterCount = Number(sqlite.prepare('SELECT COUNT(*) AS count FROM "CharacterItem" WHERE itemDefinitionId = ?').get(definition.id)?.count ?? 0);
+  const shopCount = Number(sqlite.prepare('SELECT COUNT(*) AS count FROM "ShopItem" WHERE itemDefinitionId = ? AND id <> ?').get(definition.id, currentShopItemId ?? "")?.count ?? 0);
+  if (characterCount + shopCount > 0) throw new Error("A UNIQUE item can only exist once across inventories and shops");
+}
+
 function readItemDefinitions() {
   if (!tableExists("ItemDefinition")) return [];
   const hasPlayerVisible = columnExists("ItemDefinition", "playerVisible");
@@ -7363,6 +7488,116 @@ async function start() {
     }
 
     return res.json(buildPlayerInitiativeTrackerView(readInitiativeTrackerState(), slug));
+  });
+
+  // ===== Shops: phase 1 administration =====
+  app.get("/api/dm/shops", requireRole("dm"), (req, res) => {
+    try {
+      return res.json(readDmShops({ includeArchived: req.query.includeArchived === "true" }));
+    } catch (error) {
+      return res.status(503).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.get("/api/dm/shops/:shopId", requireRole("dm"), (req, res) => {
+    try {
+      const shop = readDmShop(req.params.shopId);
+      return shop ? res.json(shop) : res.status(404).json({ error: "Shop not found" });
+    } catch (error) {
+      return res.status(503).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/dm/shops", requireRole("dm"), (req, res) => {
+    try {
+      requireShopTables();
+      const value = normalizeShopPayload(req.body ?? {});
+      if (!value.externalKey) value.externalKey = createUniqueShopExternalKey(value.name);
+      const now = new Date().toISOString();
+      const id = crypto.randomUUID();
+      sqlite.prepare(`INSERT INTO "Shop" (id, externalKey, name, description, ownerName, ownerDescription, city, discountDc, cp, sp, ep, gp, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(id, value.externalKey, value.name, value.description, value.ownerName, value.ownerDescription, value.city, value.discountDc, value.cp, value.sp, value.ep, value.gp, now, now);
+      return res.status(201).json(readDmShop(id));
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      return res.status(message.includes("UNIQUE constraint") ? 409 : 400).json({ error: message });
+    }
+  });
+
+  app.patch("/api/dm/shops/:shopId", requireRole("dm"), (req, res) => {
+    try {
+      if (!readDmShop(req.params.shopId)) return res.status(404).json({ error: "Shop not found" });
+      const value = normalizeShopPayload(req.body ?? {}, { partial: true });
+      const entries = Object.entries(value);
+      if (!entries.length) return res.status(400).json({ error: "No shop fields supplied" });
+      sqlite.prepare(`UPDATE "Shop" SET ${entries.map(([key]) => `"${key}" = ?`).join(", ")}, updatedAt = ? WHERE id = ?`)
+        .run(...entries.map(([, item]) => item), new Date().toISOString(), req.params.shopId);
+      return res.json(readDmShop(req.params.shopId));
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      return res.status(message.includes("UNIQUE constraint") ? 409 : 400).json({ error: message });
+    }
+  });
+
+  app.delete("/api/dm/shops/:shopId", requireRole("dm"), (req, res) => {
+    try {
+      const shop = readDmShop(req.params.shopId);
+      if (!shop) return res.status(404).json({ error: "Shop not found" });
+      const activeVisit = tableExists("ShopVisit") && sqlite.prepare('SELECT id FROM "ShopVisit" WHERE shopId = ? AND status = ? LIMIT 1').get(req.params.shopId, "ACTIVE");
+      if (activeVisit) return res.status(409).json({ error: "Cannot archive a shop with an active visit" });
+      sqlite.prepare('UPDATE "Shop" SET archivedAt = ?, updatedAt = ? WHERE id = ?').run(new Date().toISOString(), new Date().toISOString(), req.params.shopId);
+      return res.json(readDmShop(req.params.shopId));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/dm/shops/:shopId/items", requireRole("dm"), (req, res) => {
+    try {
+      const shop = readDmShop(req.params.shopId);
+      if (!shop) return res.status(404).json({ error: "Shop not found" });
+      if (shop.archivedAt) return res.status(409).json({ error: "Cannot add stock to an archived shop" });
+      const value = normalizeShopItemPayload(req.body ?? {});
+      const definition = readItemDefinition(value.itemDefinitionId);
+      validateShopItemInstance(definition, value.quantity, value.data);
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+      sqlite.prepare(`INSERT INTO "ShopItem" (id, shopId, itemDefinitionId, nameOverride, descriptionOverride, quantity, priceCurrency, priceAmount, isSecret, discoveryDc, sortOrder, dmNotes, instanceNotes, data, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(id, req.params.shopId, value.itemDefinitionId, value.nameOverride, value.descriptionOverride, value.quantity, value.priceCurrency, value.priceAmount, value.isSecret, value.discoveryDc, value.sortOrder, value.dmNotes, value.instanceNotes, value.data, now, now);
+      return res.status(201).json(readDmShop(req.params.shopId).items.find((item) => item.id === id));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.patch("/api/dm/shops/:shopId/items/:shopItemId", requireRole("dm"), (req, res) => {
+    try {
+      const current = sqlite.prepare('SELECT * FROM "ShopItem" WHERE id = ? AND shopId = ?').get(req.params.shopItemId, req.params.shopId);
+      if (!current) return res.status(404).json({ error: "Shop item not found" });
+      const value = normalizeShopItemPayload(req.body ?? {}, { partial: true });
+      const definition = readItemDefinition(value.itemDefinitionId ?? current.itemDefinitionId);
+      const quantity = value.quantity ?? Number(current.quantity);
+      validateShopItemInstance(definition, quantity, value.data !== undefined ? value.data : current.data, current.id);
+      const entries = Object.entries(value);
+      if (!entries.length) return res.status(400).json({ error: "No shop item fields supplied" });
+      sqlite.prepare(`UPDATE "ShopItem" SET ${entries.map(([key]) => `"${key}" = ?`).join(", ")}, updatedAt = ? WHERE id = ?`)
+        .run(...entries.map(([, item]) => item), new Date().toISOString(), req.params.shopItemId);
+      return res.json(readDmShop(req.params.shopId).items.find((item) => item.id === req.params.shopItemId));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.delete("/api/dm/shops/:shopId/items/:shopItemId", requireRole("dm"), (req, res) => {
+    try {
+      requireShopTables();
+      const result = sqlite.prepare('DELETE FROM "ShopItem" WHERE id = ? AND shopId = ?').run(req.params.shopItemId, req.params.shopId);
+      return result.changes ? res.status(204).end() : res.status(404).json({ error: "Shop item not found" });
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
   });
 
   // ===== Item definitions =====

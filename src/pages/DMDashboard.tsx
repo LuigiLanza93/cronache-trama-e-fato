@@ -10,6 +10,7 @@ import {
   Package,
   Shield,
   Swords,
+  Store,
   Users,
   X,
 } from "lucide-react";
@@ -907,6 +908,16 @@ export default function DMDashboard() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Assegna oggetti ai personaggi</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                  <a href="/dm/shops" aria-label="Apri gestione negozi">
+                    <Store className="h-4 w-4" />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Gestisci negozi e stock</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>

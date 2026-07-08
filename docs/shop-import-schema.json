@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cronache.local/schemas/shop-import-v1.json",
+  "title": "Cronache - Import negozi v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formatVersion", "shops"],
+  "properties": {
+    "formatVersion": { "const": 1 },
+    "shops": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/shop" }
+    }
+  },
+  "$defs": {
+    "nullableString": { "type": ["string", "null"] },
+    "nullableInteger": { "type": ["integer", "null"] },
+    "shop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["externalKey", "name", "description", "city", "owner", "balance", "items"],
+      "properties": {
+        "externalKey": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "minLength": 1, "maxLength": 100 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "maxLength": 10000 },
+        "city": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "owner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "description"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+            "description": { "type": "string", "maxLength": 10000 }
+          }
+        },
+        "balance": { "$ref": "#/$defs/balance" },
+        "discountDc": { "type": ["integer", "null"], "minimum": 1, "maximum": 99 },
+        "dmNotes": { "$ref": "#/$defs/nullableString" },
+        "items": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/shopItem" } }
+      }
+    },
+    "balance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cp", "sp", "ep", "gp"],
+      "properties": {
+        "cp": { "type": "integer", "minimum": 0 },
+        "sp": { "type": "integer", "minimum": 0 },
+        "ep": { "type": "integer", "minimum": 0 },
+        "gp": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "price": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "amount"],
+      "properties": {
+        "currency": { "enum": ["CP", "SP", "EP", "GP"] },
+        "amount": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "shopItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quantity", "price", "isSecret"],
+      "properties": {
+        "catalogSlug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "definition": { "$ref": "#/$defs/itemDefinition" },
+        "quantity": { "type": "integer", "minimum": 1 },
+        "price": { "$ref": "#/$defs/price" },
+        "isSecret": { "type": "boolean" },
+        "discoveryDc": { "type": ["integer", "null"], "minimum": 1, "maximum": 99 },
+        "nameOverride": { "$ref": "#/$defs/nullableString" },
+        "descriptionOverride": { "$ref": "#/$defs/nullableString" },
+        "dmNotes": { "$ref": "#/$defs/nullableString" },
+        "instanceNotes": { "$ref": "#/$defs/nullableString" },
+        "data": { "type": ["object", "null"] },
+        "featureStates": { "type": "array", "items": { "$ref": "#/$defs/featureState" } }
+      },
+      "oneOf": [
+        { "required": ["catalogSlug"], "not": { "required": ["definition"] } },
+        { "required": ["definition"], "not": { "required": ["catalogSlug"] } }
+      ]
+    },
+    "featureState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["featureName", "usesSpent", "lastResetAt"],
+      "properties": {
+        "featureName": { "type": "string", "minLength": 1 },
+        "usesSpent": { "type": "integer", "minimum": 0 },
+        "lastResetAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    },
+    "itemDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "name", "category", "description", "playerVisible", "stackable", "equippable", "attunement", "slotRules", "attacks", "modifiers", "features", "abilityRequirements", "useEffects"],
+      "properties": {
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "category": { "enum": ["WEAPON", "ARMOR", "SHIELD", "WONDROUS_ITEM", "RING", "AMULET", "ROD", "STAFF", "WAND", "TOOL", "CONSUMABLE", "AMMUNITION", "GEAR", "QUEST", "OTHER"] },
+        "subcategory": { "$ref": "#/$defs/nullableString" },
+        "weaponHandling": { "type": ["string", "null"], "enum": ["ONE_HANDED", "TWO_HANDED", "VERSATILE", null] },
+        "gloveWearMode": { "type": ["string", "null"], "enum": ["SINGLE", "PAIR", null] },
+        "armorCategory": { "type": ["string", "null"], "enum": ["LIGHT", "MEDIUM", "HEAVY", "SHIELD", null] },
+        "armorClassCalculation": { "type": ["string", "null"], "enum": ["BASE_PLUS_DEX", "BASE_PLUS_DEX_MAX_2", "BASE_ONLY", "BONUS_ONLY", null] },
+        "armorClassBase": { "$ref": "#/$defs/nullableInteger" },
+        "armorClassBonus": { "$ref": "#/$defs/nullableInteger" },
+        "rarity": { "type": ["string", "null"], "enum": ["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY", "ARTIFACT", "UNIQUE", null] },
+        "description": { "type": "string", "maxLength": 20000 },
+        "playerVisible": { "type": "boolean" },
+        "stackable": { "type": "boolean" },
+        "equippable": { "type": "boolean" },
+        "attunement": { "type": "boolean" },
+        "weight": { "type": ["number", "null"], "minimum": 0 },
+        "valueCp": { "type": ["integer", "null"], "minimum": 0 },
+        "data": { "type": ["object", "null"] },
+        "slotRules": { "type": "array", "items": { "$ref": "#/$defs/slotRule" } },
+        "attacks": { "type": "array", "items": { "$ref": "#/$defs/attack" } },
+        "modifiers": { "type": "array", "items": { "$ref": "#/$defs/modifier" } },
+        "features": { "type": "array", "items": { "$ref": "#/$defs/feature" } },
+        "abilityRequirements": { "type": "array", "items": { "$ref": "#/$defs/abilityRequirement" } },
+        "useEffects": { "type": "array", "items": { "$ref": "#/$defs/useEffect" } }
+      }
+    },
+    "slotRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["groupKey", "selectionMode", "slot", "required"],
+      "properties": {
+        "groupKey": { "type": "string", "minLength": 1 },
+        "selectionMode": { "enum": ["ALL_REQUIRED", "ANY_ONE"] },
+        "slot": { "enum": ["HEAD", "BACK", "ARMOR", "GLOVE_LEFT", "GLOVE_RIGHT", "RING_1", "RING_2", "RING_3", "RING_4", "RING_5", "RING_6", "RING_7", "RING_8", "RING_9", "RING_10", "NECK", "FEET", "WEAPON_HAND_LEFT", "WEAPON_HAND_RIGHT"] },
+        "required": { "type": "boolean" },
+        "sortOrder": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "attack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "handRequirement", "requiresEquipped"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["MELEE_WEAPON", "RANGED_WEAPON", "THROWN", "SPECIAL"] },
+        "handRequirement": { "enum": ["ANY", "ONE_HANDED", "TWO_HANDED"] },
+        "ability": { "type": ["string", "null"] },
+        "attackBonus": { "$ref": "#/$defs/nullableInteger" },
+        "damageDice": { "$ref": "#/$defs/nullableString" },
+        "damageType": { "$ref": "#/$defs/nullableString" },
+        "rangeNormal": { "$ref": "#/$defs/nullableInteger" },
+        "rangeLong": { "$ref": "#/$defs/nullableInteger" },
+        "twoHandedOnly": { "type": "boolean" },
+        "requiresEquipped": { "type": "boolean" },
+        "conditionText": { "$ref": "#/$defs/nullableString" },
+        "sortOrder": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "modifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "type", "condition"],
+      "properties": {
+        "target": { "enum": ["ARMOR_CLASS", "STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA", "SPEED", "INITIATIVE", "HIT_POINT_MAX"] },
+        "type": { "enum": ["FLAT", "FORMULA", "SET_MIN", "OVERRIDE"] },
+        "value": { "$ref": "#/$defs/nullableInteger" },
+        "formula": { "$ref": "#/$defs/nullableString" },
+        "condition": { "enum": ["ALWAYS", "WHILE_EQUIPPED"] },
+        "stackKey": { "$ref": "#/$defs/nullableString" },
+        "sortOrder": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "description", "condition"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["ACTIVE", "PASSIVE"] },
+        "description": { "$ref": "#/$defs/nullableString" },
+        "resetOn": { "type": ["string", "null"], "enum": ["AT_WILL", "ENCOUNTER", "SHORT_REST", "LONG_REST", "DAILY", "CUSTOM", null] },
+        "customResetLabel": { "$ref": "#/$defs/nullableString" },
+        "maxUses": { "type": ["integer", "null"], "minimum": 1 },
+        "passiveEffects": { "type": "array", "items": { "type": "object" } },
+        "condition": { "enum": ["ALWAYS", "WHILE_EQUIPPED"] },
+        "sortOrder": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "abilityRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ability", "minScore"],
+      "properties": {
+        "ability": { "enum": ["STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA"] },
+        "minScore": { "type": "integer", "minimum": 1 },
+        "sortOrder": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "useEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effectType", "targetType"],
+      "properties": {
+        "effectType": { "enum": ["HEAL", "DAMAGE", "TEMP_HP", "APPLY_CONDITION", "REMOVE_CONDITION", "RESTORE_RESOURCE", "CUSTOM"] },
+        "targetType": { "enum": ["SELF", "CREATURE", "OBJECT", "AREA", "CUSTOM"] },
+        "diceExpression": { "$ref": "#/$defs/nullableString" },
+        "flatValue": { "$ref": "#/$defs/nullableInteger" },
+        "damageType": { "$ref": "#/$defs/nullableString" },
+        "savingThrowAbility": { "type": ["string", "null"], "enum": ["STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA", null] },
+        "savingThrowDc": { "$ref": "#/$defs/nullableInteger" },
+        "successOutcome": { "type": ["string", "null"], "enum": ["NONE", "HALF", "NEGATES", "CUSTOM", null] },
+        "durationText": { "$ref": "#/$defs/nullableString" },
+        "notes": { "$ref": "#/$defs/nullableString" },
+        "sortOrder": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

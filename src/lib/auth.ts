@@ -1175,6 +1175,85 @@ export function deleteItemDefinitionRequest(itemId: string) {
   });
 }
 
+export type ShopCurrency = "CP" | "SP" | "EP" | "GP";
+
+export type DmShopItem = {
+  id: string;
+  shopId: string;
+  itemDefinitionId: string | null;
+  nameOverride: string | null;
+  descriptionOverride: string | null;
+  quantity: number;
+  price: { currency: ShopCurrency; amount: number };
+  isSecret: boolean;
+  discoveryDc: number | null;
+  sortOrder: number;
+  dmNotes: string | null;
+  instanceNotes: string | null;
+  data: unknown;
+  definition: ItemDefinitionEntry | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DmShop = {
+  id: string;
+  externalKey: string;
+  name: string;
+  description: string;
+  ownerName: string;
+  ownerDescription: string;
+  city: string;
+  discountDc: number | null;
+  balance: { cp: number; sp: number; ep: number; gp: number };
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: DmShopItem[];
+};
+
+export type ShopFormPayload = Pick<DmShop, "externalKey" | "name" | "description" | "ownerName" | "ownerDescription" | "city" | "discountDc" | "balance">;
+export type ShopItemFormPayload = {
+  itemDefinitionId: string;
+  quantity: number;
+  price: { currency: ShopCurrency; amount: number };
+  isSecret: boolean;
+  discoveryDc: number | null;
+  sortOrder: number;
+  nameOverride?: string | null;
+  descriptionOverride?: string | null;
+  dmNotes?: string | null;
+  instanceNotes?: string | null;
+};
+
+export function fetchDmShops(includeArchived = false) {
+  return authFetch<DmShop[]>(`/api/dm/shops${includeArchived ? "?includeArchived=true" : ""}`, { method: "GET" });
+}
+
+export function createDmShopRequest(payload: ShopFormPayload) {
+  return authFetch<DmShop>("/api/dm/shops", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function updateDmShopRequest(shopId: string, payload: Partial<ShopFormPayload>) {
+  return authFetch<DmShop>(`/api/dm/shops/${shopId}`, { method: "PATCH", body: JSON.stringify(payload) });
+}
+
+export function archiveDmShopRequest(shopId: string) {
+  return authFetch<DmShop>(`/api/dm/shops/${shopId}`, { method: "DELETE" });
+}
+
+export function createDmShopItemRequest(shopId: string, payload: ShopItemFormPayload) {
+  return authFetch<DmShopItem>(`/api/dm/shops/${shopId}/items`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function updateDmShopItemRequest(shopId: string, shopItemId: string, payload: Partial<ShopItemFormPayload>) {
+  return authFetch<DmShopItem>(`/api/dm/shops/${shopId}/items/${shopItemId}`, { method: "PATCH", body: JSON.stringify(payload) });
+}
+
+export function deleteDmShopItemRequest(shopId: string, shopItemId: string) {
+  return authFetch<null>(`/api/dm/shops/${shopId}/items/${shopItemId}`, { method: "DELETE" });
+}
+
 export function fetchCharacterInventoryItemsForDm(slug: string) {
   return authFetch<CharacterInventoryItemEntry[]>(`/api/characters/${slug}/inventory-items`, {
     method: "GET",

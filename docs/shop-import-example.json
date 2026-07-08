@@ -1,0 +1,84 @@
+{
+  "formatVersion": 1,
+  "shops": [
+    {
+      "externalKey": "emporio-della-luna-spezzata",
+      "name": "Emporio della Luna Spezzata",
+      "description": "Un emporio stretto e profumato di cera, erbe secche e metallo.",
+      "city": "Valdombra",
+      "owner": {
+        "name": "Mastro Elian Voss",
+        "description": "Mercante cordiale, molto attento a chi riconosce gli oggetti rari."
+      },
+      "balance": {
+        "cp": 120,
+        "sp": 85,
+        "ep": 0,
+        "gp": 240
+      },
+      "discountDc": 15,
+      "dmNotes": "Elian diffida dei simboli della Gilda Grigia.",
+      "items": [
+        {
+          "catalogSlug": "pozione-di-guarigione",
+          "quantity": 4,
+          "price": {
+            "currency": "GP",
+            "amount": 55
+          },
+          "isSecret": false
+        },
+        {
+          "definition": {
+            "slug": "anello-del-passo-sommesso",
+            "name": "Anello del Passo Sommesso",
+            "category": "RING",
+            "subcategory": "Anello magico",
+            "rarity": "UNCOMMON",
+            "description": "Un sottile anello d'argento che attenua il rumore dei passi.",
+            "playerVisible": true,
+            "stackable": false,
+            "equippable": true,
+            "attunement": true,
+            "weight": 0,
+            "valueCp": 9000,
+            "slotRules": [
+              {
+                "groupKey": "ring",
+                "selectionMode": "ANY_ONE",
+                "slot": "RING_1",
+                "required": true,
+                "sortOrder": 0
+              }
+            ],
+            "attacks": [],
+            "modifiers": [],
+            "features": [
+              {
+                "name": "Passo sommesso",
+                "kind": "PASSIVE",
+                "description": "L'anello facilita i movimenti silenziosi quando e' indossato.",
+                "resetOn": null,
+                "customResetLabel": null,
+                "maxUses": null,
+                "passiveEffects": [],
+                "condition": "WHILE_EQUIPPED",
+                "sortOrder": 0
+              }
+            ],
+            "abilityRequirements": [],
+            "useEffects": []
+          },
+          "quantity": 1,
+          "price": {
+            "currency": "GP",
+            "amount": 140
+          },
+          "isSecret": true,
+          "discoveryDc": 17,
+          "dmNotes": "Nascosto in un doppio fondo sotto il bancone."
+        }
+      ]
+    }
+  ]
+}

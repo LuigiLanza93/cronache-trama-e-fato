@@ -1,0 +1,254 @@
+import { useEffect, useMemo, useState } from "react";
+import { Archive, ArrowLeft, EyeOff, PackagePlus, Pencil, Plus, Store, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/sonner";
+import {
+  archiveDmShopRequest,
+  createDmShopItemRequest,
+  createDmShopRequest,
+  deleteDmShopItemRequest,
+  fetchDmShops,
+  fetchItemDefinitions,
+  updateDmShopItemRequest,
+  updateDmShopRequest,
+  type DmShop,
+  type DmShopItem,
+  type ItemDefinitionSummary,
+  type ShopCurrency,
+  type ShopFormPayload,
+  type ShopItemFormPayload,
+} from "@/lib/auth";
+
+const emptyShop = (): ShopFormPayload => ({
+  externalKey: "", name: "", description: "", ownerName: "", ownerDescription: "", city: "",
+  discountDc: null, balance: { cp: 0, sp: 0, ep: 0, gp: 0 },
+});
+
+const emptyItem = (): ShopItemFormPayload => ({
+  itemDefinitionId: "", quantity: 1, price: { currency: "GP", amount: 1 },
+  isSecret: false, discoveryDc: null, sortOrder: 0,
+  nameOverride: null, descriptionOverride: null, dmNotes: null, instanceNotes: null,
+});
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Operazione non riuscita";
+}
+
+function shopKeyFromName(name: string) {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function toShopForm(shop: DmShop): ShopFormPayload {
+  return {
+    externalKey: shop.externalKey, name: shop.name, description: shop.description,
+    ownerName: shop.ownerName, ownerDescription: shop.ownerDescription, city: shop.city,
+    discountDc: shop.discountDc, balance: { ...shop.balance },
+  };
+}
+
+function toItemForm(item: DmShopItem): ShopItemFormPayload {
+  return {
+    itemDefinitionId: item.itemDefinitionId ?? "", quantity: item.quantity, price: { ...item.price },
+    isSecret: item.isSecret, discoveryDc: item.discoveryDc, sortOrder: item.sortOrder,
+    nameOverride: item.nameOverride, descriptionOverride: item.descriptionOverride,
+    dmNotes: item.dmNotes, instanceNotes: item.instanceNotes,
+  };
+}
+
+export default function DmShopsPage() {
+  const [shops, setShops] = useState<DmShop[]>([]);
+  const [catalog, setCatalog] = useState<ItemDefinitionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [shopDialogOpen, setShopDialogOpen] = useState(false);
+  const [editingShop, setEditingShop] = useState<DmShop | null>(null);
+  const [shopForm, setShopForm] = useState<ShopFormPayload>(emptyShop);
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [itemShop, setItemShop] = useState<DmShop | null>(null);
+  const [editingItem, setEditingItem] = useState<DmShopItem | null>(null);
+  const [itemForm, setItemForm] = useState<ShopItemFormPayload>(emptyItem);
+  const [catalogFilter, setCatalogFilter] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const reload = async () => {
+    setLoading(true);
+    try {
+      const [nextShops, nextCatalog] = await Promise.all([fetchDmShops(includeArchived), fetchItemDefinitions()]);
+      setShops(nextShops);
+      setCatalog(nextCatalog);
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { void reload(); }, [includeArchived]);
+
+  const groupedShops = useMemo(() => {
+    const groups = new Map<string, DmShop[]>();
+    for (const shop of shops) {
+      const city = shop.city || "Senza città";
+      groups.set(city, [...(groups.get(city) ?? []), shop]);
+    }
+    return [...groups.entries()].sort(([left], [right]) => left.localeCompare(right, "it"));
+  }, [shops]);
+
+  const filteredCatalog = useMemo(() => {
+    const needle = catalogFilter.trim().toLowerCase();
+    return catalog.filter((item) => !needle || `${item.name} ${item.slug}`.toLowerCase().includes(needle)).slice(0, 100);
+  }, [catalog, catalogFilter]);
+
+  const openNewShop = () => {
+    setEditingShop(null); setShopForm(emptyShop()); setShopDialogOpen(true);
+  };
+
+  const openEditShop = (shop: DmShop) => {
+    setEditingShop(shop); setShopForm(toShopForm(shop)); setShopDialogOpen(true);
+  };
+
+  const saveShop = async () => {
+    setSubmitting(true);
+    try {
+      if (editingShop) await updateDmShopRequest(editingShop.id, shopForm);
+      else await createDmShopRequest(shopForm);
+      toast.success(editingShop ? "Negozio aggiornato." : "Negozio creato.");
+      setShopDialogOpen(false);
+      await reload();
+    } catch (error) { toast.error(errorMessage(error)); }
+    finally { setSubmitting(false); }
+  };
+
+  const archiveShop = async (shop: DmShop) => {
+    if (!window.confirm(`Archiviare “${shop.name}”? Lo storico resterà disponibile.`)) return;
+    try { await archiveDmShopRequest(shop.id); toast.success("Negozio archiviato."); await reload(); }
+    catch (error) { toast.error(errorMessage(error)); }
+  };
+
+  const openNewItem = (shop: DmShop) => {
+    setItemShop(shop); setEditingItem(null); setItemForm({ ...emptyItem(), sortOrder: shop.items.length * 100 });
+    setCatalogFilter(""); setItemDialogOpen(true);
+  };
+
+  const openEditItem = (shop: DmShop, item: DmShopItem) => {
+    setItemShop(shop); setEditingItem(item); setItemForm(toItemForm(item));
+    setCatalogFilter(item.definition?.name ?? ""); setItemDialogOpen(true);
+  };
+
+  const saveItem = async () => {
+    if (!itemShop) return;
+    setSubmitting(true);
+    try {
+      if (editingItem) await updateDmShopItemRequest(itemShop.id, editingItem.id, itemForm);
+      else await createDmShopItemRequest(itemShop.id, itemForm);
+      toast.success(editingItem ? "Prodotto aggiornato." : "Prodotto aggiunto allo stock.");
+      setItemDialogOpen(false);
+      await reload();
+    } catch (error) { toast.error(errorMessage(error)); }
+    finally { setSubmitting(false); }
+  };
+
+  const deleteItem = async (shop: DmShop, item: DmShopItem) => {
+    if (!window.confirm(`Rimuovere “${item.nameOverride || item.definition?.name || "oggetto"}” dallo stock?`)) return;
+    try { await deleteDmShopItemRequest(shop.id, item.id); toast.success("Prodotto rimosso."); await reload(); }
+    catch (error) { toast.error(errorMessage(error)); }
+  };
+
+  return (
+    <div className="min-h-screen parchment p-4 md:p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" asChild><Link to="/dm"><ArrowLeft className="h-4 w-4" /></Link></Button>
+            <div><h1 className="font-heading text-3xl font-bold text-primary">Negozi</h1><p className="text-sm text-muted-foreground">Gestione permanente di botteghe, saldi e stock.</p></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm"><Switch checked={includeArchived} onCheckedChange={setIncludeArchived} /> Archiviati</label>
+            <Button onClick={openNewShop}><Plus className="mr-2 h-4 w-4" />Nuovo negozio</Button>
+          </div>
+        </header>
+
+        {loading ? <Card className="p-8 text-center text-muted-foreground">Carico i negozi…</Card> : groupedShops.length === 0 ? (
+          <Card className="p-10 text-center"><Store className="mx-auto mb-3 h-10 w-10 text-primary/60" /><p className="font-heading text-xl">Nessun negozio</p><p className="mt-1 text-sm text-muted-foreground">Crea la prima bottega per iniziare a comporre lo stock.</p></Card>
+        ) : groupedShops.map(([city, cityShops]) => (
+          <section key={city} className="space-y-3">
+            <h2 className="font-heading text-2xl text-primary">{city}</h2>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {cityShops.map((shop) => (
+                <Card key={shop.id} className={`p-5 ${shop.archivedAt ? "opacity-65" : ""}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-heading text-xl font-semibold">{shop.name}</h3>{shop.archivedAt && <Badge variant="secondary">Archiviato</Badge>}</div><p className="text-sm text-muted-foreground">{shop.ownerName} · {shop.externalKey}</p></div>
+                    <div className="flex gap-1"><Button variant="ghost" size="icon" onClick={() => openEditShop(shop)}><Pencil className="h-4 w-4" /></Button>{!shop.archivedAt && <Button variant="ghost" size="icon" onClick={() => void archiveShop(shop)}><Archive className="h-4 w-4" /></Button>}</div>
+                  </div>
+                  {shop.description && <p className="mt-3 text-sm">{shop.description}</p>}
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs">{(["cp", "sp", "ep", "gp"] as const).map((currency) => <Badge key={currency} variant="outline">{shop.balance[currency]} {currency.toUpperCase()}</Badge>)}{shop.discountDc && <Badge variant="outline">CD sconto {shop.discountDc}</Badge>}</div>
+                  <div className="mt-5 flex items-center justify-between"><h4 className="font-medium">Stock ({shop.items.length})</h4>{!shop.archivedAt && <Button size="sm" variant="outline" onClick={() => openNewItem(shop)}><PackagePlus className="mr-2 h-4 w-4" />Aggiungi</Button>}</div>
+                  <div className="mt-2 divide-y rounded-md border">
+                    {shop.items.length === 0 ? <p className="p-4 text-center text-sm text-muted-foreground">Stock vuoto</p> : shop.items.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between gap-3 p-3">
+                        <div className="min-w-0"><div className="flex items-center gap-2"><span className="truncate font-medium">{item.nameOverride || item.definition?.name || "Definizione rimossa"}</span>{item.isSecret && <EyeOff className="h-3.5 w-3.5 text-amber-600" />}</div><p className="text-xs text-muted-foreground">Qtà {item.quantity} · {item.price.amount} {item.price.currency}{item.discoveryDc ? ` · CD ${item.discoveryDc}` : ""}</p></div>
+                        <div className="flex shrink-0 gap-1"><Button variant="ghost" size="icon" onClick={() => openEditItem(shop, item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => void deleteItem(shop, item)}><Trash2 className="h-4 w-4" /></Button></div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <Dialog open={shopDialogOpen} onOpenChange={setShopDialogOpen}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{editingShop ? "Modifica negozio" : "Nuovo negozio"}</DialogTitle><DialogDescription>I dati amministrativi e i saldi sono visibili soltanto al DM.</DialogDescription></DialogHeader>
+          <div className="grid gap-4 py-2 md:grid-cols-2">
+            <Field label="Nome"><Input value={shopForm.name} onChange={(e) => { const name = e.target.value; setShopForm({ ...shopForm, name, externalKey: editingShop ? shopForm.externalKey : "" }); }} /></Field>
+            <Field label="Chiave generata automaticamente"><Input value={shopForm.externalKey || shopKeyFromName(shopForm.name)} readOnly className="bg-muted/50 text-muted-foreground" /></Field>
+            <Field label="Città"><Input value={shopForm.city} onChange={(e) => setShopForm({ ...shopForm, city: e.target.value })} /></Field>
+            <Field label="Proprietario"><Input value={shopForm.ownerName} onChange={(e) => setShopForm({ ...shopForm, ownerName: e.target.value })} /></Field>
+            <Field label="Descrizione" wide><Textarea value={shopForm.description} onChange={(e) => setShopForm({ ...shopForm, description: e.target.value })} /></Field>
+            <Field label="Descrizione proprietario" wide><Textarea value={shopForm.ownerDescription} onChange={(e) => setShopForm({ ...shopForm, ownerDescription: e.target.value })} /></Field>
+            <Field label="CD sconto"><Input type="number" min={1} value={shopForm.discountDc ?? ""} onChange={(e) => setShopForm({ ...shopForm, discountDc: e.target.value ? Number(e.target.value) : null })} /></Field>
+            <div className="grid grid-cols-4 gap-2">{(["cp", "sp", "ep", "gp"] as const).map((currency) => <Field key={currency} label={currency.toUpperCase()}><Input type="number" min={0} value={shopForm.balance[currency]} onChange={(e) => setShopForm({ ...shopForm, balance: { ...shopForm.balance, [currency]: Number(e.target.value) } })} /></Field>)}</div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setShopDialogOpen(false)}>Annulla</Button><Button disabled={submitting || !shopForm.name || !shopForm.city || !shopForm.ownerName} onClick={() => void saveShop()}>Salva</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{editingItem ? "Modifica prodotto" : `Aggiungi prodotto · ${itemShop?.name ?? ""}`}</DialogTitle><DialogDescription>Il prezzo base resterà privato fino alla formulazione di un'offerta.</DialogDescription></DialogHeader>
+          <div className="grid gap-4 py-2 md:grid-cols-2">
+            <Field label="Cerca catalogo" wide><Input placeholder="Nome o slug…" value={catalogFilter} onChange={(e) => setCatalogFilter(e.target.value)} /></Field>
+            <Field label="Oggetto di catalogo" wide><Select value={itemForm.itemDefinitionId} onValueChange={(value) => setItemForm({ ...itemForm, itemDefinitionId: value })}><SelectTrigger><SelectValue placeholder="Seleziona un oggetto" /></SelectTrigger><SelectContent>{filteredCatalog.map((item) => <SelectItem key={item.id} value={item.id}>{item.name} · {item.category}</SelectItem>)}</SelectContent></Select></Field>
+            <Field label="Quantità"><Input type="number" min={1} value={itemForm.quantity} onChange={(e) => setItemForm({ ...itemForm, quantity: Number(e.target.value) })} /></Field>
+            <div className="grid grid-cols-2 gap-2"><Field label="Importo"><Input type="number" min={1} value={itemForm.price.amount} onChange={(e) => setItemForm({ ...itemForm, price: { ...itemForm.price, amount: Number(e.target.value) } })} /></Field><Field label="Valuta"><Select value={itemForm.price.currency} onValueChange={(currency: ShopCurrency) => setItemForm({ ...itemForm, price: { ...itemForm.price, currency } })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["CP", "SP", "EP", "GP"].map((currency) => <SelectItem key={currency} value={currency}>{currency}</SelectItem>)}</SelectContent></Select></Field></div>
+            <Field label="Nome personalizzato"><Input value={itemForm.nameOverride ?? ""} onChange={(e) => setItemForm({ ...itemForm, nameOverride: e.target.value || null })} /></Field>
+            <Field label="Ordine"><Input type="number" min={0} value={itemForm.sortOrder} onChange={(e) => setItemForm({ ...itemForm, sortOrder: Number(e.target.value) })} /></Field>
+            <div className="flex items-center gap-3 rounded-md border p-3"><Switch checked={itemForm.isSecret} onCheckedChange={(isSecret) => setItemForm({ ...itemForm, isSecret, discoveryDc: isSecret ? itemForm.discoveryDc : null })} /><Label>Oggetto segreto</Label></div>
+            <Field label="CD scoperta"><Input type="number" min={1} disabled={!itemForm.isSecret} value={itemForm.discoveryDc ?? ""} onChange={(e) => setItemForm({ ...itemForm, discoveryDc: e.target.value ? Number(e.target.value) : null })} /></Field>
+            <Field label="Note DM" wide><Textarea value={itemForm.dmNotes ?? ""} onChange={(e) => setItemForm({ ...itemForm, dmNotes: e.target.value || null })} /></Field>
+            <Field label="Note dell'istanza" wide><Textarea value={itemForm.instanceNotes ?? ""} onChange={(e) => setItemForm({ ...itemForm, instanceNotes: e.target.value || null })} /></Field>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setItemDialogOpen(false)}>Annulla</Button><Button disabled={submitting || !itemForm.itemDefinitionId || itemForm.quantity < 1 || itemForm.price.amount < 1} onClick={() => void saveItem()}>Salva prodotto</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function Field({ label, wide = false, children }: { label: string; wide?: boolean; children: React.ReactNode }) {
+  return <div className={`space-y-1.5 ${wide ? "md:col-span-2" : ""}`}><Label>{label}</Label>{children}</div>;
+}

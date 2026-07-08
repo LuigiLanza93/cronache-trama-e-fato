@@ -25,6 +25,7 @@ const InventoryTransactionsPage = lazy(() => import("./pages/InventoryTransactio
 const CurrencyTransactionsPage = lazy(() => import("./pages/CurrencyTransactionsPage"));
 const DmNotesPage = lazy(() => import("./pages/DmNotesPage"));
 const DmCampaignLogPage = lazy(() => import("./pages/DmCampaignLogPage"));
+const DmShopsPage = lazy(() => import("./pages/DmShopsPage"));
 const PlayerCampaignLogPage = lazy(() => import("./pages/PlayerCampaignLogPage"));
 const PlayerMonsterCompendium = lazy(() => import("./pages/PlayerMonsterCompendium"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -125,6 +126,14 @@ const App = () => (
                     element={
                       <RequireRole role="dm">
                         <CurrencyTransactionsPage />
+                      </RequireRole>
+                    }
+                  />
+                  <Route
+                    path="/dm/shops"
+                    element={
+                      <RequireRole role="dm">
+                        <DmShopsPage />
                       </RequireRole>
                     }
                   />
