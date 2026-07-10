@@ -588,6 +588,15 @@ export default function DmShopsPage() {
           </DialogHeader>
           {activeVisit ? (
             <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+              {activeVisit.shop.balance ? (
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {(["cp", "sp", "ep", "gp"] as const).map((currency) => (
+                    <Badge key={currency} variant="outline">
+                      {activeVisit.shop.balance?.[currency] ?? 0} {currency.toUpperCase()}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
               <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
                 <section className="rounded-md border p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">

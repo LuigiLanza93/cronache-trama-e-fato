@@ -63,6 +63,10 @@ export type CurrencyTransactionEntry = {
   fromCharacterName: string | null;
   toCharacterSlug: string | null;
   toCharacterName: string | null;
+  fromShopName: string | null;
+  fromShopOwnerName: string | null;
+  toShopName: string | null;
+  toShopOwnerName: string | null;
   fromExternalName: string | null;
   toExternalName: string | null;
   reason: string | null;
@@ -656,6 +660,10 @@ export type InventoryTransferEntry = {
   fromCharacterName: string | null;
   toCharacterSlug: string | null;
   toCharacterName: string | null;
+  fromShopName: string | null;
+  fromShopOwnerName: string | null;
+  toShopName: string | null;
+  toShopOwnerName: string | null;
   itemName: string;
   quantity: number;
   createdAt: string;
@@ -1356,6 +1364,7 @@ export type ShopVisit = {
     name: string;
     ownerName: string;
     city: string;
+    balance?: CurrencyBalance;
   };
   character: {
     slug: string;

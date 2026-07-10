@@ -28,6 +28,9 @@ Completato:
 - popup globale player per apertura visita, aggiornamento sconto, chiusura e recupero dopo refresh;
 - payload visita DM/player con vetrina, definizioni oggetto, stati feature e inventario PG;
 - rivelazione manuale degli oggetti segreti durante la visita, persistita per coppia negozio-PG.
+- negoziazioni e controproposte base con offerte immutabili;
+- compravendita atomica base su accettazione offerta, con movimento di stock/inventario, saldo negozio/PG e ledger condivisi;
+- storico DM visibile per transazioni oggetto e monete generate dai negozi, con negozio/proprietario come controparte.
 
 Verificato in locale:
 
@@ -38,8 +41,9 @@ Verificato in locale:
 
 Non ancora completato:
 
-- negoziazioni e controproposte di base;
-- compravendita atomica;
+- storico visite completo;
+- rifiniture quality of life su conferme, messaggi e flussi di trattativa;
+- compravendita atomica completa nei casi limite;
 - annullamento tecnico esteso ai negozi.
 
 ## Obiettivo
@@ -125,7 +129,7 @@ Nuova sezione `/dm/shops`, raggruppata per citta', con:
 Stato al 2026-07-10:
 
 - disponibile: creazione, modifica, archiviazione, raggruppamento per citta', saldo, dati proprietario, note DM, CD sconto, stock da `ItemDefinition`, quantita', prezzo base monovaluta, segretezza, CD di scoperta, import JSON, profili PG, apertura/chiusura visita DM di base, popup globale player, vetrina player/DM e rivelazione manuale;
-- non ancora disponibile: storico visite completo e compravendita atomica.
+- non ancora disponibile: storico visite completo, annullamento tecnico esteso e rifinitura completa compravendita atomica.
 
 Nota UX: in inserimento manuale la chiave esterna non deve essere inventata ogni volta dal DM. Se il campo resta vuoto, il server genera automaticamente uno slug kebab-case dal nome del negozio e aggiunge un suffisso numerico in caso di collisione.
 
@@ -668,7 +672,7 @@ Stato al 2026-07-09:
 - implementati come realtime iniziale: eventi `shop-visit:opened`, `shop-visit:updated`, `shop-visit:closed` e listener globale player con recupero tramite `GET /api/shop-visits/active`;
 - implementati payload visita con vetrina filtrata per player, stock completo DM, inventario PG e comando DM di rivelazione oggetto;
 - implementata Fase 4 base: `POST /api/shop-visits/:visitId/negotiations`, `POST /api/shop-negotiations/:id/counter-offers`, `POST /api/shop-negotiations/:id/accept`, `POST /api/shop-negotiations/:id/reject`, `POST /api/shop-negotiations/:id/withdraw`, serializer offerte nel payload visita e controlli UI DM/player;
-- da completare: storico visite UI e compravendita atomica.
+- da completare: storico visite UI, rifinitura compravendita atomica e annullamento tecnico.
 
 ### Visita
 
@@ -784,7 +788,7 @@ Stato: quasi completata. Sono pronti CRUD negozi, CRUD stock, pagina DM, saldo, 
 - contatore visite, note, sconto e rivelazioni permanenti;
 - recupero dopo refresh.
 
-Stato: avanzata. Implementate API e UI DM di base per aprire/chiudere una sola visita attiva globale, recuperare la visita attiva e aggiornare contatore/ultima visita del profilo PG. Lo sconto abituale del profilo PG viene proposto come default quando il DM apre una nuova visita. Implementato il popup globale player con eventi realtime e recupero dopo refresh. Implementati payload di vetrina/inventario e rivelazione manuale persistente degli oggetti segreti. Restano storico visite UI, negoziazioni e compravendita.
+Stato: avanzata. Implementate API e UI DM di base per aprire/chiudere una sola visita attiva globale, recuperare la visita attiva e aggiornare contatore/ultima visita del profilo PG. Lo sconto abituale del profilo PG viene proposto come default quando il DM apre una nuova visita. Implementato il popup globale player con eventi realtime e recupero dopo refresh. Implementati payload di vetrina/inventario e rivelazione manuale persistente degli oggetti segreti. Restano storico visite UI e rifiniture quality of life.
 
 ### Fase 4: negoziazioni
 
@@ -793,7 +797,7 @@ Stato: avanzata. Implementate API e UI DM di base per aprire/chiudere una sola v
 - accettazione, rifiuto, ritiro e scadenza;
 - aggiornamenti realtime delle due viste.
 
-Stato: avviata e da affinare. Implementate catene `ShopNegotiation`/`ShopOffer`, proposta iniziale da stock o inventario, rilancio immutabile, accettazione/rifiuto dalla controparte, ritiro del proponente, scadenza alla chiusura visita e aggiornamento realtime tramite `shop-visit:updated`. Test manuale iniziale: le offerte arrivano correttamente, ma la UX e le regole di interazione vanno rifinite prima di considerare la fase completa. L'accettazione chiude l'accordo ma non muove ancora oggetti o monete: il trasferimento atomico resta Fase 5.
+Stato: avanzata e testata nel flusso base. Implementate catene `ShopNegotiation`/`ShopOffer`, proposta iniziale da stock o inventario, rilancio immutabile, accettazione/rifiuto dalla controparte, ritiro del proponente, scadenza alla chiusura visita e aggiornamento realtime tramite `shop-visit:updated`. L'accettazione avvia la compravendita atomica base della Fase 5: muove monete, stock/inventario e ledger nella stessa transazione. Restano UX di conferma e casi limite prima di considerare la fase completa.
 
 ### Fase 5: compravendita atomica
 
@@ -802,6 +806,8 @@ Stato: avviata e da affinare. Implementate catene `ShopNegotiation`/`ShopOffer`,
 - ledger inventario e valuta;
 - gestione equipaggiamento;
 - notifiche alla scheda.
+
+Stato: avviata e verificata nel flusso acquisto base il 2026-07-10. Implementata accettazione atomica base per `SHOP_TO_CHARACTER` e `CHARACTER_TO_SHOP`: controllo fondi del compratore, resto automatico usando le regole valuta esistenti, aggiornamento saldo negozio/PG, trasferimento stack o istanze, copia stati feature per oggetti singoli, disequipaggiamento alla vendita PG, ledger inventario/valuta con `operationId` condiviso e aggiornamento realtime visita/scheda. Le transazioni DM oggetto e monete mostrano anche i movimenti negozio con negozio/proprietario come controparte. Da completare con conferme UX, test casi limite e annullamento tecnico.
 
 ### Fase 6: annullamento tecnico e robustezza
 
@@ -827,11 +833,10 @@ Non usare `prisma db push` sulla produzione senza comando esplicito, backup appe
 
 ## Prossimo task consigliato
 
-Proseguire la Fase 2 con l'import JSON, perche' e' il prossimo blocco piu' utile senza introdurre ancora realtime o transazioni di compravendita:
+Proseguire con interventi puntuali di quality of life e robustezza:
 
-1. implementare validazione server-side del formato `docs/shop-import-schema.json`;
-2. aggiungere endpoint `POST /api/dm/shops/import` con modalita' `dryRun`;
-3. produrre anteprima con errori, avvisi, definizioni nuove e riferimenti riusati;
-4. applicare l'import confermato in transazione unica;
-5. aggiungere UI di caricamento/incolla JSON nella pagina `/dm/shops`;
-6. fermarsi per test e conferma prima del commit, secondo il flusso operativo del progetto.
+1. aggiungere conferme esplicite prima di accettare offerte di acquisto/vendita;
+2. migliorare testi e stati UI per proposta, rilancio, accettazione, rifiuto e ritiro;
+3. testare vendita PG al negozio, fondi insufficienti, stock insufficiente, oggetti equipaggiati e oggetti con cariche;
+4. aggiungere storico visite UI;
+5. progettare l'annullamento tecnico esteso ai negozi in una fase separata.

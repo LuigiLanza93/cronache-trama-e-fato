@@ -11,6 +11,12 @@ import { fetchInventoryTransfers, undoInventoryTransactionRequest, type Inventor
 const OBJECT_TRANSACTIONS_GRID =
   "144px minmax(220px,1.6fr) 72px minmax(160px,1fr) minmax(160px,1fr) minmax(220px,1.2fr) 156px 88px 88px";
 
+function shopLabel(name: string | null, ownerName: string | null) {
+  if (!name && !ownerName) return null;
+  if (name && ownerName) return `${name} (${ownerName})`;
+  return name ?? ownerName;
+}
+
 function directionFromEntry(entry: InventoryTransferEntry) {
   if (entry.type === "INITIAL_GRANT") {
     return {
@@ -23,6 +29,13 @@ function directionFromEntry(entry: InventoryTransferEntry) {
     return {
       from: entry.fromCharacterName ?? "—",
       to: "DM",
+    };
+  }
+
+  if (entry.type === "PURCHASE" || entry.type === "SALE") {
+    return {
+      from: entry.fromCharacterName ?? shopLabel(entry.fromShopName, entry.fromShopOwnerName) ?? "-",
+      to: entry.toCharacterName ?? shopLabel(entry.toShopName, entry.toShopOwnerName) ?? "-",
     };
   }
 

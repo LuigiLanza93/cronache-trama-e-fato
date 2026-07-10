@@ -323,6 +323,12 @@ function formatCompactTimestamp(value: string) {
   });
 }
 
+function shopTransactionLabel(name: string | null, ownerName: string | null) {
+  if (!name && !ownerName) return null;
+  if (name && ownerName) return `${name} (${ownerName})`;
+  return name ?? ownerName;
+}
+
 function directionFromInventoryEntry(entry: InventoryTransferEntry) {
   if (entry.type === "INITIAL_GRANT") {
     return `DM -> ${entry.toCharacterName ?? "-"}`;
@@ -332,11 +338,15 @@ function directionFromInventoryEntry(entry: InventoryTransferEntry) {
     return `${entry.fromCharacterName ?? "-"} -> DM`;
   }
 
+  if (entry.type === "PURCHASE" || entry.type === "SALE") {
+    return `${entry.fromCharacterName ?? shopTransactionLabel(entry.fromShopName, entry.fromShopOwnerName) ?? "-"} -> ${entry.toCharacterName ?? shopTransactionLabel(entry.toShopName, entry.toShopOwnerName) ?? "-"}`;
+  }
+
   return `${entry.fromCharacterName ?? "-"} -> ${entry.toCharacterName ?? "-"}`;
 }
 
 function currencyFromSummary(entry: CurrencyTransactionEntry) {
-  if (entry.operationType === "ADD") return entry.fromExternalName ?? "Origine esterna";
+  if (entry.operationType === "ADD") return entry.fromCharacterName ?? shopTransactionLabel(entry.fromShopName, entry.fromShopOwnerName) ?? entry.fromExternalName ?? "Origine esterna";
   if (entry.operationType === "REMOVE") return entry.fromCharacterName ?? "-";
   if (entry.operationType === "TRANSFER") return entry.fromCharacterName ?? "-";
   return entry.fromCharacterName ?? entry.toCharacterName ?? "Portafoglio";
@@ -344,8 +354,8 @@ function currencyFromSummary(entry: CurrencyTransactionEntry) {
 
 function currencyToSummary(entry: CurrencyTransactionEntry) {
   if (entry.operationType === "ADD") return entry.toCharacterName ?? "-";
-  if (entry.operationType === "REMOVE") return entry.toExternalName ?? "Destinazione esterna";
-  if (entry.operationType === "TRANSFER") return entry.toCharacterName ?? "-";
+  if (entry.operationType === "REMOVE") return entry.toCharacterName ?? shopTransactionLabel(entry.toShopName, entry.toShopOwnerName) ?? entry.toExternalName ?? "Destinazione esterna";
+  if (entry.operationType === "TRANSFER") return entry.toCharacterName ?? shopTransactionLabel(entry.toShopName, entry.toShopOwnerName) ?? "-";
   return entry.toCharacterName ?? entry.fromCharacterName ?? "Portafoglio";
 }
 

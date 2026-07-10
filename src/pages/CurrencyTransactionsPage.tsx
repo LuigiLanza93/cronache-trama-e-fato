@@ -11,8 +11,16 @@ import { fetchCurrencyTransactions, undoCurrencyTransactionRequest, type Currenc
 const CURRENCY_TRANSACTIONS_GRID =
   "132px minmax(140px,0.9fr) minmax(160px,0.9fr) minmax(160px,0.9fr) minmax(180px,1fr) minmax(200px,1.2fr) 156px 88px 88px";
 
+function shopLabel(name: string | null, ownerName: string | null) {
+  if (!name && !ownerName) return null;
+  if (name && ownerName) return `${name} (${ownerName})`;
+  return name ?? ownerName;
+}
+
 function currencyFrom(entry: CurrencyTransactionEntry) {
-  if (entry.operationType === "ADD") return entry.fromExternalName ?? "Origine esterna";
+  if (entry.operationType === "ADD") {
+    return entry.fromCharacterName ?? shopLabel(entry.fromShopName, entry.fromShopOwnerName) ?? entry.fromExternalName ?? "Origine esterna";
+  }
   if (entry.operationType === "REMOVE") return entry.fromCharacterName ?? "—";
   if (entry.operationType === "TRANSFER") return entry.fromCharacterName ?? "—";
   return entry.fromCharacterName ?? entry.toCharacterName ?? "Portafoglio";
@@ -20,7 +28,9 @@ function currencyFrom(entry: CurrencyTransactionEntry) {
 
 function currencyTo(entry: CurrencyTransactionEntry) {
   if (entry.operationType === "ADD") return entry.toCharacterName ?? "—";
-  if (entry.operationType === "REMOVE") return entry.toExternalName ?? "Destinazione esterna";
+  if (entry.operationType === "REMOVE") {
+    return entry.toCharacterName ?? shopLabel(entry.toShopName, entry.toShopOwnerName) ?? entry.toExternalName ?? "Destinazione esterna";
+  }
   if (entry.operationType === "TRANSFER") return entry.toCharacterName ?? "—";
   return entry.toCharacterName ?? entry.fromCharacterName ?? "Portafoglio";
 }
