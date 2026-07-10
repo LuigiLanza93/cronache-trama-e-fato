@@ -987,11 +987,24 @@ function undoCurrencyTransactionOperation(operationId, actorUserId = null) {
   return { ok: true, affectedCharacterIds: Array.from(affectedCharacterIds) };
 }
 
+let transactionDepth = 0;
+
 function runInTransaction(work) {
+  if (transactionDepth > 0) {
+    transactionDepth += 1;
+    try {
+      return work();
+    } finally {
+      transactionDepth -= 1;
+    }
+  }
+
   sqlite.exec("BEGIN");
+  transactionDepth = 1;
   try {
     const result = work();
     sqlite.exec("COMMIT");
+    transactionDepth = 0;
     return result;
   } catch (error) {
     try {
@@ -999,6 +1012,7 @@ function runInTransaction(work) {
     } catch {
       // Surface the original failure even if rollback also fails.
     }
+    transactionDepth = 0;
     throw error;
   }
 }
@@ -2166,6 +2180,7 @@ function serializeDmShop(row, items = []) {
   return {
     id: row.id, externalKey: row.externalKey, name: row.name, description: row.description,
     ownerName: row.ownerName, ownerDescription: row.ownerDescription, city: row.city,
+    dmNotes: row.dmNotes ?? "",
     discountDc: row.discountDc ?? null,
     balance: { cp: Number(row.cp), sp: Number(row.sp), ep: Number(row.ep), gp: Number(row.gp) },
     archivedAt: row.archivedAt ?? null, createdAt: row.createdAt, updatedAt: row.updatedAt, items,
@@ -2210,6 +2225,7 @@ function normalizeShopPayload(payload, { partial = false } = {}) {
   const result = {
     externalKey: text("externalKey"), name: text("name", true), description: text("description"),
     ownerName: text("ownerName", true), ownerDescription: text("ownerDescription"), city: text("city", true),
+    dmNotes: text("dmNotes"),
   };
   if (result.externalKey && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(result.externalKey)) {
     throw new Error("externalKey must use kebab-case");
@@ -2256,6 +2272,624 @@ function validateShopItemInstance(definition, quantity, data, currentShopItemId 
   const characterCount = Number(sqlite.prepare('SELECT COUNT(*) AS count FROM "CharacterItem" WHERE itemDefinitionId = ?').get(definition.id)?.count ?? 0);
   const shopCount = Number(sqlite.prepare('SELECT COUNT(*) AS count FROM "ShopItem" WHERE itemDefinitionId = ? AND id <> ?').get(definition.id, currentShopItemId ?? "")?.count ?? 0);
   if (characterCount + shopCount > 0) throw new Error("A UNIQUE item can only exist once across inventories and shops");
+}
+
+function readOrCreateShopCharacterProfile(shopId, slug) {
+  requireShopTables();
+  if (!tableExists("ShopCharacterProfile")) throw new Error("Shop profile database migration has not been applied");
+  const shop = sqlite.prepare('SELECT id, name FROM "Shop" WHERE id = ? LIMIT 1').get(shopId);
+  if (!shop) return null;
+  const character = sqlite
+    .prepare('SELECT id, slug, name, characterType FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(slug);
+  if (!character || String(character.characterType).toUpperCase() !== "PG") {
+    const error = new Error("Character not found");
+    error.status = 404;
+    throw error;
+  }
+
+  let profile = sqlite
+    .prepare('SELECT * FROM "ShopCharacterProfile" WHERE shopId = ? AND characterId = ? LIMIT 1')
+    .get(shopId, character.id);
+  if (!profile) {
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+    sqlite.prepare(`INSERT INTO "ShopCharacterProfile" (id, shopId, characterId, visitCount, dmNotes, usualDiscountPercent, lastVisitedAt, createdAt, updatedAt)
+      VALUES (?, ?, ?, 0, '', NULL, NULL, ?, ?)`)
+      .run(id, shopId, character.id, now, now);
+    profile = sqlite.prepare('SELECT * FROM "ShopCharacterProfile" WHERE id = ?').get(id);
+  }
+
+  return {
+    id: profile.id,
+    shopId: profile.shopId,
+    characterId: profile.characterId,
+    character: {
+      slug: character.slug,
+      name: character.name,
+    },
+    visitCount: Number(profile.visitCount ?? 0),
+    dmNotes: profile.dmNotes ?? "",
+    usualDiscountPercent: profile.usualDiscountPercent ?? null,
+    lastVisitedAt: profile.lastVisitedAt ?? null,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  };
+}
+
+function readShopVisitById(visitId) {
+  if (!tableExists("ShopVisit")) throw new Error("Shop visit database migration has not been applied");
+  return sqlite.prepare(`
+    SELECT
+      v.*,
+      s.name AS shopName,
+      s.ownerName AS shopOwnerName,
+      s.city AS shopCity,
+      s.archivedAt AS shopArchivedAt,
+      c.slug AS characterSlug,
+      c.name AS characterName
+    FROM "ShopVisit" v
+    JOIN "Shop" s ON s.id = v.shopId
+    JOIN "Character" c ON c.id = v.characterId
+    WHERE v.id = ?
+    LIMIT 1
+  `).get(visitId);
+}
+
+function readActiveShopVisit() {
+  if (!tableExists("ShopVisit")) throw new Error("Shop visit database migration has not been applied");
+  return sqlite.prepare(`
+    SELECT
+      v.*,
+      s.name AS shopName,
+      s.ownerName AS shopOwnerName,
+      s.city AS shopCity,
+      s.archivedAt AS shopArchivedAt,
+      c.slug AS characterSlug,
+      c.name AS characterName
+    FROM "ShopVisit" v
+    JOIN "Shop" s ON s.id = v.shopId
+    JOIN "Character" c ON c.id = v.characterId
+    WHERE v.status = 'ACTIVE'
+    ORDER BY v.openedAt DESC
+    LIMIT 1
+  `).get();
+}
+
+function canAccessShopVisit(user, visitRow) {
+  if (!visitRow) return false;
+  if (user?.role === "dm") return true;
+  return canAccessCharacter(user, visitRow.characterSlug, readOwnership());
+}
+
+function serializeShopVisit(row, { dm = false } = {}) {
+  if (!row) return null;
+  const base = {
+    id: row.id,
+    shopId: row.shopId,
+    characterId: row.characterId,
+    status: row.status,
+    discountPercent: Number(row.discountPercent ?? 0),
+    openedAt: row.openedAt,
+    closedAt: row.closedAt ?? null,
+    closeReason: row.closeReason ?? null,
+    updatedAt: row.updatedAt,
+    shop: {
+      id: row.shopId,
+      name: row.shopName,
+      ownerName: row.shopOwnerName,
+      city: row.shopCity,
+    },
+    character: {
+      slug: row.characterSlug,
+      name: row.characterName,
+    },
+  };
+  if (!dm) return base;
+  return {
+    ...base,
+    dmNotes: row.dmNotes ?? "",
+    openedByUserId: row.openedByUserId ?? null,
+    closedByUserId: row.closedByUserId ?? null,
+  };
+}
+
+function readShopItemFeatureStates(shopItemIds) {
+  if (!tableExists("ShopItemFeatureState") || !Array.isArray(shopItemIds) || !shopItemIds.length) return {};
+  return sqlite.prepare(`
+    SELECT shopItemId, itemFeatureId, usesSpent, lastResetAt
+    FROM "ShopItemFeatureState"
+    WHERE shopItemId IN (${shopItemIds.map(() => "?").join(",")})
+  `).all(...shopItemIds).reduce((acc, row) => {
+    if (!acc[row.shopItemId]) acc[row.shopItemId] = [];
+    acc[row.shopItemId].push({
+      itemFeatureId: row.itemFeatureId,
+      usesSpent: Number(row.usesSpent ?? 0),
+      lastResetAt: row.lastResetAt ?? null,
+    });
+    return acc;
+  }, {});
+}
+
+function readKnownShopItemIds(shopId, characterId) {
+  if (!tableExists("ShopItemKnowledge")) return new Set();
+  return new Set(
+    sqlite.prepare('SELECT shopItemId FROM "ShopItemKnowledge" WHERE shopId = ? AND characterId = ?')
+      .all(shopId, characterId)
+      .map((row) => String(row.shopItemId))
+  );
+}
+
+function serializeShopVisitItem(row, { dm = false, known = false, featureStates = [] } = {}) {
+  const definition = row.itemDefinitionId ? readItemDefinition(row.itemDefinitionId) : null;
+  const definitionPlayerVisible = definition ? definition.playerVisible !== false : true;
+  const visibleToPlayer = definitionPlayerVisible && (!row.isSecret || known);
+  if (!dm && !visibleToPlayer) return null;
+  const base = {
+    id: row.id,
+    shopId: row.shopId,
+    itemDefinitionId: row.itemDefinitionId ?? null,
+    name: row.nameOverride ?? definition?.name ?? "Oggetto senza nome",
+    description: row.descriptionOverride ?? definition?.description ?? null,
+    nameOverride: row.nameOverride ?? null,
+    descriptionOverride: row.descriptionOverride ?? null,
+    quantity: Number(row.quantity ?? 0),
+    isSecret: !!row.isSecret,
+    revealed: !row.isSecret || known,
+    sortOrder: Number(row.sortOrder ?? 0),
+    instanceNotes: row.instanceNotes ?? null,
+    data: parseJsonString(row.data, null),
+    featureStates,
+    definition,
+  };
+  if (!dm) return base;
+  return {
+    ...base,
+    visibleToPlayer,
+    price: { currency: row.priceCurrency, amount: Number(row.priceAmount ?? 0) },
+    discoveryDc: row.discoveryDc ?? null,
+    dmNotes: row.dmNotes ?? null,
+  };
+}
+
+function readShopVisitItemsForCharacter(visitRow, { dm = false } = {}) {
+  if (!visitRow || !tableExists("ShopItem")) return [];
+  const rows = sqlite.prepare('SELECT * FROM "ShopItem" WHERE shopId = ? ORDER BY sortOrder ASC, createdAt ASC').all(visitRow.shopId);
+  const featureStatesByItemId = readShopItemFeatureStates(rows.map((row) => row.id));
+  const knownIds = readKnownShopItemIds(visitRow.shopId, visitRow.characterId);
+  return rows
+    .map((row) => serializeShopVisitItem(row, {
+      dm,
+      known: knownIds.has(row.id),
+      featureStates: featureStatesByItemId[row.id] ?? [],
+    }))
+    .filter(Boolean);
+}
+
+function serializeShopVisitDetail(row, { dm = false } = {}) {
+  const visit = serializeShopVisit(row, { dm });
+  if (!visit) return null;
+  return {
+    ...visit,
+    items: readShopVisitItemsForCharacter(row, { dm }),
+    inventory: readCharacterInventoryItemsBySlug(row.characterSlug) ?? [],
+    negotiations: readShopVisitNegotiations(row, { dm }),
+  };
+}
+
+function shopTradeSellerSide(direction) {
+  return direction === "CHARACTER_TO_SHOP" ? "CHARACTER" : "SHOP";
+}
+
+function readShopNegotiationById(negotiationId) {
+  if (!tableExists("ShopNegotiation")) throw new Error("Shop negotiation database migration has not been applied");
+  return sqlite.prepare(`
+    SELECT
+      n.*,
+      v.shopId,
+      v.status AS visitStatus,
+      c.slug AS characterSlug,
+      c.name AS characterName
+    FROM "ShopNegotiation" n
+    JOIN "ShopVisit" v ON v.id = n.visitId
+    JOIN "Character" c ON c.id = n.characterId
+    WHERE n.id = ?
+    LIMIT 1
+  `).get(negotiationId);
+}
+
+function readShopOffersByNegotiationIds(negotiationIds) {
+  if (!tableExists("ShopOffer") || !Array.isArray(negotiationIds) || !negotiationIds.length) return {};
+  return sqlite.prepare(`
+    SELECT o.*, u.displayName AS proposedByName, u.role AS proposedByRole
+    FROM "ShopOffer" o
+    LEFT JOIN "User" u ON u.id = o.proposedByUserId
+    WHERE o.negotiationId IN (${negotiationIds.map(() => "?").join(",")})
+    ORDER BY o.negotiationId ASC, o.sequence ASC
+  `).all(...negotiationIds).reduce((acc, row) => {
+    if (!acc[row.negotiationId]) acc[row.negotiationId] = [];
+    acc[row.negotiationId].push({
+      id: row.id,
+      negotiationId: row.negotiationId,
+      sequence: Number(row.sequence ?? 0),
+      proposedByUserId: row.proposedByUserId,
+      proposedByName: row.proposedByName ?? null,
+      proposedByRole: row.proposedByRole ?? null,
+      sellerSide: row.sellerSide,
+      currency: row.currency,
+      amount: Number(row.amount ?? 0),
+      createdAt: row.createdAt,
+    });
+    return acc;
+  }, {});
+}
+
+function serializeShopNegotiation(row, offers = []) {
+  const sortedOffers = [...offers].sort((a, b) => a.sequence - b.sequence);
+  return {
+    id: row.id,
+    visitId: row.visitId,
+    characterId: row.characterId,
+    direction: row.direction,
+    shopItemId: row.shopItemId ?? null,
+    characterItemId: row.characterItemId ?? null,
+    quantity: Number(row.quantity ?? 1),
+    status: row.status,
+    itemNameSnapshot: row.itemNameSnapshot,
+    itemDetailsSnapshot: row.itemDetailsSnapshot ?? null,
+    createdAt: row.createdAt,
+    resolvedAt: row.resolvedAt ?? null,
+    updatedAt: row.updatedAt,
+    offers: sortedOffers,
+    currentOffer: sortedOffers[sortedOffers.length - 1] ?? null,
+  };
+}
+
+function readShopVisitNegotiations(visitRow) {
+  if (!visitRow || !tableExists("ShopNegotiation")) return [];
+  const rows = sqlite.prepare(`
+    SELECT *
+    FROM "ShopNegotiation"
+    WHERE visitId = ?
+    ORDER BY createdAt DESC
+  `).all(visitRow.id);
+  const offersByNegotiationId = readShopOffersByNegotiationIds(rows.map((row) => row.id));
+  return rows.map((row) => serializeShopNegotiation(row, offersByNegotiationId[row.id] ?? []));
+}
+
+function normalizeShopOfferPayload(payload) {
+  const amount = normalizeShopInteger(payload?.amount, "amount", { min: 1 });
+  const currency = String(payload?.currency ?? "GP").toUpperCase();
+  if (!["CP", "SP", "EP", "GP"].includes(currency)) throw new Error("currency must be CP, SP, EP or GP");
+  return { amount, currency };
+}
+
+function createShopOffer(negotiationId, sequence, proposedByUserId, sellerSide, payload) {
+  const offer = normalizeShopOfferPayload(payload);
+  sqlite.prepare(`INSERT INTO "ShopOffer" (id, negotiationId, sequence, proposedByUserId, sellerSide, currency, amount, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(crypto.randomUUID(), negotiationId, sequence, proposedByUserId, sellerSide, offer.currency, offer.amount, new Date().toISOString());
+}
+
+function broadcastShopNegotiationState(io, visitId) {
+  const visit = readShopVisitById(visitId);
+  broadcastShopVisit(io, "shop-visit:updated", visit);
+}
+
+function readItemDefinitionBySlug(slug) {
+  const row = tableExists("ItemDefinition")
+    ? sqlite.prepare('SELECT id FROM "ItemDefinition" WHERE slug = ? LIMIT 1').get(slug)
+    : null;
+  return row?.id ? readItemDefinition(row.id) : null;
+}
+
+function buildShopImportCatalogIndex() {
+  return readItemDefinitions().map((item) => ({
+    slug: item.slug,
+    name: item.name,
+    category: item.category,
+    rarity: item.rarity ?? null,
+    stackable: !!item.stackable,
+    equippable: !!item.equippable,
+    playerVisible: !!item.playerVisible,
+  }));
+}
+
+function assertPlainObject(value, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
+  }
+}
+
+function validateImportObjectKeys(value, allowedKeys, label, errors) {
+  for (const key of Object.keys(value ?? {})) {
+    if (!allowedKeys.includes(key)) errors.push(`${label}: unsupported field "${key}"`);
+  }
+}
+
+function validateShopImportPayload(payload) {
+  requireShopTables();
+  assertPlainObject(payload, "payload");
+
+  const errors = [];
+  const warnings = [];
+  const prepared = [];
+  const externalKeys = new Set();
+  const inlineSlugs = new Set();
+  const importedUniqueDefinitionIds = new Set();
+  const existingShopKey = sqlite.prepare('SELECT 1 FROM "Shop" WHERE externalKey = ? LIMIT 1');
+  const existingSlug = sqlite.prepare('SELECT 1 FROM "ItemDefinition" WHERE slug = ? LIMIT 1');
+  const kebabPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+  validateImportObjectKeys(payload, ["formatVersion", "shops"], "root", errors);
+  if (payload.formatVersion !== 1) errors.push("root.formatVersion must be 1");
+  if (!Array.isArray(payload.shops) || payload.shops.length === 0) errors.push("root.shops must be a non-empty array");
+
+  const shops = Array.isArray(payload.shops) ? payload.shops : [];
+  shops.forEach((shop, shopIndex) => {
+    const shopLabel = `shops[${shopIndex}]`;
+    if (!shop || typeof shop !== "object" || Array.isArray(shop)) {
+      errors.push(`${shopLabel} must be an object`);
+      return;
+    }
+
+    validateImportObjectKeys(shop, ["externalKey", "name", "description", "city", "owner", "balance", "discountDc", "dmNotes", "items"], shopLabel, errors);
+    const externalKey = String(shop.externalKey ?? "").trim();
+    const name = String(shop.name ?? "").trim();
+    const description = String(shop.description ?? "");
+    const city = String(shop.city ?? "").trim();
+    const owner = shop.owner && typeof shop.owner === "object" && !Array.isArray(shop.owner) ? shop.owner : {};
+    const balance = shop.balance && typeof shop.balance === "object" && !Array.isArray(shop.balance) ? shop.balance : {};
+
+    if (!externalKey || !kebabPattern.test(externalKey)) errors.push(`${shopLabel}.externalKey must use kebab-case`);
+    if (externalKey && externalKeys.has(externalKey)) errors.push(`${shopLabel}.externalKey duplicates another shop in the import`);
+    if (externalKey) externalKeys.add(externalKey);
+    if (externalKey && existingShopKey.get(externalKey)) errors.push(`${shopLabel}.externalKey already exists`);
+    if (!name) errors.push(`${shopLabel}.name is required`);
+    if (!city) errors.push(`${shopLabel}.city is required`);
+    validateImportObjectKeys(owner, ["name", "description"], `${shopLabel}.owner`, errors);
+    if (!String(owner.name ?? "").trim()) errors.push(`${shopLabel}.owner.name is required`);
+    validateImportObjectKeys(balance, ["cp", "sp", "ep", "gp"], `${shopLabel}.balance`, errors);
+    for (const currency of ["cp", "sp", "ep", "gp"]) {
+      try { normalizeShopInteger(balance[currency], `${shopLabel}.balance.${currency}`); }
+      catch (error) { errors.push(String(error?.message ?? error)); }
+    }
+    try { normalizeShopInteger(shop.discountDc, `${shopLabel}.discountDc`, { min: 1, max: 1000, nullable: true }); }
+    catch (error) { errors.push(String(error?.message ?? error)); }
+    if (!Array.isArray(shop.items) || shop.items.length === 0) errors.push(`${shopLabel}.items must be a non-empty array`);
+
+    const preparedItems = [];
+    const items = Array.isArray(shop.items) ? shop.items : [];
+    items.forEach((item, itemIndex) => {
+      const itemLabel = `${shopLabel}.items[${itemIndex}]`;
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        errors.push(`${itemLabel} must be an object`);
+        return;
+      }
+      validateImportObjectKeys(item, ["catalogSlug", "definition", "quantity", "price", "isSecret", "discoveryDc", "nameOverride", "descriptionOverride", "dmNotes", "instanceNotes", "data", "featureStates"], itemLabel, errors);
+
+      const hasCatalogSlug = item.catalogSlug !== undefined && item.catalogSlug !== null;
+      const hasDefinition = item.definition !== undefined && item.definition !== null;
+      if (hasCatalogSlug === hasDefinition) errors.push(`${itemLabel} must include exactly one of catalogSlug or definition`);
+      const quantity = Number(item.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1) errors.push(`${itemLabel}.quantity must be a positive integer`);
+      const price = item.price && typeof item.price === "object" && !Array.isArray(item.price) ? item.price : {};
+      validateImportObjectKeys(price, ["currency", "amount"], `${itemLabel}.price`, errors);
+      const priceCurrency = String(price.currency ?? "").toUpperCase();
+      if (!SHOP_CURRENCIES.has(priceCurrency)) errors.push(`${itemLabel}.price.currency must be CP, SP, EP or GP`);
+      const priceAmount = Number(price.amount);
+      if (!Number.isInteger(priceAmount) || priceAmount < 1) errors.push(`${itemLabel}.price.amount must be a positive integer`);
+      if (typeof item.isSecret !== "boolean") errors.push(`${itemLabel}.isSecret must be boolean`);
+      try { normalizeShopInteger(item.discoveryDc, `${itemLabel}.discoveryDc`, { min: 1, max: 1000, nullable: true }); }
+      catch (error) { errors.push(String(error?.message ?? error)); }
+
+      let definition = null;
+      let definitionSource = "catalog";
+      if (hasCatalogSlug) {
+        const catalogSlug = String(item.catalogSlug ?? "").trim();
+        if (!kebabPattern.test(catalogSlug)) errors.push(`${itemLabel}.catalogSlug must use kebab-case`);
+        definition = readItemDefinitionBySlug(catalogSlug);
+        if (!definition) errors.push(`${itemLabel}.catalogSlug "${catalogSlug}" was not found`);
+      } else if (hasDefinition) {
+        definitionSource = "inline";
+        const rawDefinition = item.definition;
+        if (!rawDefinition || typeof rawDefinition !== "object" || Array.isArray(rawDefinition)) {
+          errors.push(`${itemLabel}.definition must be an object`);
+        } else {
+          const slug = String(rawDefinition.slug ?? "").trim();
+          if (!slug || !kebabPattern.test(slug)) errors.push(`${itemLabel}.definition.slug must use kebab-case`);
+          if (slug && inlineSlugs.has(slug)) errors.push(`${itemLabel}.definition.slug duplicates another inline definition in the import`);
+          if (slug) inlineSlugs.add(slug);
+          if (slug && existingSlug.get(slug)) errors.push(`${itemLabel}.definition.slug already exists`);
+          try {
+            definition = normalizeItemDefinitionPayload(rawDefinition);
+            if (definition.slug !== slug) errors.push(`${itemLabel}.definition.slug would be normalized to "${definition.slug}"`);
+          } catch (error) {
+            errors.push(`${itemLabel}.definition: ${String(error?.message ?? error)}`);
+          }
+        }
+      }
+
+      const featureStates = Array.isArray(item.featureStates) ? item.featureStates : [];
+      if (item.featureStates !== undefined && !Array.isArray(item.featureStates)) errors.push(`${itemLabel}.featureStates must be an array`);
+      if (featureStates.length > 0) {
+        if (quantity !== 1) errors.push(`${itemLabel}.featureStates require quantity 1`);
+        if (definition?.stackable) errors.push(`${itemLabel}.featureStates are not allowed on stackable items`);
+        const featureNames = new Map();
+        for (const feature of definition?.features ?? []) {
+          const key = String(feature.name ?? "").trim().toLowerCase();
+          featureNames.set(key, (featureNames.get(key) ?? 0) + 1);
+        }
+        for (const state of featureStates) {
+          const featureName = String(state?.featureName ?? "").trim();
+          const key = featureName.toLowerCase();
+          if (!featureName) errors.push(`${itemLabel}.featureStates.featureName is required`);
+          else if (!featureNames.has(key)) errors.push(`${itemLabel}.featureStates "${featureName}" does not match a feature`);
+          else if (featureNames.get(key) > 1) errors.push(`${itemLabel}.featureStates "${featureName}" is ambiguous`);
+          if (!Number.isInteger(Number(state?.usesSpent)) || Number(state?.usesSpent) < 0) errors.push(`${itemLabel}.featureStates "${featureName}" usesSpent must be a non-negative integer`);
+          if (state?.lastResetAt !== null && state?.lastResetAt !== undefined && Number.isNaN(Date.parse(String(state.lastResetAt)))) errors.push(`${itemLabel}.featureStates "${featureName}" lastResetAt must be a date-time or null`);
+        }
+      }
+
+      if (definition && Number.isInteger(quantity)) {
+        try { validateShopItemInstance(definition, quantity, item.data ?? null); }
+        catch (error) { errors.push(`${itemLabel}: ${String(error?.message ?? error)}`); }
+        if (String(definition.rarity ?? "").toUpperCase() === "UNIQUE") {
+          if (importedUniqueDefinitionIds.has(definition.id)) {
+            errors.push(`${itemLabel}: UNIQUE item "${definition.name}" is duplicated in the import`);
+          }
+          importedUniqueDefinitionIds.add(definition.id);
+        }
+      }
+
+      preparedItems.push({
+        source: definitionSource,
+        catalogSlug: hasCatalogSlug ? String(item.catalogSlug ?? "").trim() : null,
+        inlineDefinition: hasDefinition ? item.definition : null,
+        normalizedInlineDefinition: definitionSource === "inline" ? definition : null,
+        definition,
+        quantity,
+        priceCurrency,
+        priceAmount,
+        isSecret: item.isSecret === true,
+        discoveryDc: item.discoveryDc ?? null,
+        nameOverride: item.nameOverride == null ? null : String(item.nameOverride).trim() || null,
+        descriptionOverride: item.descriptionOverride == null ? null : String(item.descriptionOverride).trim() || null,
+        dmNotes: item.dmNotes == null ? null : String(item.dmNotes).trim() || null,
+        instanceNotes: item.instanceNotes == null ? null : String(item.instanceNotes).trim() || null,
+        data: item.data ?? null,
+        featureStates,
+      });
+    });
+
+    prepared.push({
+      externalKey,
+      name,
+      description,
+      city,
+      ownerName: String(owner.name ?? "").trim(),
+      ownerDescription: String(owner.description ?? ""),
+      dmNotes: shop.dmNotes == null ? "" : String(shop.dmNotes),
+      discountDc: shop.discountDc ?? null,
+      balance: {
+        cp: Number(balance.cp ?? 0),
+        sp: Number(balance.sp ?? 0),
+        ep: Number(balance.ep ?? 0),
+        gp: Number(balance.gp ?? 0),
+      },
+      items: preparedItems,
+    });
+  });
+
+  return { errors, warnings, prepared };
+}
+
+function previewShopImport(prepared, errors, warnings) {
+  return {
+    ok: errors.length === 0,
+    errors,
+    warnings,
+    summary: {
+      shops: prepared.length,
+      items: prepared.reduce((sum, shop) => sum + shop.items.length, 0),
+      newDefinitions: prepared.reduce((sum, shop) => sum + shop.items.filter((item) => item.source === "inline").length, 0),
+      reusedDefinitions: prepared.reduce((sum, shop) => sum + shop.items.filter((item) => item.source === "catalog").length, 0),
+    },
+    shops: prepared.map((shop) => ({
+      externalKey: shop.externalKey,
+      name: shop.name,
+      city: shop.city,
+      ownerName: shop.ownerName,
+      balance: shop.balance,
+      items: shop.items.map((item) => ({
+        source: item.source,
+        catalogSlug: item.catalogSlug,
+        definitionSlug: item.source === "inline" ? item.normalizedInlineDefinition?.slug ?? null : item.definition?.slug ?? null,
+        name: item.nameOverride || item.definition?.name || item.normalizedInlineDefinition?.name || "Oggetto",
+        quantity: item.quantity,
+        price: { currency: item.priceCurrency, amount: item.priceAmount },
+        isSecret: item.isSecret,
+      })),
+    })),
+  };
+}
+
+function applyShopImport(prepared) {
+  const createdShopIds = [];
+  runInTransaction(() => {
+    const now = new Date().toISOString();
+    const insertShop = sqlite.prepare(`INSERT INTO "Shop" (id, externalKey, name, description, ownerName, ownerDescription, city, dmNotes, discountDc, cp, sp, ep, gp, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    const insertShopItem = sqlite.prepare(`INSERT INTO "ShopItem" (id, shopId, itemDefinitionId, nameOverride, descriptionOverride, quantity, priceCurrency, priceAmount, isSecret, discoveryDc, sortOrder, dmNotes, instanceNotes, data, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    const insertFeatureState = sqlite.prepare(`INSERT INTO "ShopItemFeatureState" (id, shopItemId, itemFeatureId, usesSpent, lastResetAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?)`);
+
+    for (const shop of prepared) {
+      const shopId = crypto.randomUUID();
+      createdShopIds.push(shopId);
+      insertShop.run(
+        shopId,
+        shop.externalKey,
+        shop.name,
+        shop.description,
+        shop.ownerName,
+        shop.ownerDescription,
+        shop.city,
+        shop.dmNotes,
+        shop.discountDc,
+        shop.balance.cp,
+        shop.balance.sp,
+        shop.balance.ep,
+        shop.balance.gp,
+        now,
+        now
+      );
+
+      for (const [index, item] of shop.items.entries()) {
+        const definition = item.source === "inline"
+          ? saveItemDefinition(item.normalizedInlineDefinition)
+          : item.definition;
+        if (!definition) throw new Error(`Missing item definition for ${shop.name}`);
+        const shopItemId = crypto.randomUUID();
+        insertShopItem.run(
+          shopItemId,
+          shopId,
+          definition.id,
+          item.nameOverride,
+          item.descriptionOverride,
+          item.quantity,
+          item.priceCurrency,
+          item.priceAmount,
+          item.isSecret ? 1 : 0,
+          item.discoveryDc,
+          index * 100,
+          item.dmNotes,
+          item.instanceNotes,
+          item.data == null ? null : JSON.stringify(item.data),
+          now,
+          now
+        );
+
+        if (item.featureStates.length > 0) {
+          const fullDefinition = readItemDefinition(definition.id);
+          for (const state of item.featureStates) {
+            const feature = fullDefinition.features.find((entry) => entry.name.toLowerCase() === String(state.featureName).trim().toLowerCase());
+            if (!feature) throw new Error(`Feature not found after import: ${state.featureName}`);
+            insertFeatureState.run(
+              crypto.randomUUID(),
+              shopItemId,
+              feature.id,
+              Number(state.usesSpent),
+              state.lastResetAt ?? null,
+              now
+            );
+          }
+        }
+      }
+    }
+  });
+  return createdShopIds.map((id) => readDmShop(id)).filter(Boolean);
 }
 
 function readItemDefinitions() {
@@ -6245,6 +6879,20 @@ function broadcastCampaignDocumentReveal(io, document) {
   }
 }
 
+function broadcastShopVisit(io, eventName, visitRow) {
+  if (!io || !visitRow) return;
+  const payload = {
+    visit: serializeShopVisit(visitRow),
+    occurredAt: new Date().toISOString(),
+  };
+  const ownership = readOwnership();
+  const ownerUserId = ownership[visitRow.characterSlug];
+  if (ownerUserId) {
+    io.to(`user:${ownerUserId}`).emit(eventName, payload);
+  }
+  io.to(`char:${visitRow.characterSlug}`).emit(eventName, payload);
+}
+
 function writeCharacter(slug, data) {
   const basicInfo = data?.basicInfo ?? {};
   const createdByUserId = data?.createdBy?.userId ?? null;
@@ -7499,12 +8147,70 @@ async function start() {
     }
   });
 
+  app.get("/api/dm/shops/import/catalog-index", requireRole("dm"), (req, res) => {
+    try {
+      requireShopTables();
+      return res.json({ items: buildShopImportCatalogIndex() });
+    } catch (error) {
+      return res.status(503).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/dm/shops/import", requireRole("dm"), (req, res) => {
+    try {
+      const dryRun = req.body?.dryRun !== false;
+      const payload = req.body?.payload;
+      const { errors, warnings, prepared } = validateShopImportPayload(payload);
+      const preview = previewShopImport(prepared, errors, warnings);
+      if (errors.length > 0) {
+        return res.status(400).json({ error: "Shop import contains validation errors", details: preview });
+      }
+      if (dryRun) {
+        return res.json(preview);
+      }
+      const shops = applyShopImport(prepared);
+      return res.status(201).json({ ...preview, createdShops: shops });
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
   app.get("/api/dm/shops/:shopId", requireRole("dm"), (req, res) => {
     try {
       const shop = readDmShop(req.params.shopId);
       return shop ? res.json(shop) : res.status(404).json({ error: "Shop not found" });
     } catch (error) {
       return res.status(503).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.get("/api/dm/shops/:shopId/characters/:slug/profile", requireRole("dm"), (req, res) => {
+    try {
+      const profile = readOrCreateShopCharacterProfile(req.params.shopId, req.params.slug);
+      return profile ? res.json(profile) : res.status(404).json({ error: "Shop not found" });
+    } catch (error) {
+      const status = Number(error?.status ?? 400);
+      return res.status(status).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.patch("/api/dm/shops/:shopId/characters/:slug/profile", requireRole("dm"), (req, res) => {
+    try {
+      const current = readOrCreateShopCharacterProfile(req.params.shopId, req.params.slug);
+      if (!current) return res.status(404).json({ error: "Shop not found" });
+      const value = {};
+      if (req.body?.dmNotes !== undefined) value.dmNotes = String(req.body.dmNotes ?? "");
+      if (req.body?.usualDiscountPercent !== undefined) {
+        value.usualDiscountPercent = normalizeShopInteger(req.body.usualDiscountPercent, "usualDiscountPercent", { min: 0, max: 100, nullable: true });
+      }
+      const entries = Object.entries(value);
+      if (!entries.length) return res.status(400).json({ error: "No profile fields supplied" });
+      sqlite.prepare(`UPDATE "ShopCharacterProfile" SET ${entries.map(([key]) => `"${key}" = ?`).join(", ")}, updatedAt = ? WHERE id = ?`)
+        .run(...entries.map(([, item]) => item), new Date().toISOString(), current.id);
+      return res.json(readOrCreateShopCharacterProfile(req.params.shopId, req.params.slug));
+    } catch (error) {
+      const status = Number(error?.status ?? 400);
+      return res.status(status).json({ error: String(error?.message ?? error) });
     }
   });
 
@@ -7515,9 +8221,9 @@ async function start() {
       if (!value.externalKey) value.externalKey = createUniqueShopExternalKey(value.name);
       const now = new Date().toISOString();
       const id = crypto.randomUUID();
-      sqlite.prepare(`INSERT INTO "Shop" (id, externalKey, name, description, ownerName, ownerDescription, city, discountDc, cp, sp, ep, gp, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(id, value.externalKey, value.name, value.description, value.ownerName, value.ownerDescription, value.city, value.discountDc, value.cp, value.sp, value.ep, value.gp, now, now);
+      sqlite.prepare(`INSERT INTO "Shop" (id, externalKey, name, description, ownerName, ownerDescription, city, dmNotes, discountDc, cp, sp, ep, gp, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(id, value.externalKey, value.name, value.description, value.ownerName, value.ownerDescription, value.city, value.dmNotes, value.discountDc, value.cp, value.sp, value.ep, value.gp, now, now);
       return res.status(201).json(readDmShop(id));
     } catch (error) {
       const message = String(error?.message ?? error);
@@ -7597,6 +8303,280 @@ async function start() {
       return result.changes ? res.status(204).end() : res.status(404).json({ error: "Shop item not found" });
     } catch (error) {
       return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/dm/shop-visits", requireRole("dm"), (req, res) => {
+    try {
+      requireShopTables();
+      if (!tableExists("ShopVisit") || !tableExists("ShopCharacterProfile")) throw new Error("Shop visit database migration has not been applied");
+      const shopId = String(req.body?.shopId ?? "").trim();
+      const characterSlug = String(req.body?.characterSlug ?? req.body?.slug ?? "").trim();
+      const discountPercent = normalizeShopInteger(req.body?.discountPercent ?? 0, "discountPercent", { min: 0, max: 100 });
+      const dmNotes = String(req.body?.dmNotes ?? "");
+      const shop = sqlite.prepare('SELECT * FROM "Shop" WHERE id = ? LIMIT 1').get(shopId);
+      if (!shop) return res.status(404).json({ error: "Shop not found" });
+      if (shop.archivedAt) return res.status(409).json({ error: "Cannot open a visit for an archived shop" });
+      const character = sqlite.prepare('SELECT id, slug, name, characterType FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1').get(characterSlug);
+      if (!character || String(character.characterType).toUpperCase() !== "PG") return res.status(404).json({ error: "Character not found" });
+
+      const visitId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      runInTransaction(() => {
+        const active = sqlite.prepare('SELECT id FROM "ShopVisit" WHERE status = ? LIMIT 1').get("ACTIVE");
+        if (active) throw new Error("Another shop visit is already active");
+        sqlite.prepare(`INSERT INTO "ShopVisit" (id, shopId, characterId, status, discountPercent, openedByUserId, closedByUserId, closeReason, dmNotes, openedAt, closedAt, updatedAt)
+          VALUES (?, ?, ?, 'ACTIVE', ?, ?, NULL, NULL, ?, ?, NULL, ?)`)
+          .run(visitId, shopId, character.id, discountPercent, req.user?.id ?? null, dmNotes, now, now);
+
+        const profile = sqlite.prepare('SELECT id, visitCount FROM "ShopCharacterProfile" WHERE shopId = ? AND characterId = ? LIMIT 1').get(shopId, character.id);
+        if (profile) {
+          sqlite.prepare('UPDATE "ShopCharacterProfile" SET visitCount = ?, lastVisitedAt = ?, updatedAt = ? WHERE id = ?')
+            .run(Number(profile.visitCount ?? 0) + 1, now, now, profile.id);
+        } else {
+          sqlite.prepare(`INSERT INTO "ShopCharacterProfile" (id, shopId, characterId, visitCount, dmNotes, usualDiscountPercent, lastVisitedAt, createdAt, updatedAt)
+            VALUES (?, ?, ?, 1, '', NULL, ?, ?, ?)`)
+            .run(crypto.randomUUID(), shopId, character.id, now, now, now);
+        }
+      });
+
+      const createdVisit = readShopVisitById(visitId);
+      broadcastShopVisit(io, "shop-visit:opened", createdVisit);
+      return res.status(201).json(serializeShopVisitDetail(createdVisit, { dm: true }));
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      return res.status(message.includes("already active") ? 409 : 400).json({ error: message });
+    }
+  });
+
+  app.get("/api/shop-visits/active", requireAuth, (req, res) => {
+    try {
+      const visit = readActiveShopVisit();
+      if (!visit) return res.json(null);
+      if (!canAccessShopVisit(req.user, visit)) return res.json(null);
+      return res.json(serializeShopVisitDetail(visit, { dm: req.user?.role === "dm" }));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.get("/api/shop-visits/:visitId", requireAuth, (req, res) => {
+    try {
+      const visit = readShopVisitById(req.params.visitId);
+      if (!visit) return res.status(404).json({ error: "Shop visit not found" });
+      if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      return res.json(serializeShopVisitDetail(visit, { dm: req.user?.role === "dm" }));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.patch("/api/dm/shop-visits/:visitId", requireRole("dm"), (req, res) => {
+    try {
+      const visit = readShopVisitById(req.params.visitId);
+      if (!visit) return res.status(404).json({ error: "Shop visit not found" });
+      const value = {};
+      if (req.body?.discountPercent !== undefined) value.discountPercent = normalizeShopInteger(req.body.discountPercent, "discountPercent", { min: 0, max: 100 });
+      if (req.body?.dmNotes !== undefined) value.dmNotes = String(req.body.dmNotes ?? "");
+      const entries = Object.entries(value);
+      if (!entries.length) return res.status(400).json({ error: "No visit fields supplied" });
+      sqlite.prepare(`UPDATE "ShopVisit" SET ${entries.map(([key]) => `"${key}" = ?`).join(", ")}, updatedAt = ? WHERE id = ?`)
+        .run(...entries.map(([, item]) => item), new Date().toISOString(), req.params.visitId);
+      const updatedVisit = readShopVisitById(req.params.visitId);
+      broadcastShopVisit(io, "shop-visit:updated", updatedVisit);
+      return res.json(serializeShopVisitDetail(updatedVisit, { dm: true }));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/dm/shop-visits/:visitId/reveal/:shopItemId", requireRole("dm"), (req, res) => {
+    try {
+      requireShopTables();
+      if (!tableExists("ShopItemKnowledge")) throw new Error("Shop item knowledge database migration has not been applied");
+      const visit = readShopVisitById(req.params.visitId);
+      if (!visit) return res.status(404).json({ error: "Shop visit not found" });
+      if (visit.status !== "ACTIVE") return res.status(409).json({ error: "Shop visit is not active" });
+      const shopItem = sqlite.prepare('SELECT id, shopId FROM "ShopItem" WHERE id = ? AND shopId = ? LIMIT 1').get(req.params.shopItemId, visit.shopId);
+      if (!shopItem) return res.status(404).json({ error: "Shop item not found in this visit" });
+      const now = new Date().toISOString();
+      const revealNote = String(req.body?.revealNote ?? "").trim() || null;
+      sqlite.prepare(`INSERT OR IGNORE INTO "ShopItemKnowledge" (id, shopId, shopItemId, characterId, revealedByUserId, revealNote, revealedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`)
+        .run(crypto.randomUUID(), visit.shopId, shopItem.id, visit.characterId, req.user?.id ?? null, revealNote, now);
+      const updatedVisit = readShopVisitById(req.params.visitId);
+      broadcastShopVisit(io, "shop-visit:updated", updatedVisit);
+      return res.json(serializeShopVisitDetail(updatedVisit, { dm: true }));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/shop-visits/:visitId/negotiations", requireAuth, (req, res) => {
+    try {
+      requireShopTables();
+      if (!tableExists("ShopNegotiation") || !tableExists("ShopOffer")) throw new Error("Shop negotiation database migration has not been applied");
+      const visit = readShopVisitById(req.params.visitId);
+      if (!visit) return res.status(404).json({ error: "Shop visit not found" });
+      if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (visit.status !== "ACTIVE") return res.status(409).json({ error: "Shop visit is not active" });
+
+      const direction = String(req.body?.direction ?? "").toUpperCase();
+      if (!["SHOP_TO_CHARACTER", "CHARACTER_TO_SHOP"].includes(direction)) throw new Error("direction must be SHOP_TO_CHARACTER or CHARACTER_TO_SHOP");
+      const quantity = normalizeShopInteger(req.body?.quantity ?? 1, "quantity", { min: 1 });
+      const negotiationId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const sellerSide = shopTradeSellerSide(direction);
+      let shopItemId = null;
+      let characterItemId = null;
+      let itemNameSnapshot = "";
+      let itemDetailsSnapshot = null;
+
+      if (direction === "SHOP_TO_CHARACTER") {
+        shopItemId = String(req.body?.shopItemId ?? "").trim();
+        const shopItem = sqlite.prepare('SELECT * FROM "ShopItem" WHERE id = ? AND shopId = ? LIMIT 1').get(shopItemId, visit.shopId);
+        if (!shopItem) return res.status(404).json({ error: "Shop item not found in this visit" });
+        if (quantity > Number(shopItem.quantity ?? 0)) return res.status(409).json({ error: "Requested quantity is not available" });
+        if (req.user?.role !== "dm") {
+          const visibleItem = readShopVisitItemsForCharacter(visit, { dm: false }).find((item) => item.id === shopItemId);
+          if (!visibleItem) return res.status(403).json({ error: "Shop item is not visible to this character" });
+        }
+        const definition = shopItem.itemDefinitionId ? readItemDefinition(shopItem.itemDefinitionId) : null;
+        itemNameSnapshot = shopItem.nameOverride ?? definition?.name ?? "Oggetto senza nome";
+        itemDetailsSnapshot = shopItem.descriptionOverride ?? definition?.description ?? null;
+      } else {
+        characterItemId = String(req.body?.characterItemId ?? "").trim();
+        const inventoryItem = (readCharacterInventoryItemsBySlug(visit.characterSlug) ?? []).find((item) => item.id === characterItemId);
+        if (!inventoryItem) return res.status(404).json({ error: "Character item not found in this visit" });
+        if (quantity > Number(inventoryItem.quantity ?? 0)) return res.status(409).json({ error: "Requested quantity is not available" });
+        itemNameSnapshot = inventoryItem.itemName ?? "Oggetto senza nome";
+        itemDetailsSnapshot = inventoryItem.description ?? inventoryItem.detailSummary ?? null;
+      }
+
+      runInTransaction(() => {
+        sqlite.prepare(`INSERT INTO "ShopNegotiation" (
+          id, visitId, characterId, direction, shopItemId, characterItemId, quantity, status,
+          itemNameSnapshot, itemDetailsSnapshot, createdAt, resolvedAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, NULL, ?)`)
+          .run(negotiationId, visit.id, visit.characterId, direction, shopItemId, characterItemId, quantity, itemNameSnapshot, itemDetailsSnapshot, now, now);
+        createShopOffer(negotiationId, 1, req.user.id, sellerSide, req.body ?? {});
+      });
+
+      broadcastShopNegotiationState(io, visit.id);
+      return res.status(201).json(serializeShopVisitDetail(readShopVisitById(visit.id), { dm: req.user?.role === "dm" }));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/shop-negotiations/:negotiationId/counter-offers", requireAuth, (req, res) => {
+    try {
+      const negotiation = readShopNegotiationById(req.params.negotiationId);
+      if (!negotiation) return res.status(404).json({ error: "Shop negotiation not found" });
+      const visit = readShopVisitById(negotiation.visitId);
+      if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (negotiation.status !== "OPEN" || negotiation.visitStatus !== "ACTIVE") return res.status(409).json({ error: "Negotiation is not open" });
+      const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
+      const currentOffer = offers[offers.length - 1] ?? null;
+      if (currentOffer?.proposedByUserId === req.user.id) return res.status(409).json({ error: "The other side must answer the current offer first" });
+      createShopOffer(negotiation.id, Number(currentOffer?.sequence ?? 0) + 1, req.user.id, shopTradeSellerSide(negotiation.direction), req.body ?? {});
+      sqlite.prepare('UPDATE "ShopNegotiation" SET updatedAt = ? WHERE id = ?').run(new Date().toISOString(), negotiation.id);
+      broadcastShopNegotiationState(io, negotiation.visitId);
+      return res.json(serializeShopVisitDetail(readShopVisitById(negotiation.visitId), { dm: req.user?.role === "dm" }));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/shop-negotiations/:negotiationId/accept", requireAuth, (req, res) => {
+    try {
+      const negotiation = readShopNegotiationById(req.params.negotiationId);
+      if (!negotiation) return res.status(404).json({ error: "Shop negotiation not found" });
+      const visit = readShopVisitById(negotiation.visitId);
+      if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (negotiation.status !== "OPEN" || negotiation.visitStatus !== "ACTIVE") return res.status(409).json({ error: "Negotiation is not open" });
+      const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
+      const currentOffer = offers[offers.length - 1] ?? null;
+      if (!currentOffer) return res.status(409).json({ error: "Negotiation has no offer" });
+      if (currentOffer.proposedByUserId === req.user.id) return res.status(409).json({ error: "The other side must accept this offer" });
+      const now = new Date().toISOString();
+      const result = sqlite.prepare('UPDATE "ShopNegotiation" SET status = ?, resolvedAt = ?, updatedAt = ? WHERE id = ? AND status = ?')
+        .run("ACCEPTED", now, now, negotiation.id, "OPEN");
+      if (!result.changes) return res.status(409).json({ error: "Negotiation is already resolved" });
+      broadcastShopNegotiationState(io, negotiation.visitId);
+      return res.json(serializeShopVisitDetail(readShopVisitById(negotiation.visitId), { dm: req.user?.role === "dm" }));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/shop-negotiations/:negotiationId/reject", requireAuth, (req, res) => {
+    try {
+      const negotiation = readShopNegotiationById(req.params.negotiationId);
+      if (!negotiation) return res.status(404).json({ error: "Shop negotiation not found" });
+      const visit = readShopVisitById(negotiation.visitId);
+      if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (negotiation.status !== "OPEN") return res.status(409).json({ error: "Negotiation is not open" });
+      const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
+      const currentOffer = offers[offers.length - 1] ?? null;
+      if (!currentOffer) return res.status(409).json({ error: "Negotiation has no offer" });
+      if (currentOffer.proposedByUserId === req.user.id) return res.status(409).json({ error: "The other side must reject this offer" });
+      const now = new Date().toISOString();
+      const result = sqlite.prepare('UPDATE "ShopNegotiation" SET status = ?, resolvedAt = ?, updatedAt = ? WHERE id = ? AND status = ?')
+        .run("REJECTED", now, now, negotiation.id, "OPEN");
+      if (!result.changes) return res.status(409).json({ error: "Negotiation is already resolved" });
+      broadcastShopNegotiationState(io, negotiation.visitId);
+      return res.json(serializeShopVisitDetail(readShopVisitById(negotiation.visitId), { dm: req.user?.role === "dm" }));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/shop-negotiations/:negotiationId/withdraw", requireAuth, (req, res) => {
+    try {
+      const negotiation = readShopNegotiationById(req.params.negotiationId);
+      if (!negotiation) return res.status(404).json({ error: "Shop negotiation not found" });
+      const visit = readShopVisitById(negotiation.visitId);
+      if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (negotiation.status !== "OPEN") return res.status(409).json({ error: "Negotiation is not open" });
+      const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
+      const currentOffer = offers[offers.length - 1] ?? null;
+      if (currentOffer?.proposedByUserId !== req.user.id && req.user?.role !== "dm") return res.status(403).json({ error: "Only the current proposer can withdraw" });
+      const now = new Date().toISOString();
+      const result = sqlite.prepare('UPDATE "ShopNegotiation" SET status = ?, resolvedAt = ?, updatedAt = ? WHERE id = ? AND status = ?')
+        .run("WITHDRAWN", now, now, negotiation.id, "OPEN");
+      if (!result.changes) return res.status(409).json({ error: "Negotiation is already resolved" });
+      broadcastShopNegotiationState(io, negotiation.visitId);
+      return res.json(serializeShopVisitDetail(readShopVisitById(negotiation.visitId), { dm: req.user?.role === "dm" }));
+    } catch (error) {
+      return res.status(400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/shop-visits/:visitId/close", requireAuth, (req, res) => {
+    try {
+      const visit = readShopVisitById(req.params.visitId);
+      if (!visit) return res.status(404).json({ error: "Shop visit not found" });
+      if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (visit.status !== "ACTIVE") return res.status(409).json({ error: "Shop visit is already closed" });
+      const now = new Date().toISOString();
+      const status = req.user?.role === "dm" ? "CLOSED_BY_DM" : "CLOSED_BY_PLAYER";
+      const closeReason = String(req.body?.closeReason ?? "").trim() || null;
+      runInTransaction(() => {
+        const result = sqlite.prepare('UPDATE "ShopVisit" SET status = ?, closedByUserId = ?, closeReason = ?, closedAt = ?, updatedAt = ? WHERE id = ? AND status = ?')
+          .run(status, req.user?.id ?? null, closeReason, now, now, req.params.visitId, "ACTIVE");
+        if (!result.changes) throw new Error("Shop visit is already closed");
+        if (tableExists("ShopNegotiation")) {
+          sqlite.prepare('UPDATE "ShopNegotiation" SET status = ?, resolvedAt = ?, updatedAt = ? WHERE visitId = ? AND status = ?')
+            .run("EXPIRED", now, now, req.params.visitId, "OPEN");
+        }
+      });
+      const closedVisit = readShopVisitById(req.params.visitId);
+      broadcastShopVisit(io, "shop-visit:closed", closedVisit);
+      return res.json(serializeShopVisitDetail(closedVisit, { dm: req.user?.role === "dm" }));
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      return res.status(message.includes("already closed") ? 409 : 400).json({ error: message });
     }
   });
 

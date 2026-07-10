@@ -519,6 +519,7 @@ model Shop {
   ownerName        String
   ownerDescription String    @default("")
   city             String
+  dmNotes          String    @default("")
   discountDc       Int?
   cp               Int       @default(0)
   sp               Int       @default(0)

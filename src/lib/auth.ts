@@ -1204,6 +1204,7 @@ export type DmShop = {
   ownerName: string;
   ownerDescription: string;
   city: string;
+  dmNotes: string;
   discountDc: number | null;
   balance: { cp: number; sp: number; ep: number; gp: number };
   archivedAt: string | null;
@@ -1226,8 +1227,248 @@ export type ShopItemFormPayload = {
   instanceNotes?: string | null;
 };
 
+export type ShopImportPreviewItem = {
+  source: "catalog" | "inline";
+  catalogSlug: string | null;
+  definitionSlug: string | null;
+  name: string;
+  quantity: number;
+  price: { currency: ShopCurrency; amount: number };
+  isSecret: boolean;
+};
+
+export type ShopImportPreviewShop = {
+  externalKey: string;
+  name: string;
+  city: string;
+  ownerName: string;
+  balance: { cp: number; sp: number; ep: number; gp: number };
+  items: ShopImportPreviewItem[];
+};
+
+export type ShopImportPreview = {
+  ok: boolean;
+  errors: string[];
+  warnings: string[];
+  summary: {
+    shops: number;
+    items: number;
+    newDefinitions: number;
+    reusedDefinitions: number;
+  };
+  shops: ShopImportPreviewShop[];
+  createdShops?: DmShop[];
+};
+
+export type ShopImportCatalogIndex = {
+  items: Array<{
+    slug: string;
+    name: string;
+    category: string;
+    rarity: string | null;
+    stackable: boolean;
+    equippable: boolean;
+    playerVisible: boolean;
+  }>;
+};
+
+export type DmShopCharacterProfile = {
+  id: string;
+  shopId: string;
+  characterId: string;
+  character: {
+    slug: string;
+    name: string;
+  };
+  visitCount: number;
+  dmNotes: string;
+  usualDiscountPercent: number | null;
+  lastVisitedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ShopVisitItem = {
+  id: string;
+  shopId: string;
+  itemDefinitionId: string | null;
+  name: string;
+  description: string | null;
+  nameOverride: string | null;
+  descriptionOverride: string | null;
+  quantity: number;
+  isSecret: boolean;
+  revealed: boolean;
+  sortOrder: number;
+  instanceNotes: string | null;
+  data: unknown;
+  featureStates: CharacterItemFeatureStateEntry[];
+  definition: ItemDefinitionEntry | null;
+  visibleToPlayer?: boolean;
+  price?: { currency: ShopCurrency; amount: number };
+  discoveryDc?: number | null;
+  dmNotes?: string | null;
+};
+
+export type ShopOffer = {
+  id: string;
+  negotiationId: string;
+  sequence: number;
+  proposedByUserId: string;
+  proposedByName: string | null;
+  proposedByRole: string | null;
+  sellerSide: "SHOP" | "CHARACTER";
+  currency: ShopCurrency;
+  amount: number;
+  createdAt: string;
+};
+
+export type ShopNegotiation = {
+  id: string;
+  visitId: string;
+  characterId: string;
+  direction: "SHOP_TO_CHARACTER" | "CHARACTER_TO_SHOP";
+  shopItemId: string | null;
+  characterItemId: string | null;
+  quantity: number;
+  status: "OPEN" | "ACCEPTED" | "REJECTED" | "WITHDRAWN" | "EXPIRED";
+  itemNameSnapshot: string;
+  itemDetailsSnapshot: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  updatedAt: string;
+  offers: ShopOffer[];
+  currentOffer: ShopOffer | null;
+};
+
+export type ShopVisit = {
+  id: string;
+  shopId: string;
+  characterId: string;
+  status: "ACTIVE" | "CLOSED_BY_DM" | "CLOSED_BY_PLAYER" | "INTERRUPTED";
+  discountPercent: number;
+  openedAt: string;
+  closedAt: string | null;
+  closeReason: string | null;
+  updatedAt: string;
+  shop: {
+    id: string;
+    name: string;
+    ownerName: string;
+    city: string;
+  };
+  character: {
+    slug: string;
+    name: string;
+  };
+  dmNotes?: string;
+  openedByUserId?: string | null;
+  closedByUserId?: string | null;
+  items?: ShopVisitItem[];
+  inventory?: CharacterInventoryItemEntry[];
+  negotiations?: ShopNegotiation[];
+};
+
 export function fetchDmShops(includeArchived = false) {
   return authFetch<DmShop[]>(`/api/dm/shops${includeArchived ? "?includeArchived=true" : ""}`, { method: "GET" });
+}
+
+export function fetchDmShopImportCatalogIndex() {
+  return authFetch<ShopImportCatalogIndex>("/api/dm/shops/import/catalog-index", { method: "GET" });
+}
+
+export function importDmShopsRequest(payload: unknown, dryRun: boolean) {
+  return authFetch<ShopImportPreview>("/api/dm/shops/import", {
+    method: "POST",
+    body: JSON.stringify({ dryRun, payload }),
+  });
+}
+
+export function fetchDmShopCharacterProfile(shopId: string, slug: string) {
+  return authFetch<DmShopCharacterProfile>(`/api/dm/shops/${shopId}/characters/${slug}/profile`, { method: "GET" });
+}
+
+export function updateDmShopCharacterProfile(
+  shopId: string,
+  slug: string,
+  payload: { dmNotes?: string; usualDiscountPercent?: number | null }
+) {
+  return authFetch<DmShopCharacterProfile>(`/api/dm/shops/${shopId}/characters/${slug}/profile`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchActiveShopVisitRequest() {
+  return authFetch<ShopVisit | null>("/api/shop-visits/active", { method: "GET" });
+}
+
+export function fetchShopVisitRequest(visitId: string) {
+  return authFetch<ShopVisit>(`/api/shop-visits/${visitId}`, { method: "GET" });
+}
+
+export function openDmShopVisitRequest(payload: { shopId: string; characterSlug: string; discountPercent?: number; dmNotes?: string }) {
+  return authFetch<ShopVisit>("/api/dm/shop-visits", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateDmShopVisitRequest(visitId: string, payload: { discountPercent?: number; dmNotes?: string }) {
+  return authFetch<ShopVisit>(`/api/dm/shop-visits/${visitId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function revealDmShopVisitItemRequest(visitId: string, shopItemId: string, revealNote?: string) {
+  return authFetch<ShopVisit>(`/api/dm/shop-visits/${visitId}/reveal/${shopItemId}`, {
+    method: "POST",
+    body: JSON.stringify({ revealNote }),
+  });
+}
+
+export function createShopNegotiationRequest(
+  visitId: string,
+  payload: {
+    direction: "SHOP_TO_CHARACTER" | "CHARACTER_TO_SHOP";
+    shopItemId?: string;
+    characterItemId?: string;
+    quantity: number;
+    currency: ShopCurrency;
+    amount: number;
+  }
+) {
+  return authFetch<ShopVisit>(`/api/shop-visits/${visitId}/negotiations`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createShopCounterOfferRequest(negotiationId: string, payload: { currency: ShopCurrency; amount: number }) {
+  return authFetch<ShopVisit>(`/api/shop-negotiations/${negotiationId}/counter-offers`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function acceptShopNegotiationRequest(negotiationId: string) {
+  return authFetch<ShopVisit>(`/api/shop-negotiations/${negotiationId}/accept`, { method: "POST" });
+}
+
+export function rejectShopNegotiationRequest(negotiationId: string) {
+  return authFetch<ShopVisit>(`/api/shop-negotiations/${negotiationId}/reject`, { method: "POST" });
+}
+
+export function withdrawShopNegotiationRequest(negotiationId: string) {
+  return authFetch<ShopVisit>(`/api/shop-negotiations/${negotiationId}/withdraw`, { method: "POST" });
+}
+
+export function closeShopVisitRequest(visitId: string, closeReason?: string) {
+  return authFetch<ShopVisit>(`/api/shop-visits/${visitId}/close`, {
+    method: "POST",
+    body: JSON.stringify({ closeReason }),
+  });
 }
 
 export function createDmShopRequest(payload: ShopFormPayload) {

@@ -1,5 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import type { CampaignDocumentEntry, GameSessionState, InitiativeEncounterState, PlayerInitiativeTrackerView } from "@/lib/auth";
+import type { CampaignDocumentEntry, GameSessionState, InitiativeEncounterState, PlayerInitiativeTrackerView, ShopVisit } from "@/lib/auth";
 
 let socket: Socket | null = null;
 type PrivateMessagePayload = {
@@ -50,6 +50,10 @@ export type CampaignDocumentRevealPayload = {
     name: string;
   };
   revealedAt: string;
+};
+export type ShopVisitRealtimePayload = {
+  visit: ShopVisit;
+  occurredAt: string;
 };
 
 let playerWritesLocked = false;
@@ -285,6 +289,33 @@ export function onCampaignDocumentReveal(cb: (payload: CampaignDocumentRevealPay
   s.on("campaign-document:reveal", handler);
   return () => {
     s.off("campaign-document:reveal", handler);
+  };
+}
+
+export function onShopVisitOpened(cb: (payload: ShopVisitRealtimePayload) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: ShopVisitRealtimePayload) => cb(payload);
+  s.on("shop-visit:opened", handler);
+  return () => {
+    s.off("shop-visit:opened", handler);
+  };
+}
+
+export function onShopVisitUpdated(cb: (payload: ShopVisitRealtimePayload) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: ShopVisitRealtimePayload) => cb(payload);
+  s.on("shop-visit:updated", handler);
+  return () => {
+    s.off("shop-visit:updated", handler);
+  };
+}
+
+export function onShopVisitClosed(cb: (payload: ShopVisitRealtimePayload) => void): () => void {
+  const s = getSocket();
+  const handler = (payload: ShopVisitRealtimePayload) => cb(payload);
+  s.on("shop-visit:closed", handler);
+  return () => {
+    s.off("shop-visit:closed", handler);
   };
 }
 

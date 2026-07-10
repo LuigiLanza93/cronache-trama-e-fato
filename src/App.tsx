@@ -9,6 +9,7 @@ import ThemeToggle from "@/components/theme-toggle";
 import { AuthProvider, RequireAuth, RequireRole } from "@/components/auth-provider";
 import { GameSessionProvider } from "@/components/game-session-provider";
 import CampaignDocumentRevealListener from "@/components/campaign-document-reveal-listener";
+import ShopVisitListener from "@/components/shop-visit-listener";
 
 const Index = lazy(() => import("./pages/Index"));
 const DMDashboard = lazy(() => import("./pages/DMDashboard"));
@@ -53,6 +54,7 @@ const App = () => (
           <AuthProvider>
             <GameSessionProvider>
               <CampaignDocumentRevealListener />
+              <ShopVisitListener />
               <Suspense fallback={<RouteLoading />}>
                 <Routes>
                   <Route path="/" element={<Index />} />

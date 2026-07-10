@@ -3,8 +3,44 @@
 ## Stato del documento
 
 - Specifica funzionale e tecnica consolidata il 2026-07-03.
-- Nessuna implementazione applicativa ancora avviata.
-- Il documento e' il punto di ripartenza per suddividere lo sviluppo in task verificabili.
+- Aggiornata il 2026-07-10 durante l'avanzamento import, profili e visite su branch `dev`.
+- Implementazione avviata e consolidata nel commit `f8459b3` (`Add shop system foundation and DM management`).
+- Il documento resta il punto di ripartenza per proseguire lo sviluppo in task verificabili.
+
+### Stato implementazione al 2026-07-10
+
+Completato:
+
+- schema Prisma e migrazione SQL additiva per la fondazione negozi;
+- tabelle `Shop`, `ShopItem`, `ShopItemFeatureState`, `ShopCharacterProfile`, `ShopItemKnowledge`, `ShopVisit`, `ShopNegotiation`, `ShopOffer`;
+- estensioni opzionali ai ledger `InventoryTransaction` e `CurrencyTransaction` per collegare movimenti a negozi e negoziazioni;
+- API DM di base per lista, dettaglio, creazione, modifica e archiviazione negozi;
+- API DM di base per creazione, modifica ed eliminazione stock;
+- pagina `/dm/shops` per gestione negozi e stock, raggruppata per citta';
+- link alla gestione negozi dalla dashboard DM;
+- generazione automatica di `externalKey` in kebab-case a partire dal nome del negozio quando il DM non la specifica;
+- validazione backend di saldi, prezzi, quantita', segretezza, CD e vincoli base sugli oggetti;
+- guardia backend che segnala chiaramente quando la migrazione database dei negozi non e' stata applicata;
+- import JSON con dry-run, anteprima, riuso catalogo, definizioni inline e stato feature;
+- note DM permanenti del negozio;
+- profili negozio-PG con note private, contatore visite, ultima visita e sconto abituale;
+- apertura/chiusura visita DM di base con unicita' globale;
+- popup globale player per apertura visita, aggiornamento sconto, chiusura e recupero dopo refresh;
+- payload visita DM/player con vetrina, definizioni oggetto, stati feature e inventario PG;
+- rivelazione manuale degli oggetti segreti durante la visita, persistita per coppia negozio-PG.
+
+Verificato in locale:
+
+- `node --check server.js`;
+- `npx prisma validate`;
+- migrazione applicata e testata su copia del DB locale prima dell'applicazione al DB di sviluppo;
+- `npm run build`.
+
+Non ancora completato:
+
+- negoziazioni e controproposte di base;
+- compravendita atomica;
+- annullamento tecnico esteso ai negozi.
 
 ## Obiettivo
 
@@ -86,6 +122,13 @@ Nuova sezione `/dm/shops`, raggruppata per citta', con:
 - apertura di una visita selezionando il personaggio.
 - import rapido di uno o piu' negozi da JSON, con caricamento file o incolla, anteprima e conferma.
 
+Stato al 2026-07-10:
+
+- disponibile: creazione, modifica, archiviazione, raggruppamento per citta', saldo, dati proprietario, note DM, CD sconto, stock da `ItemDefinition`, quantita', prezzo base monovaluta, segretezza, CD di scoperta, import JSON, profili PG, apertura/chiusura visita DM di base, popup globale player, vetrina player/DM e rivelazione manuale;
+- non ancora disponibile: storico visite completo e compravendita atomica.
+
+Nota UX: in inserimento manuale la chiave esterna non deve essere inventata ogni volta dal DM. Se il campo resta vuoto, il server genera automaticamente uno slug kebab-case dal nome del negozio e aggiunge un suffisso numerico in caso di collisione.
+
 ## Import rapido dei negozi da JSON
 
 ### Scopo
@@ -134,6 +177,8 @@ Ogni negozio contiene:
 - `items`: stock non vuoto.
 
 `externalKey` serve a riconoscere import ripetuti senza affidarsi al nome, che puo' cambiare. In V1 l'import e' solo di creazione: se la chiave esiste, l'anteprima restituisce errore. Gli aggiornamenti si eseguono dalla UI; un futuro formato potra' introdurre esplicitamente modalita' `upsert`.
+
+Per la creazione manuale dalla UI, invece, `externalKey` e' opzionale: se omessa viene generata dal backend a partire da `name`. Se fornita manualmente o importata da JSON, deve essere kebab-case.
 
 ### Struttura del prodotto
 
@@ -428,6 +473,7 @@ Per gli stack comuni, lo stato per-copia non e' compatibile con una singola quan
 - `ownerName String`
 - `ownerDescription String @default("")`
 - `city String`
+- `dmNotes String @default("")`
 - `discountDc Int?`
 - `cp Int @default(0)`
 - `sp Int @default(0)`
@@ -614,6 +660,16 @@ Qualunque errore deve lasciare invariati tutti gli stati.
 - `POST /api/dm/shops/import` con `{ dryRun, payload }`
 - `GET /api/dm/shops/import/catalog-index` per esportare gli slug riutilizzabili dal generatore
 
+Stato al 2026-07-09:
+
+- implementati: `GET /api/dm/shops`, `GET /api/dm/shops/:shopId`, `POST /api/dm/shops`, `PATCH /api/dm/shops/:shopId`, `DELETE /api/dm/shops/:shopId`, `POST /api/dm/shops/:shopId/items`, `PATCH /api/dm/shops/:shopId/items/:shopItemId`, `DELETE /api/dm/shops/:shopId/items/:shopItemId`;
+- implementati anche dopo il primo blocco: `GET /api/dm/shops/import/catalog-index`, `POST /api/dm/shops/import`, `GET /api/dm/shops/:shopId/characters/:slug/profile`, `PATCH /api/dm/shops/:shopId/characters/:slug/profile`;
+- implementati anche come fondazione visita: `POST /api/dm/shop-visits`, `GET /api/shop-visits/active`, `GET /api/shop-visits/:visitId`, `PATCH /api/dm/shop-visits/:visitId`, `POST /api/shop-visits/:visitId/close`;
+- implementati come realtime iniziale: eventi `shop-visit:opened`, `shop-visit:updated`, `shop-visit:closed` e listener globale player con recupero tramite `GET /api/shop-visits/active`;
+- implementati payload visita con vetrina filtrata per player, stock completo DM, inventario PG e comando DM di rivelazione oggetto;
+- implementata Fase 4 base: `POST /api/shop-visits/:visitId/negotiations`, `POST /api/shop-negotiations/:id/counter-offers`, `POST /api/shop-negotiations/:id/accept`, `POST /api/shop-negotiations/:id/reject`, `POST /api/shop-negotiations/:id/withdraw`, serializer offerte nel payload visita e controlli UI DM/player;
+- da completare: storico visite UI e compravendita atomica.
+
 ### Visita
 
 - `POST /api/dm/shop-visits`
@@ -708,6 +764,8 @@ Se una condizione manca, l'annullamento tecnico viene rifiutato e si procede nar
 - implementare serializer DM/player e helper di dominio;
 - verificare `prisma validate` e schema su una copia del DB locale.
 
+Stato: completata per la fondazione DM. I serializer player verranno completati durante la fase visite.
+
 ### Fase 2: amministrazione negozi
 
 - CRUD negozi e stock;
@@ -715,6 +773,8 @@ Se una condizione manca, l'annullamento tecnico viene rifiutato e si procede nar
 - saldo, segreti, CD, prezzi e profili PG;
 - import JSON con schema versionato, anteprima transazionale e indice catalogo esportabile;
 - testare prima di committare.
+
+Stato: quasi completata. Sono pronti CRUD negozi, CRUD stock, pagina DM, saldo, note DM, segreti, CD, prezzi, import JSON e profili PG. Restano storico visite e apertura visita.
 
 ### Fase 3: visite sincronizzate
 
@@ -724,12 +784,16 @@ Se una condizione manca, l'annullamento tecnico viene rifiutato e si procede nar
 - contatore visite, note, sconto e rivelazioni permanenti;
 - recupero dopo refresh.
 
+Stato: avanzata. Implementate API e UI DM di base per aprire/chiudere una sola visita attiva globale, recuperare la visita attiva e aggiornare contatore/ultima visita del profilo PG. Lo sconto abituale del profilo PG viene proposto come default quando il DM apre una nuova visita. Implementato il popup globale player con eventi realtime e recupero dopo refresh. Implementati payload di vetrina/inventario e rivelazione manuale persistente degli oggetti segreti. Restano storico visite UI, negoziazioni e compravendita.
+
 ### Fase 4: negoziazioni
 
 - proposta iniziale e popup di conferma;
 - rilanci immutabili;
 - accettazione, rifiuto, ritiro e scadenza;
 - aggiornamenti realtime delle due viste.
+
+Stato: avviata e da affinare. Implementate catene `ShopNegotiation`/`ShopOffer`, proposta iniziale da stock o inventario, rilancio immutabile, accettazione/rifiuto dalla controparte, ritiro del proponente, scadenza alla chiusura visita e aggiornamento realtime tramite `shop-visit:updated`. Test manuale iniziale: le offerte arrivano correttamente, ma la UX e le regole di interazione vanno rifinite prima di considerare la fase completa. L'accettazione chiude l'accordo ma non muove ancora oggetti o monete: il trasferimento atomico resta Fase 5.
 
 ### Fase 5: compravendita atomica
 
@@ -761,12 +825,13 @@ Prima della produzione:
 
 Non usare `prisma db push` sulla produzione senza comando esplicito, backup appena creato e verifica della migrazione.
 
-## Primo task consigliato
+## Prossimo task consigliato
 
-Avviare la Fase 1 in un blocco circoscritto:
+Proseguire la Fase 2 con l'import JSON, perche' e' il prossimo blocco piu' utile senza introdurre ancora realtime o transazioni di compravendita:
 
-1. tradurre il modello proposto in Prisma;
-2. verificare le relazioni necessarie con `User`, `Character`, `ItemDefinition`, `InventoryTransaction` e `CurrencyTransaction`;
-3. preparare la migrazione additiva senza applicarla alla produzione;
-4. implementare soltanto helper e API di lettura/CRUD di base;
-5. fermarsi per test e conferma prima del commit, secondo il flusso operativo del progetto.
+1. implementare validazione server-side del formato `docs/shop-import-schema.json`;
+2. aggiungere endpoint `POST /api/dm/shops/import` con modalita' `dryRun`;
+3. produrre anteprima con errori, avvisi, definizioni nuove e riferimenti riusati;
+4. applicare l'import confermato in transazione unica;
+5. aggiungere UI di caricamento/incolla JSON nella pagina `/dm/shops`;
+6. fermarsi per test e conferma prima del commit, secondo il flusso operativo del progetto.
