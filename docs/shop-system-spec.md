@@ -81,7 +81,7 @@ Il sistema deve supportare compravendite negoziate, disponibilita' reale degli o
 
 ### Prezzi e offerte
 
-- I prezzi non vengono mai inviati nel payload player finche' non fanno parte di un'offerta.
+- Durante una visita il player vede il prezzo censito e, quando presente uno sconto personale, il prezzo unitario scontato nella stessa valuta. Il prezzo originale viene mostrato barrato; offerte e controproposte restano libere.
 - Ogni importo e' monovaluta: rame, argento, electrum oppure oro.
 - Il prezzo base dello stock e' un riferimento privato per il DM.
 - Il DM puo' vendere a qualsiasi prezzo, anche superiore al listino in base al rapporto col PG.

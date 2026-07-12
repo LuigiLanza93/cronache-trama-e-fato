@@ -687,6 +687,7 @@ model ShopOffer {
   sequence         Int
   proposedByUserId String
   sellerSide       ShopTradeSide
+  proposerSide     ShopTradeSide?
   currency         CurrencyType
   amount           Int
   createdAt        DateTime      @default(now())

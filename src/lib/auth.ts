@@ -1313,7 +1313,8 @@ export type ShopVisitItem = {
   featureStates: CharacterItemFeatureStateEntry[];
   definition: ItemDefinitionEntry | null;
   visibleToPlayer?: boolean;
-  price?: { currency: ShopCurrency; amount: number };
+  price: { currency: ShopCurrency; amount: number };
+  discountedPrice: { currency: ShopCurrency; amount: number };
   discoveryDc?: number | null;
   dmNotes?: string | null;
 };
@@ -1326,6 +1327,7 @@ export type ShopOffer = {
   proposedByName: string | null;
   proposedByRole: string | null;
   sellerSide: "SHOP" | "CHARACTER";
+  proposerSide: "SHOP" | "CHARACTER" | null;
   currency: ShopCurrency;
   amount: number;
   createdAt: string;
@@ -1369,6 +1371,7 @@ export type ShopVisit = {
   character: {
     slug: string;
     name: string;
+    balance: CurrencyBalance;
   };
   dmNotes?: string;
   openedByUserId?: string | null;

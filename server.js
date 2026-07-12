@@ -2417,6 +2417,7 @@ function serializeShopVisit(row, { dm = false } = {}) {
     character: {
       slug: row.characterSlug,
       name: row.characterName,
+      balance: readCharacterCurrencyBalance(row.characterId) ?? normalizeCurrencyBalance(),
     },
   };
   if (!dm) return base;
@@ -2454,7 +2455,13 @@ function readKnownShopItemIds(shopId, characterId) {
   );
 }
 
-function serializeShopVisitItem(row, { dm = false, known = false, featureStates = [] } = {}) {
+function discountedShopUnitPrice(amount, discountPercent) {
+  const baseAmount = Math.max(1, Number(amount ?? 0));
+  const discount = Math.min(100, Math.max(0, Number(discountPercent ?? 0)));
+  return Math.max(1, Math.ceil((baseAmount * (100 - discount)) / 100));
+}
+
+function serializeShopVisitItem(row, { dm = false, known = false, featureStates = [], discountPercent = 0 } = {}) {
   const definition = row.itemDefinitionId ? readItemDefinition(row.itemDefinitionId) : null;
   const definitionPlayerVisible = definition ? definition.playerVisible !== false : true;
   const visibleToPlayer = definitionPlayerVisible && (!row.isSecret || known);
@@ -2475,12 +2482,16 @@ function serializeShopVisitItem(row, { dm = false, known = false, featureStates 
     data: parseJsonString(row.data, null),
     featureStates,
     definition,
+    price: { currency: row.priceCurrency, amount: Number(row.priceAmount ?? 0) },
+    discountedPrice: {
+      currency: row.priceCurrency,
+      amount: discountedShopUnitPrice(row.priceAmount, discountPercent),
+    },
   };
   if (!dm) return base;
   return {
     ...base,
     visibleToPlayer,
-    price: { currency: row.priceCurrency, amount: Number(row.priceAmount ?? 0) },
     discoveryDc: row.discoveryDc ?? null,
     dmNotes: row.dmNotes ?? null,
   };
@@ -2496,6 +2507,7 @@ function readShopVisitItemsForCharacter(visitRow, { dm = false } = {}) {
       dm,
       known: knownIds.has(row.id),
       featureStates: featureStatesByItemId[row.id] ?? [],
+      discountPercent: visitRow.discountPercent,
     }))
     .filter(Boolean);
 }
@@ -2511,8 +2523,15 @@ function serializeShopVisitDetail(row, { dm = false } = {}) {
   };
 }
 
-function shopTradeSellerSide(direction) {
-  return direction === "CHARACTER_TO_SHOP" ? "CHARACTER" : "SHOP";
+function shopActorSide(user) {
+  return user?.role === "dm" ? "SHOP" : "CHARACTER";
+}
+
+function shopOfferProposerSide(offer) {
+  if (offer?.proposerSide) return offer.proposerSide;
+  // Compatibility before the additive proposerSide migration is applied.
+  if (offer?.proposedByRole) return offer.proposedByRole === "dm" ? "SHOP" : "CHARACTER";
+  return offer?.sellerSide ?? null;
 }
 
 function readShopNegotiationById(negotiationId) {
@@ -2550,6 +2569,7 @@ function readShopOffersByNegotiationIds(negotiationIds) {
       proposedByName: row.proposedByName ?? null,
       proposedByRole: row.proposedByRole ?? null,
       sellerSide: row.sellerSide,
+      proposerSide: row.proposerSide ?? null,
       currency: row.currency,
       amount: Number(row.amount ?? 0),
       createdAt: row.createdAt,
@@ -2600,9 +2620,15 @@ function normalizeShopOfferPayload(payload) {
 
 function createShopOffer(negotiationId, sequence, proposedByUserId, sellerSide, payload) {
   const offer = normalizeShopOfferPayload(payload);
-  sqlite.prepare(`INSERT INTO "ShopOffer" (id, negotiationId, sequence, proposedByUserId, sellerSide, currency, amount, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-    .run(crypto.randomUUID(), negotiationId, sequence, proposedByUserId, sellerSide, offer.currency, offer.amount, new Date().toISOString());
+  const columns = ["id", "negotiationId", "sequence", "proposedByUserId", "sellerSide"];
+  const values = [crypto.randomUUID(), negotiationId, sequence, proposedByUserId, sellerSide];
+  if (columnExists("ShopOffer", "proposerSide")) {
+    columns.push("proposerSide");
+    values.push(sellerSide);
+  }
+  columns.push("currency", "amount", "createdAt");
+  values.push(offer.currency, offer.amount, new Date().toISOString());
+  sqlite.prepare(`INSERT INTO "ShopOffer" (${columns.map((column) => `"${column}"`).join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`).run(...values);
 }
 
 function shopCurrencyKey(currency) {
@@ -7361,10 +7387,9 @@ function broadcastShopVisit(io, eventName, visitRow) {
   };
   const ownership = readOwnership();
   const ownerUserId = ownership[visitRow.characterSlug];
-  if (ownerUserId) {
-    io.to(`user:${ownerUserId}`).emit(eventName, payload);
-  }
-  io.to(`char:${visitRow.characterSlug}`).emit(eventName, payload);
+  const rooms = [`char:${visitRow.characterSlug}`, "role:dm"];
+  if (ownerUserId) rooms.push(`user:${ownerUserId}`);
+  io.to(rooms).emit(eventName, payload);
 }
 
 function writeCharacter(slug, data) {
@@ -8900,7 +8925,7 @@ async function start() {
       const quantity = normalizeShopInteger(req.body?.quantity ?? 1, "quantity", { min: 1 });
       const negotiationId = crypto.randomUUID();
       const now = new Date().toISOString();
-      const sellerSide = shopTradeSellerSide(direction);
+      const proposerSide = shopActorSide(req.user);
       let shopItemId = null;
       let characterItemId = null;
       let itemNameSnapshot = "";
@@ -8933,7 +8958,7 @@ async function start() {
           itemNameSnapshot, itemDetailsSnapshot, createdAt, resolvedAt, updatedAt
         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, NULL, ?)`)
           .run(negotiationId, visit.id, visit.characterId, direction, shopItemId, characterItemId, quantity, itemNameSnapshot, itemDetailsSnapshot, now, now);
-        createShopOffer(negotiationId, 1, req.user.id, sellerSide, req.body ?? {});
+        createShopOffer(negotiationId, 1, req.user.id, proposerSide, req.body ?? {});
       });
 
       broadcastShopNegotiationState(io, visit.id);
@@ -8952,8 +8977,8 @@ async function start() {
       if (negotiation.status !== "OPEN" || negotiation.visitStatus !== "ACTIVE") return res.status(409).json({ error: "Negotiation is not open" });
       const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
       const currentOffer = offers[offers.length - 1] ?? null;
-      if (currentOffer?.proposedByUserId === req.user.id) return res.status(409).json({ error: "The other side must answer the current offer first" });
-      createShopOffer(negotiation.id, Number(currentOffer?.sequence ?? 0) + 1, req.user.id, shopTradeSellerSide(negotiation.direction), req.body ?? {});
+      if (shopOfferProposerSide(currentOffer) === shopActorSide(req.user)) return res.status(409).json({ error: "The other side must answer the current offer first" });
+      createShopOffer(negotiation.id, Number(currentOffer?.sequence ?? 0) + 1, req.user.id, shopActorSide(req.user), req.body ?? {});
       sqlite.prepare('UPDATE "ShopNegotiation" SET updatedAt = ? WHERE id = ?').run(new Date().toISOString(), negotiation.id);
       broadcastShopNegotiationState(io, negotiation.visitId);
       return res.json(serializeShopVisitDetail(readShopVisitById(negotiation.visitId), { dm: req.user?.role === "dm" }));
@@ -8972,7 +8997,7 @@ async function start() {
       const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
       const currentOffer = offers[offers.length - 1] ?? null;
       if (!currentOffer) return res.status(409).json({ error: "Negotiation has no offer" });
-      if (currentOffer.proposedByUserId === req.user.id) return res.status(409).json({ error: "The other side must accept this offer" });
+      if (shopOfferProposerSide(currentOffer) === shopActorSide(req.user)) return res.status(409).json({ error: "The other side must accept this offer" });
       acceptShopNegotiationAtomically(negotiation, currentOffer, req.user?.id ?? null);
       broadcastShopNegotiationState(io, negotiation.visitId);
       const characterState = readCharacter(negotiation.characterSlug);
@@ -8993,7 +9018,7 @@ async function start() {
       const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
       const currentOffer = offers[offers.length - 1] ?? null;
       if (!currentOffer) return res.status(409).json({ error: "Negotiation has no offer" });
-      if (currentOffer.proposedByUserId === req.user.id) return res.status(409).json({ error: "The other side must reject this offer" });
+      if (shopOfferProposerSide(currentOffer) === shopActorSide(req.user)) return res.status(409).json({ error: "The other side must reject this offer" });
       const now = new Date().toISOString();
       const result = sqlite.prepare('UPDATE "ShopNegotiation" SET status = ?, resolvedAt = ?, updatedAt = ? WHERE id = ? AND status = ?')
         .run("REJECTED", now, now, negotiation.id, "OPEN");
@@ -10561,6 +10586,7 @@ async function start() {
     console.log(`[server] socket connected ${socket.id} from ${socket.handshake.address} user=${user?.username ?? "anon"}`);
     if (user?.id) {
       socket.join(`user:${user.id}`);
+      if (user.role === "dm") socket.join("role:dm");
       socket.emit("game-session:state", readGameSessionState());
     }
 

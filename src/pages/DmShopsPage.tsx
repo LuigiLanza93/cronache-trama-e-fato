@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Archive, ArrowLeft, Download, EyeOff, FileJson, PackagePlus, Pencil, Plus, Store, Trash2, Upload, Users } from "lucide-react";
 import { Link } from "react-router-dom";
-import { fetchCharacters } from "@/realtime";
+import { fetchCharacters, onShopVisitClosed, onShopVisitOpened, onShopVisitUpdated } from "@/realtime";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import ShopOfferDialog, { type ShopOfferDialogPayload } from "@/components/shop-offer-dialog";
+import { CurrencyWallet } from "@/components/currency-wallet";
+import { ShopOfferComparison } from "@/components/shop-offer-comparison";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,6 +128,13 @@ export default function DmShopsPage() {
   const [visitDiscount, setVisitDiscount] = useState(0);
   const [visitNotes, setVisitNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const negotiationStateKeys = useRef(new Map<string, string>());
+  const realtimeReady = useRef(false);
+  const [offerDialog, setOfferDialog] = useState<
+    | { kind: "proposal"; direction: "SHOP_TO_CHARACTER" | "CHARACTER_TO_SHOP"; itemId: string; itemName: string; maxQuantity: number; equipped: boolean; amount: number; currency: ShopCurrency }
+    | { kind: "counter" | "accept"; negotiation: ShopNegotiation }
+    | null
+  >(null);
 
   const reload = async () => {
     setLoading(true);
@@ -133,6 +143,10 @@ export default function DmShopsPage() {
       setShops(nextShops);
       setCatalog(nextCatalog);
       setActiveVisit(nextActiveVisit);
+      for (const negotiation of nextActiveVisit?.negotiations ?? []) {
+        negotiationStateKeys.current.set(negotiation.id, `${negotiation.status}:${negotiation.currentOffer?.sequence ?? 0}`);
+      }
+      realtimeReady.current = true;
       setCharacters(
         (Array.isArray(nextCharacters) ? nextCharacters : [])
           .filter((item: any) => item?.characterType === "pg")
@@ -147,6 +161,44 @@ export default function DmShopsPage() {
   };
 
   useEffect(() => { void reload(); }, [includeArchived]);
+
+  useEffect(() => {
+    const refreshVisit = ({ visit }: { visit: ShopVisit }) => {
+      if (visit.status !== "ACTIVE") {
+        setActiveVisit(null);
+        setVisitDetailOpen(false);
+        return;
+      }
+      void fetchShopVisitRequest(visit.id)
+        .then((detail) => {
+          setActiveVisit(detail);
+          for (const negotiation of detail.negotiations ?? []) {
+            const current = negotiation.currentOffer;
+            const stateKey = `${negotiation.status}:${current?.sequence ?? 0}`;
+            const previousKey = negotiationStateKeys.current.get(negotiation.id);
+            const proposerSide = current?.proposerSide ?? (current?.proposedByRole === "dm" ? "SHOP" : "CHARACTER");
+            if (realtimeReady.current && previousKey && previousKey !== stateKey) {
+              if (negotiation.status === "OPEN" && proposerSide === "CHARACTER" && current) {
+                toast.info(`Nuova proposta per ${negotiation.itemNameSnapshot}`, { description: `${current.amount} ${current.currency}` });
+                setVisitDetailOpen(true);
+              } else if (negotiation.status !== "OPEN") {
+                const outcome = negotiation.status === "ACCEPTED" ? "accettata" : negotiation.status === "REJECTED" ? "rifiutata" : negotiation.status === "WITHDRAWN" ? "ritirata" : "scaduta";
+                toast.info(`Trattativa ${outcome}`, { description: negotiation.itemNameSnapshot });
+              }
+            } else if (realtimeReady.current && !previousKey && negotiation.status === "OPEN" && proposerSide === "CHARACTER" && current) {
+              toast.info(`Nuova proposta per ${negotiation.itemNameSnapshot}`, { description: `${current.amount} ${current.currency}` });
+              setVisitDetailOpen(true);
+            }
+            negotiationStateKeys.current.set(negotiation.id, stateKey);
+          }
+        })
+        .catch((error) => toast.error(errorMessage(error)));
+    };
+    const offOpened = onShopVisitOpened(refreshVisit);
+    const offUpdated = onShopVisitUpdated(refreshVisit);
+    const offClosed = onShopVisitClosed(refreshVisit);
+    return () => { offOpened(); offUpdated(); offClosed(); };
+  }, []);
 
   const groupedShops = useMemo(() => {
     const groups = new Map<string, DmShop[]>();
@@ -361,6 +413,7 @@ export default function DmShopsPage() {
       });
       setActiveVisit(visit);
       setVisitDialogOpen(false);
+      setVisitDetailOpen(true);
       toast.success("Visita negozio aperta.");
       await reload();
     } catch (error) { toast.error(errorMessage(error)); }
@@ -373,6 +426,7 @@ export default function DmShopsPage() {
     try {
       await closeShopVisitRequest(activeVisit.id);
       setActiveVisit(null);
+      setVisitDetailOpen(false);
       toast.success("Visita negozio chiusa.");
       await reload();
     } catch (error) { toast.error(errorMessage(error)); }
@@ -399,62 +453,55 @@ export default function DmShopsPage() {
     finally { setSubmitting(false); }
   };
 
-  const askVisitMoney = () => {
-    const amount = Number(window.prompt("Importo dell'offerta", "1") ?? 0);
-    if (!Number.isFinite(amount) || amount < 1) return null;
-    const currency = String(window.prompt("Valuta: CP, SP, EP, GP", "GP") ?? "GP").toUpperCase();
-    if (!["CP", "SP", "EP", "GP"].includes(currency)) return null;
-    return { amount: Math.floor(amount), currency: currency as ShopCurrency };
+  const proposeVisitShopItem = (shopItemId: string) => {
+    const item = activeVisit?.items?.find((candidate) => candidate.id === shopItemId);
+    if (item) setOfferDialog({
+      kind: "proposal", direction: "SHOP_TO_CHARACTER", itemId: item.id, itemName: item.name,
+      maxQuantity: item.quantity, equipped: false, amount: item.discountedPrice.amount, currency: item.discountedPrice.currency,
+    });
   };
 
-  const proposeVisitShopItem = async (shopItemId: string) => {
-    if (!activeVisit) return;
-    const money = askVisitMoney();
-    if (!money) return;
-    setSubmitting(true);
-    try {
-      const detail = await createShopNegotiationRequest(activeVisit.id, {
-        direction: "SHOP_TO_CHARACTER",
-        shopItemId,
-        quantity: 1,
-        ...money,
-      });
-      setActiveVisit(detail);
-      toast.success("Proposta inviata.");
-    } catch (error) { toast.error(errorMessage(error)); }
-    finally { setSubmitting(false); }
+  const proposeVisitCharacterItem = (characterItemId: string) => {
+    const item = activeVisit?.inventory?.find((candidate) => candidate.id === characterItemId);
+    if (item) setOfferDialog({
+      kind: "proposal", direction: "CHARACTER_TO_SHOP", itemId: item.id, itemName: item.itemName,
+      maxQuantity: item.quantity, equipped: !!item.isEquipped, amount: 1, currency: "GP",
+    });
   };
 
-  const proposeVisitCharacterItem = async (characterItemId: string) => {
-    if (!activeVisit) return;
-    const money = askVisitMoney();
-    if (!money) return;
+  const submitVisitOfferDialog = async (payload: ShopOfferDialogPayload) => {
+    if (!activeVisit || !offerDialog) return;
     setSubmitting(true);
     try {
-      const detail = await createShopNegotiationRequest(activeVisit.id, {
-        direction: "CHARACTER_TO_SHOP",
-        characterItemId,
-        quantity: 1,
-        ...money,
-      });
+      let detail: ShopVisit;
+      if (offerDialog.kind === "proposal") {
+        detail = await createShopNegotiationRequest(activeVisit.id, {
+          direction: offerDialog.direction,
+          ...(offerDialog.direction === "SHOP_TO_CHARACTER" ? { shopItemId: offerDialog.itemId } : { characterItemId: offerDialog.itemId }),
+          ...payload,
+        });
+      } else if (offerDialog.kind === "counter") {
+        detail = await createShopCounterOfferRequest(offerDialog.negotiation.id, { amount: payload.amount, currency: payload.currency });
+      } else {
+        detail = await acceptShopNegotiationRequest(offerDialog.negotiation.id);
+      }
       setActiveVisit(detail);
-      toast.success("Proposta inviata.");
+      setOfferDialog(null);
+      toast.success("Trattativa aggiornata.");
     } catch (error) { toast.error(errorMessage(error)); }
     finally { setSubmitting(false); }
   };
 
   const answerVisitNegotiation = async (negotiation: ShopNegotiation, action: "accept" | "reject" | "withdraw" | "counter") => {
+    if (action === "accept" || action === "counter") {
+      setOfferDialog({ kind: action, negotiation });
+      return;
+    }
     setSubmitting(true);
     try {
-      let detail: ShopVisit;
-      if (action === "accept") detail = await acceptShopNegotiationRequest(negotiation.id);
-      else if (action === "reject") detail = await rejectShopNegotiationRequest(negotiation.id);
-      else if (action === "withdraw") detail = await withdrawShopNegotiationRequest(negotiation.id);
-      else {
-        const money = askVisitMoney();
-        if (!money) return;
-        detail = await createShopCounterOfferRequest(negotiation.id, money);
-      }
+      const detail = action === "reject"
+        ? await rejectShopNegotiationRequest(negotiation.id)
+        : await withdrawShopNegotiationRequest(negotiation.id);
       setActiveVisit(detail);
       toast.success("Trattativa aggiornata.");
     } catch (error) { toast.error(errorMessage(error)); }
@@ -538,7 +585,7 @@ export default function DmShopsPage() {
       </Dialog>
 
       <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{editingItem ? "Modifica prodotto" : `Aggiungi prodotto · ${itemShop?.name ?? ""}`}</DialogTitle><DialogDescription>Il prezzo base resterà privato fino alla formulazione di un'offerta.</DialogDescription></DialogHeader>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{editingItem ? "Modifica prodotto" : `Aggiungi prodotto · ${itemShop?.name ?? ""}`}</DialogTitle><DialogDescription>Il prezzo censito sarà mostrato durante la visita; l'eventuale sconto personale viene calcolato separatamente.</DialogDescription></DialogHeader>
           <div className="grid gap-4 py-2 md:grid-cols-2">
             <Field label="Cerca catalogo" wide><Input placeholder="Nome o slug…" value={catalogFilter} onChange={(e) => setCatalogFilter(e.target.value)} /></Field>
             <Field label="Oggetto di catalogo" wide><Select value={itemForm.itemDefinitionId} onValueChange={(value) => setItemForm({ ...itemForm, itemDefinitionId: value })}><SelectTrigger><SelectValue placeholder="Seleziona un oggetto" /></SelectTrigger><SelectContent>{filteredCatalog.map((item) => <SelectItem key={item.id} value={item.id}>{item.name} · {item.category}</SelectItem>)}</SelectContent></Select></Field>
@@ -581,23 +628,17 @@ export default function DmShopsPage() {
       <Dialog open={visitDetailOpen} onOpenChange={setVisitDetailOpen}>
         <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Dettaglio visita</DialogTitle>
+            <DialogTitle>Gestisci visita</DialogTitle>
             <DialogDescription>
               {activeVisit ? `${activeVisit.character.name} presso ${activeVisit.shop.name}.` : ""}
             </DialogDescription>
           </DialogHeader>
           {activeVisit ? (
-            <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+            <div className="flex min-h-0 flex-col gap-4 overflow-y-auto pr-1">
               {activeVisit.shop.balance ? (
-                <div className="flex flex-wrap gap-2 text-xs">
-                  {(["cp", "sp", "ep", "gp"] as const).map((currency) => (
-                    <Badge key={currency} variant="outline">
-                      {activeVisit.shop.balance?.[currency] ?? 0} {currency.toUpperCase()}
-                    </Badge>
-                  ))}
-                </div>
+                <CurrencyWallet balance={activeVisit.shop.balance} label="Cassa del negozio" compact className="rounded-md border bg-muted/20 p-3" />
               ) : null}
-              <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="order-2 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
                 <section className="rounded-md border p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <h3 className="font-heading text-xl text-primary">Stock DM</h3>
@@ -615,9 +656,15 @@ export default function DmShopsPage() {
                             </div>
                             <div className="mt-1 text-xs text-muted-foreground">
                               Qta {item.quantity}
-                              {item.price ? ` · ${item.price.amount} ${item.price.currency}` : ""}
+                              {` · ${item.price.amount} ${item.price.currency}`}
                               {item.discoveryDc ? ` · CD ${item.discoveryDc}` : ""}
                             </div>
+                            {item.discountedPrice.amount !== item.price.amount ? (
+                              <div className="mt-2 text-sm">
+                                Prezzo personale: <span className="text-muted-foreground line-through">{item.price.amount} {item.price.currency}</span>{" "}
+                                <span className="font-semibold text-primary">{item.discountedPrice.amount} {item.discountedPrice.currency}</span>
+                              </div>
+                            ) : null}
                           </div>
                           {item.isSecret && item.visibleToPlayer === false ? (
                             <Button size="sm" variant="outline" disabled={submitting} onClick={() => void revealVisitItem(item.id)}>
@@ -665,15 +712,15 @@ export default function DmShopsPage() {
                   </div>
                 </section>
               </div>
-              <section className="rounded-md border p-4">
+              <section className="order-1 rounded-md border border-primary/30 bg-primary/5 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h3 className="font-heading text-xl text-primary">Trattative</h3>
-                  <span className="text-xs text-muted-foreground">{activeVisit.negotiations?.length ?? 0} catene</span>
+                  <span className="text-xs text-muted-foreground">{activeVisit.negotiations?.filter((entry) => entry.status === "OPEN").length ?? 0} aperte</span>
                 </div>
                 <div className="space-y-2">
-                  {(activeVisit.negotiations ?? []).length ? (activeVisit.negotiations ?? []).map((negotiation) => {
+                  {(activeVisit.negotiations ?? []).length ? [...(activeVisit.negotiations ?? [])].sort((left, right) => Number(right.status === "OPEN") - Number(left.status === "OPEN")).map((negotiation) => {
                     const current = negotiation.currentOffer;
-                    const isDmProposal = current?.proposedByRole === "dm";
+                    const isDmProposal = current?.proposerSide ? current.proposerSide === "SHOP" : current?.proposedByRole === "dm";
                     return (
                       <div key={negotiation.id} className="rounded-md border bg-card/70 p-3">
                         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -682,7 +729,7 @@ export default function DmShopsPage() {
                             <div className="mt-1 text-xs text-muted-foreground">
                               {negotiation.direction === "SHOP_TO_CHARACTER" ? "Vendita negozio a PG" : "Acquisto dal PG"} · Qta {negotiation.quantity} · {negotiation.status}
                             </div>
-                            {current ? <div className="mt-2 text-sm">Offerta corrente: {current.amount} {current.currency}</div> : null}
+                            <ShopOfferComparison offers={negotiation.offers} viewerSide="SHOP" status={negotiation.status} className="mt-3" />
                           </div>
                           {negotiation.status === "OPEN" ? (
                             <div className="flex flex-wrap gap-2">
@@ -802,6 +849,32 @@ export default function DmShopsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {offerDialog ? (
+        <ShopOfferDialog
+          open
+          mode={offerDialog.kind}
+          itemName={offerDialog.kind === "proposal" ? offerDialog.itemName : offerDialog.negotiation.itemNameSnapshot}
+          actionDescription={offerDialog.kind === "accept"
+            ? "Controlla i dettagli: confermando, oggetto e monete verranno trasferiti immediatamente."
+            : offerDialog.kind === "counter"
+              ? "Inserisci il nuovo importo da proporre al player."
+              : offerDialog.direction === "SHOP_TO_CHARACTER"
+                ? "Formula una proposta di vendita al player."
+                : "Formula una proposta di acquisto dal player."}
+          initialValue={{
+            quantity: offerDialog.kind === "proposal" ? 1 : offerDialog.negotiation.quantity,
+            amount: offerDialog.kind === "proposal" ? offerDialog.amount : offerDialog.negotiation.currentOffer?.amount ?? 1,
+            currency: offerDialog.kind === "proposal" ? offerDialog.currency : offerDialog.negotiation.currentOffer?.currency ?? "GP",
+          }}
+          minQuantity={offerDialog.kind === "proposal" ? 1 : offerDialog.negotiation.quantity}
+          maxQuantity={offerDialog.kind === "proposal" ? offerDialog.maxQuantity : offerDialog.negotiation.quantity}
+          equippedWarning={offerDialog.kind === "proposal" ? offerDialog.equipped : false}
+          suggestedUnitAmount={offerDialog.kind === "proposal" ? offerDialog.amount : undefined}
+          loading={submitting}
+          onOpenChange={(open) => !open && setOfferDialog(null)}
+          onConfirm={submitVisitOfferDialog}
+        />
+      ) : null}
     </div>
   );
 }
