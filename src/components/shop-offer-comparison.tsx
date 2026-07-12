@@ -66,9 +66,9 @@ export function ShopOfferComparison({ offers, viewerSide, status, className }: S
       </div>
 
       {previous ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3" aria-label={`Offerta precedente ${previous.amount} ${previous.currency}; offerta attuale ${current.amount} ${current.currency}`}>
+        <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" aria-label={`Offerta precedente ${previous.amount} ${previous.currency}; offerta attuale ${current.amount} ${current.currency}`}>
           <OfferValue offer={previous} viewerSide={viewerSide} previous />
-          <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <ArrowRight className="h-4 w-4 rotate-90 text-muted-foreground sm:rotate-0" aria-hidden="true" />
           <OfferValue offer={current} viewerSide={viewerSide} />
         </div>
       ) : (

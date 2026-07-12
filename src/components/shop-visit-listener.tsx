@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { DoorOpen, MapPin, Store } from "lucide-react";
+import { BadgeDollarSign, Check, DoorOpen, ExternalLink, MapPin, Repeat2, ShoppingCart, Store, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ShopOfferDialog, { type ShopOfferDialogPayload } from "@/components/shop-offer-dialog";
 import { CurrencyWallet } from "@/components/currency-wallet";
@@ -41,8 +41,32 @@ export default function ShopVisitListener() {
     | null
   >(null);
   const [offerSubmitting, setOfferSubmitting] = useState(false);
+  const [visitClosing, setVisitClosing] = useState(false);
+  const [shopUnread, setShopUnread] = useState(false);
+  const [highlightedNegotiationId, setHighlightedNegotiationId] = useState<string | null>(null);
   const seenOpenKeys = useRef(new Set<string>());
   const negotiationStateKeys = useRef(new Map<string, string>());
+  const dismissedVisitIdRef = useRef<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const negotiationSectionRef = useRef<HTMLElement | null>(null);
+
+  const flashNegotiation = (negotiationId: string) => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    setHighlightedNegotiationId(negotiationId);
+    negotiationSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    highlightTimerRef.current = setTimeout(() => setHighlightedNegotiationId(null), 1800);
+  };
+
+  const minimizeVisit = (visitId: string) => {
+    dismissedVisitIdRef.current = visitId;
+    setDismissedVisitId(visitId);
+  };
+
+  const reopenVisit = () => {
+    dismissedVisitIdRef.current = null;
+    setDismissedVisitId(null);
+    setShopUnread(false);
+  };
 
   const hydrateVisit = async (visit: ShopVisit, notifyChanges = false) => {
     try {
@@ -51,15 +75,7 @@ export default function ShopVisitListener() {
         const current = negotiation.currentOffer;
         const stateKey = `${negotiation.status}:${current?.sequence ?? 0}`;
         const previousKey = negotiationStateKeys.current.get(negotiation.id);
-        if (notifyChanges && previousKey && previousKey !== stateKey) {
-          const proposerSide = current?.proposerSide ?? (current?.proposedByRole === "dm" ? "SHOP" : "CHARACTER");
-          if (negotiation.status === "OPEN" && proposerSide === "SHOP" && current) {
-            toast({ title: "Nuova proposta dal negozio", description: `${negotiation.itemNameSnapshot}: ${current.amount} ${current.currency}` });
-          } else if (negotiation.status !== "OPEN") {
-            const outcome = negotiation.status === "ACCEPTED" ? "accettata" : negotiation.status === "REJECTED" ? "rifiutata" : negotiation.status === "WITHDRAWN" ? "ritirata" : "scaduta";
-            toast({ title: `Trattativa ${outcome}`, description: negotiation.itemNameSnapshot });
-          }
-        }
+        if (notifyChanges && previousKey !== stateKey) flashNegotiation(negotiation.id);
         negotiationStateKeys.current.set(negotiation.id, stateKey);
       }
       setActiveVisit(detail);
@@ -75,7 +91,7 @@ export default function ShopVisitListener() {
       .then((visit) => {
         if (!cancelled && visit?.status === "ACTIVE") {
           void hydrateVisit(visit);
-          setDismissedVisitId(null);
+          minimizeVisit(visit.id);
         }
       })
       .catch(() => {});
@@ -94,10 +110,11 @@ export default function ShopVisitListener() {
       if (seenOpenKeys.current.has(key)) return;
       seenOpenKeys.current.add(key);
       void hydrateVisit(visit);
-      setDismissedVisitId(null);
+      reopenVisit();
     });
 
     const offUpdated = onShopVisitUpdated(({ visit }) => {
+      if (dismissedVisitIdRef.current === visit.id) setShopUnread(true);
       setActiveVisit((current) => {
         if (!current || current.id !== visit.id) return current;
         if (visit.status !== "ACTIVE") return null;
@@ -109,16 +126,15 @@ export default function ShopVisitListener() {
     const offClosed = onShopVisitClosed(({ visit }) => {
       setActiveVisit((current) => (current?.id === visit.id ? null : current));
       setDismissedVisitId((current) => (current === visit.id ? null : current));
-      toast({
-        title: "Visita conclusa",
-        description: `${visit.shop.name} non e piu una visita attiva.`,
-      });
+      dismissedVisitIdRef.current = null;
+      setShopUnread(false);
     });
 
     return () => {
       offOpened();
       offUpdated();
       offClosed();
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
     };
   }, [toast, user]);
 
@@ -186,21 +202,26 @@ export default function ShopVisitListener() {
   const openCharacterSheet = () => {
     if (!activeVisit) return;
     navigate(`/${activeVisit.character.slug}`);
-    setDismissedVisitId(activeVisit.id);
+    minimizeVisit(activeVisit.id);
   };
 
   const closeVisit = async () => {
-    if (!activeVisit) return;
+    if (!activeVisit || visitClosing) return;
+    setVisitClosing(true);
     try {
       const closed = await closeShopVisitRequest(activeVisit.id, "closed_by_player_popup");
       setActiveVisit(closed.status === "ACTIVE" ? closed : null);
       setDismissedVisitId(null);
+      dismissedVisitIdRef.current = null;
+      setShopUnread(false);
     } catch (error) {
       toast({
         title: "Visita non chiusa",
         description: String(error instanceof Error ? error.message : error),
         variant: "destructive",
       });
+    } finally {
+      setVisitClosing(false);
     }
   };
 
@@ -209,7 +230,7 @@ export default function ShopVisitListener() {
 
   return (
     <>
-    <Dialog open={!!visibleVisit} onOpenChange={(open) => !open && activeVisit && setDismissedVisitId(activeVisit.id)}>
+    <Dialog open={!!visibleVisit} onOpenChange={(open) => !open && activeVisit && minimizeVisit(activeVisit.id)}>
       <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col overflow-hidden border-primary/25 bg-card/95">
         <DialogHeader>
           <DialogTitle className="font-heading text-3xl text-primary">Visita al negozio</DialogTitle>
@@ -288,8 +309,8 @@ export default function ShopVisitListener() {
                         </div>
                       ) : null}
                       <div className="mt-3 flex justify-end">
-                        <Button type="button" size="sm" variant="outline" onClick={() => void proposeBuy(item.id)}>
-                          Offri acquisto
+                        <Button type="button" size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Fai un'offerta per acquistare ${item.name}`} title="Offri acquisto" onClick={() => void proposeBuy(item.id)}>
+                          <ShoppingCart className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -327,8 +348,8 @@ export default function ShopVisitListener() {
                         <p className="mt-2 text-sm text-muted-foreground">{item.detailSummary}</p>
                       ) : null}
                       <div className="mt-3 flex justify-end">
-                        <Button type="button" size="sm" variant="outline" onClick={() => void proposeSell(item.id)}>
-                          Proponi vendita
+                        <Button type="button" size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Proponi la vendita di ${item.itemName}`} title="Proponi vendita" onClick={() => void proposeSell(item.id)}>
+                          <BadgeDollarSign className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -341,7 +362,7 @@ export default function ShopVisitListener() {
               </section>
             </div>
 
-            <section className="order-1 rounded-md border border-primary/30 bg-primary/5 p-4">
+            <section ref={negotiationSectionRef} className="order-1 scroll-mt-2 rounded-md border border-primary/30 bg-primary/5 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="font-heading text-xl text-primary">Trattative</h3>
                 <span className="text-xs text-muted-foreground">{negotiations.filter((entry) => entry.status === "OPEN").length} aperte</span>
@@ -351,12 +372,12 @@ export default function ShopVisitListener() {
                   const current = negotiation.currentOffer;
                   const isCurrentProposer = current?.proposerSide ? current.proposerSide === "CHARACTER" : current?.proposedByRole !== "dm";
                   return (
-                    <div key={negotiation.id} className="rounded-md border border-border/60 bg-card/70 p-3">
+                    <div key={negotiation.id} className={`rounded-md border bg-card/70 p-3 transition-all ${highlightedNegotiationId === negotiation.id ? "animate-pulse border-primary ring-2 ring-primary/60 shadow-lg shadow-primary/15" : "border-border/60"}`}>
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <div className="font-medium">{negotiation.itemNameSnapshot}</div>
                           <div className="mt-1 text-xs text-muted-foreground">
-                            {negotiation.direction === "SHOP_TO_CHARACTER" ? "Acquisto dal negozio" : "Vendita al negozio"} · Qta {negotiation.quantity} · {negotiation.status}
+                            {negotiation.direction === "SHOP_TO_CHARACTER" ? "Acquisto dal negozio" : "Vendita al negozio"} · Qta {negotiation.quantity}
                           </div>
                           <ShopOfferComparison offers={negotiation.offers} viewerSide="CHARACTER" status={negotiation.status} className="mt-3" />
                         </div>
@@ -364,12 +385,12 @@ export default function ShopVisitListener() {
                           <div className="flex flex-wrap gap-2">
                             {!isCurrentProposer ? (
                               <>
-                                <Button type="button" size="sm" onClick={() => void answerNegotiation(negotiation, "accept")}>Accetta</Button>
-                                <Button type="button" size="sm" variant="outline" onClick={() => void answerNegotiation(negotiation, "counter")}>Rilancia</Button>
-                                <Button type="button" size="sm" variant="outline" onClick={() => void answerNegotiation(negotiation, "reject")}>Rifiuta</Button>
+                                <Button type="button" size="sm" className="rounded-full" onClick={() => void answerNegotiation(negotiation, "accept")}><Check className="mr-1.5 h-4 w-4" />Accetta</Button>
+                                <Button type="button" size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Rilancia l'offerta per ${negotiation.itemNameSnapshot}`} title="Rilancia" onClick={() => void answerNegotiation(negotiation, "counter")}><Repeat2 className="h-4 w-4" /></Button>
+                                <Button type="button" size="sm" variant="outline" className="rounded-full text-destructive" onClick={() => void answerNegotiation(negotiation, "reject")}><X className="mr-1.5 h-4 w-4" />Rifiuta</Button>
                               </>
                             ) : (
-                              <Button type="button" size="sm" variant="outline" onClick={() => void answerNegotiation(negotiation, "withdraw")}>Ritira</Button>
+                              <Button type="button" size="sm" variant="outline" className="rounded-full" onClick={() => void answerNegotiation(negotiation, "withdraw")}><Undo2 className="mr-1.5 h-4 w-4" />Ritira</Button>
                             )}
                           </div>
                         ) : null}
@@ -384,22 +405,44 @@ export default function ShopVisitListener() {
               </div>
             </section>
 
-            <div className="order-3 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" onClick={() => setDismissedVisitId(visibleVisit.id)}>
-                Nascondi
-              </Button>
-              <Button type="button" variant="destructive" onClick={closeVisit}>
+            <div className="sticky bottom-0 z-10 order-3 flex flex-col-reverse gap-2 border-t bg-card/95 py-3 backdrop-blur sm:flex-row sm:justify-end">
+              <Button type="button" variant="destructive" className="rounded-full" disabled={visitClosing} onClick={closeVisit}>
                 <DoorOpen className="mr-2 h-4 w-4" />
-                Lascia negozio
+                {visitClosing ? "Uscita…" : "Lascia negozio"}
               </Button>
-              <Button type="button" onClick={openCharacterSheet}>
-                Apri scheda
+              <Button type="button" className="rounded-full" onClick={openCharacterSheet}>
+                <ExternalLink className="mr-2 h-4 w-4" />Scheda
               </Button>
             </div>
           </div>
         ) : null}
       </DialogContent>
     </Dialog>
+    {activeVisit && dismissedVisitId === activeVisit.id ? (
+      <div className="group fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 z-[9999]">
+        <button
+          type="button"
+          disabled={visitClosing}
+          onClick={reopenVisit}
+          className={`relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary/60 bg-card/95 text-primary shadow-2xl backdrop-blur transition-transform hover:-translate-y-0.5 disabled:opacity-60 supports-[backdrop-filter]:bg-card/90 ${shopUnread ? "animate-pulse ring-4 ring-primary/35" : ""}`}
+          aria-label={`Riapri la visita presso ${activeVisit.shop.name}`}
+          title={`Riapri ${activeVisit.shop.name}`}
+        >
+          <ShoppingCart className="h-6 w-6" />
+          {shopUnread ? <span className="absolute -left-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-primary ring-2 ring-background" aria-hidden="true" /> : null}
+        </button>
+        <button
+          type="button"
+          disabled={visitClosing}
+          onClick={(event) => { event.stopPropagation(); void closeVisit(); }}
+          className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border border-border/60 bg-background/95 text-muted-foreground shadow-sm transition-colors hover:text-destructive disabled:opacity-60"
+          aria-label={`Lascia il negozio ${activeVisit.shop.name}`}
+          title="Lascia negozio"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    ) : null}
     {offerDialog ? (
       <ShopOfferDialog
         open

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Archive, ArrowLeft, Download, EyeOff, FileJson, PackagePlus, Pencil, Plus, Store, Trash2, Upload, Users } from "lucide-react";
+import { Archive, ArrowLeft, Check, DoorClosed, Download, Eye, EyeOff, FileJson, HandCoins, PackagePlus, Pencil, Plus, Repeat2, ScanSearch, ShoppingBasket, Store, Trash2, Undo2, Upload, Users, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchCharacters, onShopVisitClosed, onShopVisitOpened, onShopVisitUpdated } from "@/realtime";
 import { Badge } from "@/components/ui/badge";
@@ -130,11 +130,21 @@ export default function DmShopsPage() {
   const [submitting, setSubmitting] = useState(false);
   const negotiationStateKeys = useRef(new Map<string, string>());
   const realtimeReady = useRef(false);
+  const [highlightedNegotiationId, setHighlightedNegotiationId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const negotiationSectionRef = useRef<HTMLElement | null>(null);
   const [offerDialog, setOfferDialog] = useState<
     | { kind: "proposal"; direction: "SHOP_TO_CHARACTER" | "CHARACTER_TO_SHOP"; itemId: string; itemName: string; maxQuantity: number; equipped: boolean; amount: number; currency: ShopCurrency }
     | { kind: "counter" | "accept"; negotiation: ShopNegotiation }
     | null
   >(null);
+
+  const flashNegotiation = (negotiationId: string) => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    setHighlightedNegotiationId(negotiationId);
+    negotiationSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    highlightTimerRef.current = setTimeout(() => setHighlightedNegotiationId(null), 1800);
+  };
 
   const reload = async () => {
     setLoading(true);
@@ -178,15 +188,12 @@ export default function DmShopsPage() {
             const previousKey = negotiationStateKeys.current.get(negotiation.id);
             const proposerSide = current?.proposerSide ?? (current?.proposedByRole === "dm" ? "SHOP" : "CHARACTER");
             if (realtimeReady.current && previousKey && previousKey !== stateKey) {
+              flashNegotiation(negotiation.id);
               if (negotiation.status === "OPEN" && proposerSide === "CHARACTER" && current) {
-                toast.info(`Nuova proposta per ${negotiation.itemNameSnapshot}`, { description: `${current.amount} ${current.currency}` });
                 setVisitDetailOpen(true);
-              } else if (negotiation.status !== "OPEN") {
-                const outcome = negotiation.status === "ACCEPTED" ? "accettata" : negotiation.status === "REJECTED" ? "rifiutata" : negotiation.status === "WITHDRAWN" ? "ritirata" : "scaduta";
-                toast.info(`Trattativa ${outcome}`, { description: negotiation.itemNameSnapshot });
               }
             } else if (realtimeReady.current && !previousKey && negotiation.status === "OPEN" && proposerSide === "CHARACTER" && current) {
-              toast.info(`Nuova proposta per ${negotiation.itemNameSnapshot}`, { description: `${current.amount} ${current.currency}` });
+              flashNegotiation(negotiation.id);
               setVisitDetailOpen(true);
             }
             negotiationStateKeys.current.set(negotiation.id, stateKey);
@@ -197,7 +204,10 @@ export default function DmShopsPage() {
     const offOpened = onShopVisitOpened(refreshVisit);
     const offUpdated = onShopVisitUpdated(refreshVisit);
     const offClosed = onShopVisitClosed(refreshVisit);
-    return () => { offOpened(); offUpdated(); offClosed(); };
+    return () => {
+      offOpened(); offUpdated(); offClosed();
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
   }, []);
 
   const groupedShops = useMemo(() => {
@@ -487,7 +497,6 @@ export default function DmShopsPage() {
       }
       setActiveVisit(detail);
       setOfferDialog(null);
-      toast.success("Trattativa aggiornata.");
     } catch (error) { toast.error(errorMessage(error)); }
     finally { setSubmitting(false); }
   };
@@ -503,7 +512,6 @@ export default function DmShopsPage() {
         ? await rejectShopNegotiationRequest(negotiation.id)
         : await withdrawShopNegotiationRequest(negotiation.id);
       setActiveVisit(detail);
-      toast.success("Trattativa aggiornata.");
     } catch (error) { toast.error(errorMessage(error)); }
     finally { setSubmitting(false); }
   };
@@ -513,13 +521,13 @@ export default function DmShopsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild><Link to="/dm"><ArrowLeft className="h-4 w-4" /></Link></Button>
+            <Button variant="ghost" size="icon" className="rounded-full" asChild><Link to="/dm" aria-label="Torna alla dashboard DM" title="Torna alla dashboard DM"><ArrowLeft className="h-4 w-4" /></Link></Button>
             <div><h1 className="font-heading text-3xl font-bold text-primary">Negozi</h1><p className="text-sm text-muted-foreground">Gestione permanente di botteghe, saldi e stock.</p></div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
             <label className="flex items-center gap-2 text-sm"><Switch checked={includeArchived} onCheckedChange={setIncludeArchived} /> Archiviati</label>
-            <Button variant="outline" onClick={() => setImportDialogOpen(true)}><FileJson className="mr-2 h-4 w-4" />Import JSON</Button>
-            <Button onClick={openNewShop}><Plus className="mr-2 h-4 w-4" />Nuovo negozio</Button>
+            <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" aria-label="Importa negozi da JSON" title="Importa negozi da JSON" onClick={() => setImportDialogOpen(true)}><FileJson className="h-4 w-4" /></Button>
+            <Button className="rounded-full px-4" aria-label="Crea nuovo negozio" onClick={openNewShop}><Plus className="mr-2 h-4 w-4" />Negozio</Button>
           </div>
         </header>
 
@@ -530,8 +538,8 @@ export default function DmShopsPage() {
               <p className="text-sm text-muted-foreground">{activeVisit.character.name} presso {activeVisit.shop.ownerName} - sconto visita {activeVisit.discountPercent}%</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => void openActiveVisitDetail()}>Dettaglio visita</Button>
-              <Button variant="outline" disabled={submitting} onClick={() => void closeActiveVisit()}>Chiudi visita</Button>
+              <Button className="rounded-full" onClick={() => void openActiveVisitDetail()}><Store className="mr-2 h-4 w-4" />Gestisci</Button>
+              <Button variant="destructive" className="rounded-full" disabled={submitting} onClick={() => void closeActiveVisit()}><DoorClosed className="mr-2 h-4 w-4" />Chiudi visita</Button>
             </div>
           </Card>
         )}
@@ -546,17 +554,17 @@ export default function DmShopsPage() {
                 <Card key={shop.id} className={`p-5 ${shop.archivedAt ? "opacity-65" : ""}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-heading text-xl font-semibold">{shop.name}</h3>{shop.archivedAt && <Badge variant="secondary">Archiviato</Badge>}</div><p className="text-sm text-muted-foreground">{shop.ownerName} · {shop.externalKey}</p></div>
-                    <div className="flex gap-1"><Button variant="ghost" size="icon" disabled={!!activeVisit || !!shop.archivedAt} onClick={() => openVisitDialog(shop)}><Store className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => openProfiles(shop)}><Users className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => openEditShop(shop)}><Pencil className="h-4 w-4" /></Button>{!shop.archivedAt && <Button variant="ghost" size="icon" onClick={() => void archiveShop(shop)}><Archive className="h-4 w-4" /></Button>}</div>
+                    <div className="flex gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Apri visita presso ${shop.name}`} title="Apri visita" disabled={!!activeVisit || !!shop.archivedAt} onClick={() => openVisitDialog(shop)}><Store className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Gestisci rapporti di ${shop.name}`} title="Rapporti con i PG" onClick={() => openProfiles(shop)}><Users className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Modifica ${shop.name}`} title="Modifica negozio" onClick={() => openEditShop(shop)}><Pencil className="h-4 w-4" /></Button>{!shop.archivedAt && <Button variant="ghost" size="icon" className="rounded-full" aria-label={`Archivia ${shop.name}`} title="Archivia negozio" onClick={() => void archiveShop(shop)}><Archive className="h-4 w-4" /></Button>}</div>
                   </div>
                   {shop.description && <p className="mt-3 text-sm">{shop.description}</p>}
                   {shop.dmNotes && <p className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-900">Note DM: {shop.dmNotes}</p>}
                   <div className="mt-4 flex flex-wrap gap-2 text-xs">{(["cp", "sp", "ep", "gp"] as const).map((currency) => <Badge key={currency} variant="outline">{shop.balance[currency]} {currency.toUpperCase()}</Badge>)}{shop.discountDc && <Badge variant="outline">CD sconto {shop.discountDc}</Badge>}</div>
-                  <div className="mt-5 flex items-center justify-between"><h4 className="font-medium">Stock ({shop.items.length})</h4>{!shop.archivedAt && <Button size="sm" variant="outline" onClick={() => openNewItem(shop)}><PackagePlus className="mr-2 h-4 w-4" />Aggiungi</Button>}</div>
+                  <div className="mt-5 flex items-center justify-between"><h4 className="font-medium">Stock ({shop.items.length})</h4>{!shop.archivedAt && <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Aggiungi prodotto a ${shop.name}`} title="Aggiungi prodotto" onClick={() => openNewItem(shop)}><PackagePlus className="h-4 w-4" /></Button>}</div>
                   <div className="mt-2 divide-y rounded-md border">
                     {shop.items.length === 0 ? <p className="p-4 text-center text-sm text-muted-foreground">Stock vuoto</p> : shop.items.map((item) => (
                       <div key={item.id} className="flex items-center justify-between gap-3 p-3">
                         <div className="min-w-0"><div className="flex items-center gap-2"><span className="truncate font-medium">{item.nameOverride || item.definition?.name || "Definizione rimossa"}</span>{item.isSecret && <EyeOff className="h-3.5 w-3.5 text-amber-600" />}</div><p className="text-xs text-muted-foreground">Qtà {item.quantity} · {item.price.amount} {item.price.currency}{item.discoveryDc ? ` · CD ${item.discoveryDc}` : ""}</p></div>
-                        <div className="flex shrink-0 gap-1"><Button variant="ghost" size="icon" onClick={() => openEditItem(shop, item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => void deleteItem(shop, item)}><Trash2 className="h-4 w-4" /></Button></div>
+                        <div className="flex shrink-0 gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label="Modifica prodotto" title="Modifica prodotto" onClick={() => openEditItem(shop, item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label="Elimina prodotto" title="Elimina prodotto" onClick={() => void deleteItem(shop, item)}><Trash2 className="h-4 w-4" /></Button></div>
                       </div>
                     ))}
                   </div>
@@ -578,9 +586,9 @@ export default function DmShopsPage() {
             <Field label="Descrizione proprietario" wide><Textarea value={shopForm.ownerDescription} onChange={(e) => setShopForm({ ...shopForm, ownerDescription: e.target.value })} /></Field>
             <Field label="Note DM" wide><Textarea value={shopForm.dmNotes} onChange={(e) => setShopForm({ ...shopForm, dmNotes: e.target.value })} /></Field>
             <Field label="CD sconto"><Input type="number" min={1} value={shopForm.discountDc ?? ""} onChange={(e) => setShopForm({ ...shopForm, discountDc: e.target.value ? Number(e.target.value) : null })} /></Field>
-            <div className="grid grid-cols-4 gap-2">{(["cp", "sp", "ep", "gp"] as const).map((currency) => <Field key={currency} label={currency.toUpperCase()}><Input type="number" min={0} value={shopForm.balance[currency]} onChange={(e) => setShopForm({ ...shopForm, balance: { ...shopForm.balance, [currency]: Number(e.target.value) } })} /></Field>)}</div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{(["cp", "sp", "ep", "gp"] as const).map((currency) => <Field key={currency} label={currency.toUpperCase()}><Input type="number" min={0} value={shopForm.balance[currency]} onChange={(e) => setShopForm({ ...shopForm, balance: { ...shopForm.balance, [currency]: Number(e.target.value) } })} /></Field>)}</div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setShopDialogOpen(false)}>Annulla</Button><Button disabled={submitting || !shopForm.name || !shopForm.city || !shopForm.ownerName} onClick={() => void saveShop()}>Salva</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" className="rounded-full" onClick={() => setShopDialogOpen(false)}>Annulla</Button><Button className="rounded-full" disabled={submitting || !shopForm.name || !shopForm.city || !shopForm.ownerName} onClick={() => void saveShop()}>Salva</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -598,7 +606,7 @@ export default function DmShopsPage() {
             <Field label="Note DM" wide><Textarea value={itemForm.dmNotes ?? ""} onChange={(e) => setItemForm({ ...itemForm, dmNotes: e.target.value || null })} /></Field>
             <Field label="Note dell'istanza" wide><Textarea value={itemForm.instanceNotes ?? ""} onChange={(e) => setItemForm({ ...itemForm, instanceNotes: e.target.value || null })} /></Field>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setItemDialogOpen(false)}>Annulla</Button><Button disabled={submitting || !itemForm.itemDefinitionId || itemForm.quantity < 1 || itemForm.price.amount < 1} onClick={() => void saveItem()}>Salva prodotto</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" className="rounded-full" onClick={() => setItemDialogOpen(false)}>Annulla</Button><Button className="rounded-full" disabled={submitting || !itemForm.itemDefinitionId || itemForm.quantity < 1 || itemForm.price.amount < 1} onClick={() => void saveItem()}>Salva prodotto</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -619,14 +627,14 @@ export default function DmShopsPage() {
             <Field label="Note visita" wide><Textarea value={visitNotes} onChange={(event) => setVisitNotes(event.target.value)} /></Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setVisitDialogOpen(false)}>Annulla</Button>
-            <Button disabled={submitting || !visitShop || !visitSlug || !!activeVisit} onClick={() => void openVisit()}>Apri visita</Button>
+            <Button variant="outline" className="rounded-full" onClick={() => setVisitDialogOpen(false)}>Annulla</Button>
+            <Button className="rounded-full" disabled={submitting || !visitShop || !visitSlug || !!activeVisit} onClick={() => void openVisit()}>Apri visita</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={visitDetailOpen} onOpenChange={setVisitDetailOpen}>
-        <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col overflow-hidden">
+        <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col overflow-hidden border-primary/25 bg-card/95">
           <DialogHeader>
             <DialogTitle>Gestisci visita</DialogTitle>
             <DialogDescription>
@@ -667,12 +675,12 @@ export default function DmShopsPage() {
                             ) : null}
                           </div>
                           {item.isSecret && item.visibleToPlayer === false ? (
-                            <Button size="sm" variant="outline" disabled={submitting} onClick={() => void revealVisitItem(item.id)}>
-                              Rivela
+                            <Button size="sm" variant="outline" className="rounded-full border-amber-500/40 text-amber-700" disabled={submitting} onClick={() => void revealVisitItem(item.id)}>
+                              <Eye className="mr-2 h-4 w-4" />Rivela
                             </Button>
                           ) : null}
-                          <Button size="sm" variant="outline" disabled={submitting} onClick={() => void proposeVisitShopItem(item.id)}>
-                            Proponi vendita
+                          <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Proponi la vendita di ${item.name}`} title="Proponi vendita" disabled={submitting} onClick={() => void proposeVisitShopItem(item.id)}>
+                            <HandCoins className="h-4 w-4" />
                           </Button>
                         </div>
                         {item.description ? <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{item.description}</p> : null}
@@ -700,8 +708,8 @@ export default function DmShopsPage() {
                             </div>
                           </div>
                           {item.isEquipped ? <Badge variant="outline">Equipaggiato</Badge> : null}
-                          <Button size="sm" variant="outline" disabled={submitting} onClick={() => void proposeVisitCharacterItem(item.id)}>
-                            Proponi acquisto
+                          <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Proponi l'acquisto di ${item.itemName}`} title="Proponi acquisto" disabled={submitting} onClick={() => void proposeVisitCharacterItem(item.id)}>
+                            <ShoppingBasket className="h-4 w-4" />
                           </Button>
                         </div>
                         {item.detailSummary ? <p className="mt-2 text-sm text-muted-foreground">{item.detailSummary}</p> : null}
@@ -712,7 +720,7 @@ export default function DmShopsPage() {
                   </div>
                 </section>
               </div>
-              <section className="order-1 rounded-md border border-primary/30 bg-primary/5 p-4">
+              <section ref={negotiationSectionRef} className="order-1 scroll-mt-2 rounded-md border border-primary/30 bg-primary/5 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h3 className="font-heading text-xl text-primary">Trattative</h3>
                   <span className="text-xs text-muted-foreground">{activeVisit.negotiations?.filter((entry) => entry.status === "OPEN").length ?? 0} aperte</span>
@@ -722,12 +730,12 @@ export default function DmShopsPage() {
                     const current = negotiation.currentOffer;
                     const isDmProposal = current?.proposerSide ? current.proposerSide === "SHOP" : current?.proposedByRole === "dm";
                     return (
-                      <div key={negotiation.id} className="rounded-md border bg-card/70 p-3">
+                      <div key={negotiation.id} className={`rounded-md border bg-card/70 p-3 transition-all ${highlightedNegotiationId === negotiation.id ? "animate-pulse border-primary ring-2 ring-primary/60 shadow-lg shadow-primary/15" : ""}`}>
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <div className="font-medium">{negotiation.itemNameSnapshot}</div>
                             <div className="mt-1 text-xs text-muted-foreground">
-                              {negotiation.direction === "SHOP_TO_CHARACTER" ? "Vendita negozio a PG" : "Acquisto dal PG"} · Qta {negotiation.quantity} · {negotiation.status}
+                              {negotiation.direction === "SHOP_TO_CHARACTER" ? "Vendita negozio a PG" : "Acquisto dal PG"} · Qta {negotiation.quantity}
                             </div>
                             <ShopOfferComparison offers={negotiation.offers} viewerSide="SHOP" status={negotiation.status} className="mt-3" />
                           </div>
@@ -735,12 +743,12 @@ export default function DmShopsPage() {
                             <div className="flex flex-wrap gap-2">
                               {!isDmProposal ? (
                                 <>
-                                  <Button size="sm" disabled={submitting} onClick={() => void answerVisitNegotiation(negotiation, "accept")}>Accetta</Button>
-                                  <Button size="sm" variant="outline" disabled={submitting} onClick={() => void answerVisitNegotiation(negotiation, "counter")}>Rilancia</Button>
-                                  <Button size="sm" variant="outline" disabled={submitting} onClick={() => void answerVisitNegotiation(negotiation, "reject")}>Rifiuta</Button>
+                                  <Button size="sm" className="rounded-full" disabled={submitting} onClick={() => void answerVisitNegotiation(negotiation, "accept")}><Check className="mr-1.5 h-4 w-4" />Accetta</Button>
+                                  <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Rilancia l'offerta per ${negotiation.itemNameSnapshot}`} title="Rilancia" disabled={submitting} onClick={() => void answerVisitNegotiation(negotiation, "counter")}><Repeat2 className="h-4 w-4" /></Button>
+                                  <Button size="sm" variant="outline" className="rounded-full text-destructive" disabled={submitting} onClick={() => void answerVisitNegotiation(negotiation, "reject")}><X className="mr-1.5 h-4 w-4" />Rifiuta</Button>
                                 </>
                               ) : (
-                                <Button size="sm" variant="outline" disabled={submitting} onClick={() => void answerVisitNegotiation(negotiation, "withdraw")}>Ritira</Button>
+                                <Button size="sm" variant="outline" className="rounded-full" disabled={submitting} onClick={() => void answerVisitNegotiation(negotiation, "withdraw")}><Undo2 className="mr-1.5 h-4 w-4" />Ritira</Button>
                               )}
                             </div>
                           ) : null}
@@ -755,7 +763,7 @@ export default function DmShopsPage() {
             </div>
           ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setVisitDetailOpen(false)}>Chiudi</Button>
+            <Button variant="outline" className="rounded-full" onClick={() => setVisitDetailOpen(false)}>Chiudi</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -779,8 +787,8 @@ export default function DmShopsPage() {
             <Field label="Note private" wide><Textarea disabled={profileLoading || !profileSlug} value={profileNotes} onChange={(event) => setProfileNotes(event.target.value)} /></Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setProfileDialogOpen(false)}>Chiudi</Button>
-            <Button disabled={submitting || profileLoading || !profileSlug} onClick={() => void saveProfile()}>Salva profilo</Button>
+            <Button variant="outline" className="rounded-full" onClick={() => setProfileDialogOpen(false)}>Chiudi</Button>
+            <Button className="rounded-full" disabled={submitting || profileLoading || !profileSlug} onClick={() => void saveProfile()}>Salva profilo</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -794,7 +802,7 @@ export default function DmShopsPage() {
           <div className="grid gap-4 py-2 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => void downloadCatalogIndex()}><Download className="mr-2 h-4 w-4" />Indice catalogo</Button>
+                <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" aria-label="Scarica indice catalogo" title="Scarica indice catalogo" onClick={() => void downloadCatalogIndex()}><Download className="h-4 w-4" /></Button>
                 <Label className="inline-flex h-9 cursor-pointer items-center rounded-md border px-3 text-sm font-medium">
                   <Upload className="mr-2 h-4 w-4" />Carica file
                   <Input className="hidden" type="file" accept="application/json,.json" onChange={(event) => void readImportFile(event.target.files?.[0] ?? null)} />
@@ -826,12 +834,12 @@ export default function DmShopsPage() {
                     {importPreview.shops.map((shop) => (
                       <div key={shop.externalKey} className="rounded-md border p-3">
                         <div className="font-medium">{shop.name}</div>
-                        <div className="text-xs text-muted-foreground">{shop.city} Â· {shop.ownerName} Â· {shop.externalKey}</div>
+                        <div className="text-xs text-muted-foreground">{shop.city} · {shop.ownerName} · {shop.externalKey}</div>
                         <div className="mt-2 space-y-1">
                           {shop.items.map((item, index) => (
                             <div key={`${item.definitionSlug}-${index}`} className="flex items-center justify-between gap-2 text-xs">
                               <span className="truncate">{item.name}</span>
-                              <span className="shrink-0 text-muted-foreground">x{item.quantity} Â· {item.price.amount} {item.price.currency} Â· {item.source === "inline" ? "nuovo" : "catalogo"}</span>
+                              <span className="shrink-0 text-muted-foreground">x{item.quantity} · {item.price.amount} {item.price.currency} · {item.source === "inline" ? "nuovo" : "catalogo"}</span>
                             </div>
                           ))}
                         </div>
@@ -843,9 +851,9 @@ export default function DmShopsPage() {
             </Card>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImportDialogOpen(false)}>Annulla</Button>
-            <Button variant="outline" disabled={submitting || !importText.trim()} onClick={() => void previewImport()}>Dry-run</Button>
-            <Button disabled={submitting || !importPreview?.ok} onClick={() => void applyImport()}>Conferma import</Button>
+            <Button variant="outline" className="rounded-full" onClick={() => setImportDialogOpen(false)}>Annulla</Button>
+            <Button variant="outline" className="rounded-full" disabled={submitting || !importText.trim()} onClick={() => void previewImport()}><ScanSearch className="mr-2 h-4 w-4" />Anteprima</Button>
+            <Button className="rounded-full" disabled={submitting || !importPreview?.ok} onClick={() => void applyImport()}><Upload className="mr-2 h-4 w-4" />Conferma import</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

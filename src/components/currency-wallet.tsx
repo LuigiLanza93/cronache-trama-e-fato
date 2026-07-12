@@ -58,7 +58,7 @@ export function CurrencyWallet({ balance, label, compact = false, className }: C
         {COINS.map((coin) => {
           const accessibleLabel = `${balance[coin.key]} monete di ${coin.label} (${coin.abbreviation})`;
           return (
-            <div key={coin.key} className="flex justify-center" role="listitem">
+            <div key={coin.key} className="flex flex-col items-center gap-1" role="listitem">
               <span
                 className={cn(
                   "relative inline-flex items-center justify-center overflow-hidden rounded-full border border-white/10 ring-1 shadow-[inset_0_2px_6px_rgba(255,255,255,0.18),inset_0_-6px_10px_rgba(0,0,0,0.22),0_6px_14px_rgba(0,0,0,0.18)]",
@@ -81,6 +81,7 @@ export function CurrencyWallet({ balance, label, compact = false, className }: C
                   {balance[coin.key]}
                 </span>
               </span>
+              <span className="text-[10px] font-semibold tracking-wide text-muted-foreground" aria-hidden="true">{coin.abbreviation}</span>
             </div>
           );
         })}
@@ -88,4 +89,3 @@ export function CurrencyWallet({ balance, label, compact = false, className }: C
     </div>
   );
 }
-

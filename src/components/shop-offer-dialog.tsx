@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -131,7 +131,19 @@ export default function ShopOfferDialog({
             </div>
           ) : null}
 
-          <div className="grid grid-cols-2 gap-3">
+          {mode === "accept" ? (
+            <div className="grid grid-cols-2 gap-3 rounded-md border border-primary/30 bg-primary/5 p-4">
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quantità</div>
+                <div className="mt-1 text-2xl font-semibold tabular-nums">{quantity}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Totale</div>
+                <div className="mt-1 text-2xl font-bold tabular-nums text-primary">{amount} {currency}</div>
+              </div>
+            </div>
+          ) : (<>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor={quantityId}>Quantità</Label>
               <Input
@@ -185,6 +197,7 @@ export default function ShopOfferDialog({
               </SelectContent>
             </Select>
           </div>
+          </>)}
 
           {!isValid ? (
             <p className="text-sm text-destructive" role="alert">
@@ -194,11 +207,13 @@ export default function ShopOfferDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="outline" disabled={loading} onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" className="rounded-full" disabled={loading} onClick={() => onOpenChange(false)}>
             Annulla
           </Button>
-          <Button type="button" disabled={!isValid || loading} onClick={handleConfirm}>
+          <Button type="button" className="rounded-full" disabled={!isValid || loading} onClick={handleConfirm}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+            {!loading && mode === "accept" ? <Check className="mr-2 h-4 w-4" aria-hidden="true" /> : null}
+            {!loading && mode !== "accept" ? <Send className="mr-2 h-4 w-4" aria-hidden="true" /> : null}
             {loading ? "Operazione in corso…" : (confirmLabel ?? defaultConfirmLabel(mode))}
           </Button>
         </DialogFooter>
