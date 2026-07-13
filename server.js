@@ -2917,13 +2917,6 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
     copyCharacterFeatureStatesToShop(characterItem.id, shopItemId, now);
   }
 
-  const nextCharacterQuantity = availableQuantity - quantity;
-  if (nextCharacterQuantity <= 0) {
-    sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
-  } else {
-    sqlite.prepare('UPDATE "CharacterItem" SET quantity = ?, isEquipped = 0, updatedAt = ? WHERE id = ?').run(nextCharacterQuantity, now, characterItem.id);
-  }
-
   insertShopInventoryTransaction({
     id: crypto.randomUUID(),
     operationId,
@@ -2947,6 +2940,13 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
       offer: { currency, amount },
     },
   });
+
+  const nextCharacterQuantity = availableQuantity - quantity;
+  if (nextCharacterQuantity <= 0) {
+    sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
+  } else {
+    sqlite.prepare('UPDATE "CharacterItem" SET quantity = ?, isEquipped = 0, updatedAt = ? WHERE id = ?').run(nextCharacterQuantity, now, characterItem.id);
+  }
 }
 
 function acceptShopNegotiationAtomically(negotiation, offer, actorUserId) {
