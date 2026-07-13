@@ -26,12 +26,15 @@ Use project subagents for substantial work when their specialty materially impro
 - `game_rules_data` for RPG rules, derived statistics, items, spells, monsters, and structured content.
 - `release_railway` for the controlled dev-to-main production release: preflight, Railway backup, migration/deploy sequencing, health checks, smoke tests, and rollback readiness.
 - `quality_security` for a read-only final review of risky or cross-cutting changes.
+- `git_finalize` for the mechanical commit and push to `dev` only after the user confirms successful testing and the root agent supplies the exact approved file scope.
 
-Do not ask the user which subagent to use when the task and these role descriptions provide enough information. If more than one specialty applies, choose the smallest sufficient set automatically. Do not delegate trivial single-file edits. For cross-cutting tasks, delegate independent investigation first, then give each writing agent a disjoint file boundary. Never let multiple agents edit the same file concurrently. The root agent owns integration decisions, resolves contract changes, and runs final verification.
+Do not ask the user which subagent to use when the task and these role descriptions provide enough information. If more than one specialty applies, choose the smallest sufficient set automatically. Do not delegate trivial single-file implementation edits; `git_finalize` is the explicit exception for the separate post-test commit/push phase. For cross-cutting tasks, delegate independent investigation first, then give each writing agent a disjoint file boundary. Never let multiple agents edit the same file concurrently. The root agent owns integration decisions, resolves contract changes, and runs final verification.
 
 After implementation, automatically use `quality_security` when changes affect authentication, authorization, user data, database migrations, uploads, filesystem paths, Socket.IO concurrency, or multiple architectural layers. For low-risk localized changes, the root agent may perform final verification directly.
 
 Use `release_railway` only when the user explicitly requests or authorizes the production release. A production release is one indivisible workflow: verify and merge `dev` into `main`, then deploy that exact `main` state to Railway and perform post-deploy checks. Do not merge to `main` without continuing to Railway, and do not deploy an unmerged development working tree as the production release. Database-affecting releases require a fresh verified Railway backup before migration or deploy.
+
+Use `git_finalize` only for completed, verified work after explicit user test confirmation. It may stage only the exact paths approved by the root agent and push only to `origin/dev`; it must never edit implementation files, operate on `main`, rewrite history, deploy, or touch Railway or databases. The root agent remains responsible for deciding that the change is ready and defining the commit boundary.
 
 Keep delegation depth at one. Subagents must not recursively spawn more agents unless the user explicitly requests it and the project configuration is deliberately changed.
 
