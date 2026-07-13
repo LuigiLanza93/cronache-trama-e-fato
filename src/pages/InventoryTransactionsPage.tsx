@@ -2,11 +2,26 @@ import { useEffect, useMemo, useState } from "react";
 import { Home, Link2, Package, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/sonner";
-import { fetchInventoryTransfers, undoInventoryTransactionRequest, type InventoryTransferEntry } from "@/lib/auth";
+import {
+  fetchInventoryTransfers,
+  undoInventoryTransactionRequest,
+  undoShopOperationRequest,
+  type InventoryTransferEntry,
+} from "@/lib/auth";
 
 const OBJECT_TRANSACTIONS_GRID =
   "144px minmax(220px,1.6fr) 72px minmax(160px,1fr) minmax(160px,1fr) minmax(220px,1.2fr) 156px 88px 88px";
@@ -51,6 +66,7 @@ export default function InventoryTransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [undoingId, setUndoingId] = useState<string | null>(null);
+  const [pendingUndo, setPendingUndo] = useState<InventoryTransferEntry | null>(null);
 
   useEffect(() => {
     document.title = "Transazioni Oggetti | Cronache della Trama e del Fato";
@@ -95,14 +111,31 @@ export default function InventoryTransactionsPage() {
     });
   }, [entries, query]);
 
-  const undoEntry = async (transactionId: string) => {
-    setUndoingId(transactionId);
+  const undoEntry = async () => {
+    if (!pendingUndo) return;
+    const undoId = pendingUndo.undoScope === "SHOP_TRADE" ? pendingUndo.operationId : pendingUndo.id;
+    if (!undoId) return;
+    setUndoingId(undoId);
     try {
-      await undoInventoryTransactionRequest(transactionId);
+      if (pendingUndo.undoScope === "SHOP_TRADE") {
+        await undoShopOperationRequest(undoId);
+      } else {
+        await undoInventoryTransactionRequest(pendingUndo.id);
+      }
       await loadEntries();
-      toast.success("Transazione oggetto annullata.");
+      toast.success(
+        pendingUndo.undoScope === "SHOP_TRADE"
+          ? "Compravendita annullata: oggetto e monete ripristinati."
+          : "Transazione oggetto annullata."
+      );
+      setPendingUndo(null);
     } catch (error: any) {
-      toast.error(error?.message || "Non sono riuscito ad annullare la transazione.");
+      toast.error(
+        error?.message
+          || (pendingUndo.undoScope === "SHOP_TRADE"
+            ? "Impossibile annullare la compravendita senza perdere coerenza."
+            : "Non sono riuscito ad annullare la transazione.")
+      );
     } finally {
       setUndoingId(null);
     }
@@ -206,9 +239,10 @@ export default function InventoryTransactionsPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 rounded-full"
-                            onClick={() => void undoEntry(entry.id)}
-                            disabled={undoingId === entry.id}
-                            aria-label="Annulla transazione"
+                            onClick={() => setPendingUndo(entry)}
+                            disabled={undoingId !== null}
+                            aria-label={entry.undoScope === "SHOP_TRADE" ? "Annulla tecnicamente la compravendita" : "Annulla transazione"}
+                            title={entry.undoScope === "SHOP_TRADE" ? "Annulla tecnicamente la compravendita" : "Annulla transazione"}
                           >
                             <RotateCcw className="h-4 w-4" />
                           </Button>
@@ -223,6 +257,44 @@ export default function InventoryTransactionsPage() {
             )}
           </div>
         </Card>
+        <AlertDialog open={pendingUndo !== null} onOpenChange={(open) => { if (!open && !undoingId) setPendingUndo(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {pendingUndo?.undoScope === "SHOP_TRADE"
+                  ? "Annullare tecnicamente questa compravendita?"
+                  : "Annullare questa transazione?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                {pendingUndo ? (() => {
+                  const direction = directionFromEntry(pendingUndo);
+                  return (
+                    <>
+                      <span className="block font-medium text-foreground">
+                        {pendingUndo.actionLabel} · {pendingUndo.quantity} × {pendingUndo.itemName} · {direction.from} → {direction.to}
+                      </span>
+                      <span className="block">
+                        {pendingUndo.undoScope === "SHOP_TRADE"
+                          ? "Oggetto e monete verranno ripristinati insieme. Se nel frattempo non sono più disponibili, l'operazione sarà rifiutata senza modifiche."
+                          : "L'oggetto verrà riportato al proprietario precedente solo se lo stato corrente lo consente."}
+                      </span>
+                    </>
+                  );
+                })() : null}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={undoingId !== null}>Mantieni operazione</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => { event.preventDefault(); void undoEntry(); }}
+                disabled={undoingId !== null}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {undoingId ? "Annullamento…" : pendingUndo?.undoScope === "SHOP_TRADE" ? "Annulla compravendita" : "Annulla transazione"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

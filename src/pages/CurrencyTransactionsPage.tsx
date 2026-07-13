@@ -190,7 +190,7 @@ export default function CurrencyTransactionsPage() {
                       {entry.undone ? "Annullata" : entry.canUndo ? "Attiva" : "Registrata"}
                     </div>
                     <div className="flex justify-end">
-                      {entry.canUndo ? (
+                      {entry.canUndo && !entry.isShopOperation ? (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -202,7 +202,9 @@ export default function CurrencyTransactionsPage() {
                           <RotateCcw className="h-4 w-4" />
                         </Button>
                       ) : (
-                        <span className="px-2 text-xs text-muted-foreground">{entry.undone ? "Chiusa" : "—"}</span>
+                        <span className="px-2 text-right text-xs text-muted-foreground">
+                          {entry.undone ? "Chiusa" : entry.isShopOperation ? "Vedi oggetti" : "—"}
+                        </span>
                       )}
                     </div>
                   </div>

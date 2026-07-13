@@ -1015,6 +1015,8 @@ model InventoryTransaction {
   toShopId         String?
   operationId      String?
   shopNegotiationId String?
+  reversalOfTransactionId String?                 @unique
+  reversedAt       DateTime?
   toNpcName        String?
   notes            String?
   createdByUserId  String?
@@ -1026,6 +1028,8 @@ model InventoryTransaction {
   fromShop      Shop?                      @relation("InventoryTransactionFromShop", fields: [fromShopId], references: [id], onDelete: SetNull)
   toShop        Shop?                      @relation("InventoryTransactionToShop", fields: [toShopId], references: [id], onDelete: SetNull)
   shopNegotiation ShopNegotiation?         @relation(fields: [shopNegotiationId], references: [id], onDelete: SetNull)
+  reversalOfTransaction InventoryTransaction? @relation("InventoryTransactionReversal", fields: [reversalOfTransactionId], references: [id], onDelete: SetNull)
+  reversalTransaction   InventoryTransaction? @relation("InventoryTransactionReversal")
   items         InventoryTransactionItem[]
   currencies    InventoryTransactionCurrency[]
 
@@ -1036,6 +1040,7 @@ model InventoryTransaction {
   @@index([toShopId])
   @@index([operationId])
   @@index([shopNegotiationId])
+  @@index([reversedAt])
   @@index([createdByUserId])
 }
 

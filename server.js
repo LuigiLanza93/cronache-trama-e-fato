@@ -775,6 +775,7 @@ function readCurrencyTransactionsForDm() {
   return Array.from(grouped.entries())
     .map(([operationId, operationRows]) => {
       const ordered = operationRows.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      const isShopOperation = ordered.some((row) => row.fromShopId || row.toShopId || row.shopNegotiationId);
       const undone = ordered.every((row) => !!row.reversedAt) || ordered.some((row) => reversedOriginalIds.has(String(row.id)));
       const {
         primaryRow,
@@ -806,8 +807,9 @@ function readCurrencyTransactionsForDm() {
         reason: primaryRow.reason ?? null,
         purchaseDescription: primaryRow.purchaseDescription ?? null,
         note: primaryRow.note ?? null,
+        isShopOperation,
         undone,
-        canUndo: !undone && ordered.every((row) => !reversedOriginalIds.has(String(row.id))),
+        canUndo: !isShopOperation && !undone && ordered.every((row) => !reversedOriginalIds.has(String(row.id))),
         operationType: isConversion
           ? "CONVERT"
           : primaryRow.fromCharacterId && primaryRow.toCharacterId
@@ -872,6 +874,7 @@ function readCharacterCurrencyTransactionsForPlayer(characterId) {
   return Array.from(grouped.entries())
     .map(([operationId, operationRows]) => {
       const ordered = operationRows.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)));
+      const isShopOperation = ordered.some((row) => row.fromShopId || row.toShopId || row.shopNegotiationId);
       const {
         primaryRow,
         isConversion,
@@ -910,6 +913,7 @@ function readCharacterCurrencyTransactionsForPlayer(characterId) {
         reason: primaryRow.reason ?? null,
         purchaseDescription: primaryRow.purchaseDescription ?? null,
         note: primaryRow.note ?? null,
+        isShopOperation,
         createdAt: primaryRow.createdAt,
         direction,
         operationType: isConversion
@@ -952,6 +956,10 @@ function undoCurrencyTransactionOperation(operationId, actorUserId = null) {
 
   if (!rows.length) {
     throw new Error("Operazione non trovata");
+  }
+
+  if (rows.some((row) => row.fromShopId || row.toShopId || row.shopNegotiationId)) {
+    throw shopUndoConflict("Le compravendite negozio devono essere annullate dall'endpoint tecnico dedicato.");
   }
 
   if (rows.some((row) => !!row.reversedAt || reversedOriginalIds.has(String(row.id)))) {
@@ -2666,6 +2674,93 @@ function readCharacterItemFeatureStates(characterItemId) {
   }));
 }
 
+function readCharacterItemTransferState(characterItemId) {
+  const row = sqlite.prepare('SELECT * FROM "CharacterItem" WHERE id = ? LIMIT 1').get(characterItemId);
+  if (!row) return null;
+  const equippedSlots = tableExists("CharacterItemEquip")
+    ? sqlite.prepare('SELECT slot FROM "CharacterItemEquip" WHERE characterItemId = ? ORDER BY slot ASC').all(characterItemId).map((item) => item.slot)
+    : [];
+  return {
+    id: row.id,
+    characterId: row.characterId,
+    itemDefinitionId: row.itemDefinitionId ?? null,
+    nameOverride: row.nameOverride ?? null,
+    descriptionOverride: row.descriptionOverride ?? null,
+    quantity: Number(row.quantity ?? 0),
+    isEquipped: Number(row.isEquipped ?? 0) === 1,
+    sortOrder: Number(row.sortOrder ?? 0),
+    notes: row.notes ?? null,
+    data: row.data ?? null,
+    equippedSlots,
+    featureStates: readCharacterItemFeatureStates(characterItemId)
+      .slice()
+      .sort((a, b) => String(a.itemFeatureId).localeCompare(String(b.itemFeatureId))),
+  };
+}
+
+function readShopItemTransferState(shopItemId) {
+  const row = sqlite.prepare('SELECT * FROM "ShopItem" WHERE id = ? LIMIT 1').get(shopItemId);
+  if (!row) return null;
+  return {
+    id: row.id,
+    shopId: row.shopId,
+    itemDefinitionId: row.itemDefinitionId ?? null,
+    nameOverride: row.nameOverride ?? null,
+    descriptionOverride: row.descriptionOverride ?? null,
+    quantity: Number(row.quantity ?? 0),
+    priceCurrency: row.priceCurrency,
+    priceAmount: Number(row.priceAmount ?? 0),
+    isSecret: Number(row.isSecret ?? 0) === 1,
+    discoveryDc: row.discoveryDc == null ? null : Number(row.discoveryDc),
+    sortOrder: Number(row.sortOrder ?? 0),
+    dmNotes: row.dmNotes ?? null,
+    instanceNotes: row.instanceNotes ?? null,
+    data: row.data ?? null,
+    featureStates: (readShopItemFeatureStates([shopItemId])[shopItemId] ?? [])
+      .slice()
+      .sort((a, b) => String(a.itemFeatureId).localeCompare(String(b.itemFeatureId))),
+  };
+}
+
+function itemDefinitionCarriesPerCopyState(itemDefinitionId, data, featureStates = []) {
+  if (data != null || featureStates.length > 0) return true;
+  if (!itemDefinitionId) return true;
+  const definition = sqlite.prepare('SELECT stackable FROM "ItemDefinition" WHERE id = ? LIMIT 1').get(itemDefinitionId);
+  if (!definition || !definition.stackable) return true;
+  return Number(sqlite.prepare('SELECT COUNT(*) AS count FROM "ItemFeature" WHERE itemDefinitionId = ? AND maxUses > 0').get(itemDefinitionId)?.count ?? 0) > 0;
+}
+
+function normalizeTransferIdentity(state, kind) {
+  if (!state) return null;
+  const common = {
+    itemDefinitionId: state.itemDefinitionId ?? null,
+    nameOverride: state.nameOverride ?? null,
+    descriptionOverride: state.descriptionOverride ?? null,
+    data: state.data ?? null,
+    featureStates: (state.featureStates ?? []).map((item) => ({
+      itemFeatureId: item.itemFeatureId,
+      usesSpent: Number(item.usesSpent ?? 0),
+      lastResetAt: item.lastResetAt ?? null,
+    })),
+  };
+  return kind === "shop"
+    ? {
+        ...common,
+        shopId: state.shopId,
+        priceCurrency: state.priceCurrency,
+        priceAmount: Number(state.priceAmount ?? 0),
+        isSecret: !!state.isSecret,
+        discoveryDc: state.discoveryDc ?? null,
+        dmNotes: state.dmNotes ?? null,
+        instanceNotes: state.instanceNotes ?? null,
+      }
+    : { ...common, characterId: state.characterId, notes: state.notes ?? null };
+}
+
+function transferIdentityMatches(current, expected, kind) {
+  return JSON.stringify(normalizeTransferIdentity(current, kind)) === JSON.stringify(normalizeTransferIdentity(expected, kind));
+}
+
 function copyCharacterFeatureStatesToShop(characterItemId, shopItemId, now) {
   if (!tableExists("CharacterItemFeatureState") || !tableExists("ShopItemFeatureState")) return;
   const states = readCharacterItemFeatureStates(characterItemId);
@@ -2739,12 +2834,14 @@ function applyShopItemToCharacterTransfer(negotiation, offer, operationId, actor
   const availableQuantity = Number(shopItem.quantity ?? 0);
   if (quantity <= 0 || quantity > availableQuantity) throw new Error("Requested quantity is not available anymore");
 
-  const featureStates = readShopItemFeatureStates([shopItem.id])[shopItem.id] ?? [];
-  if (featureStates.length > 0 && (quantity !== 1 || availableQuantity !== 1)) {
+  const shopItemBefore = readShopItemTransferState(shopItem.id);
+  const featureStates = shopItemBefore?.featureStates ?? [];
+  const carriesPerCopyState = itemDefinitionCarriesPerCopyState(shopItem.itemDefinitionId, shopItem.data, featureStates);
+  if (carriesPerCopyState && (quantity !== 1 || availableQuantity !== 1)) {
     throw new Error("Gli oggetti con stato o cariche devono essere trasferiti come istanza singola.");
   }
 
-  const isStackable = !!shopItem.itemDefinitionStackable && featureStates.length === 0;
+  const isStackable = !!shopItem.itemDefinitionStackable && !carriesPerCopyState;
   const destinationMergeCandidate = isStackable
     ? sqlite.prepare(`
         SELECT id, quantity
@@ -2773,6 +2870,9 @@ function applyShopItemToCharacterTransfer(negotiation, offer, operationId, actor
     sqlite.prepare('SELECT MAX(sortOrder) AS maxSortOrder FROM "CharacterItem" WHERE characterId = ?').get(negotiation.characterId)?.maxSortOrder ?? -1
   );
   const characterItemId = destinationMergeCandidate?.id ?? crypto.randomUUID();
+  const destinationCharacterItemBefore = destinationMergeCandidate
+    ? readCharacterItemTransferState(destinationMergeCandidate.id)
+    : null;
   const mode = destinationMergeCandidate ? "merge" : (quantity < availableQuantity ? "split" : "move");
 
   if (destinationMergeCandidate) {
@@ -2807,6 +2907,9 @@ function applyShopItemToCharacterTransfer(negotiation, offer, operationId, actor
     sqlite.prepare('UPDATE "ShopItem" SET quantity = ?, updatedAt = ? WHERE id = ?').run(nextShopQuantity, now, shopItem.id);
   }
 
+  const shopItemAfter = readShopItemTransferState(shopItem.id);
+  const destinationCharacterItemAfter = readCharacterItemTransferState(characterItemId);
+
   insertShopInventoryTransaction({
     id: crypto.randomUUID(),
     operationId,
@@ -2818,6 +2921,7 @@ function applyShopItemToCharacterTransfer(negotiation, offer, operationId, actor
     actorUserId,
     now,
     snapshot: {
+      version: 2,
       mode,
       direction: negotiation.direction,
       shopId: negotiation.shopId,
@@ -2828,6 +2932,14 @@ function applyShopItemToCharacterTransfer(negotiation, offer, operationId, actor
       itemName: shopItem.nameOverride ?? shopItem.itemDefinitionName ?? "Oggetto senza nome",
       quantity,
       offer: { currency: offer.currency, amount: offer.amount },
+      before: {
+        sourceShopItem: shopItemBefore,
+        destinationCharacterItem: destinationCharacterItemBefore,
+      },
+      after: {
+        sourceShopItem: shopItemAfter,
+        destinationCharacterItem: destinationCharacterItemAfter,
+      },
     },
   });
 }
@@ -2846,14 +2958,16 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
   const availableQuantity = Number(characterItem.quantity ?? 0);
   if (quantity <= 0 || quantity > availableQuantity) throw new Error("Requested quantity is not available anymore");
 
-  const featureStates = readCharacterItemFeatureStates(characterItem.id);
-  if (featureStates.length > 0 && (quantity !== 1 || availableQuantity !== 1)) {
+  const characterItemBefore = readCharacterItemTransferState(characterItem.id);
+  const featureStates = characterItemBefore?.featureStates ?? [];
+  const carriesPerCopyState = itemDefinitionCarriesPerCopyState(characterItem.itemDefinitionId, characterItem.data, featureStates);
+  if (carriesPerCopyState && (quantity !== 1 || availableQuantity !== 1)) {
     throw new Error("Gli oggetti con stato o cariche devono essere trasferiti come istanza singola.");
   }
 
   const currency = String(offer.currency ?? "GP").toUpperCase();
   const amount = Number(offer.amount ?? 0);
-  const isStackable = !!characterItem.itemDefinitionStackable && featureStates.length === 0;
+  const isStackable = !!characterItem.itemDefinitionStackable && !carriesPerCopyState;
   const destinationMergeCandidate = isStackable
     ? sqlite.prepare(`
         SELECT id, quantity
@@ -2886,6 +3000,9 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
     sqlite.prepare('SELECT MAX(sortOrder) AS maxSortOrder FROM "ShopItem" WHERE shopId = ?').get(negotiation.shopId)?.maxSortOrder ?? -1
   );
   const shopItemId = destinationMergeCandidate?.id ?? crypto.randomUUID();
+  const destinationShopItemBefore = destinationMergeCandidate
+    ? readShopItemTransferState(destinationMergeCandidate.id)
+    : null;
   const mode = destinationMergeCandidate ? "merge" : (quantity < availableQuantity ? "split" : "move");
 
   sqlite.prepare('DELETE FROM "CharacterItemEquip" WHERE characterItemId = ?').run(characterItem.id);
@@ -2917,6 +3034,17 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
     copyCharacterFeatureStatesToShop(characterItem.id, shopItemId, now);
   }
 
+  const nextCharacterQuantity = availableQuantity - quantity;
+  if (nextCharacterQuantity <= 0) {
+    sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
+  } else {
+    sqlite.prepare('UPDATE "CharacterItem" SET quantity = ?, isEquipped = 0, updatedAt = ? WHERE id = ?').run(nextCharacterQuantity, now, characterItem.id);
+  }
+
+
+  const sourceCharacterItemAfter = readCharacterItemTransferState(characterItem.id);
+  const destinationShopItemAfter = readShopItemTransferState(shopItemId);
+
   insertShopInventoryTransaction({
     id: crypto.randomUUID(),
     operationId,
@@ -2928,6 +3056,7 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
     actorUserId,
     now,
     snapshot: {
+      version: 2,
       mode,
       direction: negotiation.direction,
       shopId: negotiation.shopId,
@@ -2938,26 +3067,24 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
       itemName: characterItem.nameOverride ?? characterItem.itemDefinitionName ?? "Oggetto senza nome",
       quantity,
       offer: { currency, amount },
+      before: {
+        sourceCharacterItem: characterItemBefore,
+        destinationShopItem: destinationShopItemBefore,
+      },
+      after: {
+        sourceCharacterItem: sourceCharacterItemAfter,
+        destinationShopItem: destinationShopItemAfter,
+      },
     },
   });
-
-  const nextCharacterQuantity = availableQuantity - quantity;
-  if (nextCharacterQuantity <= 0) {
-    sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
-  } else {
-    sqlite.prepare('UPDATE "CharacterItem" SET quantity = ?, isEquipped = 0, updatedAt = ? WHERE id = ?').run(nextCharacterQuantity, now, characterItem.id);
-  }
 }
 
-function acceptShopNegotiationAtomically(negotiation, offer, actorUserId) {
+function acceptShopNegotiationAtomically(negotiation, offer, actorUserId, actorSide) {
   if (!columnExists("CurrencyTransaction", "fromShopId") || !columnExists("CurrencyTransaction", "toShopId") || !columnExists("CurrencyTransaction", "shopNegotiationId")) {
     throw new Error("Shop currency ledger database migration has not been applied");
   }
   const now = new Date().toISOString();
   const operationId = crypto.randomUUID();
-  const currency = shopCurrencyKey(offer.currency);
-  const amounts = normalizeCurrencyBalance({ [currency]: Number(offer.amount ?? 0) });
-
   runInTransaction(() => {
     const freshNegotiation = readShopNegotiationById(negotiation.id);
     if (!freshNegotiation || freshNegotiation.status !== "OPEN" || freshNegotiation.visitStatus !== "ACTIVE") {
@@ -2968,19 +3095,24 @@ function acceptShopNegotiationAtomically(negotiation, offer, actorUserId) {
     if (!freshCurrentOffer || freshCurrentOffer.id !== offer.id) {
       throw new Error("L'offerta corrente e' cambiata: ricarica la visita prima di accettare.");
     }
+    if (shopOfferProposerSide(freshCurrentOffer) === actorSide) {
+      throw new Error("The other side must accept this offer");
+    }
+    const currency = shopCurrencyKey(freshCurrentOffer.currency);
+    const amounts = normalizeCurrencyBalance({ [currency]: Number(freshCurrentOffer.amount ?? 0) });
 
-    if (negotiation.direction === "SHOP_TO_CHARACTER") {
-      const characterBalance = readCharacterCurrencyBalance(negotiation.characterId) ?? normalizeCurrencyBalance();
+    if (freshNegotiation.direction === "SHOP_TO_CHARACTER") {
+      const characterBalance = readCharacterCurrencyBalance(freshNegotiation.characterId) ?? normalizeCurrencyBalance();
       const nextCharacterBalance = removeCurrencyWithChangeDetailed(characterBalance, currency, amounts[currency]);
       if (!nextCharacterBalance) throw new Error("Il personaggio non ha monete sufficienti per accettare l'offerta.");
-      const shopBalance = readShopCurrencyBalance(negotiation.shopId) ?? normalizeCurrencyBalance();
+      const shopBalance = readShopCurrencyBalance(freshNegotiation.shopId) ?? normalizeCurrencyBalance();
 
-      writeCharacterCurrencyBalance(negotiation.characterId, nextCharacterBalance.balance);
-      writeShopCurrencyBalance(negotiation.shopId, addCurrencyAmounts(shopBalance, amounts));
+      writeCharacterCurrencyBalance(freshNegotiation.characterId, nextCharacterBalance.balance);
+      writeShopCurrencyBalance(freshNegotiation.shopId, addCurrencyAmounts(shopBalance, amounts));
       for (const conversion of nextCharacterBalance.conversions) {
         createCurrencyTransactionRecord({
           operationId,
-          fromCharacterId: negotiation.characterId,
+          fromCharacterId: freshNegotiation.characterId,
           toExternalName: "Cambio valuta",
           reason: "Cambio valuta",
           note: "Cambio automatico per acquisto in negozio",
@@ -2989,7 +3121,7 @@ function acceptShopNegotiationAtomically(negotiation, offer, actorUserId) {
         });
         createCurrencyTransactionRecord({
           operationId,
-          toCharacterId: negotiation.characterId,
+          toCharacterId: freshNegotiation.characterId,
           fromExternalName: "Cambio valuta",
           reason: "Cambio valuta",
           note: "Cambio automatico per acquisto in negozio",
@@ -2999,27 +3131,27 @@ function acceptShopNegotiationAtomically(negotiation, offer, actorUserId) {
       }
       createCurrencyTransactionRecord({
         operationId,
-        fromCharacterId: negotiation.characterId,
-        toShopId: negotiation.shopId,
-        shopNegotiationId: negotiation.id,
+        fromCharacterId: freshNegotiation.characterId,
+        toShopId: freshNegotiation.shopId,
+        shopNegotiationId: freshNegotiation.id,
         reason: "Acquisto in negozio",
-        purchaseDescription: negotiation.itemNameSnapshot,
+        purchaseDescription: freshNegotiation.itemNameSnapshot,
         createdByUserId: actorUserId,
         ...amounts,
       });
-      applyShopItemToCharacterTransfer(negotiation, offer, operationId, actorUserId, now);
+      applyShopItemToCharacterTransfer(freshNegotiation, freshCurrentOffer, operationId, actorUserId, now);
     } else {
-      const shopBalance = readShopCurrencyBalance(negotiation.shopId) ?? normalizeCurrencyBalance();
+      const shopBalance = readShopCurrencyBalance(freshNegotiation.shopId) ?? normalizeCurrencyBalance();
       const nextShopBalance = removeCurrencyWithChangeDetailed(shopBalance, currency, amounts[currency]);
       if (!nextShopBalance) throw new Error("Il negozio non ha fondi sufficienti per accettare l'offerta.");
-      const characterBalance = readCharacterCurrencyBalance(negotiation.characterId) ?? normalizeCurrencyBalance();
+      const characterBalance = readCharacterCurrencyBalance(freshNegotiation.characterId) ?? normalizeCurrencyBalance();
 
-      writeShopCurrencyBalance(negotiation.shopId, nextShopBalance.balance);
-      writeCharacterCurrencyBalance(negotiation.characterId, addCurrencyAmounts(characterBalance, amounts));
+      writeShopCurrencyBalance(freshNegotiation.shopId, nextShopBalance.balance);
+      writeCharacterCurrencyBalance(freshNegotiation.characterId, addCurrencyAmounts(characterBalance, amounts));
       for (const conversion of nextShopBalance.conversions) {
         createCurrencyTransactionRecord({
           operationId,
-          fromShopId: negotiation.shopId,
+          fromShopId: freshNegotiation.shopId,
           toExternalName: "Cambio valuta",
           reason: "Cambio valuta",
           note: "Cambio automatico per acquisto dal PG",
@@ -3028,7 +3160,7 @@ function acceptShopNegotiationAtomically(negotiation, offer, actorUserId) {
         });
         createCurrencyTransactionRecord({
           operationId,
-          toShopId: negotiation.shopId,
+          toShopId: freshNegotiation.shopId,
           fromExternalName: "Cambio valuta",
           reason: "Cambio valuta",
           note: "Cambio automatico per acquisto dal PG",
@@ -3038,23 +3170,348 @@ function acceptShopNegotiationAtomically(negotiation, offer, actorUserId) {
       }
       createCurrencyTransactionRecord({
         operationId,
-        fromShopId: negotiation.shopId,
-        toCharacterId: negotiation.characterId,
-        shopNegotiationId: negotiation.id,
+        fromShopId: freshNegotiation.shopId,
+        toCharacterId: freshNegotiation.characterId,
+        shopNegotiationId: freshNegotiation.id,
         reason: "Vendita al negozio",
-        purchaseDescription: negotiation.itemNameSnapshot,
+        purchaseDescription: freshNegotiation.itemNameSnapshot,
         createdByUserId: actorUserId,
         ...amounts,
       });
-      applyCharacterItemToShopTransfer(negotiation, offer, operationId, actorUserId, now);
+      applyCharacterItemToShopTransfer(freshNegotiation, freshCurrentOffer, operationId, actorUserId, now);
     }
 
     const result = sqlite.prepare('UPDATE "ShopNegotiation" SET status = ?, resolvedAt = ?, updatedAt = ? WHERE id = ? AND status = ?')
-      .run("ACCEPTED", now, now, negotiation.id, "OPEN");
+      .run("ACCEPTED", now, now, freshNegotiation.id, "OPEN");
     if (!result.changes) throw new Error("Negotiation is already resolved");
   });
 
   return { operationId };
+}
+
+function shopUndoConflict(message) {
+  const error = new Error(message);
+  error.statusCode = 409;
+  return error;
+}
+
+function addCurrencyDelta(target, ownerKey, amounts, sign) {
+  if (!ownerKey) return;
+  if (!target.has(ownerKey)) target.set(ownerKey, normalizeCurrencyBalance());
+  const delta = target.get(ownerKey);
+  for (const key of CURRENCY_KEYS) delta[key] += sign * Number(amounts[key] ?? 0);
+}
+
+function restoreShopItemFromSnapshot(state, quantity, now) {
+  const existing = readShopItemTransferState(state.id);
+  if (existing) {
+    sqlite.prepare('UPDATE "ShopItem" SET quantity = ?, updatedAt = ? WHERE id = ?')
+      .run(Number(existing.quantity ?? 0) + quantity, now, state.id);
+    return;
+  }
+  sqlite.prepare(`
+    INSERT INTO "ShopItem" (
+      id, shopId, itemDefinitionId, nameOverride, descriptionOverride, quantity, priceCurrency, priceAmount,
+      isSecret, discoveryDc, sortOrder, dmNotes, instanceNotes, data, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    state.id, state.shopId, state.itemDefinitionId ?? null, state.nameOverride ?? null,
+    state.descriptionOverride ?? null, quantity, state.priceCurrency, Number(state.priceAmount ?? 0),
+    state.isSecret ? 1 : 0, state.discoveryDc ?? null, Number(state.sortOrder ?? 0), state.dmNotes ?? null,
+    state.instanceNotes ?? null, state.data ?? null, now, now
+  );
+  if (tableExists("ShopItemFeatureState")) {
+    const insert = sqlite.prepare(`INSERT INTO "ShopItemFeatureState" (id, shopItemId, itemFeatureId, usesSpent, lastResetAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?)`);
+    for (const feature of state.featureStates ?? []) {
+      insert.run(crypto.randomUUID(), state.id, feature.itemFeatureId, Number(feature.usesSpent ?? 0), feature.lastResetAt ?? null, now);
+    }
+  }
+}
+
+function ensureCharacterEquipSlotsAvailable(state) {
+  if (!state?.isEquipped || !(state.equippedSlots ?? []).length) return;
+  for (const slot of state.equippedSlots) {
+    const conflict = sqlite.prepare(`
+      SELECT cie.characterItemId
+      FROM "CharacterItemEquip" cie
+      JOIN "CharacterItem" ci ON ci.id = cie.characterItemId
+      WHERE ci.characterId = ? AND cie.slot = ? AND cie.characterItemId <> ?
+      LIMIT 1
+    `).get(state.characterId, slot, state.id);
+    if (conflict) throw shopUndoConflict(`Non posso annullare: lo slot ${slot} e' ora occupato.`);
+  }
+}
+
+function restoreCharacterItemFromSnapshot(state, quantity, now) {
+  const existing = readCharacterItemTransferState(state.id);
+  if (existing) {
+    sqlite.prepare('UPDATE "CharacterItem" SET quantity = ?, isEquipped = ?, updatedAt = ? WHERE id = ?')
+      .run(Number(existing.quantity ?? 0) + quantity, state.isEquipped ? 1 : 0, now, state.id);
+  } else {
+    sqlite.prepare(`
+      INSERT INTO "CharacterItem" (
+        id, characterId, itemDefinitionId, nameOverride, descriptionOverride, quantity, isEquipped,
+        sortOrder, notes, data, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      state.id, state.characterId, state.itemDefinitionId ?? null, state.nameOverride ?? null,
+      state.descriptionOverride ?? null, quantity, state.isEquipped ? 1 : 0, Number(state.sortOrder ?? 0),
+      state.notes ?? null, state.data ?? null, now, now
+    );
+    if (tableExists("CharacterItemFeatureState")) {
+      const insert = sqlite.prepare(`INSERT INTO "CharacterItemFeatureState" (id, characterItemId, itemFeatureId, usesSpent, lastResetAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?)`);
+      for (const feature of state.featureStates ?? []) {
+        insert.run(crypto.randomUUID(), state.id, feature.itemFeatureId, Number(feature.usesSpent ?? 0), feature.lastResetAt ?? null, now);
+      }
+    }
+  }
+  sqlite.prepare('DELETE FROM "CharacterItemEquip" WHERE characterItemId = ?').run(state.id);
+  if (state.isEquipped) {
+    const insertEquip = sqlite.prepare('INSERT INTO "CharacterItemEquip" (id, characterItemId, slot) VALUES (?, ?, ?)');
+    for (const slot of state.equippedSlots ?? []) insertEquip.run(crypto.randomUUID(), state.id, slot);
+  }
+}
+
+function undoShopOperationAtomically(operationId, actorUserId = null) {
+  if (!operationId || !columnExists("InventoryTransaction", "reversalOfTransactionId") || !columnExists("InventoryTransaction", "reversedAt")) {
+    throw new Error("Shop undo database migration has not been applied");
+  }
+  const now = new Date().toISOString();
+  const undoOperationId = crypto.randomUUID();
+  let response = null;
+
+  runInTransaction(() => {
+    const inventoryRows = sqlite.prepare(`
+      SELECT t.*, ti.id AS itemRowId, ti.characterItemId, ti.itemDefinitionId, ti.descriptionSnapshot, ti.quantity AS movedQuantity
+      FROM "InventoryTransaction" t
+      JOIN "InventoryTransactionItem" ti ON ti.transactionId = t.id
+      WHERE t.operationId = ? AND t.reversalOfTransactionId IS NULL
+    `).all(operationId);
+    if (inventoryRows.length !== 1 || !inventoryRows[0].shopNegotiationId) throw new Error("Shop operation not found");
+    const inventory = inventoryRows[0];
+    const alreadyReversed = inventory.reversedAt || sqlite.prepare('SELECT id FROM "InventoryTransaction" WHERE reversalOfTransactionId = ? LIMIT 1').get(inventory.id);
+    if (alreadyReversed) throw shopUndoConflict("Questa compravendita e' gia' stata annullata.");
+
+    const snapshot = parseJsonString(inventory.descriptionSnapshot, null);
+    if (!snapshot || Number(snapshot.version) !== 2 || !snapshot.before || !snapshot.after) {
+      throw shopUndoConflict("Questa transazione precedente non contiene lo snapshot necessario; correggere con una nuova compravendita.");
+    }
+    const quantity = Number(snapshot.quantity ?? inventory.movedQuantity ?? 0);
+    if (!Number.isInteger(quantity) || quantity <= 0) throw shopUndoConflict("Snapshot della compravendita non valido.");
+
+    const currencyRows = sqlite.prepare(`
+      SELECT * FROM "CurrencyTransaction"
+      WHERE COALESCE(operationId, id) = ? AND reversalOfTransactionId IS NULL
+      ORDER BY createdAt ASC, rowid ASC
+    `).all(operationId);
+    if (!currencyRows.length || currencyRows.some((row) => row.shopNegotiationId && row.shopNegotiationId !== inventory.shopNegotiationId)) {
+      throw shopUndoConflict("Ledger valuta della compravendita incompleto o incoerente.");
+    }
+    if (currencyRows.some((row) => row.reversedAt || sqlite.prepare('SELECT id FROM "CurrencyTransaction" WHERE reversalOfTransactionId = ? LIMIT 1').get(row.id))) {
+      throw shopUndoConflict("Questa compravendita e' gia' stata annullata parzialmente e non puo' essere ripristinata automaticamente.");
+    }
+
+    const direction = snapshot.direction;
+    const expectedCurrency = String(snapshot.offer?.currency ?? "").trim().toLowerCase();
+    const expectedAmount = Number(snapshot.offer?.amount ?? 0);
+    if (!CURRENCY_KEYS.has(expectedCurrency) || !Number.isInteger(expectedAmount) || expectedAmount <= 0) {
+      throw shopUndoConflict("Snapshot economico della compravendita non valido.");
+    }
+    if (currencyRows.some((row) => row.operationId !== operationId)) {
+      throw shopUndoConflict("Ledger valuta della compravendita contiene righe estranee.");
+    }
+
+    const businessRows = currencyRows.filter((row) => row.shopNegotiationId != null);
+    if (businessRows.length !== 1 || businessRows[0].shopNegotiationId !== inventory.shopNegotiationId) {
+      throw shopUndoConflict("Ledger valuta della compravendita non contiene un unico pagamento valido.");
+    }
+    const payment = businessRows[0];
+    const paymentAmounts = normalizeCurrencyBalance(payment);
+    if (
+      CURRENCY_ORDER.some((key) => paymentAmounts[key] !== (key === expectedCurrency ? expectedAmount : 0)) ||
+      payment.fromExternalName != null || payment.toExternalName != null
+    ) {
+      throw shopUndoConflict("Il pagamento registrato non corrisponde all'offerta accettata.");
+    }
+    const paymentDirectionValid = direction === "SHOP_TO_CHARACTER"
+      ? payment.fromCharacterId === snapshot.characterId && payment.toShopId === snapshot.shopId &&
+        payment.toCharacterId == null && payment.fromShopId == null
+      : direction === "CHARACTER_TO_SHOP"
+        ? payment.fromShopId === snapshot.shopId && payment.toCharacterId === snapshot.characterId &&
+          payment.fromCharacterId == null && payment.toShopId == null
+        : false;
+    if (!paymentDirectionValid) {
+      throw shopUndoConflict("Il pagamento registrato non e' coerente con la direzione della compravendita.");
+    }
+
+    const technicalRows = currencyRows.filter((row) => row.shopNegotiationId == null);
+    if (technicalRows.length % 2 !== 0) {
+      throw shopUndoConflict("Ledger del cambio valuta incompleto.");
+    }
+    const payerType = direction === "SHOP_TO_CHARACTER" ? "character" : "shop";
+    const payerId = direction === "SHOP_TO_CHARACTER" ? snapshot.characterId : snapshot.shopId;
+    for (let index = 0; index < technicalRows.length; index += 2) {
+      const outgoing = technicalRows[index];
+      const incoming = technicalRows[index + 1];
+      const outgoingOwnerValid = payerType === "character"
+        ? outgoing.fromCharacterId === payerId && outgoing.toCharacterId == null && outgoing.fromShopId == null && outgoing.toShopId == null
+        : outgoing.fromShopId === payerId && outgoing.toShopId == null && outgoing.fromCharacterId == null && outgoing.toCharacterId == null;
+      const incomingOwnerValid = payerType === "character"
+        ? incoming.toCharacterId === payerId && incoming.fromCharacterId == null && incoming.fromShopId == null && incoming.toShopId == null
+        : incoming.toShopId === payerId && incoming.fromShopId == null && incoming.fromCharacterId == null && incoming.toCharacterId == null;
+      if (
+        !outgoingOwnerValid || !incomingOwnerValid ||
+        outgoing.reason !== "Cambio valuta" || incoming.reason !== "Cambio valuta" ||
+        outgoing.toExternalName !== "Cambio valuta" || outgoing.fromExternalName != null ||
+        incoming.fromExternalName !== "Cambio valuta" || incoming.toExternalName != null
+      ) {
+        throw shopUndoConflict("Ledger del cambio valuta contiene righe tecniche estranee.");
+      }
+
+      const outgoingEntries = CURRENCY_ORDER.filter((key) => Number(outgoing[key] ?? 0) !== 0);
+      const incomingEntries = CURRENCY_ORDER.filter((key) => Number(incoming[key] ?? 0) !== 0);
+      if (outgoingEntries.length !== 1 || incomingEntries.length !== 1) {
+        throw shopUndoConflict("Coppia di cambio valuta non valida.");
+      }
+      const outgoingKey = outgoingEntries[0];
+      const incomingKey = incomingEntries[0];
+      const expectedFactor = CURRENCY_EXCHANGE_UP[incomingKey];
+      if (
+        CURRENCY_ORDER.indexOf(outgoingKey) !== CURRENCY_ORDER.indexOf(incomingKey) + 1 ||
+        Number(outgoing[outgoingKey]) !== 1 ||
+        Number(incoming[incomingKey]) !== Number(expectedFactor ?? 0) ||
+        CURRENCY_ORDER.some((key) => Number(outgoing[key] ?? 0) < 0 || Number(incoming[key] ?? 0) < 0)
+      ) {
+        throw shopUndoConflict("Coppia di cambio valuta sbilanciata.");
+      }
+    }
+
+    if (direction === "SHOP_TO_CHARACTER") {
+      const expectedDestination = snapshot.after.destinationCharacterItem;
+      const currentDestination = readCharacterItemTransferState(snapshot.destinationCharacterItemId);
+      if (!expectedDestination || !currentDestination || !transferIdentityMatches(currentDestination, expectedDestination, "character") || currentDestination.quantity < quantity) {
+        throw shopUndoConflict("Non posso annullare: il personaggio non possiede piu' l'oggetto o lo stato richiesto.");
+      }
+      const perCopy = itemDefinitionCarriesPerCopyState(currentDestination.itemDefinitionId, currentDestination.data, currentDestination.featureStates);
+      if (perCopy && currentDestination.quantity !== quantity) throw shopUndoConflict("Non posso annullare: l'istanza non e' piu' integra.");
+      const sourceBefore = snapshot.before.sourceShopItem;
+      const currentSource = readShopItemTransferState(snapshot.sourceShopItemId);
+      if (!sourceBefore || (currentSource && !transferIdentityMatches(currentSource, sourceBefore, "shop"))) {
+        throw shopUndoConflict("Non posso annullare: lo stock originario e' cambiato in modo incompatibile.");
+      }
+    } else if (direction === "CHARACTER_TO_SHOP") {
+      const expectedDestination = snapshot.after.destinationShopItem;
+      const currentDestination = readShopItemTransferState(snapshot.destinationShopItemId);
+      if (!expectedDestination || !currentDestination || !transferIdentityMatches(currentDestination, expectedDestination, "shop") || currentDestination.quantity < quantity) {
+        throw shopUndoConflict("Non posso annullare: il negozio non possiede piu' l'oggetto o lo stato richiesto.");
+      }
+      const perCopy = itemDefinitionCarriesPerCopyState(currentDestination.itemDefinitionId, currentDestination.data, currentDestination.featureStates);
+      if (perCopy && currentDestination.quantity !== quantity) throw shopUndoConflict("Non posso annullare: l'istanza non e' piu' integra.");
+      const sourceBefore = snapshot.before.sourceCharacterItem;
+      const currentSource = readCharacterItemTransferState(snapshot.sourceCharacterItemId);
+      if (!sourceBefore || (currentSource && !transferIdentityMatches(currentSource, sourceBefore, "character"))) {
+        throw shopUndoConflict("Non posso annullare: l'inventario originario e' cambiato in modo incompatibile.");
+      }
+      ensureCharacterEquipSlotsAvailable(sourceBefore);
+    } else {
+      throw shopUndoConflict("Direzione della compravendita non valida.");
+    }
+
+    const deltas = new Map();
+    for (const row of currencyRows) {
+      const amounts = normalizeCurrencyBalance(row);
+      addCurrencyDelta(deltas, row.fromCharacterId ? `character:${row.fromCharacterId}` : null, amounts, -1);
+      addCurrencyDelta(deltas, row.toCharacterId ? `character:${row.toCharacterId}` : null, amounts, 1);
+      addCurrencyDelta(deltas, row.fromShopId ? `shop:${row.fromShopId}` : null, amounts, -1);
+      addCurrencyDelta(deltas, row.toShopId ? `shop:${row.toShopId}` : null, amounts, 1);
+    }
+    const nextBalances = new Map();
+    for (const [ownerKey, delta] of deltas) {
+      const [ownerType, ownerId] = ownerKey.split(":");
+      const current = ownerType === "character" ? readCharacterCurrencyBalance(ownerId) : readShopCurrencyBalance(ownerId);
+      if (!current) throw shopUndoConflict("Non posso annullare: un portafoglio coinvolto non esiste piu'.");
+      const next = normalizeCurrencyBalance();
+      for (const key of CURRENCY_KEYS) {
+        next[key] = Number(current[key] ?? 0) - Number(delta[key] ?? 0);
+        if (next[key] < 0) throw shopUndoConflict("Non posso annullare: il destinatario originario non ha piu' le monete necessarie nei tagli richiesti.");
+      }
+      nextBalances.set(ownerKey, next);
+    }
+
+    for (const [ownerKey, balance] of nextBalances) {
+      const [ownerType, ownerId] = ownerKey.split(":");
+      if (ownerType === "character") writeCharacterCurrencyBalance(ownerId, balance);
+      else writeShopCurrencyBalance(ownerId, balance);
+    }
+
+    if (direction === "SHOP_TO_CHARACTER") {
+      const destination = readCharacterItemTransferState(snapshot.destinationCharacterItemId);
+      sqlite.prepare('DELETE FROM "CharacterItemEquip" WHERE characterItemId = ?').run(destination.id);
+      if (destination.quantity === quantity) sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(destination.id);
+      else sqlite.prepare('UPDATE "CharacterItem" SET quantity = ?, updatedAt = ? WHERE id = ?').run(destination.quantity - quantity, now, destination.id);
+      restoreShopItemFromSnapshot(snapshot.before.sourceShopItem, quantity, now);
+    } else {
+      const destination = readShopItemTransferState(snapshot.destinationShopItemId);
+      if (destination.quantity === quantity) sqlite.prepare('DELETE FROM "ShopItem" WHERE id = ?').run(destination.id);
+      else sqlite.prepare('UPDATE "ShopItem" SET quantity = ?, updatedAt = ? WHERE id = ?').run(destination.quantity - quantity, now, destination.id);
+      restoreCharacterItemFromSnapshot(snapshot.before.sourceCharacterItem, quantity, now);
+    }
+
+    for (const row of currencyRows) {
+      const amounts = normalizeCurrencyBalance(row);
+      sqlite.prepare('UPDATE "CurrencyTransaction" SET reversedAt = ? WHERE id = ?').run(now, row.id);
+      createCurrencyTransactionRecord({
+        operationId: undoOperationId,
+        fromCharacterId: row.toCharacterId ?? null,
+        toCharacterId: row.fromCharacterId ?? null,
+        fromShopId: row.toShopId ?? null,
+        toShopId: row.fromShopId ?? null,
+        shopNegotiationId: row.shopNegotiationId ?? inventory.shopNegotiationId,
+        fromExternalName: row.toExternalName ?? null,
+        toExternalName: row.fromExternalName ?? null,
+        reason: row.reason ?? "Annullamento compravendita",
+        purchaseDescription: row.purchaseDescription ?? snapshot.itemName ?? null,
+        note: `Annullamento tecnico di ${row.id}`,
+        createdByUserId: actorUserId,
+        reversalOfTransactionId: row.id,
+        ...amounts,
+      });
+    }
+
+    sqlite.prepare('UPDATE "InventoryTransaction" SET reversedAt = ? WHERE id = ?').run(now, inventory.id);
+    const inverseInventoryId = crypto.randomUUID();
+    sqlite.prepare(`
+      INSERT INTO "InventoryTransaction" (
+        id, type, fromOwnerType, fromCharacterId, fromNpcName, toOwnerType, toCharacterId, toNpcName,
+        fromShopId, toShopId, operationId, shopNegotiationId, notes, createdByUserId,
+        reversalOfTransactionId, reversedAt, createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+    `).run(
+      inverseInventoryId, inventory.type, inventory.toOwnerType, inventory.toCharacterId, inventory.toNpcName,
+      inventory.fromOwnerType, inventory.fromCharacterId, inventory.fromNpcName, inventory.toShopId, inventory.fromShopId,
+      undoOperationId, inventory.shopNegotiationId, `UNDO::${inventory.id}`, actorUserId, inventory.id, now
+    );
+    sqlite.prepare(`INSERT INTO "InventoryTransactionItem" (
+      id, transactionId, characterItemId, itemDefinitionId, descriptionSnapshot, quantity
+    ) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(crypto.randomUUID(), inverseInventoryId,
+        direction === "CHARACTER_TO_SHOP" ? snapshot.sourceCharacterItemId : null,
+        inventory.itemDefinitionId ?? snapshot.itemDefinitionId ?? null,
+        JSON.stringify({ ...snapshot, reversalOfOperationId: operationId }), quantity);
+
+    const negotiation = readShopNegotiationById(inventory.shopNegotiationId);
+    response = {
+      ok: true,
+      operationId,
+      undoOperationId,
+      visitId: negotiation?.visitId ?? null,
+      characterSlug: negotiation?.characterSlug ?? null,
+    };
+  });
+
+  return response;
 }
 
 function broadcastShopNegotiationState(io, visitId) {
@@ -4662,6 +5119,9 @@ function readInventoryTransfers() {
     SELECT
       t.id,
       t.type,
+      t.operationId,
+      t.shopNegotiationId,
+      t.reversedAt,
       t.notes,
       t.createdAt,
       fc.slug AS fromCharacterSlug,
@@ -4681,6 +5141,7 @@ function readInventoryTransfers() {
       LEFT JOIN "Shop" ts ON ts.id = t.toShopId
       LEFT JOIN "InventoryTransactionItem" ti ON ti.transactionId = t.id
       WHERE t.type IN ('TRANSFER', 'INITIAL_GRANT', 'REMOVAL', 'PURCHASE', 'SALE')
+        AND t.reversalOfTransactionId IS NULL
       ORDER BY t.createdAt DESC
     `).all();
 
@@ -4693,6 +5154,9 @@ function readInventoryTransfers() {
             ? row.descriptionSnapshot.trim()
             : null;
         const type = String(row.type ?? "TRANSFER");
+        const isShopTrade = !!(row.shopNegotiationId || row.fromShopName || row.toShopName);
+        const hasUndoSnapshot = Number(snapshot?.version) === 2;
+        const undone = !!row.reversedAt || isAnnulledTransactionNotes(row.notes);
         const actionLabel =
           type === "INITIAL_GRANT"
             ? "Assegnazione DM"
@@ -4705,6 +5169,7 @@ function readInventoryTransfers() {
                   : "Trasferimento";
         return {
           id: row.id,
+          operationId: row.operationId ?? null,
           type,
           actionLabel,
           fromCharacterSlug: row.fromCharacterSlug ?? null,
@@ -4722,8 +5187,9 @@ function readInventoryTransfers() {
           quantity: Number(row.quantity ?? snapshot?.quantity ?? 1),
           createdAt: row.createdAt,
           notes: row.notes ?? null,
-          undone: isAnnulledTransactionNotes(row.notes),
-          canUndo: type === "TRANSFER" && !isAnnulledTransactionNotes(row.notes),
+          undone,
+          undoScope: isShopTrade ? "SHOP_TRADE" : type === "TRANSFER" ? "INVENTORY" : null,
+          canUndo: !undone && (type === "TRANSFER" || (isShopTrade && hasUndoSnapshot)),
         };
       });
   }
@@ -8974,6 +9440,7 @@ async function start() {
       if (!negotiation) return res.status(404).json({ error: "Shop negotiation not found" });
       const visit = readShopVisitById(negotiation.visitId);
       if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (rejectIfSessionClosedForPlayer(res, req.user)) return;
       if (negotiation.status !== "OPEN" || negotiation.visitStatus !== "ACTIVE") return res.status(409).json({ error: "Negotiation is not open" });
       const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
       const currentOffer = offers[offers.length - 1] ?? null;
@@ -8993,12 +9460,13 @@ async function start() {
       if (!negotiation) return res.status(404).json({ error: "Shop negotiation not found" });
       const visit = readShopVisitById(negotiation.visitId);
       if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (rejectIfSessionClosedForPlayer(res, req.user)) return;
       if (negotiation.status !== "OPEN" || negotiation.visitStatus !== "ACTIVE") return res.status(409).json({ error: "Negotiation is not open" });
       const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
       const currentOffer = offers[offers.length - 1] ?? null;
       if (!currentOffer) return res.status(409).json({ error: "Negotiation has no offer" });
       if (shopOfferProposerSide(currentOffer) === shopActorSide(req.user)) return res.status(409).json({ error: "The other side must accept this offer" });
-      acceptShopNegotiationAtomically(negotiation, currentOffer, req.user?.id ?? null);
+      acceptShopNegotiationAtomically(negotiation, currentOffer, req.user?.id ?? null, shopActorSide(req.user));
       broadcastShopNegotiationState(io, negotiation.visitId);
       const characterState = readCharacter(negotiation.characterSlug);
       if (characterState) io.to(`char:${negotiation.characterSlug}`).emit("character:state", characterState);
@@ -9356,6 +9824,26 @@ async function start() {
     }
   });
 
+  app.post("/api/shop-operations/:operationId/undo", requireRole("dm"), (req, res) => {
+    try {
+      const result = undoShopOperationAtomically(req.params.operationId, req.user?.id ?? null);
+      try {
+        if (result.visitId) broadcastShopNegotiationState(io, result.visitId);
+        if (result.characterSlug) {
+          const state = readCharacter(result.characterSlug);
+          if (state) io.to(`char:${result.characterSlug}`).emit("character:state", state);
+        }
+      } catch (broadcastError) {
+        console.error("Shop undo committed, but realtime refresh failed", broadcastError);
+      }
+      return res.json(result);
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      const status = Number(error?.statusCode) || (/not found/i.test(message) ? 404 : 500);
+      return res.status(status).json({ error: message });
+    }
+  });
+
   app.get("/api/currency-transactions", requireRole("dm"), (req, res) => {
     return res.json(readCurrencyTransactionsForDm());
   });
@@ -9392,7 +9880,7 @@ async function start() {
       return res.json({ ok: true });
     } catch (error) {
       const message = String(error?.message ?? error);
-      const status = /not found/i.test(message) ? 404 : 400;
+      const status = Number(error?.statusCode) || (/not found/i.test(message) ? 404 : 400);
       return res.status(status).json({ error: message });
     }
   });

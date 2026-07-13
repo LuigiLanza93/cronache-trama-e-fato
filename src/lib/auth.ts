@@ -74,6 +74,7 @@ export type CurrencyTransactionEntry = {
   note: string | null;
   undone: boolean;
   canUndo: boolean;
+  isShopOperation: boolean;
   operationType: "ADD" | "REMOVE" | "TRANSFER" | "CONVERT";
 };
 
@@ -654,6 +655,8 @@ export type EquipResolutionDetails = {
 
 export type InventoryTransferEntry = {
   id: string;
+  operationId: string | null;
+  undoScope: "INVENTORY" | "SHOP_TRADE" | null;
   type: string;
   actionLabel: string;
   fromCharacterSlug: string | null;
@@ -1590,6 +1593,13 @@ export function undoInventoryTransactionRequest(transactionId: string) {
   return authFetch<{ ok: true }>(`/api/inventory-transactions/${transactionId}/undo`, {
     method: "POST",
   });
+}
+
+export function undoShopOperationRequest(operationId: string) {
+  return authFetch<{ ok: true; operationId: string; undoOperationId: string }>(
+    `/api/shop-operations/${operationId}/undo`,
+    { method: "POST" }
+  );
 }
 
 export function fetchCurrencyTransactions() {

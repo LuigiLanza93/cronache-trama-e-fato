@@ -675,13 +675,13 @@ const Index = () => {
       },
       {
         title: "Transazioni oggetti",
-        description: "Controlla i trasferimenti tra PG e annulla eventuali errori.",
+        description: "Controlla trasferimenti e compravendite, con ripristino tecnico atomico di oggetti e monete.",
         href: "/dm/inventory/transactions",
         icon: Link2,
       },
       {
         title: "Transazioni monete",
-        description: "Controlla i movimenti monete e annulla eventuali errori.",
+        description: "Controlla i movimenti monete e annulla le operazioni monetarie autonome.",
         href: "/dm/currency-transactions",
         icon: Link2,
       },
