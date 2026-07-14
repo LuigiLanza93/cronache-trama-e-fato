@@ -811,6 +811,8 @@ model ItemDefinition {
   attunement    Boolean      @default(false)
   weight        Float?
   valueCp       Int?
+  valueCurrency String?
+  valueAmount   Int?
   data          String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt

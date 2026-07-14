@@ -547,6 +547,7 @@ const Inventory = ({
   const [detailTarget, setDetailTarget] = useState<InventoryTarget | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailDefinition, setDetailDefinition] = useState<ItemDefinitionEntry | null>(null);
+  const [detailDefinitionLoading, setDetailDefinitionLoading] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferTargetSlug, setTransferTargetSlug] = useState("");
   const [transferQuantity, setTransferQuantity] = useState("1");
@@ -902,6 +903,12 @@ const Inventory = ({
       getCategoryMetaIcon(item?.itemCategory),
       item?.stackable ? { key: `qty-${item.id}`, label: `Quantita nello stack: ${item.quantity}`, Icon: Package, text: String(item.quantity) } : null,
     ].filter(Boolean) as MetaIconSpec[];
+  };
+
+  const formatIndicativeValue = (value: { currency?: string | null; amount?: number | null } | null | undefined) => {
+    return value && Number.isInteger(Number(value.amount)) && Number(value.amount) > 0 && value.currency
+      ? `${Number(value.amount)} ${String(value.currency).toUpperCase()}`
+      : "sconosciuto";
   };
 
   const getCategoryLabel = (category: string | null | undefined) => {
@@ -1308,6 +1315,7 @@ const Inventory = ({
     const relationalKinds = ["relationalWeapon", "relationalObject", "relationalConsumable"];
     if (!detailTarget || !relationalKinds.includes(detailTarget.kind)) {
       setDetailDefinition(null);
+      setDetailDefinitionLoading(false);
       return;
     }
 
@@ -1315,22 +1323,35 @@ const Inventory = ({
     const itemDefinitionId = relationalItem?.itemDefinitionId;
     if (!itemDefinitionId) {
       setDetailDefinition(null);
+      setDetailDefinitionLoading(false);
+      return;
+    }
+
+    const cachedDefinition = inventoryItemDetailsById[itemDefinitionId];
+    if (cachedDefinition) {
+      setDetailDefinition(cachedDefinition);
+      setDetailDefinitionLoading(false);
       return;
     }
 
     let active = true;
+    setDetailDefinition(null);
+    setDetailDefinitionLoading(true);
     void fetchItemDefinition(itemDefinitionId)
       .then((detail) => {
         if (active) setDetailDefinition(detail);
       })
       .catch(() => {
         if (active) setDetailDefinition(null);
+      })
+      .finally(() => {
+        if (active) setDetailDefinitionLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, [detailTarget, relationalItems]);
+  }, [detailTarget, inventoryItemDetailsById, relationalItems]);
 
   // ==== helper per render armi (retro-compat) ====
   const buildAttackDetail = (atk: any) => {
@@ -2485,6 +2506,7 @@ const Inventory = ({
                 <div><span className="font-medium text-foreground">Categoria:</span> {getCategoryLabel((getDetailEntry() as any)?.itemCategory)}</div>
                 {detailDefinition?.rarity ? <div><span className="font-medium text-foreground">Rarità:</span> {detailDefinition.rarity.replaceAll("_", " ")}</div> : null}
                 {(getDetailEntry() as any)?.stackable ? <div><span className="font-medium text-foreground">Quantità:</span> {(getDetailEntry() as any)?.quantity ?? 0}</div> : null}
+                <div><span className="font-medium text-foreground">Valore indicativo:</span> {formatIndicativeValue((getDetailEntry() as any)?.suggestedValue)}</div>
                 {(getDetailEntry() as any)?.isEquipped ? <div><span className="font-medium text-foreground">Stato:</span> Equipaggiato</div> : null}
                 {detailDefinition?.weaponHandling ? <div><span className="font-medium text-foreground">Impugnatura:</span> {getWeaponHandlingLabel(detailDefinition.weaponHandling)}</div> : null}
                 {detailDefinition?.armorCategory ? <div><span className="font-medium text-foreground">Tipo armatura:</span> {getArmorCategoryLabel(detailDefinition.armorCategory)}</div> : null}
@@ -2559,8 +2581,16 @@ const Inventory = ({
                     </div>
                   )}
                 </>
-              ) : (
+              ) : detailDefinitionLoading ? (
                 <div className="text-sm text-muted-foreground">Carico i dettagli della definizione oggetto...</div>
+              ) : (getDetailEntry() as any)?.itemDefinitionId ? (
+                <div className="rounded-md border border-dashed border-border/60 px-3 py-2 text-sm text-muted-foreground">
+                  Dettagli catalogo non disponibili per questo oggetto. Mostro comunque i dati salvati sull'istanza.
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-border/60 px-3 py-2 text-sm text-muted-foreground">
+                  Questo oggetto non e' collegato a una definizione catalogo.
+                </div>
               )}
             </div>
           )}

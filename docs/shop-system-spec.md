@@ -41,7 +41,7 @@ Verificato in locale:
 
 Non ancora completato:
 
-- storico visite completo;
+- storico visite completo da validare nel flusso manuale;
 - rifiniture quality of life su conferme, messaggi e flussi di trattativa;
 - compravendita atomica completa nei casi limite;
 - annullamento tecnico esteso ai negozi.
@@ -85,7 +85,7 @@ Il sistema deve supportare compravendite negoziate, disponibilita' reale degli o
 - Ogni importo e' monovaluta: rame, argento, electrum oppure oro.
 - Il prezzo base dello stock e' un riferimento privato per il DM.
 - Il DM puo' vendere a qualsiasi prezzo, anche superiore al listino in base al rapporto col PG.
-- Il player propone liberamente il valore degli oggetti che vuole vendere; non vede una valutazione automatica.
+- Il player propone liberamente il valore degli oggetti che vuole vendere; se l'anagrafica oggetto contiene un valore indicativo, il popup di vendita lo mostra e lo usa come precompilazione non vincolante. Se manca, viene mostrato "sconosciuto".
 - Il venditore formula la proposta, il compratore la accetta, la rifiuta o la rilancia.
 - Finche' la trattativa non e' conclusa le proposte possono rimbalzare tra le parti.
 - Accettazione e rifiuto chiudono la trattativa; un rilancio sostituisce la proposta corrente mantenendo la stessa catena negoziale.
@@ -129,7 +129,7 @@ Nuova sezione `/dm/shops`, raggruppata per citta', con:
 Stato al 2026-07-10:
 
 - disponibile: creazione, modifica, archiviazione, raggruppamento per citta', saldo, dati proprietario, note DM, CD sconto, stock da `ItemDefinition`, quantita', prezzo base monovaluta, segretezza, CD di scoperta, import JSON, profili PG, apertura/chiusura visita DM di base, popup globale player, vetrina player/DM e rivelazione manuale;
-- non ancora disponibile: storico visite completo, annullamento tecnico esteso e rifinitura completa compravendita atomica.
+- non ancora disponibile: test manuale esteso dei casi limite e rifinitura completa compravendita atomica.
 
 Nota UX: in inserimento manuale la chiave esterna non deve essere inventata ogni volta dal DM. Se il campo resta vuoto, il server genera automaticamente uno slug kebab-case dal nome del negozio e aggiunge un suffisso numerico in caso di collisione.
 
@@ -277,7 +277,7 @@ Il DM vede:
 Popup globale con:
 
 - negozio e proprietario;
-- stock visibile, senza listino prezzi;
+- stock visibile con prezzo censito e prezzo personale scontato quando applicabile;
 - oggetti appena rivelati evidenziati;
 - proprio inventario affiancato, con stato equipaggiato evidente;
 - proprio saldo;
@@ -318,7 +318,7 @@ Ogni prodotto collegato al catalogo eredita i seguenti dati base:
 - equipaggiabilita';
 - requisito di sintonia/attunement;
 - peso;
-- valore indicativo in rame `valueCp`;
+- valore indicativo monovaluta opzionale (`valueCurrency` + `valueAmount`); `valueCp` resta solo campo legacy/backcompat durante la transizione;
 - eventuali dati aggiuntivi strutturati.
 
 Categorie attualmente supportate:
@@ -672,7 +672,8 @@ Stato al 2026-07-09:
 - implementati come realtime iniziale: eventi `shop-visit:opened`, `shop-visit:updated`, `shop-visit:closed` e listener globale player con recupero tramite `GET /api/shop-visits/active`;
 - implementati payload visita con vetrina filtrata per player, stock completo DM, inventario PG e comando DM di rivelazione oggetto;
 - implementata Fase 4 base: `POST /api/shop-visits/:visitId/negotiations`, `POST /api/shop-negotiations/:id/counter-offers`, `POST /api/shop-negotiations/:id/accept`, `POST /api/shop-negotiations/:id/reject`, `POST /api/shop-negotiations/:id/withdraw`, serializer offerte nel payload visita e controlli UI DM/player;
-- da completare: storico visite UI, rifinitura compravendita atomica e annullamento tecnico.
+- completati dopo il primo blocco: storico visite DM per negozio/PG, blocco sessione anche sulla proposta iniziale player e dettaglio prodotto espandibile nella vetrina player;
+- da completare: test manuali sui casi limite e ulteriori rifiniture responsive/messaggi.
 
 ### Visita
 
@@ -778,7 +779,7 @@ Stato: completata per la fondazione DM. I serializer player verranno completati 
 - import JSON con schema versionato, anteprima transazionale e indice catalogo esportabile;
 - testare prima di committare.
 
-Stato: quasi completata. Sono pronti CRUD negozi, CRUD stock, pagina DM, saldo, note DM, segreti, CD, prezzi, import JSON e profili PG. Restano storico visite e apertura visita.
+Stato: completata per la gestione DM ordinaria. Sono pronti CRUD negozi, CRUD stock, pagina DM, saldo, note DM, segreti, CD, prezzi, import JSON, profili PG, storico visite e apertura visita.
 
 ### Fase 3: visite sincronizzate
 
@@ -788,7 +789,7 @@ Stato: quasi completata. Sono pronti CRUD negozi, CRUD stock, pagina DM, saldo, 
 - contatore visite, note, sconto e rivelazioni permanenti;
 - recupero dopo refresh.
 
-Stato: avanzata. Implementate API e UI DM di base per aprire/chiudere una sola visita attiva globale, recuperare la visita attiva e aggiornare contatore/ultima visita del profilo PG. Lo sconto abituale del profilo PG viene proposto come default quando il DM apre una nuova visita. Implementato il popup globale player con eventi realtime e recupero dopo refresh. Implementati payload di vetrina/inventario e rivelazione manuale persistente degli oggetti segreti. Restano storico visite UI e rifiniture quality of life.
+Stato: avanzata. Implementate API e UI DM di base per aprire/chiudere una sola visita attiva globale, recuperare la visita attiva e aggiornare contatore/ultima visita del profilo PG. Lo sconto abituale del profilo PG viene proposto come default quando il DM apre una nuova visita. Implementato il popup globale player con eventi realtime e recupero dopo refresh. Implementati payload di vetrina/inventario e rivelazione manuale persistente degli oggetti segreti. Implementato anche lo storico visite nel pannello rapporto negozio-PG. Restano test manuali sui casi limite e rifiniture quality of life.
 
 ### Fase 4: negoziazioni
 
@@ -838,5 +839,5 @@ Proseguire con interventi puntuali di quality of life e robustezza:
 1. aggiungere conferme esplicite prima di accettare offerte di acquisto/vendita;
 2. migliorare testi e stati UI per proposta, rilancio, accettazione, rifiuto e ritiro;
 3. testare vendita PG al negozio, fondi insufficienti, stock insufficiente, oggetti equipaggiati e oggetti con cariche;
-4. aggiungere storico visite UI;
-5. progettare l'annullamento tecnico esteso ai negozi in una fase separata.
+4. verificare lo storico visite UI nel pannello rapporto negozio-PG;
+5. mantenere l'annullamento tecnico esteso ai negozi nel ciclo di test dei casi limite.

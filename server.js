@@ -2168,6 +2168,8 @@ function createEmptyItemDefinition(name = "Nuovo oggetto") {
     attunement: false,
     weight: null,
     valueCp: null,
+    valueCurrency: null,
+    valueAmount: null,
     data: null,
     createdAt: now,
     updatedAt: now,
@@ -2181,6 +2183,44 @@ function createEmptyItemDefinition(name = "Nuovo oggetto") {
 }
 
 const SHOP_CURRENCIES = new Set(["CP", "SP", "EP", "GP"]);
+
+function normalizeItemValuePayload(payload) {
+  const rawAmount = payload?.valueAmount;
+  const rawCurrency = payload?.valueCurrency;
+  const hasAmount = rawAmount !== undefined && rawAmount !== null && rawAmount !== "";
+  const hasCurrency = rawCurrency !== undefined && rawCurrency !== null && rawCurrency !== "";
+  if (!hasAmount && !hasCurrency) {
+    const legacyCp = normalizeNullableInt(payload?.valueCp);
+    if (legacyCp == null) return { valueCurrency: null, valueAmount: null };
+    if (legacyCp <= 0) throw new Error("Item value must be a positive integer");
+    const legacyValue = copperToItemValue(legacyCp);
+    return legacyValue ? { valueCurrency: legacyValue.currency, valueAmount: legacyValue.amount } : { valueCurrency: null, valueAmount: null };
+  }
+  if (!hasAmount || !hasCurrency) throw new Error("Item value requires both amount and currency, or neither");
+  const currency = String(rawCurrency).trim().toUpperCase();
+  if (!SHOP_CURRENCIES.has(currency)) throw new Error("Item value currency must be CP, SP, EP or GP");
+  return {
+    valueCurrency: currency,
+    valueAmount: normalizeShopInteger(rawAmount, "item value", { min: 1 }),
+  };
+}
+
+function itemValueToCopper(currency, amount) {
+  const normalizedCurrency = String(currency ?? "").toUpperCase();
+  const normalizedAmount = Number(amount ?? 0);
+  if (!SHOP_CURRENCIES.has(normalizedCurrency) || !Number.isInteger(normalizedAmount) || normalizedAmount <= 0) return null;
+  const factor = normalizedCurrency === "GP" ? 100 : normalizedCurrency === "EP" ? 50 : normalizedCurrency === "SP" ? 10 : 1;
+  return normalizedAmount * factor;
+}
+
+function copperToItemValue(valueCp) {
+  const normalizedAmount = Number(valueCp ?? 0);
+  if (!Number.isInteger(normalizedAmount) || normalizedAmount <= 0) return null;
+  if (normalizedAmount % 100 === 0) return { currency: "GP", amount: normalizedAmount / 100 };
+  if (normalizedAmount % 50 === 0) return { currency: "EP", amount: normalizedAmount / 50 };
+  if (normalizedAmount % 10 === 0) return { currency: "SP", amount: normalizedAmount / 10 };
+  return { currency: "CP", amount: normalizedAmount };
+}
 
 function requireShopTables() {
   if (!tableExists("Shop") || !tableExists("ShopItem")) {
@@ -2529,6 +2569,59 @@ function serializeShopVisitDetail(row, { dm = false } = {}) {
     inventory: readCharacterInventoryItemsBySlug(row.characterSlug) ?? [],
     negotiations: readShopVisitNegotiations(row, { dm }),
   };
+}
+
+function readDmShopVisitHistory(shopId, characterSlug = "", limit = 20) {
+  if (!tableExists("ShopVisit")) throw new Error("Shop visit database migration has not been applied");
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+  const params = [shopId];
+  let characterFilter = "";
+  if (characterSlug) {
+    characterFilter = "AND c.slug = ?";
+    params.push(characterSlug);
+  }
+  params.push(safeLimit);
+  return sqlite.prepare(`
+    SELECT
+      v.id,
+      v.status,
+      v.discountPercent,
+      v.dmNotes,
+      v.openedAt,
+      v.closedAt,
+      v.closeReason,
+      s.id AS shopId,
+      s.name AS shopName,
+      s.ownerName AS shopOwnerName,
+      c.slug AS characterSlug,
+      c.name AS characterName,
+      COUNT(n.id) AS negotiationCount,
+      SUM(CASE WHEN n.status = 'ACCEPTED' THEN 1 ELSE 0 END) AS acceptedNegotiationCount
+    FROM "ShopVisit" v
+    JOIN "Shop" s ON s.id = v.shopId
+    JOIN "Character" c ON c.id = v.characterId
+    LEFT JOIN "ShopNegotiation" n ON n.visitId = v.id
+    WHERE v.shopId = ?
+      ${characterFilter}
+    GROUP BY v.id
+    ORDER BY v.openedAt DESC
+    LIMIT ?
+  `).all(...params).map((row) => ({
+    id: row.id,
+    shopId: row.shopId,
+    shopName: row.shopName,
+    shopOwnerName: row.shopOwnerName,
+    characterSlug: row.characterSlug,
+    characterName: row.characterName,
+    status: row.status,
+    discountPercent: Number(row.discountPercent ?? 0),
+    dmNotes: row.dmNotes ?? "",
+    openedAt: row.openedAt,
+    closedAt: row.closedAt ?? null,
+    closeReason: row.closeReason ?? null,
+    negotiationCount: Number(row.negotiationCount ?? 0),
+    acceptedNegotiationCount: Number(row.acceptedNegotiationCount ?? 0),
+  }));
 }
 
 function shopActorSide(user) {
@@ -3035,14 +3128,14 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
   }
 
   const nextCharacterQuantity = availableQuantity - quantity;
-  if (nextCharacterQuantity <= 0) {
-    sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
-  } else {
-    sqlite.prepare('UPDATE "CharacterItem" SET quantity = ?, isEquipped = 0, updatedAt = ? WHERE id = ?').run(nextCharacterQuantity, now, characterItem.id);
-  }
-
-
-  const sourceCharacterItemAfter = readCharacterItemTransferState(characterItem.id);
+  const sourceCharacterItemAfter = nextCharacterQuantity <= 0
+    ? null
+    : {
+        ...characterItemBefore,
+        quantity: nextCharacterQuantity,
+        isEquipped: false,
+        equippedSlots: [],
+      };
   const destinationShopItemAfter = readShopItemTransferState(shopItemId);
 
   insertShopInventoryTransaction({
@@ -3077,6 +3170,12 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
       },
     },
   });
+
+  if (nextCharacterQuantity <= 0) {
+    sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
+  } else {
+    sqlite.prepare('UPDATE "CharacterItem" SET quantity = ?, isEquipped = 0, updatedAt = ? WHERE id = ?').run(nextCharacterQuantity, now, characterItem.id);
+  }
 }
 
 function acceptShopNegotiationAtomically(negotiation, offer, actorUserId, actorSide) {
@@ -3838,6 +3937,8 @@ function applyShopImport(prepared) {
 function readItemDefinitions() {
   if (!tableExists("ItemDefinition")) return [];
   const hasPlayerVisible = columnExists("ItemDefinition", "playerVisible");
+  const hasValueCurrency = columnExists("ItemDefinition", "valueCurrency");
+  const hasValueAmount = columnExists("ItemDefinition", "valueAmount");
 
   return sqlite.prepare(`
     SELECT
@@ -3850,6 +3951,8 @@ function readItemDefinitions() {
       ${hasPlayerVisible ? "d.playerVisible" : "1 AS playerVisible"},
       d.stackable,
       d.equippable,
+      ${hasValueCurrency ? "d.valueCurrency" : "NULL AS valueCurrency"},
+      ${hasValueAmount ? "d.valueAmount" : "NULL AS valueAmount"},
       d.updatedAt,
       (SELECT COUNT(*) FROM "CharacterItem" ci WHERE ci.itemDefinitionId = d.id) AS assignedCharacterItemCount,
       (SELECT COUNT(*) FROM "ItemAttack" a WHERE a.itemDefinitionId = d.id) AS attackCount,
@@ -3866,6 +3969,8 @@ function readItemDefinitions() {
     playerVisible: !!row.playerVisible,
     stackable: !!row.stackable,
     equippable: !!row.equippable,
+    valueCurrency: row.valueCurrency ?? null,
+    valueAmount: row.valueAmount ?? null,
     assignedCharacterItemCount: Number(row.assignedCharacterItemCount ?? 0),
     attackCount: Number(row.attackCount ?? 0),
     slotRuleCount: Number(row.slotRuleCount ?? 0),
@@ -3997,6 +4102,8 @@ function readItemDefinition(itemId) {
     attunement: !!base.attunement,
     weight: base.weight ?? null,
     valueCp: base.valueCp ?? null,
+    valueCurrency: base.valueCurrency ?? null,
+    valueAmount: base.valueAmount ?? null,
     data: base.data ?? null,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
@@ -4011,6 +4118,7 @@ function readItemDefinition(itemId) {
 
 function normalizeItemDefinitionPayload(payload, existingId = null) {
   const base = createEmptyItemDefinition(String(payload?.name ?? "Nuovo oggetto"));
+  const itemValue = normalizeItemValuePayload(payload);
   const safeName = String(payload?.name ?? "").trim();
   if (!safeName) {
     throw new Error("Item name required");
@@ -4045,7 +4153,9 @@ function normalizeItemDefinitionPayload(payload, existingId = null) {
     equippable: !!payload?.equippable,
     attunement: !!payload?.attunement,
     weight: normalizeNullableFloat(payload?.weight),
-    valueCp: normalizeNullableInt(payload?.valueCp),
+    valueCp: itemValueToCopper(itemValue.valueCurrency, itemValue.valueAmount),
+    valueCurrency: itemValue.valueCurrency,
+    valueAmount: itemValue.valueAmount,
     data: typeof payload?.data === "string" ? payload.data : payload?.data ? JSON.stringify(payload.data) : null,
     slotRules: Array.isArray(payload?.slotRules)
       ? payload.slotRules.map((entry, index) => ({
@@ -4153,6 +4263,8 @@ function saveItemDefinition(payload, existingId = null) {
     ? sqlite.prepare('SELECT id, createdAt FROM "ItemDefinition" WHERE id = ? LIMIT 1').get(normalized.id)
     : null;
   const hasPlayerVisible = columnExists("ItemDefinition", "playerVisible");
+  const hasValueCurrency = columnExists("ItemDefinition", "valueCurrency");
+  const hasValueAmount = columnExists("ItemDefinition", "valueAmount");
 
   runInTransaction(() => {
     if (existing) {
@@ -4177,6 +4289,8 @@ function saveItemDefinition(payload, existingId = null) {
           attunement = ?,
           weight = ?,
           valueCp = ?,
+          ${hasValueCurrency ? "valueCurrency = ?," : ""}
+          ${hasValueAmount ? "valueAmount = ?," : ""}
           data = ?,
           updatedAt = ?
         WHERE id = ?
@@ -4199,6 +4313,8 @@ function saveItemDefinition(payload, existingId = null) {
         normalized.attunement ? 1 : 0,
         normalized.weight,
         normalized.valueCp,
+        ...(hasValueCurrency ? [normalized.valueCurrency] : []),
+        ...(hasValueAmount ? [normalized.valueAmount] : []),
         normalized.data,
         now,
         normalized.id
@@ -4209,8 +4325,11 @@ function saveItemDefinition(payload, existingId = null) {
           id, slug, name, category, subcategory, weaponHandling, gloveWearMode, armorCategory,
           armorClassCalculation, armorClassBase, armorClassBonus, rarity, description,
           ${hasPlayerVisible ? "playerVisible," : ""}
-          stackable, equippable, attunement, weight, valueCp, data, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${hasPlayerVisible ? "?, " : ""}?, ?, ?, ?, ?, ?, ?, ?)
+          stackable, equippable, attunement, weight, valueCp,
+          ${hasValueCurrency ? "valueCurrency," : ""}
+          ${hasValueAmount ? "valueAmount," : ""}
+          data, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${hasPlayerVisible ? "?, " : ""}?, ?, ?, ?, ?, ${hasValueCurrency ? "?, " : ""}${hasValueAmount ? "?, " : ""}?, ?, ?)
       `).run(
         normalized.id,
         normalized.slug,
@@ -4231,6 +4350,8 @@ function saveItemDefinition(payload, existingId = null) {
         normalized.attunement ? 1 : 0,
         normalized.weight,
         normalized.valueCp,
+        ...(hasValueCurrency ? [normalized.valueCurrency] : []),
+        ...(hasValueAmount ? [normalized.valueAmount] : []),
         normalized.data,
         now,
         now
@@ -4665,6 +4786,8 @@ function chooseEquipOption(existing, itemDefinition, options, equipConfig) {
 
 function readCharacterInventoryItemsBySlug(slug) {
   if (!tableExists("CharacterItem")) return [];
+  const hasValueCurrency = columnExists("ItemDefinition", "valueCurrency");
+  const hasValueAmount = columnExists("ItemDefinition", "valueAmount");
 
   const character = sqlite
     .prepare('SELECT id, slug, name FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
@@ -4687,6 +4810,9 @@ function readCharacterInventoryItemsBySlug(slug) {
       ci.updatedAt,
       d.name AS itemDefinitionName,
       d.category AS itemDefinitionCategory,
+      d.valueCp AS itemDefinitionValueCp,
+      ${hasValueCurrency ? "d.valueCurrency" : "NULL"} AS itemDefinitionValueCurrency,
+      ${hasValueAmount ? "d.valueAmount" : "NULL"} AS itemDefinitionValueAmount,
       d.equippable AS itemDefinitionEquippable,
       d.stackable AS itemDefinitionStackable
     FROM "CharacterItem" ci
@@ -4733,6 +4859,9 @@ function readCharacterInventoryItemsBySlug(slug) {
   return rows.map((row) => {
     const category = row.itemDefinitionCategory ?? null;
     const details = buildCharacterInventoryDetailSummary(row.itemDefinitionId ?? null, category);
+    const suggestedValue = row.itemDefinitionValueCurrency && row.itemDefinitionValueAmount
+      ? { currency: String(row.itemDefinitionValueCurrency).toUpperCase(), amount: Number(row.itemDefinitionValueAmount) }
+      : copperToItemValue(row.itemDefinitionValueCp);
 
     return {
       id: row.id,
@@ -4742,8 +4871,10 @@ function readCharacterInventoryItemsBySlug(slug) {
       itemDefinitionId: row.itemDefinitionId ?? null,
       itemName: row.nameOverride ?? row.itemDefinitionName ?? "Oggetto senza nome",
       itemCategory: category,
+      itemValueCp: row.itemDefinitionValueCp ?? null,
       description: row.descriptionOverride ?? details.description ?? null,
       detailSummary: details.detailSummary,
+      suggestedValue,
       equippable: !!row.itemDefinitionEquippable,
       stackable: !!row.itemDefinitionStackable,
         quantity: Number(row.quantity ?? 1),
@@ -9159,6 +9290,18 @@ async function start() {
     }
   });
 
+  app.get("/api/dm/shops/:shopId/visits", requireRole("dm"), (req, res) => {
+    try {
+      if (!readDmShop(req.params.shopId)) return res.status(404).json({ error: "Shop not found" });
+      const characterSlug = String(req.query?.characterSlug ?? "").trim();
+      const limit = Number(req.query?.limit ?? 20);
+      return res.json(readDmShopVisitHistory(req.params.shopId, characterSlug, limit));
+    } catch (error) {
+      const status = Number(error?.status ?? 400);
+      return res.status(status).json({ error: String(error?.message ?? error) });
+    }
+  });
+
   app.patch("/api/dm/shops/:shopId/characters/:slug/profile", requireRole("dm"), (req, res) => {
     try {
       const current = readOrCreateShopCharacterProfile(req.params.shopId, req.params.slug);
@@ -9384,6 +9527,7 @@ async function start() {
       const visit = readShopVisitById(req.params.visitId);
       if (!visit) return res.status(404).json({ error: "Shop visit not found" });
       if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (rejectIfSessionClosedForPlayer(res, req.user)) return;
       if (visit.status !== "ACTIVE") return res.status(409).json({ error: "Shop visit is not active" });
 
       const direction = String(req.body?.direction ?? "").toUpperCase();
@@ -9482,6 +9626,7 @@ async function start() {
       if (!negotiation) return res.status(404).json({ error: "Shop negotiation not found" });
       const visit = readShopVisitById(negotiation.visitId);
       if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (rejectIfSessionClosedForPlayer(res, req.user)) return;
       if (negotiation.status !== "OPEN") return res.status(409).json({ error: "Negotiation is not open" });
       const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
       const currentOffer = offers[offers.length - 1] ?? null;
@@ -9504,6 +9649,7 @@ async function start() {
       if (!negotiation) return res.status(404).json({ error: "Shop negotiation not found" });
       const visit = readShopVisitById(negotiation.visitId);
       if (!canAccessShopVisit(req.user, visit)) return res.status(403).json({ error: "Forbidden" });
+      if (rejectIfSessionClosedForPlayer(res, req.user)) return;
       if (negotiation.status !== "OPEN") return res.status(409).json({ error: "Negotiation is not open" });
       const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
       const currentOffer = offers[offers.length - 1] ?? null;

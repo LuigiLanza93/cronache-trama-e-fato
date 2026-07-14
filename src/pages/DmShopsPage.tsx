@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Archive, ArrowLeft, Check, DoorClosed, Download, Eye, EyeOff, FileJson, HandCoins, PackagePlus, Pencil, Plus, Repeat2, ScanSearch, ShoppingBasket, Store, Trash2, Undo2, Upload, Users, X } from "lucide-react";
+import { Archive, ArrowLeft, Check, ChevronDown, DoorClosed, Download, Eye, EyeOff, FileJson, HandCoins, PackagePlus, Pencil, Plus, Repeat2, ScanSearch, ShoppingBasket, Store, Trash2, Undo2, Upload, Users, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchCharacters, onShopVisitClosed, onShopVisitOpened, onShopVisitUpdated } from "@/realtime";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import ShopOfferDialog, { type ShopOfferDialogPayload } from "@/components/shop-offer-dialog";
 import { CurrencyWallet } from "@/components/currency-wallet";
 import { ShopOfferComparison } from "@/components/shop-offer-comparison";
@@ -26,6 +27,7 @@ import {
   fetchDmShops,
   fetchDmShopImportCatalogIndex,
   fetchDmShopCharacterProfile,
+  fetchDmShopVisitHistory,
   fetchActiveShopVisitRequest,
   fetchShopVisitRequest,
   fetchItemDefinitions,
@@ -41,6 +43,7 @@ import {
   type DmShop,
   type DmShopItem,
   type DmShopCharacterProfile,
+  type DmShopVisitHistoryEntry,
   type ItemDefinitionSummary,
   type ShopImportPreview,
   type ShopVisit,
@@ -68,6 +71,20 @@ type ShopCharacterOption = {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Operazione non riuscita";
+}
+
+function formatVisitDate(value: string | null) {
+  return value ? new Date(value).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" }) : "-";
+}
+
+function shopVisitStatusLabel(status: DmShopVisitHistoryEntry["status"]) {
+  switch (status) {
+    case "ACTIVE": return "Attiva";
+    case "CLOSED_BY_DM": return "Chiusa dal DM";
+    case "CLOSED_BY_PLAYER": return "Chiusa dal player";
+    case "INTERRUPTED": return "Interrotta";
+    default: return status;
+  }
 }
 
 function shopKeyFromName(name: string) {
@@ -117,6 +134,7 @@ export default function DmShopsPage() {
   const [profileShop, setProfileShop] = useState<DmShop | null>(null);
   const [profileSlug, setProfileSlug] = useState("");
   const [profile, setProfile] = useState<DmShopCharacterProfile | null>(null);
+  const [profileVisits, setProfileVisits] = useState<DmShopVisitHistoryEntry[]>([]);
   const [profileNotes, setProfileNotes] = useState("");
   const [profileDiscount, setProfileDiscount] = useState<number | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -133,6 +151,7 @@ export default function DmShopsPage() {
   const [highlightedNegotiationId, setHighlightedNegotiationId] = useState<string | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const negotiationSectionRef = useRef<HTMLElement | null>(null);
+  const [openCityGroups, setOpenCityGroups] = useState<Record<string, boolean>>({});
   const [offerDialog, setOfferDialog] = useState<
     | { kind: "proposal"; direction: "SHOP_TO_CHARACTER" | "CHARACTER_TO_SHOP"; itemId: string; itemName: string; maxQuantity: number; equipped: boolean; amount: number; currency: ShopCurrency }
     | { kind: "counter" | "accept"; negotiation: ShopNegotiation }
@@ -218,6 +237,14 @@ export default function DmShopsPage() {
     }
     return [...groups.entries()].sort(([left], [right]) => left.localeCompare(right, "it"));
   }, [shops]);
+
+  useEffect(() => {
+    setOpenCityGroups((current) => {
+      const next: Record<string, boolean> = {};
+      for (const [city] of groupedShops) next[city] = current[city] ?? true;
+      return next;
+    });
+  }, [groupedShops]);
 
   const filteredCatalog = useMemo(() => {
     const needle = catalogFilter.trim().toLowerCase();
@@ -339,14 +366,19 @@ export default function DmShopsPage() {
   const loadProfile = async (shop: DmShop, slug: string) => {
     if (!slug) {
       setProfile(null);
+      setProfileVisits([]);
       setProfileNotes("");
       setProfileDiscount(null);
       return;
     }
     setProfileLoading(true);
     try {
-      const nextProfile = await fetchDmShopCharacterProfile(shop.id, slug);
+      const [nextProfile, nextVisits] = await Promise.all([
+        fetchDmShopCharacterProfile(shop.id, slug),
+        fetchDmShopVisitHistory(shop.id, slug, 12),
+      ]);
       setProfile(nextProfile);
+      setProfileVisits(nextVisits);
       setProfileNotes(nextProfile.dmNotes);
       setProfileDiscount(nextProfile.usualDiscountPercent);
     } catch (error) { toast.error(errorMessage(error)); }
@@ -356,6 +388,7 @@ export default function DmShopsPage() {
   const openProfiles = (shop: DmShop) => {
     setProfileShop(shop);
     setProfile(null);
+    setProfileVisits([]);
     setProfileNotes("");
     setProfileDiscount(null);
     const firstSlug = characters[0]?.slug ?? "";
@@ -547,8 +580,22 @@ export default function DmShopsPage() {
         {loading ? <Card className="p-8 text-center text-muted-foreground">Carico i negozi…</Card> : groupedShops.length === 0 ? (
           <Card className="p-10 text-center"><Store className="mx-auto mb-3 h-10 w-10 text-primary/60" /><p className="font-heading text-xl">Nessun negozio</p><p className="mt-1 text-sm text-muted-foreground">Crea la prima bottega per iniziare a comporre lo stock.</p></Card>
         ) : groupedShops.map(([city, cityShops]) => (
-          <section key={city} className="space-y-3">
-            <h2 className="font-heading text-2xl text-primary">{city}</h2>
+          <Collapsible
+            key={city}
+            open={openCityGroups[city] ?? true}
+            onOpenChange={(open) => setOpenCityGroups((current) => ({ ...current, [city]: open }))}
+            className="rounded-md border border-primary/15 bg-card/45 p-3"
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="group flex h-auto w-full justify-between gap-3 rounded-md px-3 py-2 text-left hover:bg-primary/5">
+                <span className="min-w-0">
+                  <span className="block font-heading text-2xl text-primary">{city}</span>
+                  <span className="text-xs text-muted-foreground">{cityShops.length} negoz{cityShops.length === 1 ? "io" : "i"}</span>
+                </span>
+                <ChevronDown className="mt-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
             <div className="grid gap-4 xl:grid-cols-2">
               {cityShops.map((shop) => (
                 <Card key={shop.id} className={`p-5 ${shop.archivedAt ? "opacity-65" : ""}`}>
@@ -557,7 +604,7 @@ export default function DmShopsPage() {
                     <div className="flex gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Apri visita presso ${shop.name}`} title="Apri visita" disabled={!!activeVisit || !!shop.archivedAt} onClick={() => openVisitDialog(shop)}><Store className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Gestisci rapporti di ${shop.name}`} title="Rapporti con i PG" onClick={() => openProfiles(shop)}><Users className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Modifica ${shop.name}`} title="Modifica negozio" onClick={() => openEditShop(shop)}><Pencil className="h-4 w-4" /></Button>{!shop.archivedAt && <Button variant="ghost" size="icon" className="rounded-full" aria-label={`Archivia ${shop.name}`} title="Archivia negozio" onClick={() => void archiveShop(shop)}><Archive className="h-4 w-4" /></Button>}</div>
                   </div>
                   {shop.description && <p className="mt-3 text-sm">{shop.description}</p>}
-                  {shop.dmNotes && <p className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-900">Note DM: {shop.dmNotes}</p>}
+                  {shop.dmNotes && <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100">Note DM: {shop.dmNotes}</p>}
                   <div className="mt-4 flex flex-wrap gap-2 text-xs">{(["cp", "sp", "ep", "gp"] as const).map((currency) => <Badge key={currency} variant="outline">{shop.balance[currency]} {currency.toUpperCase()}</Badge>)}{shop.discountDc && <Badge variant="outline">CD sconto {shop.discountDc}</Badge>}</div>
                   <div className="mt-5 flex items-center justify-between"><h4 className="font-medium">Stock ({shop.items.length})</h4>{!shop.archivedAt && <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Aggiungi prodotto a ${shop.name}`} title="Aggiungi prodotto" onClick={() => openNewItem(shop)}><PackagePlus className="h-4 w-4" /></Button>}</div>
                   <div className="mt-2 divide-y rounded-md border">
@@ -571,7 +618,8 @@ export default function DmShopsPage() {
                 </Card>
               ))}
             </div>
-          </section>
+            </CollapsibleContent>
+          </Collapsible>
         ))}
       </div>
 
@@ -684,7 +732,7 @@ export default function DmShopsPage() {
                           </Button>
                         </div>
                         {item.description ? <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{item.description}</p> : null}
-                        {item.dmNotes ? <p className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs text-amber-900">Note DM: {item.dmNotes}</p> : null}
+                        {item.dmNotes ? <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100">Note DM: {item.dmNotes}</p> : null}
                       </div>
                     )) : (
                       <div className="rounded-md border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">Stock vuoto.</div>
@@ -785,6 +833,42 @@ export default function DmShopsPage() {
             <Field label="Sconto abituale %"><Input type="number" min={0} max={100} value={profileDiscount ?? ""} onChange={(event) => setProfileDiscount(event.target.value === "" ? null : Number(event.target.value))} /></Field>
             <Field label="Ultima visita"><Input value={profile?.lastVisitedAt ? new Date(profile.lastVisitedAt).toLocaleString("it-IT") : "Mai"} readOnly className="bg-muted/50 text-muted-foreground" /></Field>
             <Field label="Note private" wide><Textarea disabled={profileLoading || !profileSlug} value={profileNotes} onChange={(event) => setProfileNotes(event.target.value)} /></Field>
+            <div className="md:col-span-2">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <Label>Storico visite</Label>
+                <span className="text-xs text-muted-foreground">{profileVisits.length} recenti</span>
+              </div>
+              <div className="max-h-72 space-y-2 overflow-y-auto rounded-md border bg-background/40 p-2">
+                {profileLoading ? (
+                  <div className="rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">Carico storico...</div>
+                ) : profileVisits.length ? profileVisits.map((visit) => (
+                  <div key={visit.id} className="rounded-md border bg-card/70 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <div className="font-medium">{formatVisitDate(visit.openedAt)}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {shopVisitStatusLabel(visit.status)}
+                          {visit.closedAt ? ` · chiusa ${formatVisitDate(visit.closedAt)}` : ""}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline">Sconto {visit.discountPercent}%</Badge>
+                        <Badge variant="outline">{visit.negotiationCount} trattative</Badge>
+                        {visit.acceptedNegotiationCount ? <Badge variant="secondary">{visit.acceptedNegotiationCount} concluse</Badge> : null}
+                      </div>
+                    </div>
+                    {visit.dmNotes ? (
+                      <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100">
+                        Note visita: {visit.dmNotes}
+                      </p>
+                    ) : null}
+                    {visit.closeReason ? <p className="mt-2 text-xs text-muted-foreground">Motivo chiusura: {visit.closeReason}</p> : null}
+                  </div>
+                )) : (
+                  <div className="rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">Nessuna visita registrata per questo PG.</div>
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" className="rounded-full" onClick={() => setProfileDialogOpen(false)}>Chiudi</Button>

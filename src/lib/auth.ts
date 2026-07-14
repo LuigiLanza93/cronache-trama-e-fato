@@ -494,6 +494,8 @@ export type ItemDefinitionSummary = {
   playerVisible: boolean;
   stackable: boolean;
   equippable: boolean;
+  valueCurrency: ShopCurrency | null;
+  valueAmount: number | null;
   assignedCharacterItemCount: number;
   attackCount: number;
   slotRuleCount: number;
@@ -598,6 +600,8 @@ export type ItemDefinitionEntry = {
   attunement: boolean;
   weight: number | null;
   valueCp: number | null;
+  valueCurrency: ShopCurrency | null;
+  valueAmount: number | null;
   data: string | null;
   createdAt: string;
   updatedAt: string;
@@ -617,8 +621,10 @@ export type CharacterInventoryItemEntry = {
   itemDefinitionId: string | null;
   itemName: string;
   itemCategory: string | null;
+  itemValueCp: number | null;
   description: string | null;
   detailSummary: string | null;
+  suggestedValue: { currency: ShopCurrency; amount: number } | null;
   equippable: boolean;
   stackable: boolean;
   quantity: number;
@@ -1299,6 +1305,23 @@ export type DmShopCharacterProfile = {
   updatedAt: string;
 };
 
+export type DmShopVisitHistoryEntry = {
+  id: string;
+  shopId: string;
+  shopName: string;
+  shopOwnerName: string;
+  characterSlug: string;
+  characterName: string;
+  status: "ACTIVE" | "CLOSED_BY_DM" | "CLOSED_BY_PLAYER" | "INTERRUPTED";
+  discountPercent: number;
+  dmNotes: string;
+  openedAt: string;
+  closedAt: string | null;
+  closeReason: string | null;
+  negotiationCount: number;
+  acceptedNegotiationCount: number;
+};
+
 export type ShopVisitItem = {
   id: string;
   shopId: string;
@@ -1401,6 +1424,13 @@ export function importDmShopsRequest(payload: unknown, dryRun: boolean) {
 
 export function fetchDmShopCharacterProfile(shopId: string, slug: string) {
   return authFetch<DmShopCharacterProfile>(`/api/dm/shops/${shopId}/characters/${slug}/profile`, { method: "GET" });
+}
+
+export function fetchDmShopVisitHistory(shopId: string, characterSlug?: string, limit = 20) {
+  const params = new URLSearchParams();
+  if (characterSlug) params.set("characterSlug", characterSlug);
+  params.set("limit", String(limit));
+  return authFetch<DmShopVisitHistoryEntry[]>(`/api/dm/shops/${shopId}/visits?${params.toString()}`, { method: "GET" });
 }
 
 export function updateDmShopCharacterProfile(

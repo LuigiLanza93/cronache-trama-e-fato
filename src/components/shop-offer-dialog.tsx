@@ -46,6 +46,7 @@ export interface ShopOfferDialogProps {
   title?: string;
   confirmLabel?: string;
   suggestedUnitAmount?: number;
+  suggestedValueLabel?: string;
 }
 
 function defaultTitle(mode: ShopOfferDialogMode) {
@@ -75,6 +76,7 @@ export default function ShopOfferDialog({
   title,
   confirmLabel,
   suggestedUnitAmount,
+  suggestedValueLabel,
 }: ShopOfferDialogProps) {
   const quantityId = useId();
   const amountId = useId();
@@ -122,6 +124,9 @@ export default function ShopOfferDialog({
           <div className="rounded-md border bg-muted/30 p-3">
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Oggetto</div>
             <div className="mt-1 font-medium">{itemName}</div>
+            {suggestedValueLabel ? (
+              <div className="mt-2 text-xs text-muted-foreground">Valore indicativo: {suggestedValueLabel}</div>
+            ) : null}
           </div>
 
           {equippedWarning ? (

@@ -51,6 +51,7 @@ const ATTACK_ABILITY_OPTIONS = ["STRENGTH", "DEXTERITY", "FINESSE", "CONSTITUTIO
 const USE_EFFECT_TYPE_OPTIONS = ["HEAL", "DAMAGE", "TEMP_HP", "APPLY_CONDITION", "REMOVE_CONDITION", "RESTORE_RESOURCE", "CUSTOM"];
 const USE_TARGET_TYPE_OPTIONS = ["SELF", "CREATURE", "OBJECT", "AREA", "CUSTOM"];
 const USE_SUCCESS_OUTCOME_OPTIONS = ["NONE", "HALF", "NEGATES", "CUSTOM"];
+const SHOP_CURRENCY_OPTIONS = ["CP", "SP", "EP", "GP"] as const;
 const PASSIVE_EFFECT_TARGET_OPTIONS = [
   "ARMOR_CLASS",
   "INITIATIVE",
@@ -269,8 +270,14 @@ function normalizePassiveEffectForSave(effect: any) {
 }
 
 function normalizeDraftItemForSave(item: ItemDefinitionEntry): ItemDefinitionEntry {
+  const valueAmount = item.valueAmount != null && Number.isInteger(Number(item.valueAmount)) && Number(item.valueAmount) > 0
+    ? Number(item.valueAmount)
+    : null;
   return {
     ...item,
+    valueCp: null,
+    valueAmount,
+    valueCurrency: valueAmount == null ? null : item.valueCurrency ?? "GP",
     features: (item.features ?? []).map((feature) => ({
       ...feature,
       passiveEffects: Array.isArray(feature.passiveEffects)
@@ -317,6 +324,11 @@ function ToggleRow({ label, checked, onChange }: { label: string; checked: boole
       <span>{label}</span>
     </label>
   );
+}
+
+function normalizeNullablePositiveIntegerInput(value: string) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
 export default function ItemManagement() {
@@ -387,6 +399,8 @@ export default function ItemManagement() {
         playerVisible: created.playerVisible,
         stackable: created.stackable,
         equippable: created.equippable,
+        valueCurrency: created.valueCurrency,
+        valueAmount: created.valueAmount,
         attackCount: created.attacks.length,
         slotRuleCount: created.slotRules.length,
         updatedAt: created.updatedAt,
@@ -419,6 +433,8 @@ export default function ItemManagement() {
         playerVisible: saved.playerVisible,
         stackable: saved.stackable,
         equippable: saved.equippable,
+        valueCurrency: saved.valueCurrency,
+        valueAmount: saved.valueAmount,
         attackCount: saved.attacks.length,
         slotRuleCount: saved.slotRules.length,
         updatedAt: saved.updatedAt,
@@ -563,7 +579,41 @@ export default function ItemManagement() {
                       </Select>
                     </div>
                     <TextRow label="Sottocategoria" value={draftItem.subcategory} onChange={(value) => setDraftItem({ ...draftItem, subcategory: value || null })} />
-                    <TextRow label="Valore (cp)" value={draftItem.valueCp != null ? String(draftItem.valueCp) : ""} onChange={(value) => setDraftItem({ ...draftItem, valueCp: value ? Number(value) : null })} />
+                    <div className="space-y-2 rounded-xl border border-border/60 bg-background/35 p-3">
+                      <Label>Valore indicativo vendita</Label>
+                      <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2">
+                        <Input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          step={1}
+                          value={draftItem.valueAmount != null ? String(draftItem.valueAmount) : ""}
+                          onChange={(event) => {
+                            const amount = event.target.value ? normalizeNullablePositiveIntegerInput(event.target.value) : null;
+                            setDraftItem({
+                              ...draftItem,
+                              valueCp: null,
+                              valueAmount: amount,
+                              valueCurrency: amount == null ? null : draftItem.valueCurrency ?? "GP",
+                            });
+                          }}
+                          placeholder="Sconosciuto"
+                        />
+                        <Select
+                          value={draftItem.valueCurrency ?? "GP"}
+                          disabled={draftItem.valueAmount == null}
+                          onValueChange={(value) => setDraftItem({ ...draftItem, valueCurrency: value as ItemDefinitionEntry["valueCurrency"] })}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {SHOP_CURRENCY_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Monovaluta: solo riferimento per il personaggio quando propone una vendita. Vuoto = sconosciuto.
+                      </p>
+                    </div>
                     <TextRow label="Peso" value={draftItem.weight != null ? String(draftItem.weight) : ""} onChange={(value) => setDraftItem({ ...draftItem, weight: value ? Number(value) : null })} />
                     <div className="space-y-2 md:col-span-2">
                       <Label>Descrizione</Label>
