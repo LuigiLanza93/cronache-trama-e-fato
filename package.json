@@ -28,6 +28,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "preview": "vite preview",
+    "prestart": "node scripts/apply-shop-release-1.7.mjs",
     "start": "NODE_ENV=production node server.js"
   },
   "dependencies": {
