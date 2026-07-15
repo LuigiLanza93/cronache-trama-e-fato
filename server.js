@@ -2647,6 +2647,24 @@ function readKnownShopItemIds(shopId, characterId) {
   );
 }
 
+function readShopItemKnowledgeSnapshot(shopItemId) {
+  if (!shopItemId || !tableExists("ShopItemKnowledge")) return [];
+  return sqlite.prepare(`
+    SELECT id, shopId, shopItemId, characterId, revealedByUserId, revealNote, revealedAt
+    FROM "ShopItemKnowledge"
+    WHERE shopItemId = ?
+    ORDER BY revealedAt ASC, id ASC
+  `).all(shopItemId).map((row) => ({
+    id: row.id,
+    shopId: row.shopId,
+    shopItemId: row.shopItemId,
+    characterId: row.characterId,
+    revealedByUserId: row.revealedByUserId ?? null,
+    revealNote: row.revealNote ?? null,
+    revealedAt: row.revealedAt,
+  }));
+}
+
 function discountedShopUnitPrice(amount, discountPercent) {
   const baseAmount = Math.max(1, Number(amount ?? 0));
   const discount = Math.min(100, Math.max(0, Number(discountPercent ?? 0)));
@@ -2658,6 +2676,80 @@ function serializeShopVisitItem(row, { dm = false, known = false, featureStates 
   const definitionPlayerVisible = definition ? definition.playerVisible !== false : true;
   const visibleToPlayer = definitionPlayerVisible && (!row.isSecret || known);
   if (!dm && !visibleToPlayer) return null;
+  const price = { currency: row.priceCurrency, amount: Number(row.priceAmount ?? 0) };
+  const discountedPrice = {
+    currency: row.priceCurrency,
+    amount: discountedShopUnitPrice(row.priceAmount, discountPercent),
+  };
+  const publicDefinition = definition ? {
+    category: definition.category ?? null,
+    rarity: definition.rarity ?? null,
+    equippable: !!definition.equippable,
+    attunement: !!definition.attunement,
+    weight: definition.weight ?? null,
+    armorCategory: definition.armorCategory ?? null,
+    attacks: (definition.attacks ?? []).map((attack) => ({
+      id: attack.id,
+      name: attack.name,
+      attackBonus: attack.attackBonus ?? null,
+      damageDice: attack.damageDice ?? null,
+      damageType: attack.damageType ?? null,
+      rangeNormal: attack.rangeNormal ?? null,
+      rangeLong: attack.rangeLong ?? null,
+      requiresEquipped: !!attack.requiresEquipped,
+      conditionText: attack.conditionText ?? null,
+    })),
+    features: (definition.features ?? []).map((feature) => ({
+      id: feature.id,
+      name: feature.name,
+      kind: feature.kind,
+      description: feature.description ?? null,
+      resetOn: feature.resetOn ?? null,
+      customResetLabel: feature.customResetLabel ?? null,
+      maxUses: feature.maxUses ?? null,
+      condition: feature.condition ?? null,
+    })),
+    modifiers: (definition.modifiers ?? []).map((modifier) => ({
+      id: modifier.id,
+      target: modifier.target,
+      value: modifier.value ?? null,
+      formula: modifier.formula ?? null,
+      condition: modifier.condition ?? null,
+    })),
+    abilityRequirements: (definition.abilityRequirements ?? []).map((requirement) => ({
+      ability: requirement.ability,
+      minScore: Number(requirement.minScore ?? 0),
+    })),
+    useEffects: (definition.useEffects ?? []).map((effect) => ({
+      id: effect.id,
+      effectType: effect.effectType,
+      diceExpression: effect.diceExpression ?? null,
+      flatValue: effect.flatValue ?? null,
+      damageType: effect.damageType ?? null,
+      savingThrowAbility: effect.savingThrowAbility ?? null,
+      savingThrowDc: effect.savingThrowDc ?? null,
+      durationText: effect.durationText ?? null,
+      notes: effect.notes ?? null,
+    })),
+    slotRules: [],
+  } : null;
+  if (!dm) {
+    return {
+      id: row.id,
+      name: row.nameOverride ?? definition?.name ?? "Oggetto senza nome",
+      description: row.descriptionOverride ?? definition?.description ?? null,
+      quantity: Number(row.quantity ?? 0),
+      isSecret: !!row.isSecret,
+      revealed: !row.isSecret || known,
+      featureStates: featureStates.map((state) => ({
+        itemFeatureId: state.itemFeatureId,
+        usesSpent: Number(state.usesSpent ?? 0),
+      })),
+      definition: publicDefinition,
+      price,
+      discountedPrice,
+    };
+  }
   const base = {
     id: row.id,
     shopId: row.shopId,
@@ -2674,13 +2766,9 @@ function serializeShopVisitItem(row, { dm = false, known = false, featureStates 
     data: parseJsonString(row.data, null),
     featureStates,
     definition,
-    price: { currency: row.priceCurrency, amount: Number(row.priceAmount ?? 0) },
-    discountedPrice: {
-      currency: row.priceCurrency,
-      amount: discountedShopUnitPrice(row.priceAmount, discountPercent),
-    },
+    price,
+    discountedPrice,
   };
-  if (!dm) return base;
   return {
     ...base,
     visibleToPlayer,
@@ -3072,6 +3160,7 @@ function applyShopItemToCharacterTransfer(negotiation, offer, operationId, actor
   if (quantity <= 0 || quantity > availableQuantity) throw new Error("Requested quantity is not available anymore");
 
   const shopItemBefore = readShopItemTransferState(shopItem.id);
+  const shopItemKnowledgeBefore = readShopItemKnowledgeSnapshot(shopItem.id);
   const featureStates = shopItemBefore?.featureStates ?? [];
   const carriesPerCopyState = itemDefinitionCarriesPerCopyState(shopItem.itemDefinitionId, shopItem.data, featureStates);
   if (carriesPerCopyState && (quantity !== 1 || availableQuantity !== 1)) {
@@ -3171,6 +3260,7 @@ function applyShopItemToCharacterTransfer(negotiation, offer, operationId, actor
       offer: { currency: offer.currency, amount: offer.amount },
       before: {
         sourceShopItem: shopItemBefore,
+        sourceShopItemKnowledge: shopItemKnowledgeBefore,
         destinationCharacterItem: destinationCharacterItemBefore,
       },
       after: {
@@ -3490,6 +3580,37 @@ function restoreShopItemFromSnapshot(state, quantity, now) {
   }
 }
 
+function restoreShopItemKnowledgeFromSnapshot(shopItemState, knowledgeRows) {
+  if (!shopItemState?.id || !Array.isArray(knowledgeRows) || !knowledgeRows.length || !tableExists("ShopItemKnowledge")) return;
+  const userExists = tableExists("User")
+    ? sqlite.prepare('SELECT 1 FROM "User" WHERE id = ? LIMIT 1')
+    : null;
+  const characterExists = tableExists("Character")
+    ? sqlite.prepare('SELECT 1 FROM "Character" WHERE id = ? LIMIT 1')
+    : null;
+  const insert = sqlite.prepare(`
+    INSERT OR IGNORE INTO "ShopItemKnowledge" (
+      id, shopId, shopItemId, characterId, revealedByUserId, revealNote, revealedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const row of knowledgeRows) {
+    if (!row?.id || !row?.characterId || !row?.revealedAt) continue;
+    if (!characterExists?.get(row.characterId)) continue;
+    const revealedByUserId = row.revealedByUserId && userExists?.get(row.revealedByUserId)
+      ? row.revealedByUserId
+      : null;
+    insert.run(
+      row.id,
+      shopItemState.shopId,
+      shopItemState.id,
+      row.characterId,
+      revealedByUserId,
+      row.revealNote ?? null,
+      row.revealedAt
+    );
+  }
+}
+
 function ensureCharacterEquipSlotsAvailable(state) {
   if (!state?.isEquipped || !(state.equippedSlots ?? []).length) return;
   for (const slot of state.equippedSlots) {
@@ -3704,6 +3825,7 @@ function undoShopOperationAtomically(operationId, actorUserId = null) {
       if (destination.quantity === quantity) sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(destination.id);
       else sqlite.prepare('UPDATE "CharacterItem" SET quantity = ?, updatedAt = ? WHERE id = ?').run(destination.quantity - quantity, now, destination.id);
       restoreShopItemFromSnapshot(snapshot.before.sourceShopItem, quantity, now);
+      restoreShopItemKnowledgeFromSnapshot(snapshot.before.sourceShopItem, snapshot.before.sourceShopItemKnowledge);
     } else {
       const destination = readShopItemTransferState(snapshot.destinationShopItemId);
       if (destination.quantity === quantity) sqlite.prepare('DELETE FROM "ShopItem" WHERE id = ?').run(destination.id);

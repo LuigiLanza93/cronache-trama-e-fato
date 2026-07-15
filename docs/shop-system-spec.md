@@ -700,7 +700,7 @@ Stato al 2026-07-09:
 Il server deve usare serializer separati:
 
 - payload DM con prezzi, CD, segreti, saldo negozio e note;
-- payload player senza dati privati e senza righe segrete non conosciute.
+- payload player senza dati privati e senza righe segrete non conosciute: allowlist esplicita con soli campi pubblici usati dalla UI, proiezione pubblica della definizione e stato utilizzi minimo; esclusi JSON opachi, note d'istanza, override raw e metadati amministrativi.
 
 Nascondere campi soltanto nel frontend non e' sufficiente.
 
@@ -755,6 +755,8 @@ L'annullamento esistente deve essere esteso, non duplicato. Prima di eseguirlo i
 - che tutte le scritture inverse possano completarsi atomicamente.
 
 Se una condizione manca, l'annullamento tecnico viene rifiutato e si procede narrativamente con una nuova compravendita.
+
+Quando un acquisto esaurisce e quindi elimina una riga `ShopItem`, lo snapshot tecnico conserva anche le conoscenze `ShopItemKnowledge`. L'undo che ricrea lo stock ripristina idempotentemente le conoscenze originarie senza sovrascrivere quelle aggiunte successivamente; gli snapshot legacy che non le contengono restano validi.
 
 ## Casi limite da coprire
 
