@@ -1,0 +1,44 @@
+{
+  "version": "1.7.0",
+  "releaseName": "Mercanti e Trattative",
+  "releasedAt": "2026-07-15",
+  "summary": "La versione 1.7 introduce un sistema completo di negozi sincronizzati tra DM e giocatori: visite in tempo reale, vetrine e oggetti segreti, trattative con offerte e rilanci, compravendite atomiche e uno storico affidabile di inventario e monete.",
+  "sections": [
+    {
+      "title": "Per i Player",
+      "items": [
+        "Quando il DM apre una visita, il giocatore riceve una finestra negozio in tempo reale che puo' minimizzare e riaprire senza perdere la sessione corrente.",
+        "La vetrina mostra disponibilita', descrizioni e dettagli pubblici degli oggetti, con prezzo censito e sconto della visita applicato nella valuta corretta.",
+        "Gli oggetti segreti restano invisibili finche' il DM non li rivela; una volta conosciuti possono essere consultati e proposti nella trattativa.",
+        "Il giocatore puo' proporre acquisti dalla vetrina e vendite dal proprio inventario, indicando quantita', importo totale e valuta.",
+        "Offerte e controproposte alternano chiaramente il turno tra negozio e personaggio; il proponente puo' ritirare, mentre la controparte puo' accettare, rilanciare o rifiutare.",
+        "Il portafoglio del personaggio resta visibile durante la visita e i pagamenti supportano automaticamente resto e aggregazione dei tagli equivalenti.",
+        "Durante una visita attiva l'inventario del PG e' protetto da modifiche esterne, mentre gli scambi conclusi nel negozio continuano a essere applicati in modo coerente."
+      ]
+    },
+    {
+      "title": "Per il DM",
+      "items": [
+        "Nuova pagina Negozi per creare e organizzare botteghe per citta', proprietario, descrizione, note private, saldo e difficolta' di contrattazione.",
+        "Gestione completa dello stock con quantita', prezzi, valuta, ordinamento, oggetti segreti, CD di scoperta, istanze con cariche e collegamento al catalogo oggetti.",
+        "Import JSON dei negozi con anteprima, validazione, definizioni inline o riferimenti al catalogo ed esportazione dell'indice degli oggetti disponibili.",
+        "Profili negozio-PG con note private, sconto abituale, conteggio visite e storico recente delle sessioni commerciali.",
+        "Il DM puo' aprire una sola visita globale, rivelare prodotti, seguire offerte e rilanci in tempo reale, concludere le trattative e chiudere la visita motivandone l'esito.",
+        "I negozi con visita attiva proteggono configurazione e stock; i negozi archiviati restano consultabili ma completamente in sola lettura.",
+        "Le compravendite compaiono negli storici inventario e monete con negozio e proprietario come controparte, e possono essere annullate tecnicamente quando lo stato corrente consente un ripristino sicuro."
+      ]
+    },
+    {
+      "title": "Novita' tecniche",
+      "items": [
+        "Il dominio negozi usa nuove strutture SQLite dedicate per botteghe, stock, profili PG, conoscenze, visite, trattative, offerte e stato delle feature degli oggetti.",
+        "Visite e negoziazioni sono sincronizzate tramite Socket.IO con payload separati per DM e player e recupero dello stato dopo refresh o riconnessione.",
+        "L'accettazione di un'offerta trasferisce oggetto, quantita', monete e ledger nella stessa transazione atomica, impedendo acquisti parziali o stati economici incoerenti.",
+        "Il sistema valuta supporta pagamento esatto, resto da tagli superiori e promozione di tagli inferiori, registrando le conversioni per consentire controlli e annullamenti.",
+        "L'annullamento tecnico verifica fondi, stock, identita' dell'oggetto, equipaggiamento e stato delle feature; quando ricrea uno stock esaurito ripristina anche le conoscenze degli oggetti rivelati.",
+        "Il payload player usa un'allowlist esplicita di informazioni pubbliche e non espone note DM, note d'istanza, JSON opachi o metadati amministrativi.",
+        "Le migrazioni della release sono additive e prevedono una correzione idempotente delle offerte storiche, da applicare alla produzione con backup e procedura controllata."
+      ]
+    }
+  ]
+}
