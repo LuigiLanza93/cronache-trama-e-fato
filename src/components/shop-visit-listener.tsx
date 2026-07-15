@@ -105,7 +105,7 @@ function formatItemCategory(category: string | null | undefined) {
 }
 
 function formatIndicativeValue(value: { currency: ShopCurrency; amount: number } | null | undefined) {
-  return value && Number.isInteger(value.amount) && value.amount > 0 ? `${value.amount} GP` : "sconosciuto";
+  return value && Number.isInteger(value.amount) && value.amount > 0 ? `${value.amount} ${value.currency}` : "sconosciuto";
 }
 
 function buildFeatureSummary(feature: NonNullable<ShopVisitItem["definition"]>["features"][number], item: ShopVisitItem) {

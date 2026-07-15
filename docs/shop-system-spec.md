@@ -3,7 +3,7 @@
 ## Stato del documento
 
 - Specifica funzionale e tecnica consolidata il 2026-07-03.
-- Aggiornata il 2026-07-10 durante l'avanzamento import, profili e visite su branch `dev`.
+- Aggiornata il 2026-07-15 dopo l'audit di robustezza su offerte, stock e oggetti segreti.
 - Implementazione avviata e consolidata nel commit `f8459b3` (`Add shop system foundation and DM management`).
 - Il documento resta il punto di ripartenza per proseguire lo sviluppo in task verificabili.
 
@@ -48,7 +48,7 @@ Non ancora completato:
 
 ## Obiettivo
 
-Introdurre negozi permanenti nel database e una visita sincronizzata tra DM e un solo personaggio. Il DM apre l'evento; al proprietario del personaggio compare un popup globale. Il DM vede prezzi, CD e contenuti segreti, mentre il player vede il catalogo rivelato senza prezzi e il proprio inventario affiancato.
+Introdurre negozi permanenti nel database e una visita sincronizzata tra DM e un solo personaggio. Il DM apre l'evento; al proprietario del personaggio compare un popup globale. Il DM vede prezzi, CD e contenuti segreti, mentre il player vede il catalogo rivelato con il prezzo censito, l'eventuale prezzo scontato e il proprio inventario affiancato.
 
 Il sistema deve supportare compravendite negoziate, disponibilita' reale degli oggetti, saldo reale del negozio, storico delle visite, memoria specifica negozio-personaggio e movimenti atomici di inventario e monete.
 
@@ -70,6 +70,7 @@ Il sistema deve supportare compravendite negoziate, disponibilita' reale degli o
 - L'app mostra al DM la CD e offre un comando manuale per rivelare l'oggetto.
 - Gli oggetti rivelati sono evidenziati diversamente lato player.
 - La conoscenza dell'oggetto resta permanente per la coppia negozio-personaggio e vale nelle visite future.
+- Un oggetto segreto non puo' essere proposto in una trattativa, nemmeno dal DM, finche' non e' stato rivelato al personaggio. La proposta non sostituisce il comando esplicito di rivelazione.
 
 ### Sconto
 
@@ -83,23 +84,37 @@ Il sistema deve supportare compravendite negoziate, disponibilita' reale degli o
 
 - Durante una visita il player vede il prezzo censito e, quando presente uno sconto personale, il prezzo unitario scontato nella stessa valuta. Il prezzo originale viene mostrato barrato; offerte e controproposte restano libere.
 - Ogni importo e' monovaluta: rame, argento, electrum oppure oro.
-- Il prezzo base dello stock e' un riferimento privato per il DM.
+- Il prezzo censito dello stock e' visibile nella vetrina player; le offerte e controproposte restano indipendenti e possono usare qualsiasi importo concordato.
 - Il DM puo' vendere a qualsiasi prezzo, anche superiore al listino in base al rapporto col PG.
 - Il player propone liberamente il valore degli oggetti che vuole vendere; se l'anagrafica oggetto contiene un valore indicativo, il popup di vendita lo mostra e lo usa come precompilazione non vincolante. Se manca, viene mostrato "sconosciuto".
-- Il venditore formula la proposta, il compratore la accetta, la rifiuta o la rilancia.
+- La proposta iniziale puo' essere formulata sia dal venditore sia dal compratore; la controparte la accetta, la rifiuta o la rilancia.
 - Finche' la trattativa non e' conclusa le proposte possono rimbalzare tra le parti.
 - Accettazione e rifiuto chiudono la trattativa; un rilancio sostituisce la proposta corrente mantenendo la stessa catena negoziale.
 - Prima di inviare una proposta di vendita, il player conferma oggetto, quantita' e valore in un popup.
 - Prima di accettare un acquisto, il player conferma esplicitamente oggetto, quantita' e importo speso.
+- Quando una proposta e' in attesa di risposta, chi l'ha formulata non puo' modificarla o rilanciare: puo' soltanto ritirarla. Soltanto la controparte puo' accettare, rifiutare o creare il rilancio successivo, percio' l'offerta mostrata nel popup di risposta resta immutabile.
 
 ### Inventario e saldo
 
 - Il negozio non puo' andare in debito.
 - Il PG non puo' acquistare senza fondi sufficienti.
+- I fondi sono valutati per controvalore: il pagamento usa prima il taglio richiesto, puo' spezzare tagli superiori e, quando necessario, aggrega automaticamente tagli inferiori (per esempio 10 SP in 1 GP). Ogni cambio viene registrato nel ledger e deve restare annullabile tecnicamente.
 - Gli oggetti equipaggiati sono chiaramente marcati nell'inventario del player.
 - Un oggetto equipaggiato puo' essere proposto in vendita; viene disequipaggiato solo quando la vendita viene completata.
 - Le istanze non impilabili conservano override, note, cariche e stato applicabile durante il passaggio.
 - Gli stack comuni vengono trasferiti per quantita'.
+- Quando il negozio compra uno stack dal PG, l'importo negoziato resta il totale della compravendita e non diventa il prezzo unitario del nuovo stock. Il prezzo unitario usa prima il valore indicativo dell'`ItemDefinition`; se manca, deriva dal totale concordato diviso per la quantita', arrotondato al rame superiore e rappresentato nel taglio monovaluta piu' preciso.
+
+### Blocco gestione durante la visita
+
+- Durante una visita `ACTIVE` il negozio visitato e il suo stock sono congelati per le modifiche amministrative.
+- Il DM non puo' modificare i dati o il saldo del negozio, ne' aggiungere, modificare o eliminare righe stock, finche' la visita non viene chiusa.
+- I movimenti prodotti dalle compravendite atomiche restano consentiti perche' fanno parte del flusso della visita.
+- L'annullamento tecnico di compravendite precedenti sullo stesso negozio resta bloccato fino alla chiusura della visita, perche' modificherebbe retroattivamente stock e saldi.
+- Gli altri negozi non coinvolti nella visita restano gestibili.
+- Anche l'inventario normalizzato del PG coinvolto e' congelato per tutte le mutazioni esterne alla compravendita: aggiunta, rimozione, modifica, equipaggiamento, utilizzo, trasferimento e undo ordinario. Le letture restano disponibili.
+- I trasferimenti atomici conclusi tramite la trattativa del negozio restano consentiti e costituiscono l'unica mutazione dell'inventario ammessa durante la visita.
+- Un negozio archiviato e il relativo stock sono read-only; in V1 non e' prevista la riattivazione.
 
 ### Annullamenti
 
@@ -440,9 +455,7 @@ Il dettaglio di un prodotto visibile al player deve includere una proiezione com
 - effetti d'uso;
 - quantita' disponibile.
 
-Deve escludere:
-
-- prezzo base finche' non esiste un'offerta;
+Deve includere inoltre il prezzo censito e, quando applicabile, il prezzo personale scontato. Deve escludere:
 - CD, note DM e dati amministrativi;
 - stato interno di prodotti segreti non rivelati;
 - identificativi o metadati non necessari che possano anticipare informazioni segrete.
@@ -619,8 +632,8 @@ Una compravendita puo' usare un `operationId` condiviso tra ledger oggetti e mon
 
 ## Macchina delle controproposte
 
-1. Il venditore apre una `ShopNegotiation` e inserisce la prima `ShopOffer`.
-2. Il compratore puo' accettare, rifiutare o rilanciare.
+1. Venditore o compratore aprono una `ShopNegotiation` e inseriscono la prima `ShopOffer`.
+2. La controparte puo' accettare, rifiutare o rilanciare.
 3. Il rilancio aggiunge una nuova offerta alla stessa negoziazione e passa la decisione alla controparte.
 4. Soltanto la controparte dell'ultima proposta puo' accettarla o rifiutarla.
 5. L'accettazione ricontrolla autorizzazioni, visita, oggetto, quantita' e fondi.
@@ -841,3 +854,11 @@ Proseguire con interventi puntuali di quality of life e robustezza:
 3. testare vendita PG al negozio, fondi insufficienti, stock insufficiente, oggetti equipaggiati e oggetti con cariche;
 4. verificare lo storico visite UI nel pannello rapporto negozio-PG;
 5. mantenere l'annullamento tecnico esteso ai negozi nel ciclo di test dei casi limite.
+
+Backlog/decisioni rinviate emerse dall'audit del 2026-07-15:
+
+- esporre nella UI DM `ShopItem.descriptionOverride`, gia' previsto dal dominio ma non ancora modificabile dalla pagina negozi;
+- decidere se la conoscenza di un oggetto segreto debba appartenere alla singola riga di stock oppure sopravvivere a esaurimento e successivo riassortimento della stessa definizione;
+- valutare se mostrare l'intera catena delle offerte: il DB conserva gia' tutto, mentre la UI privilegia le ultime due proposte;
+- chiarire se lo sconto di una visita debba poter cambiare mentre e' attiva; dopo la chiusura lo sconto storico dovrebbe restare immutabile, lasciando modificabili soltanto le note DM;
+- mantenere descrizione del negozio e del proprietario nella vista DM; al player basta il nome del proprietario.

@@ -597,26 +597,43 @@ export default function DmShopsPage() {
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-3">
             <div className="grid gap-4 xl:grid-cols-2">
-              {cityShops.map((shop) => (
+              {cityShops.map((shop) => {
+                const shopLockedByActiveVisit = activeVisit?.status === "ACTIVE" && activeVisit.shopId === shop.id;
+                const shopReadOnly = shopLockedByActiveVisit || !!shop.archivedAt;
+                const shopEditTitle = shop.archivedAt
+                  ? "Il negozio archiviato è in sola lettura"
+                  : shopLockedByActiveVisit
+                  ? "Chiudi la visita attiva prima di modificare il negozio"
+                  : "Modifica negozio";
+                const stockEditTitle = shop.archivedAt
+                  ? "Lo stock di un negozio archiviato è in sola lettura"
+                  : shopLockedByActiveVisit
+                  ? "Lo stock si modifica prima di aprire o dopo aver chiuso la visita"
+                  : undefined;
+
+                return (
                 <Card key={shop.id} className={`p-5 ${shop.archivedAt ? "opacity-65" : ""}`}>
                   <div className="flex items-start justify-between gap-3">
-                    <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-heading text-xl font-semibold">{shop.name}</h3>{shop.archivedAt && <Badge variant="secondary">Archiviato</Badge>}</div><p className="text-sm text-muted-foreground">{shop.ownerName} · {shop.externalKey}</p></div>
-                    <div className="flex gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Apri visita presso ${shop.name}`} title="Apri visita" disabled={!!activeVisit || !!shop.archivedAt} onClick={() => openVisitDialog(shop)}><Store className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Gestisci rapporti di ${shop.name}`} title="Rapporti con i PG" onClick={() => openProfiles(shop)}><Users className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Modifica ${shop.name}`} title="Modifica negozio" onClick={() => openEditShop(shop)}><Pencil className="h-4 w-4" /></Button>{!shop.archivedAt && <Button variant="ghost" size="icon" className="rounded-full" aria-label={`Archivia ${shop.name}`} title="Archivia negozio" onClick={() => void archiveShop(shop)}><Archive className="h-4 w-4" /></Button>}</div>
+                    <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-heading text-xl font-semibold">{shop.name}</h3>{shop.archivedAt && <Badge variant="secondary">Archiviato</Badge>}{shopLockedByActiveVisit && <Badge variant="outline">Modifiche bloccate durante la visita</Badge>}</div><p className="text-sm text-muted-foreground">{shop.ownerName} · {shop.externalKey}</p></div>
+                    <div className="flex gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Apri visita presso ${shop.name}`} title="Apri visita" disabled={!!activeVisit || !!shop.archivedAt} onClick={() => openVisitDialog(shop)}><Store className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={`Gestisci rapporti di ${shop.name}`} title="Rapporti con i PG" onClick={() => openProfiles(shop)}><Users className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={shop.archivedAt ? `Modifica di ${shop.name} non disponibile: negozio archiviato` : shopLockedByActiveVisit ? `Modifica di ${shop.name} bloccata durante la visita` : `Modifica ${shop.name}`} title={shopEditTitle} disabled={shopReadOnly} onClick={() => openEditShop(shop)}><Pencil className="h-4 w-4" /></Button>{!shop.archivedAt && <Button variant="ghost" size="icon" className="rounded-full" aria-label={shopLockedByActiveVisit ? `Archiviazione di ${shop.name} bloccata durante la visita` : `Archivia ${shop.name}`} title={shopLockedByActiveVisit ? "Chiudi la visita attiva prima di archiviare il negozio" : "Archivia negozio"} disabled={shopLockedByActiveVisit} onClick={() => void archiveShop(shop)}><Archive className="h-4 w-4" /></Button>}</div>
                   </div>
                   {shop.description && <p className="mt-3 text-sm">{shop.description}</p>}
                   {shop.dmNotes && <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100">Note DM: {shop.dmNotes}</p>}
                   <div className="mt-4 flex flex-wrap gap-2 text-xs">{(["cp", "sp", "ep", "gp"] as const).map((currency) => <Badge key={currency} variant="outline">{shop.balance[currency]} {currency.toUpperCase()}</Badge>)}{shop.discountDc && <Badge variant="outline">CD sconto {shop.discountDc}</Badge>}</div>
-                  <div className="mt-5 flex items-center justify-between"><h4 className="font-medium">Stock ({shop.items.length})</h4>{!shop.archivedAt && <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Aggiungi prodotto a ${shop.name}`} title="Aggiungi prodotto" onClick={() => openNewItem(shop)}><PackagePlus className="h-4 w-4" /></Button>}</div>
+                  <div className="mt-5 flex items-center justify-between"><h4 className="font-medium">Stock ({shop.items.length})</h4>{!shop.archivedAt && <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={shopLockedByActiveVisit ? `Aggiunta prodotti a ${shop.name} bloccata durante la visita` : `Aggiungi prodotto a ${shop.name}`} title={stockEditTitle ?? "Aggiungi prodotto"} disabled={shopLockedByActiveVisit} onClick={() => openNewItem(shop)}><PackagePlus className="h-4 w-4" /></Button>}</div>
+                  {shopLockedByActiveVisit ? <p className="mt-2 text-xs text-muted-foreground">Chiudi la visita per creare, modificare o eliminare prodotti dello stock.</p> : null}
+                  {shop.archivedAt ? <p className="mt-2 text-xs text-muted-foreground">Negozio archiviato: dati e stock sono disponibili in sola lettura.</p> : null}
                   <div className="mt-2 divide-y rounded-md border">
                     {shop.items.length === 0 ? <p className="p-4 text-center text-sm text-muted-foreground">Stock vuoto</p> : shop.items.map((item) => (
                       <div key={item.id} className="flex items-center justify-between gap-3 p-3">
                         <div className="min-w-0"><div className="flex items-center gap-2"><span className="truncate font-medium">{item.nameOverride || item.definition?.name || "Definizione rimossa"}</span>{item.isSecret && <EyeOff className="h-3.5 w-3.5 text-amber-600" />}</div><p className="text-xs text-muted-foreground">Qtà {item.quantity} · {item.price.amount} {item.price.currency}{item.discoveryDc ? ` · CD ${item.discoveryDc}` : ""}</p></div>
-                        <div className="flex shrink-0 gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label="Modifica prodotto" title="Modifica prodotto" onClick={() => openEditItem(shop, item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label="Elimina prodotto" title="Elimina prodotto" onClick={() => void deleteItem(shop, item)}><Trash2 className="h-4 w-4" /></Button></div>
+                        <div className="flex shrink-0 gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label={shop.archivedAt ? "Modifica prodotto non disponibile: negozio archiviato" : shopLockedByActiveVisit ? "Modifica prodotto bloccata durante la visita" : "Modifica prodotto"} title={stockEditTitle ?? "Modifica prodotto"} disabled={shopReadOnly} onClick={() => openEditItem(shop, item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={shop.archivedAt ? "Eliminazione prodotto non disponibile: negozio archiviato" : shopLockedByActiveVisit ? "Eliminazione prodotto bloccata durante la visita" : "Elimina prodotto"} title={stockEditTitle ?? "Elimina prodotto"} disabled={shopReadOnly} onClick={() => void deleteItem(shop, item)}><Trash2 className="h-4 w-4" /></Button></div>
                       </div>
                     ))}
                   </div>
                 </Card>
-              ))}
+                );
+              })}
             </div>
             </CollapsibleContent>
           </Collapsible>
@@ -722,15 +739,16 @@ export default function DmShopsPage() {
                               </div>
                             ) : null}
                           </div>
-                          {item.isSecret && item.visibleToPlayer === false ? (
+                          {item.isSecret && !item.revealed ? (
                             <Button size="sm" variant="outline" className="rounded-full border-amber-500/40 text-amber-700" disabled={submitting} onClick={() => void revealVisitItem(item.id)}>
                               <Eye className="mr-2 h-4 w-4" />Rivela
                             </Button>
                           ) : null}
-                          <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={`Proponi la vendita di ${item.name}`} title="Proponi vendita" disabled={submitting} onClick={() => void proposeVisitShopItem(item.id)}>
+                          <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={item.isSecret && !item.revealed ? `Rivela ${item.name} prima di proporne la vendita` : item.visibleToPlayer === false ? `${item.name} non è proponibile perché non è visibile al player` : `Proponi la vendita di ${item.name}`} title={item.isSecret && !item.revealed ? "Rivela prima l'oggetto al player" : item.visibleToPlayer === false ? "Oggetto non visibile al player" : "Proponi vendita"} disabled={submitting || item.visibleToPlayer === false} onClick={() => void proposeVisitShopItem(item.id)}>
                             <HandCoins className="h-4 w-4" />
                           </Button>
                         </div>
+                        {item.isSecret && !item.revealed ? <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">Rivela l'oggetto al player prima di formulare una proposta.</p> : item.visibleToPlayer === false ? <p className="mt-2 text-xs text-amber-700 dark:text-amber-200">Questo oggetto non è visibile al player e non può essere proposto.</p> : null}
                         {item.description ? <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{item.description}</p> : null}
                         {item.dmNotes ? <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100">Note DM: {item.dmNotes}</p> : null}
                       </div>
@@ -820,7 +838,7 @@ export default function DmShopsPage() {
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Rapporto con i PG</DialogTitle>
-            <DialogDescription>{profileShop ? `Note private e sconto abituale per ${profileShop.name}.` : "Memoria negozio-personaggio."}</DialogDescription>
+            <DialogDescription>{profileShop ? `${profileShop.archivedAt ? "Profilo storico in sola lettura" : "Note private e sconto abituale"} per ${profileShop.name}.` : "Memoria negozio-personaggio."}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2 md:grid-cols-2">
             <Field label="Personaggio" wide>
@@ -830,9 +848,9 @@ export default function DmShopsPage() {
               </Select>
             </Field>
             <Field label="Visite registrate"><Input value={profile?.visitCount ?? 0} readOnly className="bg-muted/50 text-muted-foreground" /></Field>
-            <Field label="Sconto abituale %"><Input type="number" min={0} max={100} value={profileDiscount ?? ""} onChange={(event) => setProfileDiscount(event.target.value === "" ? null : Number(event.target.value))} /></Field>
+            <Field label="Sconto abituale %"><Input type="number" min={0} max={100} disabled={!!profileShop?.archivedAt} value={profileDiscount ?? ""} onChange={(event) => setProfileDiscount(event.target.value === "" ? null : Number(event.target.value))} /></Field>
             <Field label="Ultima visita"><Input value={profile?.lastVisitedAt ? new Date(profile.lastVisitedAt).toLocaleString("it-IT") : "Mai"} readOnly className="bg-muted/50 text-muted-foreground" /></Field>
-            <Field label="Note private" wide><Textarea disabled={profileLoading || !profileSlug} value={profileNotes} onChange={(event) => setProfileNotes(event.target.value)} /></Field>
+            <Field label="Note private" wide><Textarea disabled={profileLoading || !profileSlug || !!profileShop?.archivedAt} value={profileNotes} onChange={(event) => setProfileNotes(event.target.value)} /></Field>
             <div className="md:col-span-2">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <Label>Storico visite</Label>
@@ -872,7 +890,7 @@ export default function DmShopsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" className="rounded-full" onClick={() => setProfileDialogOpen(false)}>Chiudi</Button>
-            <Button className="rounded-full" disabled={submitting || profileLoading || !profileSlug} onClick={() => void saveProfile()}>Salva profilo</Button>
+            {!profileShop?.archivedAt ? <Button className="rounded-full" disabled={submitting || profileLoading || !profileSlug} onClick={() => void saveProfile()}>Salva profilo</Button> : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>

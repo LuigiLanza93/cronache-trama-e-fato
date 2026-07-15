@@ -385,46 +385,99 @@ function removeCurrencyWithChange(baseBalance, currencyKey, amount) {
   return detailed ? detailed.balance : null;
 }
 
-function removeCurrencyWithChangeDetailed(baseBalance, currencyKey, amount) {
+function removeCurrencyWithChangeDetailed(baseBalance, currencyKey, amount, { allowLowerPromotion = false } = {}) {
   const nextBalance = normalizeCurrencyBalance(baseBalance);
   const conversions = [];
   const targetIndex = CURRENCY_ORDER.indexOf(currencyKey);
-  if (targetIndex < 0) return null;
+  const normalizedAmount = Number(amount);
+  if (targetIndex < 0 || !Number.isSafeInteger(normalizedAmount) || normalizedAmount <= 0 || !isSafeCurrencyBalance(nextBalance)) return null;
 
-  for (let i = 0; i < amount; i += 1) {
-    if (nextBalance[currencyKey] > 0) {
-      nextBalance[currencyKey] -= 1;
-      continue;
+  const recordConversion = (outgoingKey, outgoingAmount, incomingKey, incomingAmount) => {
+    if (outgoingAmount <= 0 || incomingAmount <= 0) return;
+    const existing = conversions.find((entry) =>
+      Number(entry.outgoing[outgoingKey] ?? 0) > 0 &&
+      Number(entry.incoming[incomingKey] ?? 0) > 0 &&
+      CURRENCY_ORDER.every((key) =>
+        (key === outgoingKey || Number(entry.outgoing[key] ?? 0) === 0) &&
+        (key === incomingKey || Number(entry.incoming[key] ?? 0) === 0)
+      )
+    );
+    if (existing) {
+      existing.outgoing[outgoingKey] += outgoingAmount;
+      existing.incoming[incomingKey] += incomingAmount;
+      return;
+    }
+    conversions.push({
+      outgoing: normalizeCurrencyBalance({ [outgoingKey]: outgoingAmount }),
+      incoming: normalizeCurrencyBalance({ [incomingKey]: incomingAmount }),
+    });
+  };
+
+  const pullDownFromHigher = (tierIndex, neededAmount) => {
+    if (neededAmount <= 0 || tierIndex >= CURRENCY_ORDER.length - 1) return 0;
+    const tierKey = CURRENCY_ORDER[tierIndex];
+    const higherKey = CURRENCY_ORDER[tierIndex + 1];
+    const factor = CURRENCY_EXCHANGE_UP[tierKey];
+    if (!factor) return 0;
+
+    const requiredHigher = Math.ceil(neededAmount / factor);
+    if (nextBalance[higherKey] < requiredHigher) {
+      pullDownFromHigher(tierIndex + 1, requiredHigher - nextBalance[higherKey]);
     }
 
-    let borrowed = false;
-    for (let higherIndex = targetIndex + 1; higherIndex < CURRENCY_ORDER.length; higherIndex += 1) {
-      const higherKey = CURRENCY_ORDER[higherIndex];
-      if (nextBalance[higherKey] <= 0) continue;
+    const convertedHigher = Math.min(nextBalance[higherKey], requiredHigher);
+    if (convertedHigher <= 0) return 0;
+    const createdLower = convertedHigher * factor;
+    if (!Number.isSafeInteger(createdLower)) return 0;
+    nextBalance[higherKey] -= convertedHigher;
+    nextBalance[tierKey] += createdLower;
+    recordConversion(higherKey, convertedHigher, tierKey, createdLower);
+    return createdLower;
+  };
 
-      for (let step = higherIndex; step > targetIndex; step -= 1) {
-        const currentKey = CURRENCY_ORDER[step];
-        const lowerKey = CURRENCY_ORDER[step - 1];
-        const factor = CURRENCY_EXCHANGE_UP[lowerKey];
-        if (!makeCurrencyChangeStep(nextBalance, currentKey)) {
-          return null;
-        }
-        conversions.push({
-          outgoing: normalizeCurrencyBalance({ [currentKey]: 1 }),
-          incoming: normalizeCurrencyBalance({ [lowerKey]: factor }),
-        });
-      }
+  const promoteFromLower = (tierIndex, neededAmount) => {
+    if (neededAmount <= 0) return true;
+    if (tierIndex <= 0) return false;
+    const tierKey = CURRENCY_ORDER[tierIndex];
+    const lowerKey = CURRENCY_ORDER[tierIndex - 1];
+    const factor = CURRENCY_EXCHANGE_UP[lowerKey];
+    const requiredLower = neededAmount * factor;
+    if (!factor || !Number.isSafeInteger(requiredLower)) return false;
 
-      borrowed = true;
-      break;
+    if (nextBalance[lowerKey] < requiredLower) {
+      const missingLower = requiredLower - nextBalance[lowerKey];
+      if (!promoteFromLower(tierIndex - 1, missingLower)) return false;
     }
+    if (nextBalance[lowerKey] < requiredLower) return false;
 
-    if (!borrowed || nextBalance[currencyKey] <= 0) {
-      return null;
-    }
+    nextBalance[lowerKey] -= requiredLower;
+    nextBalance[tierKey] += neededAmount;
+    recordConversion(lowerKey, requiredLower, tierKey, neededAmount);
+    return true;
+  };
 
-    nextBalance[currencyKey] -= 1;
+  let remaining = normalizedAmount;
+  const directPayment = Math.min(nextBalance[currencyKey], remaining);
+  nextBalance[currencyKey] -= directPayment;
+  remaining -= directPayment;
+
+  if (remaining > 0) {
+    pullDownFromHigher(targetIndex, remaining);
+    const paymentFromChange = Math.min(nextBalance[currencyKey], remaining);
+    nextBalance[currencyKey] -= paymentFromChange;
+    remaining -= paymentFromChange;
   }
+
+  if (remaining > 0 && allowLowerPromotion && promoteFromLower(targetIndex, remaining)) {
+    nextBalance[currencyKey] -= remaining;
+    remaining = 0;
+  }
+
+  if (remaining > 0) return null;
+  if (
+    !isSafeCurrencyBalance(nextBalance) ||
+    conversions.some((entry) => !isSafeCurrencyBalance(entry.outgoing) || !isSafeCurrencyBalance(entry.incoming))
+  ) return null;
 
   return {
     balance: normalizeCurrencyBalance(nextBalance),
@@ -499,16 +552,43 @@ function addCurrencyAmounts(baseBalance, amounts) {
   return normalizeCurrencyBalance(nextBalance);
 }
 
-function removeCurrencyAmountsWithChange(baseBalance, amounts) {
+function removeCurrencyAmountsWithChange(baseBalance, amounts, { allowLowerPromotion = false } = {}) {
   let nextBalance = normalizeCurrencyBalance(baseBalance);
   const normalizedAmounts = normalizeCurrencyBalance(amounts);
   for (const key of CURRENCY_ORDER) {
     const qty = normalizedAmounts[key];
     if (!qty) continue;
-    nextBalance = removeCurrencyWithChange(nextBalance, key, qty);
+    const detailed = removeCurrencyWithChangeDetailed(nextBalance, key, qty, { allowLowerPromotion });
+    nextBalance = detailed?.balance ?? null;
     if (!nextBalance) return null;
   }
   return normalizeCurrencyBalance(nextBalance);
+}
+
+function isBalancedAdjacentCurrencyConversion(outgoing, incoming) {
+  const outgoingEntries = CURRENCY_ORDER.filter((key) => Number(outgoing?.[key] ?? 0) !== 0);
+  const incomingEntries = CURRENCY_ORDER.filter((key) => Number(incoming?.[key] ?? 0) !== 0);
+  if (outgoingEntries.length !== 1 || incomingEntries.length !== 1) return false;
+
+  const outgoingKey = outgoingEntries[0];
+  const incomingKey = incomingEntries[0];
+  const outgoingIndex = CURRENCY_ORDER.indexOf(outgoingKey);
+  const incomingIndex = CURRENCY_ORDER.indexOf(incomingKey);
+  const outgoingAmount = Number(outgoing[outgoingKey]);
+  const incomingAmount = Number(incoming[incomingKey]);
+  if (
+    Math.abs(outgoingIndex - incomingIndex) !== 1 ||
+    !Number.isSafeInteger(outgoingAmount) || outgoingAmount <= 0 ||
+    !Number.isSafeInteger(incomingAmount) || incomingAmount <= 0 ||
+    CURRENCY_ORDER.some((key) => Number(outgoing?.[key] ?? 0) < 0 || Number(incoming?.[key] ?? 0) < 0)
+  ) {
+    return false;
+  }
+
+  if (outgoingIndex === incomingIndex + 1) {
+    return incomingAmount === outgoingAmount * Number(CURRENCY_EXCHANGE_UP[incomingKey] ?? 0);
+  }
+  return outgoingAmount === incomingAmount * Number(CURRENCY_EXCHANGE_UP[outgoingKey] ?? 0);
 }
 
 function formatCurrencyAmounts(amounts) {
@@ -971,14 +1051,16 @@ function undoCurrencyTransactionOperation(operationId, actorUserId = null) {
   const affectedCharacterIds = new Set();
 
   runInTransaction(() => {
-    for (const row of rows) {
+    // Reverse the ledger in reverse order so technical change rows are undone
+    // after the business payment that consumed their incoming denomination.
+    for (const row of [...rows].reverse()) {
       const amounts = normalizeCurrencyBalance(row);
       if (row.fromCharacterId) affectedCharacterIds.add(row.fromCharacterId);
       if (row.toCharacterId) affectedCharacterIds.add(row.toCharacterId);
 
       if (row.fromCharacterId && row.toCharacterId) {
         const targetBalance = readCharacterCurrencyBalance(row.toCharacterId) ?? normalizeCurrencyBalance();
-        const nextTargetBalance = removeCurrencyAmountsWithChange(targetBalance, amounts);
+        const nextTargetBalance = removeCurrencyAmountsWithChange(targetBalance, amounts, { allowLowerPromotion: true });
         if (!nextTargetBalance) {
           throw new Error("Non posso annullare: il destinatario non ha più monete sufficienti.");
         }
@@ -987,7 +1069,7 @@ function undoCurrencyTransactionOperation(operationId, actorUserId = null) {
         writeCharacterCurrencyBalance(row.fromCharacterId, addCurrencyAmounts(sourceBalance, amounts));
       } else if (row.toCharacterId && !row.fromCharacterId) {
         const targetBalance = readCharacterCurrencyBalance(row.toCharacterId) ?? normalizeCurrencyBalance();
-        const nextTargetBalance = removeCurrencyAmountsWithChange(targetBalance, amounts);
+        const nextTargetBalance = removeCurrencyAmountsWithChange(targetBalance, amounts, { allowLowerPromotion: true });
         if (!nextTargetBalance) {
           throw new Error("Non posso annullare: il personaggio non ha più monete sufficienti.");
         }
@@ -2205,6 +2287,10 @@ function normalizeItemValuePayload(payload) {
   };
 }
 
+function isSafeCurrencyBalance(value) {
+  return CURRENCY_ORDER.every((key) => Number.isSafeInteger(value?.[key]) && Number(value[key]) >= 0);
+}
+
 function itemValueToCopper(currency, amount) {
   const normalizedCurrency = String(currency ?? "").toUpperCase();
   const normalizedAmount = Number(amount ?? 0);
@@ -2222,10 +2308,68 @@ function copperToItemValue(valueCp) {
   return { currency: "CP", amount: normalizedAmount };
 }
 
+function resolveShopStockUnitPrice(definitionCurrency, definitionAmount, definitionValueCp, offerCurrency, offerTotalAmount, quantity) {
+  const normalizedDefinitionCurrency = String(definitionCurrency ?? "").toUpperCase();
+  const normalizedDefinitionAmount = Number(definitionAmount);
+  if (
+    SHOP_CURRENCIES.has(normalizedDefinitionCurrency) &&
+    Number.isInteger(normalizedDefinitionAmount) &&
+    normalizedDefinitionAmount > 0
+  ) {
+    return { currency: normalizedDefinitionCurrency, amount: normalizedDefinitionAmount };
+  }
+
+  const legacyDefinitionValue = copperToItemValue(definitionValueCp);
+  if (legacyDefinitionValue) return legacyDefinitionValue;
+
+  const totalCp = itemValueToCopper(offerCurrency, offerTotalAmount);
+  const normalizedQuantity = Number(quantity);
+  if (totalCp == null || !Number.isInteger(normalizedQuantity) || normalizedQuantity <= 0) {
+    throw new Error("Cannot derive a valid unit price for the shop stock");
+  }
+  const fallback = copperToItemValue(Math.ceil(totalCp / normalizedQuantity));
+  if (!fallback) throw new Error("Cannot derive a valid unit price for the shop stock");
+  return fallback;
+}
+
 function requireShopTables() {
   if (!tableExists("Shop") || !tableExists("ShopItem")) {
     throw new Error("Shop database migration has not been applied");
   }
+}
+
+function assertShopNotInActiveVisit(shopId) {
+  if (!shopId || !tableExists("ShopVisit")) return;
+  const activeVisit = sqlite.prepare('SELECT id FROM "ShopVisit" WHERE shopId = ? AND status = ? LIMIT 1').get(shopId, "ACTIVE");
+  if (!activeVisit) return;
+  const error = new Error("Il negozio non puo' essere modificato mentre ha una visita attiva.");
+  error.statusCode = 409;
+  throw error;
+}
+
+function assertShopNotArchived(shopId) {
+  if (!shopId || !tableExists("Shop")) return;
+  const shop = sqlite.prepare('SELECT archivedAt FROM "Shop" WHERE id = ? LIMIT 1').get(shopId);
+  if (!shop?.archivedAt) return;
+  const error = new Error("Un negozio archiviato e' in sola lettura.");
+  error.statusCode = 409;
+  throw error;
+}
+
+function assertCharacterInventoryNotInActiveShopVisit({ characterId = null, characterSlug = null } = {}) {
+  if ((!characterId && !characterSlug) || !tableExists("ShopVisit")) return;
+  const activeVisit = sqlite.prepare(`
+    SELECT v.id
+    FROM "ShopVisit" v
+    JOIN "Character" c ON c.id = v.characterId
+    WHERE v.status = 'ACTIVE'
+      AND (v.characterId = ? OR c.slug = ?)
+    LIMIT 1
+  `).get(characterId ?? "", characterSlug ?? "");
+  if (!activeVisit) return;
+  const error = new Error("L'inventario del personaggio non puo' essere modificato durante una visita al negozio.");
+  error.statusCode = 409;
+  throw error;
 }
 
 function normalizeShopInteger(value, field, { min = 0, max = 1_000_000_000, nullable = false } = {}) {
@@ -2347,7 +2491,7 @@ function validateShopItemInstance(definition, quantity, data, currentShopItemId 
   if (characterCount + shopCount > 0) throw new Error("A UNIQUE item can only exist once across inventories and shops");
 }
 
-function readOrCreateShopCharacterProfile(shopId, slug) {
+function readOrCreateShopCharacterProfile(shopId, slug, { createIfMissing = true } = {}) {
   requireShopTables();
   if (!tableExists("ShopCharacterProfile")) throw new Error("Shop profile database migration has not been applied");
   const shop = sqlite.prepare('SELECT id, name FROM "Shop" WHERE id = ? LIMIT 1').get(shopId);
@@ -2364,7 +2508,7 @@ function readOrCreateShopCharacterProfile(shopId, slug) {
   let profile = sqlite
     .prepare('SELECT * FROM "ShopCharacterProfile" WHERE shopId = ? AND characterId = ? LIMIT 1')
     .get(shopId, character.id);
-  if (!profile) {
+  if (!profile && createIfMissing) {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     sqlite.prepare(`INSERT INTO "ShopCharacterProfile" (id, shopId, characterId, visitCount, dmNotes, usualDiscountPercent, lastVisitedAt, createdAt, updatedAt)
@@ -2374,19 +2518,19 @@ function readOrCreateShopCharacterProfile(shopId, slug) {
   }
 
   return {
-    id: profile.id,
-    shopId: profile.shopId,
-    characterId: profile.characterId,
+    id: profile?.id ?? "",
+    shopId: profile?.shopId ?? shop.id,
+    characterId: profile?.characterId ?? character.id,
     character: {
       slug: character.slug,
       name: character.name,
     },
-    visitCount: Number(profile.visitCount ?? 0),
-    dmNotes: profile.dmNotes ?? "",
-    usualDiscountPercent: profile.usualDiscountPercent ?? null,
-    lastVisitedAt: profile.lastVisitedAt ?? null,
-    createdAt: profile.createdAt,
-    updatedAt: profile.updatedAt,
+    visitCount: Number(profile?.visitCount ?? 0),
+    dmNotes: profile?.dmNotes ?? "",
+    usualDiscountPercent: profile?.usualDiscountPercent ?? null,
+    lastVisitedAt: profile?.lastVisitedAt ?? null,
+    createdAt: profile?.createdAt ?? "",
+    updatedAt: profile?.updatedAt ?? "",
   };
 }
 
@@ -2631,7 +2775,7 @@ function shopActorSide(user) {
 function shopOfferProposerSide(offer) {
   if (offer?.proposerSide) return offer.proposerSide;
   // Compatibility before the additive proposerSide migration is applied.
-  if (offer?.proposedByRole) return offer.proposedByRole === "dm" ? "SHOP" : "CHARACTER";
+  if (offer?.proposedByRole) return String(offer.proposedByRole).toUpperCase() === "DM" ? "SHOP" : "CHARACTER";
   return offer?.sellerSide ?? null;
 }
 
@@ -3038,8 +3182,16 @@ function applyShopItemToCharacterTransfer(negotiation, offer, operationId, actor
 }
 
 function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actorUserId, now) {
+  const hasDefinitionValueCurrency = columnExists("ItemDefinition", "valueCurrency");
+  const hasDefinitionValueAmount = columnExists("ItemDefinition", "valueAmount");
   const characterItem = sqlite.prepare(`
-    SELECT ci.*, d.name AS itemDefinitionName, d.stackable AS itemDefinitionStackable
+    SELECT
+      ci.*,
+      d.name AS itemDefinitionName,
+      d.stackable AS itemDefinitionStackable,
+      d.valueCp AS itemDefinitionValueCp,
+      ${hasDefinitionValueCurrency ? "d.valueCurrency" : "NULL"} AS itemDefinitionValueCurrency,
+      ${hasDefinitionValueAmount ? "d.valueAmount" : "NULL"} AS itemDefinitionValueAmount
     FROM "CharacterItem" ci
     LEFT JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
     WHERE ci.id = ? AND ci.characterId = ?
@@ -3060,6 +3212,16 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
 
   const currency = String(offer.currency ?? "GP").toUpperCase();
   const amount = Number(offer.amount ?? 0);
+  const stockUnitPrice = resolveShopStockUnitPrice(
+    characterItem.itemDefinitionValueCurrency,
+    characterItem.itemDefinitionValueAmount,
+    characterItem.itemDefinitionValueCp,
+    currency,
+    amount,
+    quantity
+  );
+  const stockPriceCurrency = stockUnitPrice.currency;
+  const stockPriceAmount = stockUnitPrice.amount;
   const isStackable = !!characterItem.itemDefinitionStackable && !carriesPerCopyState;
   const destinationMergeCandidate = isStackable
     ? sqlite.prepare(`
@@ -3084,8 +3246,8 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
         characterItem.descriptionOverride ?? null,
         characterItem.notes ?? null,
         characterItem.data ?? null,
-        currency,
-        amount
+        stockPriceCurrency,
+        stockPriceAmount
       )
     : null;
 
@@ -3116,8 +3278,8 @@ function applyCharacterItemToShopTransfer(negotiation, offer, operationId, actor
       characterItem.nameOverride ?? null,
       characterItem.descriptionOverride ?? null,
       quantity,
-      currency,
-      amount,
+      stockPriceCurrency,
+      stockPriceAmount,
       destinationSortOrder + 1,
       characterItem.notes ?? null,
       characterItem.data ?? null,
@@ -3202,7 +3364,7 @@ function acceptShopNegotiationAtomically(negotiation, offer, actorUserId, actorS
 
     if (freshNegotiation.direction === "SHOP_TO_CHARACTER") {
       const characterBalance = readCharacterCurrencyBalance(freshNegotiation.characterId) ?? normalizeCurrencyBalance();
-      const nextCharacterBalance = removeCurrencyWithChangeDetailed(characterBalance, currency, amounts[currency]);
+      const nextCharacterBalance = removeCurrencyWithChangeDetailed(characterBalance, currency, amounts[currency], { allowLowerPromotion: true });
       if (!nextCharacterBalance) throw new Error("Il personaggio non ha monete sufficienti per accettare l'offerta.");
       const shopBalance = readShopCurrencyBalance(freshNegotiation.shopId) ?? normalizeCurrencyBalance();
 
@@ -3241,7 +3403,7 @@ function acceptShopNegotiationAtomically(negotiation, offer, actorUserId, actorS
       applyShopItemToCharacterTransfer(freshNegotiation, freshCurrentOffer, operationId, actorUserId, now);
     } else {
       const shopBalance = readShopCurrencyBalance(freshNegotiation.shopId) ?? normalizeCurrencyBalance();
-      const nextShopBalance = removeCurrencyWithChangeDetailed(shopBalance, currency, amounts[currency]);
+      const nextShopBalance = removeCurrencyWithChangeDetailed(shopBalance, currency, amounts[currency], { allowLowerPromotion: true });
       if (!nextShopBalance) throw new Error("Il negozio non ha fondi sufficienti per accettare l'offerta.");
       const characterBalance = readCharacterCurrencyBalance(freshNegotiation.characterId) ?? normalizeCurrencyBalance();
 
@@ -3397,6 +3559,10 @@ function undoShopOperationAtomically(operationId, actorUserId = null) {
     if (!snapshot || Number(snapshot.version) !== 2 || !snapshot.before || !snapshot.after) {
       throw shopUndoConflict("Questa transazione precedente non contiene lo snapshot necessario; correggere con una nuova compravendita.");
     }
+    assertCharacterInventoryNotInActiveShopVisit({ characterId: snapshot.characterId });
+    const operationShopId = inventory.fromShopId ?? inventory.toShopId ?? snapshot.shopId ?? null;
+    assertShopNotArchived(operationShopId);
+    assertShopNotInActiveVisit(operationShopId);
     const quantity = Number(snapshot.quantity ?? inventory.movedQuantity ?? 0);
     if (!Number.isInteger(quantity) || quantity <= 0) throw shopUndoConflict("Snapshot della compravendita non valido.");
 
@@ -3469,20 +3635,7 @@ function undoShopOperationAtomically(operationId, actorUserId = null) {
         throw shopUndoConflict("Ledger del cambio valuta contiene righe tecniche estranee.");
       }
 
-      const outgoingEntries = CURRENCY_ORDER.filter((key) => Number(outgoing[key] ?? 0) !== 0);
-      const incomingEntries = CURRENCY_ORDER.filter((key) => Number(incoming[key] ?? 0) !== 0);
-      if (outgoingEntries.length !== 1 || incomingEntries.length !== 1) {
-        throw shopUndoConflict("Coppia di cambio valuta non valida.");
-      }
-      const outgoingKey = outgoingEntries[0];
-      const incomingKey = incomingEntries[0];
-      const expectedFactor = CURRENCY_EXCHANGE_UP[incomingKey];
-      if (
-        CURRENCY_ORDER.indexOf(outgoingKey) !== CURRENCY_ORDER.indexOf(incomingKey) + 1 ||
-        Number(outgoing[outgoingKey]) !== 1 ||
-        Number(incoming[incomingKey]) !== Number(expectedFactor ?? 0) ||
-        CURRENCY_ORDER.some((key) => Number(outgoing[key] ?? 0) < 0 || Number(incoming[key] ?? 0) < 0)
-      ) {
+      if (!isBalancedAdjacentCurrencyConversion(outgoing, incoming)) {
         throw shopUndoConflict("Coppia di cambio valuta sbilanciata.");
       }
     }
@@ -4902,6 +5055,7 @@ function assignItemDefinitionToCharacter(characterSlug, payload, actorUserId = n
   if (!character) {
     throw new Error("Character not found");
   }
+  assertCharacterInventoryNotInActiveShopVisit({ characterId: character.id, characterSlug: character.slug });
 
   let itemDefinition = null;
   const itemDefinitionId = String(payload?.itemDefinitionId ?? "").trim();
@@ -5070,6 +5224,8 @@ function transferCharacterItemBetweenCharacters(fromCharacterSlug, characterItem
   if (fromCharacter.id === toCharacter.id) {
     throw new Error("Choose a different target character");
   }
+  assertCharacterInventoryNotInActiveShopVisit({ characterId: fromCharacter.id, characterSlug: fromCharacter.slug });
+  assertCharacterInventoryNotInActiveShopVisit({ characterId: toCharacter.id, characterSlug: toCharacter.slug });
 
   const existing = sqlite.prepare(`
     SELECT
@@ -5352,6 +5508,8 @@ function undoInventoryTransfer(transactionId, actorUserId = null) {
   if (!snapshot?.fromCharacterId || !snapshot?.toCharacterId || !snapshot?.destinationItemId) {
     throw new Error("Transfer snapshot is invalid");
   }
+  assertCharacterInventoryNotInActiveShopVisit({ characterId: snapshot.fromCharacterId });
+  assertCharacterInventoryNotInActiveShopVisit({ characterId: snapshot.toCharacterId });
 
   const sourceSortOrder = Number(
     sqlite.prepare('SELECT MAX(sortOrder) AS maxSortOrder FROM "CharacterItem" WHERE characterId = ?').get(snapshot.fromCharacterId)?.maxSortOrder ?? -1
@@ -5636,6 +5794,7 @@ function updateCharacterInventoryItem(characterSlug, characterItemId, payload) {
   if (!character) {
     throw new Error("Character not found");
   }
+  assertCharacterInventoryNotInActiveShopVisit({ characterId: character.id, characterSlug: character.slug });
 
     const existing = sqlite.prepare(`
       SELECT
@@ -9282,7 +9441,7 @@ async function start() {
 
   app.get("/api/dm/shops/:shopId/characters/:slug/profile", requireRole("dm"), (req, res) => {
     try {
-      const profile = readOrCreateShopCharacterProfile(req.params.shopId, req.params.slug);
+      const profile = readOrCreateShopCharacterProfile(req.params.shopId, req.params.slug, { createIfMissing: false });
       return profile ? res.json(profile) : res.status(404).json({ error: "Shop not found" });
     } catch (error) {
       const status = Number(error?.status ?? 400);
@@ -9304,6 +9463,7 @@ async function start() {
 
   app.patch("/api/dm/shops/:shopId/characters/:slug/profile", requireRole("dm"), (req, res) => {
     try {
+      assertShopNotArchived(req.params.shopId);
       const current = readOrCreateShopCharacterProfile(req.params.shopId, req.params.slug);
       if (!current) return res.status(404).json({ error: "Shop not found" });
       const value = {};
@@ -9317,7 +9477,7 @@ async function start() {
         .run(...entries.map(([, item]) => item), new Date().toISOString(), current.id);
       return res.json(readOrCreateShopCharacterProfile(req.params.shopId, req.params.slug));
     } catch (error) {
-      const status = Number(error?.status ?? 400);
+      const status = Number(error?.statusCode) || Number(error?.status) || 400;
       return res.status(status).json({ error: String(error?.message ?? error) });
     }
   });
@@ -9342,6 +9502,8 @@ async function start() {
   app.patch("/api/dm/shops/:shopId", requireRole("dm"), (req, res) => {
     try {
       if (!readDmShop(req.params.shopId)) return res.status(404).json({ error: "Shop not found" });
+      assertShopNotArchived(req.params.shopId);
+      assertShopNotInActiveVisit(req.params.shopId);
       const value = normalizeShopPayload(req.body ?? {}, { partial: true });
       const entries = Object.entries(value);
       if (!entries.length) return res.status(400).json({ error: "No shop fields supplied" });
@@ -9350,7 +9512,7 @@ async function start() {
       return res.json(readDmShop(req.params.shopId));
     } catch (error) {
       const message = String(error?.message ?? error);
-      return res.status(message.includes("UNIQUE constraint") ? 409 : 400).json({ error: message });
+      return res.status(Number(error?.statusCode) || (message.includes("UNIQUE constraint") ? 409 : 400)).json({ error: message });
     }
   });
 
@@ -9358,12 +9520,13 @@ async function start() {
     try {
       const shop = readDmShop(req.params.shopId);
       if (!shop) return res.status(404).json({ error: "Shop not found" });
+      assertShopNotArchived(req.params.shopId);
       const activeVisit = tableExists("ShopVisit") && sqlite.prepare('SELECT id FROM "ShopVisit" WHERE shopId = ? AND status = ? LIMIT 1').get(req.params.shopId, "ACTIVE");
       if (activeVisit) return res.status(409).json({ error: "Cannot archive a shop with an active visit" });
       sqlite.prepare('UPDATE "Shop" SET archivedAt = ?, updatedAt = ? WHERE id = ?').run(new Date().toISOString(), new Date().toISOString(), req.params.shopId);
       return res.json(readDmShop(req.params.shopId));
     } catch (error) {
-      return res.status(400).json({ error: String(error?.message ?? error) });
+      return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
     }
   });
 
@@ -9371,7 +9534,8 @@ async function start() {
     try {
       const shop = readDmShop(req.params.shopId);
       if (!shop) return res.status(404).json({ error: "Shop not found" });
-      if (shop.archivedAt) return res.status(409).json({ error: "Cannot add stock to an archived shop" });
+      assertShopNotArchived(req.params.shopId);
+      assertShopNotInActiveVisit(req.params.shopId);
       const value = normalizeShopItemPayload(req.body ?? {});
       const definition = readItemDefinition(value.itemDefinitionId);
       validateShopItemInstance(definition, value.quantity, value.data);
@@ -9382,7 +9546,7 @@ async function start() {
         .run(id, req.params.shopId, value.itemDefinitionId, value.nameOverride, value.descriptionOverride, value.quantity, value.priceCurrency, value.priceAmount, value.isSecret, value.discoveryDc, value.sortOrder, value.dmNotes, value.instanceNotes, value.data, now, now);
       return res.status(201).json(readDmShop(req.params.shopId).items.find((item) => item.id === id));
     } catch (error) {
-      return res.status(400).json({ error: String(error?.message ?? error) });
+      return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
     }
   });
 
@@ -9390,6 +9554,8 @@ async function start() {
     try {
       const current = sqlite.prepare('SELECT * FROM "ShopItem" WHERE id = ? AND shopId = ?').get(req.params.shopItemId, req.params.shopId);
       if (!current) return res.status(404).json({ error: "Shop item not found" });
+      assertShopNotArchived(req.params.shopId);
+      assertShopNotInActiveVisit(req.params.shopId);
       const value = normalizeShopItemPayload(req.body ?? {}, { partial: true });
       const definition = readItemDefinition(value.itemDefinitionId ?? current.itemDefinitionId);
       const quantity = value.quantity ?? Number(current.quantity);
@@ -9400,17 +9566,21 @@ async function start() {
         .run(...entries.map(([, item]) => item), new Date().toISOString(), req.params.shopItemId);
       return res.json(readDmShop(req.params.shopId).items.find((item) => item.id === req.params.shopItemId));
     } catch (error) {
-      return res.status(400).json({ error: String(error?.message ?? error) });
+      return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
     }
   });
 
   app.delete("/api/dm/shops/:shopId/items/:shopItemId", requireRole("dm"), (req, res) => {
     try {
       requireShopTables();
+      const current = sqlite.prepare('SELECT id FROM "ShopItem" WHERE id = ? AND shopId = ? LIMIT 1').get(req.params.shopItemId, req.params.shopId);
+      if (!current) return res.status(404).json({ error: "Shop item not found" });
+      assertShopNotArchived(req.params.shopId);
+      assertShopNotInActiveVisit(req.params.shopId);
       const result = sqlite.prepare('DELETE FROM "ShopItem" WHERE id = ? AND shopId = ?').run(req.params.shopItemId, req.params.shopId);
-      return result.changes ? res.status(204).end() : res.status(404).json({ error: "Shop item not found" });
+      return result.changes ? res.status(204).end() : res.status(409).json({ error: "Shop item changed before deletion" });
     } catch (error) {
-      return res.status(400).json({ error: String(error?.message ?? error) });
+      return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
     }
   });
 
@@ -9546,10 +9716,8 @@ async function start() {
         const shopItem = sqlite.prepare('SELECT * FROM "ShopItem" WHERE id = ? AND shopId = ? LIMIT 1').get(shopItemId, visit.shopId);
         if (!shopItem) return res.status(404).json({ error: "Shop item not found in this visit" });
         if (quantity > Number(shopItem.quantity ?? 0)) return res.status(409).json({ error: "Requested quantity is not available" });
-        if (req.user?.role !== "dm") {
-          const visibleItem = readShopVisitItemsForCharacter(visit, { dm: false }).find((item) => item.id === shopItemId);
-          if (!visibleItem) return res.status(403).json({ error: "Shop item is not visible to this character" });
-        }
+        const visibleItem = readShopVisitItemsForCharacter(visit, { dm: false }).find((item) => item.id === shopItemId);
+        if (!visibleItem) return res.status(403).json({ error: "Shop item is not visible to this character" });
         const definition = shopItem.itemDefinitionId ? readItemDefinition(shopItem.itemDefinitionId) : null;
         itemNameSnapshot = shopItem.nameOverride ?? definition?.name ?? "Oggetto senza nome";
         itemDetailsSnapshot = shopItem.descriptionOverride ?? definition?.description ?? null;
@@ -9653,7 +9821,7 @@ async function start() {
       if (negotiation.status !== "OPEN") return res.status(409).json({ error: "Negotiation is not open" });
       const offers = readShopOffersByNegotiationIds([negotiation.id])[negotiation.id] ?? [];
       const currentOffer = offers[offers.length - 1] ?? null;
-      if (currentOffer?.proposedByUserId !== req.user.id && req.user?.role !== "dm") return res.status(403).json({ error: "Only the current proposer can withdraw" });
+      if (shopOfferProposerSide(currentOffer) !== shopActorSide(req.user)) return res.status(403).json({ error: "Only the current proposer can withdraw" });
       const now = new Date().toISOString();
       const result = sqlite.prepare('UPDATE "ShopNegotiation" SET status = ?, resolvedAt = ?, updatedAt = ? WHERE id = ? AND status = ?')
         .run("WITHDRAWN", now, now, negotiation.id, "OPEN");
@@ -9829,7 +9997,7 @@ async function start() {
       return res.status(201).json(items);
     } catch (error) {
       const message = String(error?.message ?? error);
-      const status = /not found/i.test(message) ? 404 : 400;
+      const status = Number(error?.statusCode) || (/not found/i.test(message) ? 404 : 400);
       return res.status(status).json({ error: message });
     }
   });
@@ -9844,6 +10012,11 @@ async function start() {
       .get(req.params.slug);
     if (!character) {
       return res.status(404).json({ error: "Character not found" });
+    }
+    try {
+      assertCharacterInventoryNotInActiveShopVisit({ characterId: character.id, characterSlug: character.slug });
+    } catch (error) {
+      return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
     }
 
       const characterItem = sqlite
@@ -9928,7 +10101,7 @@ async function start() {
       return res.json(item);
       } catch (error) {
         const message = String(error?.message ?? error);
-        const status = /not found/i.test(message) ? 404 : /forbidden/i.test(message) ? 403 : 400;
+        const status = Number(error?.statusCode) || (/not found/i.test(message) ? 404 : /forbidden/i.test(message) ? 403 : 400);
         return res.status(status).json({ error: message, details: error?.details ?? null });
       }
     });
@@ -9951,7 +10124,7 @@ async function start() {
       return res.json(items);
     } catch (error) {
       const message = String(error?.message ?? error);
-      const status = /not found/i.test(message) ? 404 : /forbidden/i.test(message) ? 403 : 400;
+      const status = Number(error?.statusCode) || (/not found/i.test(message) ? 404 : /forbidden/i.test(message) ? 403 : 400);
       return res.status(status).json({ error: message });
     }
   });
@@ -9965,7 +10138,7 @@ async function start() {
       return res.json(undoInventoryTransfer(req.params.transactionId, req.user?.id ?? null));
     } catch (error) {
       const message = String(error?.message ?? error);
-      const status = /not found/i.test(message) ? 404 : 400;
+      const status = Number(error?.statusCode) || (/not found/i.test(message) ? 404 : 400);
       return res.status(status).json({ error: message });
     }
   });
@@ -10684,6 +10857,13 @@ async function start() {
     if (targetCharacters.length === 0) {
       return res.status(400).json({ error: "Nessun PG valido selezionato per il riposo." });
     }
+    try {
+      for (const character of targetCharacters) {
+        assertCharacterInventoryNotInActiveShopVisit({ characterSlug: character.slug });
+      }
+    } catch (error) {
+      return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
+    }
 
     const changedCharacters = [];
     const summaries = [];
@@ -10916,7 +11096,7 @@ async function start() {
         }
 
         if (operation === "remove") {
-          const removal = removeCurrencyWithChangeDetailed(currentSourceBalance, currency, amount);
+          const removal = removeCurrencyWithChangeDetailed(currentSourceBalance, currency, amount, { allowLowerPromotion: true });
           if (!removal) {
             throw new Error("Monete insufficienti per questa operazione.");
           }
@@ -10957,7 +11137,7 @@ async function start() {
           return;
         }
 
-        const transferRemoval = removeCurrencyWithChangeDetailed(currentSourceBalance, currency, amount);
+        const transferRemoval = removeCurrencyWithChangeDetailed(currentSourceBalance, currency, amount, { allowLowerPromotion: true });
         if (!transferRemoval) {
           throw new Error("Monete insufficienti per questa operazione.");
         }
