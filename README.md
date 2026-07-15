@@ -270,6 +270,21 @@ Archivio storico JSON:
 
 Questo non impedisce di usare SQLite o Prisma nel progetto, ma e' bene saperlo prima di lavorare sulla migrazione.
 
+## Flusso Git e release
+
+- `dev` e' il branch di sviluppo e test.
+- `main` rappresenta esclusivamente lo stato rilasciato in produzione.
+- Una release autorizzata unisce `dev` in `main` con un merge commit esplicito `--no-ff`, anche quando sarebbe possibile un fast-forward. In questo modo il confine della release resta visibile nel grafico Git.
+- Il tip risultante di `main` viene distribuito su Railway come parte dello stesso flusso; `main` non deve restare aggiornato ma non deployato.
+- Dopo la verifica positiva del deploy, `dev` viene riallineato con fast-forward al tip distribuito di `main` e pushato su `origin/dev`.
+- I merge di release non vengono compressi con squash e non usano fast-forward, salvo decisione esplicita diversa.
+
+Comando di riferimento dalla copia di lavoro pulita su `main`:
+
+```powershell
+git merge --no-ff dev -m "Release vX.Y.Z: titolo release"
+```
+
 ## Stato Migrazione
 
 La migrazione principale a SQLite e' completata:
@@ -283,4 +298,4 @@ I prossimi passi non sono piu' la migrazione core, ma:
 
 - manutenzione e hardening
 - eventuale cleanup del codice legacy rimasto
-- merge del branch `migration` in `main` quando il team lo ritiene pronto
+- sviluppo ordinario su `dev` e release controllate su `main`
