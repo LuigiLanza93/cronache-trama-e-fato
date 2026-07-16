@@ -108,6 +108,38 @@ function formatIndicativeValue(value: { currency: ShopCurrency; amount: number }
   return value && Number.isInteger(value.amount) && value.amount > 0 ? `${value.amount} ${value.currency}` : "sconosciuto";
 }
 
+type ShopVisitItemGroup = {
+  item: ShopVisitItem;
+  instanceCount: number;
+  availableQuantity: number;
+};
+
+function groupIdenticalNonStackableItems(items: ShopVisitItem[]): ShopVisitItemGroup[] {
+  const groups: ShopVisitItemGroup[] = [];
+  const groupIndexes = new Map<string, number>();
+
+  items.forEach((item) => {
+    if (item.definition?.stackable !== false || !item.displayGroupKey) {
+      groups.push({ item, instanceCount: 1, availableQuantity: item.quantity });
+      return;
+    }
+
+    const groupKey = item.displayGroupKey;
+    const existingIndex = groupIndexes.get(groupKey);
+
+    if (existingIndex === undefined) {
+      groupIndexes.set(groupKey, groups.length);
+      groups.push({ item, instanceCount: 1, availableQuantity: item.quantity });
+      return;
+    }
+
+    groups[existingIndex].instanceCount += 1;
+    groups[existingIndex].availableQuantity += item.quantity;
+  });
+
+  return groups;
+}
+
 function buildFeatureSummary(feature: NonNullable<ShopVisitItem["definition"]>["features"][number], item: ShopVisitItem) {
   const state = item.featureStates.find((entry) => entry.itemFeatureId === feature.id);
   return joinParts([
@@ -317,6 +349,7 @@ export default function ShopVisitListener() {
 
   const visibleVisit = activeVisit && activeVisit.id !== dismissedVisitId ? activeVisit : null;
   const visibleItems = visibleVisit?.items ?? [];
+  const visibleItemGroups = groupIdenticalNonStackableItems(visibleItems);
   const inventoryItems = visibleVisit?.inventory ?? [];
   const negotiations = visibleVisit?.negotiations ?? [];
 
@@ -450,10 +483,12 @@ export default function ShopVisitListener() {
               <section className="rounded-xl border border-border/70 bg-background/40 p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <h3 className="font-heading text-xl text-primary">Vetrina</h3>
-                  <span className="text-xs text-muted-foreground">{visibleItems.length} oggetti visibili</span>
+                  <span className="text-xs text-muted-foreground">
+                    {visibleItemGroups.length} {visibleItemGroups.length === 1 ? "prodotto" : "prodotti"} · {visibleItems.reduce((total, item) => total + item.quantity, 0)} disponibili
+                  </span>
                 </div>
                 <div className="space-y-3">
-                  {visibleItems.length ? visibleItems.map((item) => (
+                  {visibleItemGroups.length ? visibleItemGroups.map(({ item, instanceCount, availableQuantity }) => (
                     <div key={item.id} className="group rounded-xl border border-border/60 bg-card/70 p-4 shadow-sm transition-colors hover:border-primary/35 hover:bg-card/90">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
@@ -465,8 +500,13 @@ export default function ShopVisitListener() {
                             {item.definition?.rarity ? (
                               <span className="rounded-full bg-muted/70 px-2.5 py-1 text-[11px] text-muted-foreground">{item.definition.rarity}</span>
                             ) : null}
+                            {instanceCount > 1 ? (
+                              <span className="rounded-full border border-primary/25 bg-primary/5 px-2.5 py-1 text-[11px] font-medium text-primary">×{instanceCount}</span>
+                            ) : null}
                           </div>
-                          <div className="mt-1 text-xs text-muted-foreground">Disponibili: {item.quantity}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Disponibili: {availableQuantity}{instanceCount > 1 ? " · una copia per trattativa" : ""}
+                          </div>
                         </div>
                         <div className="shrink-0 text-right">
                           <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Prezzo</div>

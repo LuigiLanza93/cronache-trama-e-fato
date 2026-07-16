@@ -1,7 +1,7 @@
 {
-  "version": "1.7.0",
+  "version": "1.7.1",
   "releaseName": "Mercanti e Trattative",
-  "releasedAt": "2026-07-15",
+  "releasedAt": "2026-07-16",
   "summary": "La versione 1.7 introduce un sistema completo di negozi sincronizzati tra DM e giocatori: visite in tempo reale, vetrine e oggetti segreti, trattative con offerte e rilanci, compravendite atomiche e uno storico affidabile di inventario e monete.",
   "sections": [
     {
@@ -37,6 +37,7 @@
         "Il sistema valuta supporta pagamento esatto, resto da tagli superiori e promozione di tagli inferiori, registrando le conversioni per consentire controlli e annullamenti.",
         "L'annullamento tecnico verifica fondi, stock, identita' dell'oggetto, equipaggiamento e stato delle feature; quando ricrea uno stock esaurito ripristina anche le conoscenze degli oggetti rivelati.",
         "Il payload player usa un'allowlist esplicita di informazioni pubbliche e non espone note DM, note d'istanza, JSON opachi o metadati amministrativi.",
+        "Le copie identiche degli oggetti non stackabili vengono raggruppate soltanto nella presentazione della vetrina, mantenendo separate le istanze reali e distinguendo in modo sicuro eventuali stati interni differenti; nell'elenco negozi gli stock sono ora collassabili e chiusi di default.",
         "Le migrazioni della release sono additive e prevedono una correzione idempotente delle offerte storiche, da applicare alla produzione con backup e procedura controllata."
       ]
     }

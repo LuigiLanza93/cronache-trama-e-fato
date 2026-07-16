@@ -1324,6 +1324,7 @@ export type DmShopVisitHistoryEntry = {
 
 export type ShopVisitItem = {
   id: string;
+  displayGroupKey?: string;
   shopId: string;
   itemDefinitionId: string | null;
   name: string;

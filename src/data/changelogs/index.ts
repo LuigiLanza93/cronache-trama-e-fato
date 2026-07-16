@@ -1,4 +1,4 @@
-import changelog170 from "./1.7.0-shops-and-trading.json";
+import changelog171 from "./1.7.1-shops-and-trading.json";
 import changelog160 from "./1.6.0-campaign-memory.json";
 import changelog150 from "./1.5.0-chat-foundations.json";
 import changelog149 from "./1.4.9-cumulative-player-dm.json";
@@ -18,7 +18,7 @@ export type ChangelogEntry = {
   sections: ChangelogSection[];
 };
 
-const changelogs = [changelog170, changelog160, changelog150, changelog149, changelog145, changelog100] as ChangelogEntry[];
+const changelogs = [changelog171, changelog160, changelog150, changelog149, changelog145, changelog100] as ChangelogEntry[];
 
 export const changelogEntries = changelogs;
 
