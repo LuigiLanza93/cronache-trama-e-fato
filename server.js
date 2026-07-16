@@ -2684,6 +2684,7 @@ function serializeShopVisitItem(row, { dm = false, known = false, featureStates 
   const publicDefinition = definition ? {
     category: definition.category ?? null,
     rarity: definition.rarity ?? null,
+    stackable: !!definition.stackable,
     equippable: !!definition.equippable,
     attunement: !!definition.attunement,
     weight: definition.weight ?? null,
@@ -2782,13 +2783,46 @@ function readShopVisitItemsForCharacter(visitRow, { dm = false } = {}) {
   const rows = sqlite.prepare('SELECT * FROM "ShopItem" WHERE shopId = ? ORDER BY sortOrder ASC, createdAt ASC').all(visitRow.shopId);
   const featureStatesByItemId = readShopItemFeatureStates(rows.map((row) => row.id));
   const knownIds = readKnownShopItemIds(visitRow.shopId, visitRow.characterId);
+  const playerGroupKeys = new Map();
+  let nextPlayerGroupIndex = 0;
   return rows
-    .map((row) => serializeShopVisitItem(row, {
-      dm,
-      known: knownIds.has(row.id),
-      featureStates: featureStatesByItemId[row.id] ?? [],
-      discountPercent: visitRow.discountPercent,
-    }))
+    .map((row) => {
+      const known = knownIds.has(row.id);
+      const featureStates = featureStatesByItemId[row.id] ?? [];
+      const item = serializeShopVisitItem(row, {
+        dm,
+        known,
+        featureStates,
+        discountPercent: visitRow.discountPercent,
+      });
+      if (dm || !item || item.definition?.stackable !== false) return item;
+
+      const privateGroupIdentity = JSON.stringify({
+        itemDefinitionId: row.itemDefinitionId ?? null,
+        nameOverride: row.nameOverride ?? null,
+        descriptionOverride: row.descriptionOverride ?? null,
+        instanceNotes: row.instanceNotes ?? null,
+        data: row.data ?? null,
+        isSecret: !!row.isSecret,
+        known,
+        priceCurrency: row.priceCurrency,
+        priceAmount: Number(row.priceAmount ?? 0),
+        discoveryDc: row.discoveryDc ?? null,
+        dmNotes: row.dmNotes ?? null,
+        featureStates: [...featureStates]
+          .sort((left, right) => String(left.itemFeatureId).localeCompare(String(right.itemFeatureId)))
+          .map((state) => ({
+            itemFeatureId: state.itemFeatureId,
+            usesSpent: Number(state.usesSpent ?? 0),
+            lastResetAt: state.lastResetAt ?? null,
+          })),
+      });
+      if (!playerGroupKeys.has(privateGroupIdentity)) {
+        playerGroupKeys.set(privateGroupIdentity, `shop-item-group-${nextPlayerGroupIndex}`);
+        nextPlayerGroupIndex += 1;
+      }
+      return { ...item, displayGroupKey: playerGroupKeys.get(privateGroupIdentity) };
+    })
     .filter(Boolean);
 }
 

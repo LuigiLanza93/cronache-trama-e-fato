@@ -4,7 +4,7 @@
 
 - Read `codex-readme.md` before planning implementation, database, Git, release, or Railway work. It is the local operational source of truth and must be kept current when those workflows or the active work change.
 - The canonical production data live on Railway at `/data/migration.db`. `prisma/migration.db` is the active local development database: on `dev`, keep its schema aligned with new migrations so features can be tested end to end. It may be freely mutated for local development, but its data are never production truth.
-- Develop and leave changes uncommitted on `dev` until the user confirms a successful test. Commit/push to `dev` only after that confirmation. Merge, push, or deploy `main` only on explicit user request.
+- Develop and leave changes uncommitted on `dev` until the user confirms a successful test. Commit/push to `dev` only after that confirmation. Merge, push, or deploy `main` only on explicit user request. Production releases must merge `dev` into `main` with an explicit `--no-ff` merge commit so the release boundary remains visible in Git history; do not squash or fast-forward release merges by default.
 
 ## Project map
 
@@ -32,7 +32,7 @@ Do not ask the user which subagent to use when the task and these role descripti
 
 After implementation, automatically use `quality_security` when changes affect authentication, authorization, user data, database migrations, uploads, filesystem paths, Socket.IO concurrency, or multiple architectural layers. For low-risk localized changes, the root agent may perform final verification directly.
 
-Use `release_railway` only when the user explicitly requests or authorizes the production release. A production release is one indivisible workflow: verify and merge `dev` into `main`, then deploy that exact `main` state to Railway and perform post-deploy checks. Do not merge to `main` without continuing to Railway, and do not deploy an unmerged development working tree as the production release. Database-affecting releases require a fresh verified Railway backup before migration or deploy.
+Use `release_railway` only when the user explicitly requests or authorizes the production release. A production release is one indivisible workflow: verify `dev`, merge it into `main` with `git merge --no-ff dev` and an explicit release message, then deploy that exact `main` state to Railway and perform post-deploy checks. Do not use a fast-forward or squash merge for the release unless the user explicitly overrides this convention. Do not merge to `main` without continuing to Railway, and do not deploy an unmerged development working tree as the production release. Database-affecting releases require a fresh verified Railway backup before migration or deploy. After a successful release and verification, fast-forward local `dev` to the deployed `main` tip and push `origin/dev` so future development starts from the exact production state; preserve any unrelated uncommitted user files while doing so.
 
 Use `git_finalize` only for completed, verified work after explicit user test confirmation. It may stage only the exact paths approved by the root agent and push only to `origin/dev`; it must never edit implementation files, operate on `main`, rewrite history, deploy, or touch Railway or databases. The root agent remains responsible for deciding that the change is ready and defining the commit boundary.
 

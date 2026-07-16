@@ -96,6 +96,55 @@ function shopKeyFromName(name: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+type ShopVisitItemGroup = {
+  item: NonNullable<ShopVisit["items"]>[number];
+  instanceCount: number;
+  availableQuantity: number;
+};
+
+function groupIdenticalNonStackableVisitItems(items: NonNullable<ShopVisit["items"]>): ShopVisitItemGroup[] {
+  const groups: ShopVisitItemGroup[] = [];
+  const groupIndexes = new Map<string, number>();
+
+  items.forEach((item) => {
+    if (item.definition?.stackable !== false) {
+      groups.push({ item, instanceCount: 1, availableQuantity: item.quantity });
+      return;
+    }
+
+    const groupKey = JSON.stringify({
+      itemDefinitionId: item.itemDefinitionId,
+      name: item.name,
+      description: item.description,
+      nameOverride: item.nameOverride,
+      descriptionOverride: item.descriptionOverride,
+      isSecret: item.isSecret,
+      revealed: item.revealed,
+      instanceNotes: item.instanceNotes,
+      data: item.data,
+      featureStates: item.featureStates,
+      definition: item.definition,
+      visibleToPlayer: item.visibleToPlayer,
+      price: item.price,
+      discountedPrice: item.discountedPrice,
+      discoveryDc: item.discoveryDc,
+      dmNotes: item.dmNotes,
+    });
+    const existingIndex = groupIndexes.get(groupKey);
+
+    if (existingIndex === undefined) {
+      groupIndexes.set(groupKey, groups.length);
+      groups.push({ item, instanceCount: 1, availableQuantity: item.quantity });
+      return;
+    }
+
+    groups[existingIndex].instanceCount += 1;
+    groups[existingIndex].availableQuantity += item.quantity;
+  });
+
+  return groups;
+}
+
 function toShopForm(shop: DmShop): ShopFormPayload {
   return {
     externalKey: shop.externalKey, name: shop.name, description: shop.description,
@@ -549,6 +598,8 @@ export default function DmShopsPage() {
     finally { setSubmitting(false); }
   };
 
+  const activeVisitItemGroups = groupIdenticalNonStackableVisitItems(activeVisit?.items ?? []);
+
   return (
     <div className="min-h-screen parchment p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -620,17 +671,32 @@ export default function DmShopsPage() {
                   {shop.description && <p className="mt-3 text-sm">{shop.description}</p>}
                   {shop.dmNotes && <p className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-800 dark:border-amber-300/30 dark:bg-amber-300/10 dark:text-amber-100">Note DM: {shop.dmNotes}</p>}
                   <div className="mt-4 flex flex-wrap gap-2 text-xs">{(["cp", "sp", "ep", "gp"] as const).map((currency) => <Badge key={currency} variant="outline">{shop.balance[currency]} {currency.toUpperCase()}</Badge>)}{shop.discountDc && <Badge variant="outline">CD sconto {shop.discountDc}</Badge>}</div>
-                  <div className="mt-5 flex items-center justify-between"><h4 className="font-medium">Stock ({shop.items.length})</h4>{!shop.archivedAt && <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={shopLockedByActiveVisit ? `Aggiunta prodotti a ${shop.name} bloccata durante la visita` : `Aggiungi prodotto a ${shop.name}`} title={stockEditTitle ?? "Aggiungi prodotto"} disabled={shopLockedByActiveVisit} onClick={() => openNewItem(shop)}><PackagePlus className="h-4 w-4" /></Button>}</div>
-                  {shopLockedByActiveVisit ? <p className="mt-2 text-xs text-muted-foreground">Chiudi la visita per creare, modificare o eliminare prodotti dello stock.</p> : null}
-                  {shop.archivedAt ? <p className="mt-2 text-xs text-muted-foreground">Negozio archiviato: dati e stock sono disponibili in sola lettura.</p> : null}
-                  <div className="mt-2 divide-y rounded-md border">
+                  <Collapsible className="mt-5">
+                    <div className="flex items-center gap-2">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" className="group h-auto min-w-0 flex-1 justify-between px-2 py-2 text-left" aria-label={`Mostra o nascondi lo stock di ${shop.name}`}>
+                          <span className="min-w-0">
+                            <span className="block font-medium">Stock</span>
+                            <span className="block text-xs font-normal text-muted-foreground">{shop.items.length} {shop.items.length === 1 ? "prodotto" : "prodotti"} · {shop.items.reduce((total, item) => total + item.quantity, 0)} unità</span>
+                          </span>
+                          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      {!shop.archivedAt && <Button size="icon" variant="outline" className="h-9 w-9 shrink-0 rounded-full" aria-label={shopLockedByActiveVisit ? `Aggiunta prodotti a ${shop.name} bloccata durante la visita` : `Aggiungi prodotto a ${shop.name}`} title={stockEditTitle ?? "Aggiungi prodotto"} disabled={shopLockedByActiveVisit} onClick={() => openNewItem(shop)}><PackagePlus className="h-4 w-4" /></Button>}
+                    </div>
+                    <CollapsibleContent>
+                      {shopLockedByActiveVisit ? <p className="mt-2 text-xs text-muted-foreground">Chiudi la visita per creare, modificare o eliminare prodotti dello stock.</p> : null}
+                      {shop.archivedAt ? <p className="mt-2 text-xs text-muted-foreground">Negozio archiviato: dati e stock sono disponibili in sola lettura.</p> : null}
+                      <div className="mt-2 divide-y rounded-md border">
                     {shop.items.length === 0 ? <p className="p-4 text-center text-sm text-muted-foreground">Stock vuoto</p> : shop.items.map((item) => (
                       <div key={item.id} className="flex items-center justify-between gap-3 p-3">
                         <div className="min-w-0"><div className="flex items-center gap-2"><span className="truncate font-medium">{item.nameOverride || item.definition?.name || "Definizione rimossa"}</span>{item.isSecret && <EyeOff className="h-3.5 w-3.5 text-amber-600" />}</div><p className="text-xs text-muted-foreground">Qtà {item.quantity} · {item.price.amount} {item.price.currency}{item.discoveryDc ? ` · CD ${item.discoveryDc}` : ""}</p></div>
                         <div className="flex shrink-0 gap-1"><Button variant="ghost" size="icon" className="rounded-full" aria-label={shop.archivedAt ? "Modifica prodotto non disponibile: negozio archiviato" : shopLockedByActiveVisit ? "Modifica prodotto bloccata durante la visita" : "Modifica prodotto"} title={stockEditTitle ?? "Modifica prodotto"} disabled={shopReadOnly} onClick={() => openEditItem(shop, item)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="rounded-full" aria-label={shop.archivedAt ? "Eliminazione prodotto non disponibile: negozio archiviato" : shopLockedByActiveVisit ? "Eliminazione prodotto bloccata durante la visita" : "Elimina prodotto"} title={stockEditTitle ?? "Elimina prodotto"} disabled={shopReadOnly} onClick={() => void deleteItem(shop, item)}><Trash2 className="h-4 w-4" /></Button></div>
                       </div>
                     ))}
-                  </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </Card>
                 );
               })}
@@ -715,22 +781,26 @@ export default function DmShopsPage() {
                 <section className="rounded-md border p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <h3 className="font-heading text-xl text-primary">Stock DM</h3>
-                    <span className="text-xs text-muted-foreground">{activeVisit.items?.length ?? 0} righe</span>
+                    <span className="text-xs text-muted-foreground">
+                      {activeVisitItemGroups.length} {activeVisitItemGroups.length === 1 ? "prodotto" : "prodotti"} · {(activeVisit.items ?? []).reduce((total, item) => total + item.quantity, 0)} unità
+                    </span>
                   </div>
                   <div className="space-y-2">
-                    {(activeVisit.items ?? []).length ? (activeVisit.items ?? []).map((item) => (
+                    {activeVisitItemGroups.length ? activeVisitItemGroups.map(({ item, instanceCount, availableQuantity }) => (
                       <div key={item.id} className="rounded-md border bg-card/70 p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium">{item.name}</span>
+                              {instanceCount > 1 ? <Badge variant="outline">×{instanceCount} istanze</Badge> : null}
                               {item.isSecret ? <Badge variant="secondary">Segreto</Badge> : null}
                               {item.visibleToPlayer === false ? <Badge variant="outline">Non visibile</Badge> : null}
                             </div>
                             <div className="mt-1 text-xs text-muted-foreground">
-                              Qta {item.quantity}
+                              Qta {availableQuantity}
                               {` · ${item.price.amount} ${item.price.currency}`}
                               {item.discoveryDc ? ` · CD ${item.discoveryDc}` : ""}
+                              {instanceCount > 1 ? " · una istanza per trattativa" : ""}
                             </div>
                             {item.discountedPrice.amount !== item.price.amount ? (
                               <div className="mt-2 text-sm">
@@ -741,7 +811,7 @@ export default function DmShopsPage() {
                           </div>
                           {item.isSecret && !item.revealed ? (
                             <Button size="sm" variant="outline" className="rounded-full border-amber-500/40 text-amber-700" disabled={submitting} onClick={() => void revealVisitItem(item.id)}>
-                              <Eye className="mr-2 h-4 w-4" />Rivela
+                              <Eye className="mr-2 h-4 w-4" />{instanceCount > 1 ? "Rivela una" : "Rivela"}
                             </Button>
                           ) : null}
                           <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" aria-label={item.isSecret && !item.revealed ? `Rivela ${item.name} prima di proporne la vendita` : item.visibleToPlayer === false ? `${item.name} non è proponibile perché non è visibile al player` : `Proponi la vendita di ${item.name}`} title={item.isSecret && !item.revealed ? "Rivela prima l'oggetto al player" : item.visibleToPlayer === false ? "Oggetto non visibile al player" : "Proponi vendita"} disabled={submitting || item.visibleToPlayer === false} onClick={() => void proposeVisitShopItem(item.id)}>
