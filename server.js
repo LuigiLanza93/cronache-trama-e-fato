@@ -8857,6 +8857,239 @@ function resetSpellSlotsForRest(spellSlots, className, restType) {
   return next;
 }
 
+const SPELL_SLOT_CONVERSION_COSTS = Object.freeze({
+  2: 3,
+  3: 5,
+  4: 7,
+  5: 9,
+  6: 12,
+  7: 15,
+  8: 18,
+  9: 22,
+});
+const SPELL_SLOT_CONVERSION_EXCLUDED_CLASSES = new Set([
+  "warlock",
+  "guerriero",
+  "fighter",
+  "ladro",
+  "rogue",
+]);
+const SPELL_SLOT_CONVERSION_RECEIPT_TTL_MS = 10 * 60 * 1000;
+const SPELL_SLOT_CONVERSION_RECEIPT_LIMIT = 1_000;
+const spellSlotConversionReceipts = new Map();
+
+function normalizeSpellSlotConversionClass(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .toLowerCase();
+}
+
+function canonicalizeSpellSlotState(spellSlots) {
+  const canonical = {};
+  for (let level = 1; level <= 9; level += 1) {
+    const slots = spellSlots?.[level] ?? spellSlots?.[String(level)];
+    canonical[level] = Array.isArray(slots)
+      ? slots.map((slot) => slot?.active === true ? "1" : "0").join("")
+      : "";
+  }
+  return canonical;
+}
+
+function normalizeExpectedSpellSlotState(value) {
+  if (typeof value !== "string") return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const keys = Object.keys(parsed);
+  if (keys.length !== 9 || keys.some((key) => !/^[1-9]$/.test(key))) return null;
+
+  const canonical = {};
+  for (let level = 1; level <= 9; level += 1) {
+    const bits = parsed[level] ?? parsed[String(level)];
+    if (typeof bits !== "string" || !/^[01]*$/.test(bits)) return null;
+    canonical[level] = bits;
+  }
+  return canonical;
+}
+
+function buildSpellSlotConversionRequestSignature(targetLevel, selectionsValue, expectedSlotStateValue) {
+  if (typeof targetLevel !== "number" || !Number.isInteger(targetLevel) || targetLevel < 2 || targetLevel > 9) {
+    return null;
+  }
+  if (!selectionsValue || typeof selectionsValue !== "object" || Array.isArray(selectionsValue)) {
+    return null;
+  }
+
+  const selections = {};
+  for (const [levelKey, quantity] of Object.entries(selectionsValue)) {
+    if (!/^[1-9]$/.test(levelKey) || typeof quantity !== "number" || !Number.isInteger(quantity) || quantity < 0) {
+      return null;
+    }
+    const sourceLevel = Number(levelKey);
+    if (quantity === 0) continue;
+    if (sourceLevel >= targetLevel) return null;
+    selections[sourceLevel] = quantity;
+  }
+  if (Object.keys(selections).length === 0) return null;
+  const expectedSlotState = normalizeExpectedSpellSlotState(expectedSlotStateValue);
+  if (!expectedSlotState) return null;
+
+  return JSON.stringify({
+    targetLevel,
+    selections: Object.fromEntries(
+      Object.entries(selections).sort(([left], [right]) => Number(left) - Number(right))
+    ),
+    expectedSlotState,
+  });
+}
+
+function normalizeSpellSlotConversionRequestId(value) {
+  if (typeof value !== "string") return null;
+  const requestId = value.trim();
+  if (requestId.length < 8 || requestId.length > 128 || !/^[A-Za-z0-9_-]+$/.test(requestId)) return null;
+  return requestId;
+}
+
+function spellSlotConversionReceiptKey(userId, slug, requestId) {
+  return JSON.stringify([String(userId), slug, requestId]);
+}
+
+function pruneSpellSlotConversionReceipts(now = Date.now()) {
+  for (const [key, receipt] of spellSlotConversionReceipts) {
+    if (receipt.expiresAt <= now) spellSlotConversionReceipts.delete(key);
+  }
+  while (spellSlotConversionReceipts.size > SPELL_SLOT_CONVERSION_RECEIPT_LIMIT) {
+    const oldestKey = spellSlotConversionReceipts.keys().next().value;
+    if (oldestKey === undefined) break;
+    spellSlotConversionReceipts.delete(oldestKey);
+  }
+}
+
+function readSpellSlotConversionReceipt(key) {
+  pruneSpellSlotConversionReceipts();
+  return spellSlotConversionReceipts.get(key) ?? null;
+}
+
+function writeSpellSlotConversionReceipt(key, signature, result) {
+  spellSlotConversionReceipts.delete(key);
+  spellSlotConversionReceipts.set(key, {
+    signature,
+    result,
+    expiresAt: Date.now() + SPELL_SLOT_CONVERSION_RECEIPT_TTL_MS,
+  });
+  pruneSpellSlotConversionReceipts();
+}
+
+function prepareSpellSlotConversion(character, targetLevelValue, selectionsValue) {
+  const targetLevel = targetLevelValue;
+  if (typeof targetLevel !== "number" || !Number.isInteger(targetLevel) || targetLevel < 2 || targetLevel > 9) {
+    return { ok: false, error: "Il livello dello slot da recuperare deve essere compreso tra 2 e 9." };
+  }
+
+  const normalizedClass = normalizeSpellSlotConversionClass(character?.basicInfo?.class);
+  if (SPELL_SLOT_CONVERSION_EXCLUDED_CLASSES.has(normalizedClass)) {
+    return { ok: false, error: "Questa classe non pu\u00f2 convertire slot incantesimo." };
+  }
+
+  if (!selectionsValue || typeof selectionsValue !== "object" || Array.isArray(selectionsValue)) {
+    return { ok: false, error: "La selezione degli slot da sacrificare non \u00e8 valida." };
+  }
+
+  const selections = {};
+  for (const [levelKey, quantityValue] of Object.entries(selectionsValue)) {
+    if (!/^[1-9]$/.test(levelKey)) {
+      return { ok: false, error: "La selezione contiene un livello di slot non valido." };
+    }
+    const sourceLevel = Number(levelKey);
+    const quantity = quantityValue;
+    if (typeof quantity !== "number" || !Number.isInteger(quantity) || quantity < 0) {
+      return { ok: false, error: "Le quantit\u00e0 di slot da sacrificare devono essere numeri interi non negativi." };
+    }
+    if (quantity === 0) continue;
+    if (sourceLevel >= targetLevel) {
+      return { ok: false, error: "Si possono sacrificare soltanto slot di livello inferiore allo slot da recuperare." };
+    }
+    selections[sourceLevel] = quantity;
+  }
+
+  if (Object.keys(selections).length === 0) {
+    return { ok: false, error: "Seleziona almeno uno slot disponibile da sacrificare." };
+  }
+
+  const spellSlots = character?.combatStats?.spellSlots;
+  if (!spellSlots || typeof spellSlots !== "object" || Array.isArray(spellSlots)) {
+    return { ok: false, error: "Gli slot incantesimo del personaggio non sono disponibili." };
+  }
+
+  const targetSlots = spellSlots[targetLevel] ?? spellSlots[String(targetLevel)];
+  if (!Array.isArray(targetSlots) || targetSlots.length === 0) {
+    return { ok: false, error: "Il personaggio non possiede slot di questo livello." };
+  }
+  const consumedTargetIndex = targetSlots.findIndex((slot) => slot?.active === true);
+  if (consumedTargetIndex < 0) {
+    return { ok: false, error: "Non ci sono slot consumati di questo livello da recuperare." };
+  }
+
+  let pointsSpent = 0;
+  for (const [sourceLevelKey, quantity] of Object.entries(selections)) {
+    const sourceLevel = Number(sourceLevelKey);
+    const sourceSlots = spellSlots[sourceLevel] ?? spellSlots[String(sourceLevel)];
+    if (!Array.isArray(sourceSlots)) {
+      return { ok: false, error: `Il personaggio non possiede slot di livello ${sourceLevel}.` };
+    }
+    const availableCount = sourceSlots.filter((slot) => slot?.active !== true).length;
+    if (quantity > availableCount) {
+      return { ok: false, error: `Non ci sono abbastanza slot disponibili di livello ${sourceLevel}.` };
+    }
+    pointsSpent += sourceLevel * quantity;
+  }
+
+  const cost = SPELL_SLOT_CONVERSION_COSTS[targetLevel];
+  if (pointsSpent < cost) {
+    return { ok: false, error: `Servono ${cost} punti slot per recuperare uno slot di livello ${targetLevel}.` };
+  }
+
+  const changedSpellSlots = {};
+  for (const [sourceLevelKey, quantity] of Object.entries(selections)) {
+    const sourceLevel = Number(sourceLevelKey);
+    let remaining = quantity;
+    const sourceSlots = spellSlots[sourceLevel] ?? spellSlots[String(sourceLevel)];
+    changedSpellSlots[sourceLevel] = sourceSlots.map((slot) => {
+      if (remaining > 0 && slot?.active !== true) {
+        remaining -= 1;
+        return { ...slot, active: true };
+      }
+      return slot;
+    });
+  }
+  changedSpellSlots[targetLevel] = targetSlots.map((slot, index) =>
+    index === consumedTargetIndex ? { ...slot, active: false } : slot
+  );
+
+  const patch = {
+    combatStats: {
+      spellSlots: changedSpellSlots,
+    },
+  };
+
+  return {
+    ok: true,
+    patch,
+    next: deepMerge(character, patch),
+    targetLevel,
+    selections,
+    cost,
+    pointsSpent,
+    excess: pointsSpent - cost,
+  };
+}
+
 function applyCharacterRest(character, restType) {
   const data = character && typeof character === "object" ? character : {};
   const basicInfo = data.basicInfo ?? {};
@@ -9011,15 +9244,42 @@ function resetCharacterItemFeatureStatesForRest(characterSlugs, restType) {
   `).run(now, now, ...normalizedSlugs, ...resetValues);
 }
 
-// Optional: debounce writes per slug to avoid hammering the disk
+// Optional: debounce writes per slug to avoid hammering the disk.
+// Keep the latest in-memory state so rapid patches merge with each other instead
+// of repeatedly starting from the last state already persisted to SQLite.
 const persistTimers = new Map();
+const pendingCharacterStates = new Map();
+
+function readLatestCharacterState(slug) {
+  return pendingCharacterStates.has(slug)
+    ? pendingCharacterStates.get(slug)
+    : readCharacter(slug);
+}
+
+function cancelScheduledCharacterWrite(slug) {
+  const timer = persistTimers.get(slug);
+  if (timer) clearTimeout(timer);
+  persistTimers.delete(slug);
+}
+
 function scheduleWrite(slug, state) {
-  clearTimeout(persistTimers.get(slug));
+  pendingCharacterStates.set(slug, state);
+  cancelScheduledCharacterWrite(slug);
   const t = setTimeout(() => {
+    if (persistTimers.get(slug) !== t) return;
+    const latestState = pendingCharacterStates.get(slug);
+    persistTimers.delete(slug);
+    if (!latestState) return;
     try {
-      writeCharacter(slug, state);
+      writeCharacter(slug, latestState);
+      if (pendingCharacterStates.get(slug) === latestState) {
+        pendingCharacterStates.delete(slug);
+      }
     } catch (e) {
       console.error(`[server] persist failed for ${slug}:`, e);
+      if (pendingCharacterStates.get(slug) === latestState) {
+        pendingCharacterStates.delete(slug);
+      }
     }
   }, 200);
   persistTimers.set(slug, t);
@@ -11565,7 +11825,7 @@ async function start() {
       if (!canAccessCharacter(socket.data.user, slug, ownership)) return;
 
       socket.join(`char:${slug}`);
-      const state = readCharacter(slug);
+      const state = readLatestCharacterState(slug);
       if (state) socket.emit("character:state", state);
     });
 
@@ -11579,7 +11839,7 @@ async function start() {
         return;
       }
 
-      const current = readCharacter(slug) || {};
+      const current = readLatestCharacterState(slug) || {};
       const next = deepMerge(current, patch);
       scheduleWrite(slug, next);
       socket.to(`char:${slug}`).emit("character:patch", { slug, patch });
@@ -11592,6 +11852,125 @@ async function start() {
             broadcastInitiativeTrackerState(io);
           } catch {}
         }, 60);
+      }
+    });
+
+    socket.on("character:convert-spell-slots", (payload, acknowledge) => {
+      let acknowledged = false;
+      const ack = (response) => {
+        if (acknowledged || typeof acknowledge !== "function") return;
+        acknowledged = true;
+        acknowledge(response);
+      };
+      try {
+      const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
+      if (!slug) {
+        ack({ ok: false, error: "Personaggio non valido." });
+        return;
+      }
+
+      const ownership = readOwnership();
+      if (!canEditCharacter(socket.data.user, slug, ownership)) {
+        ack({ ok: false, error: "Non sei autorizzato a modificare questo personaggio." });
+        return;
+      }
+      if (!canUserWriteDuringSession(socket.data.user)) {
+        socket.emit("game-session:state", readGameSessionState());
+        ack({ ok: false, error: "La sessione \u00e8 chiusa. Le modifiche del personaggio sono bloccate." });
+        return;
+      }
+
+      const requestId = normalizeSpellSlotConversionRequestId(payload?.requestId);
+      if (!requestId) {
+        ack({ ok: false, error: "Identificativo della richiesta non valido." });
+        return;
+      }
+      const expectedSlotState = normalizeExpectedSpellSlotState(payload?.expectedSlotState);
+      if (!expectedSlotState) {
+        ack({ ok: false, error: "La precondizione sullo stato degli slot non \u00e8 valida." });
+        return;
+      }
+      const requestSignature = buildSpellSlotConversionRequestSignature(
+        payload?.targetLevel,
+        payload?.selections,
+        payload?.expectedSlotState
+      );
+      if (!requestSignature) {
+        ack({ ok: false, error: "La richiesta di conversione degli slot non \u00e8 valida." });
+        return;
+      }
+      const receiptKey = spellSlotConversionReceiptKey(socket.data.user.id, slug, requestId);
+      const existingReceipt = readSpellSlotConversionReceipt(receiptKey);
+      if (existingReceipt) {
+        if (existingReceipt.signature !== requestSignature) {
+          ack({ ok: false, error: "Questo identificativo richiesta \u00e8 gi\u00e0 stato usato con un payload diverso." });
+          return;
+        }
+        const latestState = readLatestCharacterState(slug);
+        if (latestState) socket.emit("character:state", latestState);
+        ack(existingReceipt.result);
+        return;
+      }
+
+      const current = readLatestCharacterState(slug);
+      if (!current) {
+        ack({ ok: false, error: "Personaggio non trovato." });
+        return;
+      }
+      const currentSlotState = canonicalizeSpellSlotState(current?.combatStats?.spellSlots);
+      if (JSON.stringify(currentSlotState) !== JSON.stringify(expectedSlotState)) {
+        socket.emit("character:state", current);
+        ack({
+          ok: false,
+          code: "STALE_SLOT_STATE",
+          error: "Lo stato degli slot \u00e8 cambiato. Riapri la conversione e verifica la selezione.",
+        });
+        return;
+      }
+
+      const conversion = prepareSpellSlotConversion(current, payload?.targetLevel, payload?.selections);
+      if (!conversion.ok) {
+        ack({ ok: false, error: conversion.error });
+        return;
+      }
+
+      const pendingBeforeConversion = pendingCharacterStates.get(slug);
+      cancelScheduledCharacterWrite(slug);
+      try {
+        writeCharacter(slug, conversion.next);
+        pendingCharacterStates.delete(slug);
+      } catch (error) {
+        if (pendingBeforeConversion) scheduleWrite(slug, pendingBeforeConversion);
+        console.error(`[server] spell slot conversion persist failed for ${slug}:`, error);
+        ack({ ok: false, error: "Non \u00e8 stato possibile salvare la conversione degli slot." });
+        return;
+      }
+
+      const result = {
+        ok: true,
+        requestId,
+        targetLevel: conversion.targetLevel,
+        selections: conversion.selections,
+        cost: conversion.cost,
+        pointsSpent: conversion.pointsSpent,
+        excess: conversion.excess,
+      };
+      writeSpellSlotConversionReceipt(receiptKey, requestSignature, result);
+      socket.to(`char:${slug}`).emit("character:patch", { slug, patch: conversion.patch });
+      socket.emit("character:state", conversion.next);
+      ack(result);
+
+      const initiativeState = readInitiativeTrackerState();
+      if (initiativeState.players.some((entry) => entry.slug === slug)) {
+        setTimeout(() => {
+          try {
+            broadcastInitiativeTrackerState(io);
+          } catch {}
+        }, 60);
+      }
+      } catch (error) {
+        console.error("[server] spell slot conversion failed:", error);
+        ack({ ok: false, error: "Non \u00e8 stato possibile completare la conversione degli slot." });
       }
     });
 
