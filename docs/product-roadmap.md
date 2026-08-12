@@ -28,6 +28,8 @@ La roadmap esprime priorita e dipendenze, non scadenze. Le versioni proposte pos
 
 ## Fase 0, pre-1.8 — Audit completo della scheda personaggio
 
+> Stato al 2026-07-15: prima analisi statica completata. Matrice, problemi P0-P3, mappa dati e suite di regressione sono raccolti in [`character-sheet-audit.md`](./character-sheet-audit.md). La fase resta aperta fino alla correzione/verifica dei P0-P1 destinati al prerequisito pre-1.8.
+
 ### Obiettivo
 
 Prima di aggiungere nuove funzioni, verificare sistematicamente cosa della scheda e gia gestito correttamente, cosa funziona soltanto in alcuni casi e cosa manca del tutto. L'audit deve produrre una base affidabile per decidere i fix immediati e per progettare creazione guidata e level-up senza consolidare errori esistenti.

@@ -3958,6 +3958,302 @@ function validateImportObjectKeys(value, allowedKeys, label, errors) {
   }
 }
 
+const SHOP_IMPORT_DEFINITION_KEYS = [
+  "slug", "name", "category", "subcategory", "weaponHandling", "gloveWearMode",
+  "armorCategory", "armorClassCalculation", "armorClassBase", "armorClassBonus", "rarity",
+  "description", "playerVisible", "stackable", "equippable", "attunement", "weight", "valueCp",
+  "data", "slotRules", "attacks", "modifiers", "features", "abilityRequirements", "useEffects",
+];
+const SHOP_IMPORT_SLOT_RULE_KEYS = ["groupKey", "selectionMode", "slot", "required", "sortOrder"];
+const SHOP_IMPORT_ATTACK_KEYS = [
+  "name", "kind", "handRequirement", "ability", "attackBonus", "damageDice", "damageType",
+  "rangeNormal", "rangeLong", "twoHandedOnly", "requiresEquipped", "conditionText", "sortOrder",
+];
+const SHOP_IMPORT_MODIFIER_KEYS = ["target", "type", "value", "formula", "condition", "stackKey", "sortOrder"];
+const SHOP_IMPORT_FEATURE_KEYS = [
+  "name", "kind", "description", "resetOn", "customResetLabel", "maxUses", "passiveEffects", "condition", "sortOrder",
+];
+const SHOP_IMPORT_PASSIVE_EFFECT_KEYS = [
+  "target", "operationType", "valueMode", "value", "setMode", "setValue", "capValue", "sourceAbility",
+  "multiplierNumerator", "multiplierDenominator", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes",
+];
+const SHOP_IMPORT_ABILITY_REQUIREMENT_KEYS = ["ability", "minScore", "sortOrder"];
+const SHOP_IMPORT_USE_EFFECT_KEYS = [
+  "effectType", "targetType", "diceExpression", "flatValue", "damageType", "savingThrowAbility",
+  "savingThrowDc", "successOutcome", "durationText", "notes", "sortOrder",
+];
+const SHOP_IMPORT_PASSIVE_EFFECT_OPERATION_TYPES = new Set(["BONUS", "SET"]);
+const SHOP_IMPORT_PASSIVE_EFFECT_VALUE_MODES = new Set(["FLAT", "ABILITY_MODIFIER", "ABILITY_SCORE", "PROFICIENCY_BONUS", "CHARACTER_LEVEL"]);
+const SHOP_IMPORT_PASSIVE_EFFECT_SET_MODES = new Set(["ABSOLUTE", "MINIMUM_FLOOR"]);
+const SHOP_IMPORT_PASSIVE_EFFECT_SOURCE_ABILITIES = new Set(ITEM_ABILITY_SCORE_VALUES);
+const SHOP_IMPORT_PASSIVE_EFFECT_ROUNDING = new Set(["FLOOR", "CEIL"]);
+const SHOP_IMPORT_SLOT_SELECTION_MODES = new Set(["ALL_REQUIRED", "ANY_ONE"]);
+const SHOP_IMPORT_SLOTS = new Set([
+  "HEAD", "BACK", "ARMOR", "GLOVE_LEFT", "GLOVE_RIGHT", "RING_1", "RING_2", "RING_3", "RING_4",
+  "RING_5", "RING_6", "RING_7", "RING_8", "RING_9", "RING_10", "NECK", "FEET",
+  "WEAPON_HAND_LEFT", "WEAPON_HAND_RIGHT",
+]);
+const SHOP_IMPORT_ATTACK_KINDS = new Set(["MELEE_WEAPON", "RANGED_WEAPON", "THROWN", "SPECIAL"]);
+const SHOP_IMPORT_ATTACK_HAND_REQUIREMENTS = new Set(["ANY", "ONE_HANDED", "TWO_HANDED"]);
+const SHOP_IMPORT_MODIFIER_TARGETS = new Set([
+  "ARMOR_CLASS", "STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA",
+  "SPEED", "INITIATIVE", "HIT_POINT_MAX",
+]);
+const SHOP_IMPORT_MODIFIER_TYPES = new Set(["FLAT", "FORMULA", "SET_MIN", "OVERRIDE"]);
+const SHOP_IMPORT_CONDITIONS = new Set(["ALWAYS", "WHILE_EQUIPPED"]);
+const SHOP_IMPORT_FEATURE_KINDS = new Set(["ACTIVE", "PASSIVE"]);
+const SHOP_IMPORT_FEATURE_RESETS = new Set(["AT_WILL", "ENCOUNTER", "SHORT_REST", "LONG_REST", "DAILY", "CUSTOM"]);
+const SHOP_IMPORT_USE_EFFECT_TYPES = new Set(ITEM_USE_EFFECT_TYPE_VALUES);
+const SHOP_IMPORT_USE_TARGET_TYPES = new Set(ITEM_USE_TARGET_TYPE_VALUES);
+const SHOP_IMPORT_USE_SUCCESS_OUTCOMES = new Set(ITEM_USE_SUCCESS_OUTCOME_VALUES);
+
+function hasShopImportField(entry, field) {
+  return Object.prototype.hasOwnProperty.call(entry, field);
+}
+
+function validateShopImportRequiredField(entry, field, label, errors) {
+  if (!hasShopImportField(entry, field)) {
+    errors.push(`${label}.${field} is required`);
+    return false;
+  }
+  return true;
+}
+
+function validateShopImportString(entry, field, label, errors, { required = false, nullable = false, nonEmpty = false } = {}) {
+  if (required && !validateShopImportRequiredField(entry, field, label, errors)) return;
+  if (!hasShopImportField(entry, field)) return;
+  const value = entry[field];
+  if (nullable && value === null) return;
+  if (typeof value !== "string" || (nonEmpty && !value.trim())) {
+    errors.push(`${label}.${field} must be ${nullable ? "a string or null" : nonEmpty ? "a non-empty string" : "a string"}`);
+  }
+}
+
+function validateShopImportBoolean(entry, field, label, errors, { required = false } = {}) {
+  if (required && !validateShopImportRequiredField(entry, field, label, errors)) return;
+  if (hasShopImportField(entry, field) && typeof entry[field] !== "boolean") {
+    errors.push(`${label}.${field} must be a boolean`);
+  }
+}
+
+function validateShopImportInteger(entry, field, label, errors, { required = false, nullable = false, minimum = null } = {}) {
+  if (required && !validateShopImportRequiredField(entry, field, label, errors)) return;
+  if (!hasShopImportField(entry, field)) return;
+  const value = entry[field];
+  if (nullable && value === null) return;
+  if (!Number.isInteger(value) || (minimum !== null && value < minimum)) {
+    errors.push(`${label}.${field} must be ${nullable ? "an integer or null" : "an integer"}${minimum !== null ? ` greater than or equal to ${minimum}` : ""}`);
+  }
+}
+
+function validateShopImportEnum(entry, field, allowedValues, label, errors, { required = false, nullable = false } = {}) {
+  if (required && !validateShopImportRequiredField(entry, field, label, errors)) return;
+  if (!hasShopImportField(entry, field)) return;
+  const value = entry[field];
+  if (nullable && value === null) return;
+  if (!allowedValues.has(value)) errors.push(`${label}.${field} is not supported`);
+}
+
+function validateShopImportObjectArray(value, allowedKeys, label, errors, nestedValidator = null) {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    errors.push(`${label} must be an array`);
+    return;
+  }
+  value.forEach((entry, index) => {
+    const entryLabel = `${label}[${index}]`;
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      errors.push(`${entryLabel} must be an object`);
+      return;
+    }
+    validateImportObjectKeys(entry, allowedKeys, entryLabel, errors);
+    nestedValidator?.(entry, entryLabel, errors);
+  });
+}
+
+function validateShopImportPassiveEffect(effect, label, errors) {
+  const target = typeof effect.target === "string" ? effect.target.trim() : "";
+  const trigger = typeof effect.trigger === "string" ? effect.trigger.trim() : "";
+  if (!target) errors.push(`${label}.target must be a non-empty string`);
+  if (!Object.prototype.hasOwnProperty.call(effect, "value") || typeof effect.value !== "number" || !Number.isFinite(effect.value)) {
+    errors.push(`${label}.value must be a finite number`);
+  }
+  if (!trigger) errors.push(`${label}.trigger must be a non-empty string`);
+
+  if (effect.operationType !== undefined && !SHOP_IMPORT_PASSIVE_EFFECT_OPERATION_TYPES.has(effect.operationType)) {
+    errors.push(`${label}.operationType must be BONUS or SET`);
+  }
+  if (effect.valueMode !== undefined && !SHOP_IMPORT_PASSIVE_EFFECT_VALUE_MODES.has(effect.valueMode)) {
+    errors.push(`${label}.valueMode is not supported`);
+  }
+  if (effect.setMode !== undefined && !SHOP_IMPORT_PASSIVE_EFFECT_SET_MODES.has(effect.setMode)) {
+    errors.push(`${label}.setMode must be ABSOLUTE or MINIMUM_FLOOR`);
+  }
+  for (const field of ["setValue", "capValue"]) {
+    if (effect[field] !== undefined && effect[field] !== null && (typeof effect[field] !== "number" || !Number.isFinite(effect[field]))) {
+      errors.push(`${label}.${field} must be a finite number or null`);
+    }
+  }
+  if (
+    effect.sourceAbility !== undefined &&
+    effect.sourceAbility !== null &&
+    !SHOP_IMPORT_PASSIVE_EFFECT_SOURCE_ABILITIES.has(effect.sourceAbility)
+  ) {
+    errors.push(`${label}.sourceAbility must be a supported ability or null`);
+  }
+  for (const field of ["multiplierNumerator", "multiplierDenominator"]) {
+    if (effect[field] !== undefined && (typeof effect[field] !== "number" || !Number.isFinite(effect[field]) || effect[field] <= 0)) {
+      errors.push(`${label}.${field} must be a finite number greater than zero`);
+    }
+  }
+  if (effect.rounding !== undefined && !SHOP_IMPORT_PASSIVE_EFFECT_ROUNDING.has(effect.rounding)) {
+    errors.push(`${label}.rounding must be FLOOR or CEIL`);
+  }
+  for (const field of ["customTargetLabel", "customTriggerLabel", "notes"]) {
+    if (effect[field] !== undefined && effect[field] !== null && typeof effect[field] !== "string") {
+      errors.push(`${label}.${field} must be a string or null`);
+    }
+  }
+}
+
+function validateShopImportSlotRule(rule, label, errors) {
+  validateShopImportString(rule, "groupKey", label, errors, { required: true, nonEmpty: true });
+  validateShopImportEnum(rule, "selectionMode", SHOP_IMPORT_SLOT_SELECTION_MODES, label, errors, { required: true });
+  validateShopImportEnum(rule, "slot", SHOP_IMPORT_SLOTS, label, errors, { required: true });
+  validateShopImportBoolean(rule, "required", label, errors, { required: true });
+  validateShopImportInteger(rule, "sortOrder", label, errors, { minimum: 0 });
+}
+
+function validateShopImportAttack(attack, label, errors) {
+  validateShopImportString(attack, "name", label, errors, { required: true, nonEmpty: true });
+  validateShopImportEnum(attack, "kind", SHOP_IMPORT_ATTACK_KINDS, label, errors, { required: true });
+  validateShopImportEnum(attack, "handRequirement", SHOP_IMPORT_ATTACK_HAND_REQUIREMENTS, label, errors, { required: true });
+  validateShopImportString(attack, "ability", label, errors, { nullable: true });
+  for (const field of ["attackBonus", "rangeNormal", "rangeLong"]) {
+    validateShopImportInteger(attack, field, label, errors, { nullable: true });
+  }
+  for (const field of ["damageDice", "damageType", "conditionText"]) {
+    validateShopImportString(attack, field, label, errors, { nullable: true });
+  }
+  validateShopImportBoolean(attack, "twoHandedOnly", label, errors);
+  validateShopImportBoolean(attack, "requiresEquipped", label, errors, { required: true });
+  validateShopImportInteger(attack, "sortOrder", label, errors, { minimum: 0 });
+}
+
+function validateShopImportModifier(modifier, label, errors) {
+  validateShopImportEnum(modifier, "target", SHOP_IMPORT_MODIFIER_TARGETS, label, errors, { required: true });
+  validateShopImportEnum(modifier, "type", SHOP_IMPORT_MODIFIER_TYPES, label, errors, { required: true });
+  validateShopImportInteger(modifier, "value", label, errors, { nullable: true });
+  validateShopImportString(modifier, "formula", label, errors, { nullable: true });
+  validateShopImportEnum(modifier, "condition", SHOP_IMPORT_CONDITIONS, label, errors, { required: true });
+  validateShopImportString(modifier, "stackKey", label, errors, { nullable: true });
+  validateShopImportInteger(modifier, "sortOrder", label, errors, { minimum: 0 });
+}
+
+function validateShopImportFeature(feature, label, errors) {
+  validateShopImportString(feature, "name", label, errors, { required: true, nonEmpty: true });
+  validateShopImportEnum(feature, "kind", SHOP_IMPORT_FEATURE_KINDS, label, errors, { required: true });
+  validateShopImportString(feature, "description", label, errors, { required: true, nullable: true });
+  validateShopImportEnum(feature, "resetOn", SHOP_IMPORT_FEATURE_RESETS, label, errors, { nullable: true });
+  validateShopImportString(feature, "customResetLabel", label, errors, { nullable: true });
+  validateShopImportInteger(feature, "maxUses", label, errors, { nullable: true, minimum: 1 });
+  validateShopImportEnum(feature, "condition", SHOP_IMPORT_CONDITIONS, label, errors, { required: true });
+  validateShopImportInteger(feature, "sortOrder", label, errors, { minimum: 0 });
+  validateShopImportObjectArray(
+    feature.passiveEffects,
+    SHOP_IMPORT_PASSIVE_EFFECT_KEYS,
+    `${label}.passiveEffects`,
+    errors,
+    (effect, effectLabel) => validateShopImportPassiveEffect(effect, effectLabel, errors)
+  );
+}
+
+function validateShopImportAbilityRequirement(requirement, label, errors) {
+  validateShopImportEnum(requirement, "ability", SHOP_IMPORT_PASSIVE_EFFECT_SOURCE_ABILITIES, label, errors, { required: true });
+  validateShopImportInteger(requirement, "minScore", label, errors, { required: true, minimum: 1 });
+  validateShopImportInteger(requirement, "sortOrder", label, errors, { minimum: 0 });
+}
+
+function validateShopImportUseEffect(effect, label, errors) {
+  validateShopImportEnum(effect, "effectType", SHOP_IMPORT_USE_EFFECT_TYPES, label, errors, { required: true });
+  validateShopImportEnum(effect, "targetType", SHOP_IMPORT_USE_TARGET_TYPES, label, errors, { required: true });
+  for (const field of ["diceExpression", "damageType", "durationText", "notes"]) {
+    validateShopImportString(effect, field, label, errors, { nullable: true });
+  }
+  for (const field of ["flatValue", "savingThrowDc"]) {
+    validateShopImportInteger(effect, field, label, errors, { nullable: true });
+  }
+  validateShopImportEnum(effect, "savingThrowAbility", SHOP_IMPORT_PASSIVE_EFFECT_SOURCE_ABILITIES, label, errors, { nullable: true });
+  validateShopImportEnum(effect, "successOutcome", SHOP_IMPORT_USE_SUCCESS_OUTCOMES, label, errors, { nullable: true });
+  validateShopImportInteger(effect, "sortOrder", label, errors, { minimum: 0 });
+}
+
+function validateShopImportInlineDefinitionKeys(definition, label, errors) {
+  validateImportObjectKeys(definition, SHOP_IMPORT_DEFINITION_KEYS, label, errors);
+  validateShopImportObjectArray(definition.slotRules, SHOP_IMPORT_SLOT_RULE_KEYS, `${label}.slotRules`, errors, validateShopImportSlotRule);
+  validateShopImportObjectArray(definition.attacks, SHOP_IMPORT_ATTACK_KEYS, `${label}.attacks`, errors, validateShopImportAttack);
+  validateShopImportObjectArray(definition.modifiers, SHOP_IMPORT_MODIFIER_KEYS, `${label}.modifiers`, errors, validateShopImportModifier);
+  validateShopImportObjectArray(
+    definition.features,
+    SHOP_IMPORT_FEATURE_KEYS,
+    `${label}.features`,
+    errors,
+    validateShopImportFeature
+  );
+  validateShopImportObjectArray(
+    definition.abilityRequirements,
+    SHOP_IMPORT_ABILITY_REQUIREMENT_KEYS,
+    `${label}.abilityRequirements`,
+    errors,
+    validateShopImportAbilityRequirement
+  );
+  validateShopImportObjectArray(definition.useEffects, SHOP_IMPORT_USE_EFFECT_KEYS, `${label}.useEffects`, errors, validateShopImportUseEffect);
+}
+
+function normalizeShopImportDefinitionName(value) {
+  return String(value ?? "").normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("it-IT");
+}
+
+function canonicalizeOpaqueShopImportValue(value) {
+  if (Array.isArray(value)) return value.map((entry) => canonicalizeOpaqueShopImportValue(entry));
+  if (!value || typeof value !== "object") return value;
+  const result = {};
+  for (const childKey of Object.keys(value).sort()) {
+    result[childKey] = canonicalizeOpaqueShopImportValue(value[childKey]);
+  }
+  return result;
+}
+
+function canonicalizeShopImportDefinitionValue(value, { root = false } = {}) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => canonicalizeShopImportDefinitionValue(entry));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+  const result = {};
+  for (const childKey of Object.keys(value).sort()) {
+    if (childKey === "id" || childKey === "createdAt" || childKey === "updatedAt") continue;
+    if (root && childKey === "slug") continue;
+    const childValue = value[childKey];
+    if (root && childKey === "data") {
+      let opaqueValue = childValue;
+      if (typeof childValue === "string") {
+        try { opaqueValue = JSON.parse(childValue); }
+        catch { /* Preserve non-JSON legacy data as-is. */ }
+      }
+      result[childKey] = canonicalizeOpaqueShopImportValue(opaqueValue);
+      continue;
+    }
+    result[childKey] = canonicalizeShopImportDefinitionValue(childValue);
+  }
+  return result;
+}
+
+function buildShopImportDefinitionSignature(definition) {
+  return JSON.stringify(canonicalizeShopImportDefinitionValue(definition, { root: true }));
+}
+
 function validateShopImportPayload(payload) {
   requireShopTables();
   assertPlainObject(payload, "payload");
@@ -3966,10 +4262,27 @@ function validateShopImportPayload(payload) {
   const warnings = [];
   const prepared = [];
   const externalKeys = new Set();
-  const inlineSlugs = new Set();
+  const inlineDefinitionsBySlug = new Map();
+  const inlineDefinitionsByName = new Map();
+  const consolidatedDefinitions = new Map();
+  const catalogReuses = new Map();
   const importedUniqueDefinitionIds = new Set();
   const existingShopKey = sqlite.prepare('SELECT 1 FROM "Shop" WHERE externalKey = ? LIMIT 1');
-  const existingSlug = sqlite.prepare('SELECT 1 FROM "ItemDefinition" WHERE slug = ? LIMIT 1');
+  const existingDefinitions = readItemDefinitions()
+    .map((item) => readItemDefinition(item.id))
+    .filter(Boolean)
+    .map((definition) => ({
+      definition,
+      signature: buildShopImportDefinitionSignature(definition),
+      normalizedName: normalizeShopImportDefinitionName(definition.name),
+    }));
+  const existingDefinitionsBySlug = new Map(existingDefinitions.map((entry) => [entry.definition.slug, entry]));
+  const existingDefinitionsByName = new Map();
+  for (const entry of existingDefinitions) {
+    const matches = existingDefinitionsByName.get(entry.normalizedName) ?? [];
+    matches.push(entry);
+    existingDefinitionsByName.set(entry.normalizedName, matches);
+  }
   const kebabPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
   validateImportObjectKeys(payload, ["formatVersion", "shops"], "root", errors);
@@ -4047,14 +4360,56 @@ function validateShopImportPayload(payload) {
         if (!rawDefinition || typeof rawDefinition !== "object" || Array.isArray(rawDefinition)) {
           errors.push(`${itemLabel}.definition must be an object`);
         } else {
+          validateShopImportInlineDefinitionKeys(rawDefinition, `${itemLabel}.definition`, errors);
           const slug = String(rawDefinition.slug ?? "").trim();
           if (!slug || !kebabPattern.test(slug)) errors.push(`${itemLabel}.definition.slug must use kebab-case`);
-          if (slug && inlineSlugs.has(slug)) errors.push(`${itemLabel}.definition.slug duplicates another inline definition in the import`);
-          if (slug) inlineSlugs.add(slug);
-          if (slug && existingSlug.get(slug)) errors.push(`${itemLabel}.definition.slug already exists`);
           try {
-            definition = normalizeItemDefinitionPayload(rawDefinition);
+            const existingSlugEntry = slug ? existingDefinitionsBySlug.get(slug) : null;
+            definition = normalizeItemDefinitionPayload(rawDefinition, existingSlugEntry?.definition.id ?? null);
             if (definition.slug !== slug) errors.push(`${itemLabel}.definition.slug would be normalized to "${definition.slug}"`);
+            const signature = buildShopImportDefinitionSignature(definition);
+            const normalizedName = normalizeShopImportDefinitionName(definition.name);
+            const existingBySlug = slug ? existingDefinitionsBySlug.get(slug) : null;
+            const existingByName = existingDefinitionsByName.get(normalizedName) ?? [];
+            const equivalentCatalogEntry = existingBySlug?.signature === signature
+              ? existingBySlug
+              : existingByName.find((entry) => entry.signature === signature) ?? null;
+
+            if (existingBySlug && existingBySlug.signature !== signature) {
+              errors.push(`${itemLabel}.definition.slug "${slug}" conflicts with a different catalog definition`);
+            } else if (existingByName.length > 0 && !equivalentCatalogEntry) {
+              errors.push(`${itemLabel}.definition.name "${definition.name}" conflicts with a different catalog definition; use catalogSlug or a distinct name`);
+            } else if (equivalentCatalogEntry) {
+              definitionSource = "catalog";
+              definition = equivalentCatalogEntry.definition;
+              const reuse = catalogReuses.get(definition.slug) ?? { name: definition.name, count: 0 };
+              reuse.count += 1;
+              catalogReuses.set(definition.slug, reuse);
+            } else {
+              const priorBySlug = slug ? inlineDefinitionsBySlug.get(slug) : null;
+              const priorByName = inlineDefinitionsByName.get(normalizedName);
+              if (priorBySlug && priorBySlug.signature !== signature) {
+                errors.push(`${itemLabel}.definition.slug "${slug}" duplicates a different inline definition in the import`);
+              } else if (priorByName && priorByName.signature !== signature) {
+                errors.push(`${itemLabel}.definition.name "${definition.name}" duplicates a different inline definition in the import`);
+              } else {
+                const canonical = priorBySlug ?? priorByName ?? null;
+                if (canonical) {
+                  definitionSource = "inline-reuse";
+                  definition = canonical.definition;
+                  const consolidation = consolidatedDefinitions.get(canonical.definition.slug) ?? {
+                    name: canonical.definition.name,
+                    count: 0,
+                  };
+                  consolidation.count += 1;
+                  consolidatedDefinitions.set(canonical.definition.slug, consolidation);
+                } else {
+                  const entry = { definition, signature };
+                  if (slug) inlineDefinitionsBySlug.set(slug, entry);
+                  inlineDefinitionsByName.set(normalizedName, entry);
+                }
+              }
+            }
           } catch (error) {
             errors.push(`${itemLabel}.definition: ${String(error?.message ?? error)}`);
           }
@@ -4067,16 +4422,22 @@ function validateShopImportPayload(payload) {
         if (quantity !== 1) errors.push(`${itemLabel}.featureStates require quantity 1`);
         if (definition?.stackable) errors.push(`${itemLabel}.featureStates are not allowed on stackable items`);
         const featureNames = new Map();
+        const importedFeatureStateNames = new Set();
         for (const feature of definition?.features ?? []) {
           const key = String(feature.name ?? "").trim().toLowerCase();
           featureNames.set(key, (featureNames.get(key) ?? 0) + 1);
         }
         for (const state of featureStates) {
+          if (state && typeof state === "object" && !Array.isArray(state)) {
+            validateImportObjectKeys(state, ["featureName", "usesSpent", "lastResetAt"], `${itemLabel}.featureStates`, errors);
+          }
           const featureName = String(state?.featureName ?? "").trim();
           const key = featureName.toLowerCase();
           if (!featureName) errors.push(`${itemLabel}.featureStates.featureName is required`);
+          else if (importedFeatureStateNames.has(key)) errors.push(`${itemLabel}.featureStates "${featureName}" is duplicated`);
           else if (!featureNames.has(key)) errors.push(`${itemLabel}.featureStates "${featureName}" does not match a feature`);
           else if (featureNames.get(key) > 1) errors.push(`${itemLabel}.featureStates "${featureName}" is ambiguous`);
+          if (featureName) importedFeatureStateNames.add(key);
           if (!Number.isInteger(Number(state?.usesSpent)) || Number(state?.usesSpent) < 0) errors.push(`${itemLabel}.featureStates "${featureName}" usesSpent must be a non-negative integer`);
           if (state?.lastResetAt !== null && state?.lastResetAt !== undefined && Number.isNaN(Date.parse(String(state.lastResetAt)))) errors.push(`${itemLabel}.featureStates "${featureName}" lastResetAt must be a date-time or null`);
         }
@@ -4095,9 +4456,12 @@ function validateShopImportPayload(payload) {
 
       preparedItems.push({
         source: definitionSource,
-        catalogSlug: hasCatalogSlug ? String(item.catalogSlug ?? "").trim() : null,
+        catalogSlug: definitionSource === "catalog" ? definition?.slug ?? String(item.catalogSlug ?? "").trim() : null,
         inlineDefinition: hasDefinition ? item.definition : null,
-        normalizedInlineDefinition: definitionSource === "inline" ? definition : null,
+        normalizedInlineDefinition: definitionSource === "inline" || definitionSource === "inline-reuse" ? definition : null,
+        definitionSignature: definitionSource === "inline" || definitionSource === "inline-reuse"
+          ? buildShopImportDefinitionSignature(definition)
+          : null,
         definition,
         quantity,
         priceCurrency,
@@ -4132,6 +4496,15 @@ function validateShopImportPayload(payload) {
     });
   });
 
+  for (const [slug, entry] of consolidatedDefinitions) {
+    warnings.push(`${entry.count + 1} definizioni inline equivalenti di "${entry.name}" sono state consolidate in "${slug}"`);
+  }
+  for (const [slug, entry] of catalogReuses) {
+    warnings.push(entry.count === 1
+      ? `1 definizione inline equivalente a "${entry.name}" riutilizzera il catalogo "${slug}"`
+      : `${entry.count} definizioni inline equivalenti a "${entry.name}" riutilizzeranno il catalogo "${slug}"`);
+  }
+
   return { errors, warnings, prepared };
 }
 
@@ -4145,6 +4518,7 @@ function previewShopImport(prepared, errors, warnings) {
       items: prepared.reduce((sum, shop) => sum + shop.items.length, 0),
       newDefinitions: prepared.reduce((sum, shop) => sum + shop.items.filter((item) => item.source === "inline").length, 0),
       reusedDefinitions: prepared.reduce((sum, shop) => sum + shop.items.filter((item) => item.source === "catalog").length, 0),
+      consolidatedDefinitions: prepared.reduce((sum, shop) => sum + shop.items.filter((item) => item.source === "inline-reuse").length, 0),
     },
     shops: prepared.map((shop) => ({
       externalKey: shop.externalKey,
@@ -4155,7 +4529,9 @@ function previewShopImport(prepared, errors, warnings) {
       items: shop.items.map((item) => ({
         source: item.source,
         catalogSlug: item.catalogSlug,
-        definitionSlug: item.source === "inline" ? item.normalizedInlineDefinition?.slug ?? null : item.definition?.slug ?? null,
+        definitionSlug: item.source === "inline" || item.source === "inline-reuse"
+          ? item.normalizedInlineDefinition?.slug ?? null
+          : item.definition?.slug ?? null,
         name: item.nameOverride || item.definition?.name || item.normalizedInlineDefinition?.name || "Oggetto",
         quantity: item.quantity,
         price: { currency: item.priceCurrency, amount: item.priceAmount },
@@ -4168,6 +4544,7 @@ function previewShopImport(prepared, errors, warnings) {
 function applyShopImport(prepared) {
   const createdShopIds = [];
   runInTransaction(() => {
+    const savedInlineDefinitions = new Map();
     const now = new Date().toISOString();
     const insertShop = sqlite.prepare(`INSERT INTO "Shop" (id, externalKey, name, description, ownerName, ownerDescription, city, dmNotes, discountDc, cp, sp, ep, gp, createdAt, updatedAt)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -4198,9 +4575,14 @@ function applyShopImport(prepared) {
       );
 
       for (const [index, item] of shop.items.entries()) {
-        const definition = item.source === "inline"
-          ? saveItemDefinition(item.normalizedInlineDefinition)
-          : item.definition;
+        let definition = item.definition;
+        if (item.source === "inline" || item.source === "inline-reuse") {
+          definition = savedInlineDefinitions.get(item.definitionSignature) ?? null;
+          if (!definition) {
+            definition = saveItemDefinition(item.normalizedInlineDefinition);
+            savedInlineDefinitions.set(item.definitionSignature, definition);
+          }
+        }
         if (!definition) throw new Error(`Missing item definition for ${shop.name}`);
         const shopItemId = crypto.randomUUID();
         insertShopItem.run(
@@ -8857,6 +9239,239 @@ function resetSpellSlotsForRest(spellSlots, className, restType) {
   return next;
 }
 
+const SPELL_SLOT_CONVERSION_COSTS = Object.freeze({
+  2: 3,
+  3: 5,
+  4: 7,
+  5: 9,
+  6: 12,
+  7: 15,
+  8: 18,
+  9: 22,
+});
+const SPELL_SLOT_CONVERSION_EXCLUDED_CLASSES = new Set([
+  "warlock",
+  "guerriero",
+  "fighter",
+  "ladro",
+  "rogue",
+]);
+const SPELL_SLOT_CONVERSION_RECEIPT_TTL_MS = 10 * 60 * 1000;
+const SPELL_SLOT_CONVERSION_RECEIPT_LIMIT = 1_000;
+const spellSlotConversionReceipts = new Map();
+
+function normalizeSpellSlotConversionClass(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim()
+    .toLowerCase();
+}
+
+function canonicalizeSpellSlotState(spellSlots) {
+  const canonical = {};
+  for (let level = 1; level <= 9; level += 1) {
+    const slots = spellSlots?.[level] ?? spellSlots?.[String(level)];
+    canonical[level] = Array.isArray(slots)
+      ? slots.map((slot) => slot?.active === true ? "1" : "0").join("")
+      : "";
+  }
+  return canonical;
+}
+
+function normalizeExpectedSpellSlotState(value) {
+  if (typeof value !== "string") return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  const keys = Object.keys(parsed);
+  if (keys.length !== 9 || keys.some((key) => !/^[1-9]$/.test(key))) return null;
+
+  const canonical = {};
+  for (let level = 1; level <= 9; level += 1) {
+    const bits = parsed[level] ?? parsed[String(level)];
+    if (typeof bits !== "string" || !/^[01]*$/.test(bits)) return null;
+    canonical[level] = bits;
+  }
+  return canonical;
+}
+
+function buildSpellSlotConversionRequestSignature(targetLevel, selectionsValue, expectedSlotStateValue) {
+  if (typeof targetLevel !== "number" || !Number.isInteger(targetLevel) || targetLevel < 2 || targetLevel > 9) {
+    return null;
+  }
+  if (!selectionsValue || typeof selectionsValue !== "object" || Array.isArray(selectionsValue)) {
+    return null;
+  }
+
+  const selections = {};
+  for (const [levelKey, quantity] of Object.entries(selectionsValue)) {
+    if (!/^[1-9]$/.test(levelKey) || typeof quantity !== "number" || !Number.isInteger(quantity) || quantity < 0) {
+      return null;
+    }
+    const sourceLevel = Number(levelKey);
+    if (quantity === 0) continue;
+    if (sourceLevel >= targetLevel) return null;
+    selections[sourceLevel] = quantity;
+  }
+  if (Object.keys(selections).length === 0) return null;
+  const expectedSlotState = normalizeExpectedSpellSlotState(expectedSlotStateValue);
+  if (!expectedSlotState) return null;
+
+  return JSON.stringify({
+    targetLevel,
+    selections: Object.fromEntries(
+      Object.entries(selections).sort(([left], [right]) => Number(left) - Number(right))
+    ),
+    expectedSlotState,
+  });
+}
+
+function normalizeSpellSlotConversionRequestId(value) {
+  if (typeof value !== "string") return null;
+  const requestId = value.trim();
+  if (requestId.length < 8 || requestId.length > 128 || !/^[A-Za-z0-9_-]+$/.test(requestId)) return null;
+  return requestId;
+}
+
+function spellSlotConversionReceiptKey(userId, slug, requestId) {
+  return JSON.stringify([String(userId), slug, requestId]);
+}
+
+function pruneSpellSlotConversionReceipts(now = Date.now()) {
+  for (const [key, receipt] of spellSlotConversionReceipts) {
+    if (receipt.expiresAt <= now) spellSlotConversionReceipts.delete(key);
+  }
+  while (spellSlotConversionReceipts.size > SPELL_SLOT_CONVERSION_RECEIPT_LIMIT) {
+    const oldestKey = spellSlotConversionReceipts.keys().next().value;
+    if (oldestKey === undefined) break;
+    spellSlotConversionReceipts.delete(oldestKey);
+  }
+}
+
+function readSpellSlotConversionReceipt(key) {
+  pruneSpellSlotConversionReceipts();
+  return spellSlotConversionReceipts.get(key) ?? null;
+}
+
+function writeSpellSlotConversionReceipt(key, signature, result) {
+  spellSlotConversionReceipts.delete(key);
+  spellSlotConversionReceipts.set(key, {
+    signature,
+    result,
+    expiresAt: Date.now() + SPELL_SLOT_CONVERSION_RECEIPT_TTL_MS,
+  });
+  pruneSpellSlotConversionReceipts();
+}
+
+function prepareSpellSlotConversion(character, targetLevelValue, selectionsValue) {
+  const targetLevel = targetLevelValue;
+  if (typeof targetLevel !== "number" || !Number.isInteger(targetLevel) || targetLevel < 2 || targetLevel > 9) {
+    return { ok: false, error: "Il livello dello slot da recuperare deve essere compreso tra 2 e 9." };
+  }
+
+  const normalizedClass = normalizeSpellSlotConversionClass(character?.basicInfo?.class);
+  if (SPELL_SLOT_CONVERSION_EXCLUDED_CLASSES.has(normalizedClass)) {
+    return { ok: false, error: "Questa classe non pu\u00f2 convertire slot incantesimo." };
+  }
+
+  if (!selectionsValue || typeof selectionsValue !== "object" || Array.isArray(selectionsValue)) {
+    return { ok: false, error: "La selezione degli slot da sacrificare non \u00e8 valida." };
+  }
+
+  const selections = {};
+  for (const [levelKey, quantityValue] of Object.entries(selectionsValue)) {
+    if (!/^[1-9]$/.test(levelKey)) {
+      return { ok: false, error: "La selezione contiene un livello di slot non valido." };
+    }
+    const sourceLevel = Number(levelKey);
+    const quantity = quantityValue;
+    if (typeof quantity !== "number" || !Number.isInteger(quantity) || quantity < 0) {
+      return { ok: false, error: "Le quantit\u00e0 di slot da sacrificare devono essere numeri interi non negativi." };
+    }
+    if (quantity === 0) continue;
+    if (sourceLevel >= targetLevel) {
+      return { ok: false, error: "Si possono sacrificare soltanto slot di livello inferiore allo slot da recuperare." };
+    }
+    selections[sourceLevel] = quantity;
+  }
+
+  if (Object.keys(selections).length === 0) {
+    return { ok: false, error: "Seleziona almeno uno slot disponibile da sacrificare." };
+  }
+
+  const spellSlots = character?.combatStats?.spellSlots;
+  if (!spellSlots || typeof spellSlots !== "object" || Array.isArray(spellSlots)) {
+    return { ok: false, error: "Gli slot incantesimo del personaggio non sono disponibili." };
+  }
+
+  const targetSlots = spellSlots[targetLevel] ?? spellSlots[String(targetLevel)];
+  if (!Array.isArray(targetSlots) || targetSlots.length === 0) {
+    return { ok: false, error: "Il personaggio non possiede slot di questo livello." };
+  }
+  const consumedTargetIndex = targetSlots.findIndex((slot) => slot?.active === true);
+  if (consumedTargetIndex < 0) {
+    return { ok: false, error: "Non ci sono slot consumati di questo livello da recuperare." };
+  }
+
+  let pointsSpent = 0;
+  for (const [sourceLevelKey, quantity] of Object.entries(selections)) {
+    const sourceLevel = Number(sourceLevelKey);
+    const sourceSlots = spellSlots[sourceLevel] ?? spellSlots[String(sourceLevel)];
+    if (!Array.isArray(sourceSlots)) {
+      return { ok: false, error: `Il personaggio non possiede slot di livello ${sourceLevel}.` };
+    }
+    const availableCount = sourceSlots.filter((slot) => slot?.active !== true).length;
+    if (quantity > availableCount) {
+      return { ok: false, error: `Non ci sono abbastanza slot disponibili di livello ${sourceLevel}.` };
+    }
+    pointsSpent += sourceLevel * quantity;
+  }
+
+  const cost = SPELL_SLOT_CONVERSION_COSTS[targetLevel];
+  if (pointsSpent < cost) {
+    return { ok: false, error: `Servono ${cost} punti slot per recuperare uno slot di livello ${targetLevel}.` };
+  }
+
+  const changedSpellSlots = {};
+  for (const [sourceLevelKey, quantity] of Object.entries(selections)) {
+    const sourceLevel = Number(sourceLevelKey);
+    let remaining = quantity;
+    const sourceSlots = spellSlots[sourceLevel] ?? spellSlots[String(sourceLevel)];
+    changedSpellSlots[sourceLevel] = sourceSlots.map((slot) => {
+      if (remaining > 0 && slot?.active !== true) {
+        remaining -= 1;
+        return { ...slot, active: true };
+      }
+      return slot;
+    });
+  }
+  changedSpellSlots[targetLevel] = targetSlots.map((slot, index) =>
+    index === consumedTargetIndex ? { ...slot, active: false } : slot
+  );
+
+  const patch = {
+    combatStats: {
+      spellSlots: changedSpellSlots,
+    },
+  };
+
+  return {
+    ok: true,
+    patch,
+    next: deepMerge(character, patch),
+    targetLevel,
+    selections,
+    cost,
+    pointsSpent,
+    excess: pointsSpent - cost,
+  };
+}
+
 function applyCharacterRest(character, restType) {
   const data = character && typeof character === "object" ? character : {};
   const basicInfo = data.basicInfo ?? {};
@@ -9011,15 +9626,42 @@ function resetCharacterItemFeatureStatesForRest(characterSlugs, restType) {
   `).run(now, now, ...normalizedSlugs, ...resetValues);
 }
 
-// Optional: debounce writes per slug to avoid hammering the disk
+// Optional: debounce writes per slug to avoid hammering the disk.
+// Keep the latest in-memory state so rapid patches merge with each other instead
+// of repeatedly starting from the last state already persisted to SQLite.
 const persistTimers = new Map();
+const pendingCharacterStates = new Map();
+
+function readLatestCharacterState(slug) {
+  return pendingCharacterStates.has(slug)
+    ? pendingCharacterStates.get(slug)
+    : readCharacter(slug);
+}
+
+function cancelScheduledCharacterWrite(slug) {
+  const timer = persistTimers.get(slug);
+  if (timer) clearTimeout(timer);
+  persistTimers.delete(slug);
+}
+
 function scheduleWrite(slug, state) {
-  clearTimeout(persistTimers.get(slug));
+  pendingCharacterStates.set(slug, state);
+  cancelScheduledCharacterWrite(slug);
   const t = setTimeout(() => {
+    if (persistTimers.get(slug) !== t) return;
+    const latestState = pendingCharacterStates.get(slug);
+    persistTimers.delete(slug);
+    if (!latestState) return;
     try {
-      writeCharacter(slug, state);
+      writeCharacter(slug, latestState);
+      if (pendingCharacterStates.get(slug) === latestState) {
+        pendingCharacterStates.delete(slug);
+      }
     } catch (e) {
       console.error(`[server] persist failed for ${slug}:`, e);
+      if (pendingCharacterStates.get(slug) === latestState) {
+        pendingCharacterStates.delete(slug);
+      }
     }
   }, 200);
   persistTimers.set(slug, t);
@@ -11565,7 +12207,7 @@ async function start() {
       if (!canAccessCharacter(socket.data.user, slug, ownership)) return;
 
       socket.join(`char:${slug}`);
-      const state = readCharacter(slug);
+      const state = readLatestCharacterState(slug);
       if (state) socket.emit("character:state", state);
     });
 
@@ -11579,7 +12221,7 @@ async function start() {
         return;
       }
 
-      const current = readCharacter(slug) || {};
+      const current = readLatestCharacterState(slug) || {};
       const next = deepMerge(current, patch);
       scheduleWrite(slug, next);
       socket.to(`char:${slug}`).emit("character:patch", { slug, patch });
@@ -11592,6 +12234,125 @@ async function start() {
             broadcastInitiativeTrackerState(io);
           } catch {}
         }, 60);
+      }
+    });
+
+    socket.on("character:convert-spell-slots", (payload, acknowledge) => {
+      let acknowledged = false;
+      const ack = (response) => {
+        if (acknowledged || typeof acknowledge !== "function") return;
+        acknowledged = true;
+        acknowledge(response);
+      };
+      try {
+      const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
+      if (!slug) {
+        ack({ ok: false, error: "Personaggio non valido." });
+        return;
+      }
+
+      const ownership = readOwnership();
+      if (!canEditCharacter(socket.data.user, slug, ownership)) {
+        ack({ ok: false, error: "Non sei autorizzato a modificare questo personaggio." });
+        return;
+      }
+      if (!canUserWriteDuringSession(socket.data.user)) {
+        socket.emit("game-session:state", readGameSessionState());
+        ack({ ok: false, error: "La sessione \u00e8 chiusa. Le modifiche del personaggio sono bloccate." });
+        return;
+      }
+
+      const requestId = normalizeSpellSlotConversionRequestId(payload?.requestId);
+      if (!requestId) {
+        ack({ ok: false, error: "Identificativo della richiesta non valido." });
+        return;
+      }
+      const expectedSlotState = normalizeExpectedSpellSlotState(payload?.expectedSlotState);
+      if (!expectedSlotState) {
+        ack({ ok: false, error: "La precondizione sullo stato degli slot non \u00e8 valida." });
+        return;
+      }
+      const requestSignature = buildSpellSlotConversionRequestSignature(
+        payload?.targetLevel,
+        payload?.selections,
+        payload?.expectedSlotState
+      );
+      if (!requestSignature) {
+        ack({ ok: false, error: "La richiesta di conversione degli slot non \u00e8 valida." });
+        return;
+      }
+      const receiptKey = spellSlotConversionReceiptKey(socket.data.user.id, slug, requestId);
+      const existingReceipt = readSpellSlotConversionReceipt(receiptKey);
+      if (existingReceipt) {
+        if (existingReceipt.signature !== requestSignature) {
+          ack({ ok: false, error: "Questo identificativo richiesta \u00e8 gi\u00e0 stato usato con un payload diverso." });
+          return;
+        }
+        const latestState = readLatestCharacterState(slug);
+        if (latestState) socket.emit("character:state", latestState);
+        ack(existingReceipt.result);
+        return;
+      }
+
+      const current = readLatestCharacterState(slug);
+      if (!current) {
+        ack({ ok: false, error: "Personaggio non trovato." });
+        return;
+      }
+      const currentSlotState = canonicalizeSpellSlotState(current?.combatStats?.spellSlots);
+      if (JSON.stringify(currentSlotState) !== JSON.stringify(expectedSlotState)) {
+        socket.emit("character:state", current);
+        ack({
+          ok: false,
+          code: "STALE_SLOT_STATE",
+          error: "Lo stato degli slot \u00e8 cambiato. Riapri la conversione e verifica la selezione.",
+        });
+        return;
+      }
+
+      const conversion = prepareSpellSlotConversion(current, payload?.targetLevel, payload?.selections);
+      if (!conversion.ok) {
+        ack({ ok: false, error: conversion.error });
+        return;
+      }
+
+      const pendingBeforeConversion = pendingCharacterStates.get(slug);
+      cancelScheduledCharacterWrite(slug);
+      try {
+        writeCharacter(slug, conversion.next);
+        pendingCharacterStates.delete(slug);
+      } catch (error) {
+        if (pendingBeforeConversion) scheduleWrite(slug, pendingBeforeConversion);
+        console.error(`[server] spell slot conversion persist failed for ${slug}:`, error);
+        ack({ ok: false, error: "Non \u00e8 stato possibile salvare la conversione degli slot." });
+        return;
+      }
+
+      const result = {
+        ok: true,
+        requestId,
+        targetLevel: conversion.targetLevel,
+        selections: conversion.selections,
+        cost: conversion.cost,
+        pointsSpent: conversion.pointsSpent,
+        excess: conversion.excess,
+      };
+      writeSpellSlotConversionReceipt(receiptKey, requestSignature, result);
+      socket.to(`char:${slug}`).emit("character:patch", { slug, patch: conversion.patch });
+      socket.emit("character:state", conversion.next);
+      ack(result);
+
+      const initiativeState = readInitiativeTrackerState();
+      if (initiativeState.players.some((entry) => entry.slug === slug)) {
+        setTimeout(() => {
+          try {
+            broadcastInitiativeTrackerState(io);
+          } catch {}
+        }, 60);
+      }
+      } catch (error) {
+        console.error("[server] spell slot conversion failed:", error);
+        ack({ ok: false, error: "Non \u00e8 stato possibile completare la conversione degli slot." });
       }
     });
 

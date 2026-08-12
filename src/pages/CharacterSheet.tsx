@@ -1667,9 +1667,10 @@ const CharacterSheet = () => {
       }
       joinCharacterRoom(slug);
       unsubState = onCharacterState((state) => setCharacterData(state));
-      unsubPatch = onCharacterPatch((patch) =>
-        setCharacterData((prev) => (prev ? applyPatch(prev, patch) : prev))
-      );
+      unsubPatch = onCharacterPatch(({ slug: patchedSlug, patch }) => {
+        if (patchedSlug !== slug) return;
+        setCharacterData((prev) => (prev ? applyPatch(prev, patch) : prev));
+      });
     })();
     announceEnter(character);
     return () => {

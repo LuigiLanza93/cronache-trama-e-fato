@@ -168,6 +168,68 @@ export function updateCharacter(slug: string, patch: any) {
   getSocket().emit("character:update", { slug, patch });
 }
 
+export type SpellSlotConversionResult = {
+  ok: true;
+  requestId: string;
+  targetLevel: number;
+  selections: Record<number, number>;
+  cost: number;
+  pointsSpent: number;
+  excess: number;
+};
+
+export type SpellSlotStateSnapshot = string;
+export type SpellSlotConversionError = Error & { code?: string };
+
+type SpellSlotConversionAck =
+  | SpellSlotConversionResult
+  | { ok: false; error: string; code?: string };
+
+function spellSlotConversionError(message: string, code?: string): SpellSlotConversionError {
+  const error = new Error(message) as SpellSlotConversionError;
+  error.name = "SpellSlotConversionError";
+  if (code) error.code = code;
+  return error;
+}
+
+export function convertSpellSlots(
+  slug: string,
+  targetLevel: number,
+  selections: Record<number, number>,
+  requestId: string = globalThis.crypto.randomUUID(),
+  expectedSlotState?: SpellSlotStateSnapshot
+): Promise<SpellSlotConversionResult> {
+  if (playerWritesLocked) {
+    return Promise.reject(
+      spellSlotConversionError("La sessione \u00e8 chiusa. Le modifiche del personaggio sono bloccate.")
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    getSocket()
+      .timeout(7_000)
+      .emit(
+        "character:convert-spell-slots",
+        { slug, targetLevel, selections, requestId, expectedSlotState },
+        (timeoutError: Error | null, response?: SpellSlotConversionAck) => {
+          if (timeoutError) {
+            reject(spellSlotConversionError("Il server non ha risposto alla conversione degli slot."));
+            return;
+          }
+          if (!response) {
+            reject(spellSlotConversionError("Risposta non valida durante la conversione degli slot."));
+            return;
+          }
+          if (!response.ok) {
+            reject(spellSlotConversionError(response.error, response.code));
+            return;
+          }
+          resolve(response);
+        }
+      );
+  });
+}
+
 export function applyPatch<T>(target: T, patch: any): T {
   if (Array.isArray(target) && Array.isArray(patch)) {
     return patch as any;
