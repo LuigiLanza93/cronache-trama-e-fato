@@ -39,10 +39,13 @@ import {
   fetchCharacter,
   fetchCharacters,
   joinCharacterRoom,
+  leaveCharacterRoom,
+  onCharacterAccessRevoked,
   joinInitiativeDmRoom,
   notifyInitiativeTurn,
   onCharacterPatch,
   onCharacterState,
+  onCharacterInventoryUpdated,
   onInitiativeState,
   updateInitiativeState,
 } from "@/realtime";
@@ -1139,6 +1142,7 @@ export default function InitiativeTracker() {
   const itemDefinitionsByIdRef = useRef(itemDefinitionsById);
   const joinedCharacterRoomsRef = useRef<Set<string>>(new Set());
   const selectedCharacterRefreshInFlightRef = useRef(false);
+  const inventoryRefreshInFlightBySlugRef = useRef(new Map<string, { promise: Promise<void>; dirty: boolean }>());
   const [playerRolls, setPlayerRolls] = useState<Record<string, string>>({});
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({});
   const [monsterHpAdjustments, setMonsterHpAdjustments] = useState<Record<string, string>>({});
@@ -1581,6 +1585,13 @@ export default function InitiativeTracker() {
   }, [encounter, initiativeLoaded]);
 
   useEffect(() => {
+    const selectedSet = new Set(selectedSlugs);
+    for (const slug of joinedCharacterRoomsRef.current) {
+      if (selectedSet.has(slug)) continue;
+      leaveCharacterRoom(slug);
+      joinedCharacterRoomsRef.current.delete(slug);
+    }
+
     if (selectedSlugs.length === 0) {
       setLiveCharacterStates({});
       setLiveCharacterInventoryItems({});
@@ -1686,12 +1697,76 @@ export default function InitiativeTracker() {
   }, [selectedSlugs]);
 
   useEffect(() => {
+    const offInventoryUpdated = onCharacterInventoryUpdated(({ slug }) => {
+      if (!joinedCharacterRoomsRef.current.has(slug)) return;
+      const existing = inventoryRefreshInFlightBySlugRef.current.get(slug);
+      if (existing) {
+        existing.dirty = true;
+        return;
+      }
+
+      const request = { promise: Promise.resolve(), dirty: false };
+      request.promise = (async () => {
+        do {
+          request.dirty = false;
+          const inventoryItems = await fetchCharacterInventoryItems(slug);
+          const normalized = Array.isArray(inventoryItems) ? inventoryItems : [];
+          if (!joinedCharacterRoomsRef.current.has(slug)) return;
+          setLiveCharacterInventoryItems((prev) => ({ ...prev, [slug]: normalized }));
+
+          const missingDefinitionIds = Array.from(
+            new Set(
+              normalized
+                .filter((item) => item?.isEquipped && item?.itemDefinitionId)
+                .map((item) => item.itemDefinitionId)
+                .filter(
+                  (itemDefinitionId): itemDefinitionId is string =>
+                    !!itemDefinitionId && !itemDefinitionsByIdRef.current[itemDefinitionId]
+                )
+            )
+          );
+          const definitions = await Promise.all(
+            missingDefinitionIds.map(async (itemDefinitionId) => {
+              try {
+                return [itemDefinitionId, await fetchItemDefinition(itemDefinitionId)] as const;
+              } catch {
+                return null;
+              }
+            })
+          );
+          const validDefinitions = definitions.filter(
+            (entry): entry is readonly [string, ItemDefinitionEntry] => Array.isArray(entry)
+          );
+          if (validDefinitions.length > 0) {
+            setItemDefinitionsById((prev) => ({ ...prev, ...Object.fromEntries(validDefinitions) }));
+          }
+        } while (request.dirty && joinedCharacterRoomsRef.current.has(slug));
+      })().catch(() => {
+        // The tracker keeps its last valid equipment-derived values until the next refresh succeeds.
+      }).finally(() => {
+        if (inventoryRefreshInFlightBySlugRef.current.get(slug) === request) {
+          inventoryRefreshInFlightBySlugRef.current.delete(slug);
+        }
+      });
+
+      inventoryRefreshInFlightBySlugRef.current.set(slug, request);
+    });
+
+    return offInventoryUpdated;
+  }, []);
+
+  useEffect(() => () => {
+    for (const slug of joinedCharacterRoomsRef.current) leaveCharacterRoom(slug);
+    joinedCharacterRoomsRef.current.clear();
+  }, []);
+
+  useEffect(() => {
     const selectedSet = new Set(selectedSlugs);
 
-    const offState = onCharacterState((state: CharacterState) => {
-      const slug = String(state?.slug ?? "").trim();
+    const offState = onCharacterState(({ slug: payloadSlug, state }) => {
+      const slug = String(payloadSlug ?? "").trim();
       if (!slug || !selectedSet.has(slug)) return;
-      setLiveCharacterStates((prev) => ({ ...prev, [slug]: state }));
+      setLiveCharacterStates((prev) => ({ ...prev, [slug]: state as CharacterState }));
     });
 
     const offPatch = onCharacterPatch(({ slug, patch }: { slug: string; patch: any }) => {
@@ -1712,6 +1787,21 @@ export default function InitiativeTracker() {
       } catch {}
     };
   }, [selectedSlugs]);
+
+  useEffect(() => {
+    const offAccessRevoked = onCharacterAccessRevoked((slug) => {
+      joinedCharacterRoomsRef.current.delete(slug);
+      setLiveCharacterStates((prev) => {
+        const { [slug]: _removed, ...next } = prev;
+        return next;
+      });
+      setLiveCharacterInventoryItems((prev) => {
+        const { [slug]: _removed, ...next } = prev;
+        return next;
+      });
+    });
+    return offAccessRevoked;
+  }, []);
 
   useEffect(() => {
     if (!monsterDraft.selectedMonsterId) return;

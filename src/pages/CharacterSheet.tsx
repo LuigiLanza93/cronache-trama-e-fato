@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Check, GripVertical, LayoutTemplate, RotateCcw } from "lucide-react";
 import {
   DndContext,
@@ -44,14 +44,18 @@ import {
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import {
   joinCharacterRoom,
+  leaveCharacterRoom,
   fetchCharacter,
   onCharacterState,
   onCharacterPatch,
+  onCharacterInventoryUpdated,
   onInitiativeTurnStart,
   updateCharacter,
   applyPatch,
   announceEnter,
   announceLeave,
+  onCharacterUpdateError,
+  onCharacterAccessRevoked,
 } from "@/realtime";
 import {
   coerce,
@@ -268,6 +272,10 @@ interface Character {
     currentHitPoints: number;
     temporaryHitPoints: number;
     hitDice: string;
+    deathSaves?: {
+      successes?: number;
+      failures?: number;
+    };
     // opzionale: struttura slot, usata anche per manovre
     spellSlots?: Record<number, Array<{ active: boolean }>>;
   };
@@ -302,6 +310,18 @@ interface Character {
   features: Array<{ name: string; description: string; uses?: string }>;
   capabilities?: CapabilityEntry[];
   pactBlade?: PactBladeState;
+}
+
+type DeathSavesUiState = { success: boolean[]; fail: boolean[] };
+type InventoryRefreshRequest = { promise: Promise<CharacterInventoryItemEntry[]>; dirty: boolean };
+
+function toDeathSavesUiState(deathSaves: Character["combatStats"]["deathSaves"]): DeathSavesUiState {
+  const successes = Math.max(0, Math.min(3, Number(deathSaves?.successes) || 0));
+  const failures = Math.max(0, Math.min(3, Number(deathSaves?.failures) || 0));
+  return {
+    success: Array.from({ length: 3 }, (_, index) => index < successes),
+    fail: Array.from({ length: 3 }, (_, index) => index < failures),
+  };
 }
 
 type Spell = SpellFromApi;
@@ -683,6 +703,7 @@ function SortableLayoutCard({
 
 const CharacterSheet = () => {
   const { character } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { sessionState, isPlayerReadOnly } = useGameSession();
   const [characterData, setCharacterData] = useState<Character | null>(null);
@@ -691,8 +712,7 @@ const CharacterSheet = () => {
   const [editMode, setEditMode] = useState(false);
   const [turnAlertActive, setTurnAlertActive] = useState(false);
 
-  // death saves state (local only)
-  const [deathSaves, setDeathSaves] = useState<{ success: boolean[]; fail: boolean[] }>({
+  const [deathSaves, setDeathSaves] = useState<DeathSavesUiState>({
     success: [false, false, false],
     fail: [false, false, false],
   });
@@ -756,6 +776,8 @@ const CharacterSheet = () => {
   const [skillsCatalog, setSkillsCatalog] = useState<SkillCatalogEntry[]>([]);
   const [spellSlotTable, setSpellSlotTable] = useState<SpellSlotTable>({});
   const [relationalInventoryItems, setRelationalInventoryItems] = useState<CharacterInventoryItemEntry[]>([]);
+  const currentCharacterSlugRef = useRef<string | undefined>(character);
+  const inventoryRefreshInFlightRef = useRef(new Map<string, InventoryRefreshRequest>());
   const [itemDefinitions, setItemDefinitions] = useState<ItemDefinitionSummary[]>([]);
   const [itemDefinitionDetailsById, setItemDefinitionDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [transferTargets, setTransferTargets] = useState<TransferTarget[]>([]);
@@ -770,11 +792,44 @@ const CharacterSheet = () => {
   const canModifyCharacter = user?.role === "dm" || !isPlayerReadOnly;
 
   const refreshRelationalInventory = useCallback(async (slug: string) => {
-    const items = await fetchCharacterInventoryItems(slug);
-    const normalized = Array.isArray(items) ? items : [];
-    setRelationalInventoryItems(normalized);
-    return normalized;
+    const existing = inventoryRefreshInFlightRef.current.get(slug);
+    if (existing) return existing.promise;
+
+    const request: InventoryRefreshRequest = { promise: Promise.resolve([]), dirty: false };
+    request.promise = (async () => {
+      let normalized: CharacterInventoryItemEntry[] = [];
+      do {
+        request.dirty = false;
+        const items = await fetchCharacterInventoryItems(slug);
+        normalized = Array.isArray(items) ? items : [];
+        if (currentCharacterSlugRef.current === slug) setRelationalInventoryItems(normalized);
+      } while (request.dirty);
+      return normalized;
+    })().finally(() => {
+      if (inventoryRefreshInFlightRef.current.get(slug) === request) {
+        inventoryRefreshInFlightRef.current.delete(slug);
+      }
+    });
+    inventoryRefreshInFlightRef.current.set(slug, request);
+    return request.promise;
   }, []);
+
+  const invalidateRelationalInventory = useCallback((slug: string) => {
+    const existing = inventoryRefreshInFlightRef.current.get(slug);
+    if (existing) {
+      existing.dirty = true;
+      return existing.promise;
+    }
+    return refreshRelationalInventory(slug);
+  }, [refreshRelationalInventory]);
+
+  useEffect(() => {
+    setDeathSaves(toDeathSavesUiState(characterData?.combatStats?.deathSaves));
+  }, [characterData?.combatStats?.deathSaves?.failures, characterData?.combatStats?.deathSaves?.successes]);
+
+  useEffect(() => {
+    currentCharacterSlugRef.current = character;
+  }, [character]);
 
   useEffect(() => {
     if (canModifyCharacter) return;
@@ -1665,21 +1720,53 @@ const CharacterSheet = () => {
       } finally {
         if (active) setLoading(false);
       }
-      joinCharacterRoom(slug);
-      unsubState = onCharacterState((state) => setCharacterData(state));
+      if (!active) return;
+      unsubState = onCharacterState(({ slug: stateSlug, state }) => {
+        if (stateSlug !== slug) return;
+        setCharacterData(state as Character);
+      });
       unsubPatch = onCharacterPatch(({ slug: patchedSlug, patch }) => {
         if (patchedSlug !== slug) return;
         setCharacterData((prev) => (prev ? applyPatch(prev, patch) : prev));
       });
+      joinCharacterRoom(slug);
     })();
     announceEnter(character);
     return () => {
       active = false;
       try { unsubState?.(); } catch {}
       try { unsubPatch?.(); } catch {}
+      try { leaveCharacterRoom(slug); } catch {}
       try { announceLeave(); } catch {}
     };
   }, [character]);
+
+  useEffect(() => {
+    const offUpdateError = onCharacterUpdateError((error, slug) => {
+      if (slug !== character) return;
+      if (
+        (error.code === "REVISION_CONFLICT" || error.code === "DEATH_SAVES_REQUIRE_ZERO_HP") &&
+        error.state
+      ) {
+        setCharacterData(error.state as Character);
+      }
+      toast.error(error.code === "REVISION_CONFLICT"
+        ? "La scheda è stata aggiornata altrove: ho ricaricato l'ultima versione."
+        : error.message);
+    });
+    return offUpdateError;
+  }, [character]);
+
+  useEffect(() => {
+    const offAccessRevoked = onCharacterAccessRevoked((slug) => {
+      if (slug !== character) return;
+      setCharacterData(null);
+      setLoadError("L'accesso a questa scheda è stato revocato.");
+      toast.error("L'accesso alla scheda è stato revocato.");
+      navigate("/", { replace: true });
+    });
+    return offAccessRevoked;
+  }, [character, navigate]);
 
   useEffect(() => {
     const slug = character;
@@ -1697,6 +1784,20 @@ const CharacterSheet = () => {
       active = false;
     };
   }, [character, refreshRelationalInventory]);
+
+  useEffect(() => {
+    const slug = character;
+    if (!slug) return;
+
+    const offInventoryUpdated = onCharacterInventoryUpdated(({ slug: updatedSlug }) => {
+      if (updatedSlug !== slug) return;
+      void invalidateRelationalInventory(slug).catch(() => {
+        // Keep the last known inventory visible if a realtime invalidation cannot be refreshed.
+      });
+    });
+
+    return offInventoryUpdated;
+  }, [character, invalidateRelationalInventory]);
 
   useEffect(() => {
     let active = true;

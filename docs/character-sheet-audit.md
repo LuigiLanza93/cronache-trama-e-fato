@@ -1,6 +1,6 @@
 # Audit completo della scheda personaggio
 
-Stato: **prima analisi statica completata il 2026-07-15**.
+Stato: **analisi completata; pacchetto P0 implementato e verificato il 2026-08-12**.
 Branch analizzato: `dev`.
 Perimetro: comportamento applicativo, persistenza, autorizzazioni, realtime, UI e copertura delle regole dichiarate dalla scheda.
 
@@ -16,6 +16,14 @@ La scheda e utilizzabile nei casi correnti, ma non e ancora una base affidabile 
 6. mancano validazione server del documento scheda, conferma di persistenza e revisioni concorrenti.
 
 Prima della 1.8 e consigliato completare un blocco di stabilizzazione dedicato. Multiclass, expertise, Pact Magic separata, condizioni e override espliciti sono invece requisiti strutturali da progettare per 1.9/1.10.
+
+### Aggiornamento P0 del 2026-08-12
+
+I sei problemi P0 descritti sotto sono stati corretti. Le mutazioni core sono serializzate per slug, versionate e confermate soltanto dopo il commit SQLite; anche i riposi multi-PG attraversano il coordinatore atomico. Il client non riscrive piu PF, Dadi Vita o slot all'apertura, lascia correttamente le room precedenti e applica soltanto payload canonici dello slug attivo. Logout, scadenza e revoca invalidano la sessione Socket e lo stato client correlato.
+
+Sono stati chiusi anche due difetti realtime emersi durante il test manuale: inventario ed equipaggiamento ora emettono un'invalidazione autorizzata dopo commit e le viste aperte rifanno una lettura deduplicata; i TS morte vengono reidratati dallo stato persistito e sincronizzati con patch minime. I TS morte restano visibili nei riepiloghi DM/iniziativa soltanto a 0 PF e sono modificabili soltanto a 0 PF, con controllo sia UI sia server.
+
+Verifiche completate: `node --check server.js`, `npx.cmd tsc --noEmit --pretty false`, `npm.cmd run build`, `git diff --check` e revisione quality/security senza finding significativi residui. I test manuali concordati con l'utente sono positivi; la suite browser/API automatizzata ampia resta da costruire.
 
 ## Metodo e limiti
 
@@ -45,11 +53,11 @@ Per il confronto regolistico si assume come riferimento attuale **SRD 5.1 / rego
 | Bonus competenza e TS | Parziale | Parziale | livello + `proficiencies.savingThrows` | Formula single-class corretta; configurazione TS non disponibile qui |
 | Abilita | Parziale | Mancante | `proficiencies.skills` JSON | Solo booleano competente; expertise e mezza competenza assenti |
 | Classe, livello, sottoclasse, multiclass | Parziale | Mancante | colonne + `basicInfo` JSON | Una classe e un livello; sottoclasse e livelli per classe assenti |
-| PF, PF temporanei, Dadi Vita | Non affidabile | Errata/incompleta | `combatStats` JSON | Ricalcolo distruttivo all'apertura; progressione e multiclass non modellati |
-| TS contro morte | Non affidabile | Parziale | `combatStats.deathSaves` JSON + stato locale | I dati persistono, ma la UI riparte sempre vuota dopo refresh |
+| PF, PF temporanei, Dadi Vita | Affidabile nel core corrente | Incompleta per progressione | `combatStats` JSON | Nessuna riscrittura all'apertura; storico per livello e multiclass restano nel Gate 1.8A |
+| TS contro morte | Corretto nel core corrente | Sufficiente | `combatStats.deathSaves` JSON + stato locale derivato | Reidratazione e realtime corretti; modifica ammessa soltanto a 0 PF |
 | CA, iniziativa, velocita | Parziale | Parziale | derivati client + equip relazionale | Breakdown utile; override e formule alternative non espliciti; sensi assenti |
 | Attacchi e armi | Parziale | Errata/incompleta | inventario relazionale + attacchi legacy | Proprietà/equip ricchi; competenza arma e danno off-hand errati |
-| Inventario ed equip | Parziale | Parziale | `CharacterItem` e tabelle collegate + JSON legacy | Core relazionale buono; nessun aggiornamento multi-client affidabile |
+| Inventario ed equip | Affidabile nel core corrente | Parziale | `CharacterItem` e tabelle collegate + JSON legacy | Mutazioni normalizzate e aggiornamento multi-client post-commit; carico e regole avanzate restano incompleti |
 | Carico e peso | Mancante | Mancante | peso presente solo nell'anagrafica item | Nessuna somma, capacita o encumbrance |
 | Valuta | Corretto nel core | Sufficiente | `CharacterCurrencyBalance` + ledger | Operazioni validate e tracciate; copie legacy restano nel JSON |
 | Capacita e risorse | Parziale | Parziale | `capabilities` JSON + feature item | Usi e reset base presenti; encounter/custom non automatizzati |
@@ -95,6 +103,8 @@ scrittura core:
 Evidenze centrali: `prisma/schema.prisma:324`, `server.js:1168`, `server.js:8273`, `server.js:8732`, `server.js:8982`, `server.js:11538`.
 
 ## Problemi P0 - integrita o sicurezza
+
+**Stato complessivo:** risolti nel pacchetto P0 del 2026-08-12. Le descrizioni originali restano come memoria del rischio e motivazione delle soluzioni adottate.
 
 ### P0.1 - Aggiornamenti persi nel debounce realtime
 
@@ -156,7 +166,7 @@ Evidenze centrali: `prisma/schema.prisma:324`, `server.js:1168`, `server.js:8273
 | --- | --- | --- | --- |
 | P1.1 | Nessuna validazione server del core scheda | Patch diretta con livello negativo, stringa nei PF o array al posto di oggetto; il JSON puo diventare non renderizzabile | Schema condiviso e allowlist dei path, tipi e range |
 | P1.2 | Nessun ack di persistenza | Il client riceve subito lo stato; errore SQLite o restart entro 200 ms perde il dato senza feedback | Ack post-commit, revisione, UI salvataggio/errore e flush shutdown |
-| P1.3 | TS morte non reidratati | Salvare 2 successi/1 fallimento, refresh: UI 0/0; il click successivo puo sovrascrivere i conteggi | Derivare la UI dai conteggi persistiti e testare refresh/guarigione/riposo |
+| P1.3 | TS morte non reidratati — **risolto 2026-08-12** | La UI deriva ora i contatori persistiti, sincronizza patch minime e impedisce modifiche sopra 0 PF | Conservare regressioni su refresh, due client, guarigione e riposo |
 | P1.4 | Competenza arma sempre aggiunta | Equipaggiare a un personaggio un'arma non competente: il tiro aggiunge comunque PB | Modello competenze armi e resolver server/client condiviso |
 | P1.5 | Danno off-hand sempre con modificatore | Attacco con arma secondaria aggiunge il modificatore anche senza regola/feature abilitante | Resolver two-weapon fighting con eccezioni esplicite |
 | P1.6 | Riposi non allineati a SRD 5.1 | Lungo recupera tutti i Dadi Vita; breve auto-spende dadi fissi e impone massimo due | Dichiarare house rule oppure introdurre scelta/tiro e recupero conforme |
@@ -252,4 +262,4 @@ Questi fix sono candidati a una patch di stabilizzazione 1.7.x o a un prerequisi
 - `npm.cmd run build`: **passato**; warning chunk principale oltre 500 kB e Browserslist obsoleto.
 - lint mirato sulla scheda: **non passato**, 167 problemi (156 errori, 11 warning), in maggioranza `no-explicit-any` e dipendenze Hook.
 - ispezione DB locale: **sola lettura**, nessuna modifica a `prisma/migration.db`.
-- API/browser/realtime multi-client: **da eseguire** dopo la prima correzione P0, per evitare test falsati dalla pipeline attuale.
+- API/browser/realtime multi-client: **test manuali concordati positivi** sul pacchetto P0 e sui difetti realtime segnalati; resta da aggiungere una suite automatizzata completa per la baseline elencata nell'audit.

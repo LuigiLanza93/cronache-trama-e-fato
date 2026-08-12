@@ -57,22 +57,70 @@ export type ShopVisitRealtimePayload = {
 };
 
 let playerWritesLocked = false;
+let realtimeGeneration = 0;
+let sessionRevokedGeneration: number | null = null;
+const characterRevisions = new Map<string, string>();
+const characterUpdateQueues = new Map<string, Promise<void>>();
+const characterQueueGenerations = new Map<string, number>();
+const desiredCharacterRooms = new Map<string, number>();
+let desiredPresenceSlug: string | null = null;
+let presenceSubscriberCount = 0;
+const invalidatedCharacterSlugs = new Set<string>();
+const characterUpdateErrorListeners = new Set<(error: CharacterUpdateError, slug: string) => void>();
+const characterAccessRevokedListeners = new Set<(slug: string) => void>();
+const realtimeSessionRevokedListeners = new Set<() => void>();
+type PendingCharacterUpdate = { slug: string; realtimeGeneration: number; queueGeneration: number; reject: (reason: CharacterUpdateError) => void };
+const pendingCharacterUpdates = new Set<PendingCharacterUpdate>();
 
 export function setRealtimePlayerWritesLocked(locked: boolean) {
   playerWritesLocked = locked;
 }
 
-export function resetRealtimeSocket() {
+export function resetRealtimeSocket({ preserveDesiredState = false }: { preserveDesiredState?: boolean } = {}) {
+  realtimeGeneration += 1;
+  sessionRevokedGeneration = null;
+  characterRevisions.clear();
+  characterUpdateQueues.clear();
+  characterQueueGenerations.clear();
+  if (!preserveDesiredState) {
+    desiredCharacterRooms.clear();
+    desiredPresenceSlug = null;
+    invalidatedCharacterSlugs.clear();
+  }
+  const error = characterUpdateError("La sessione è cambiata: il salvataggio precedente è stato annullato.", undefined, "REALTIME_RESET");
+  pendingCharacterUpdates.forEach((pending) => pending.reject(error));
+  pendingCharacterUpdates.clear();
   if (!socket) return;
   try {
     socket.disconnect();
   } catch {}
-  socket = null;
+  if (preserveDesiredState) socket.connect();
 }
 
 export function getSocket(): Socket {
   if (!socket) {
     socket = io(); // same origin
+    socket.on("connect", () => {
+      desiredCharacterRooms.forEach((count, slug) => {
+        if (count > 0 && !invalidatedCharacterSlugs.has(slug)) emitCharacterJoin(slug);
+      });
+      if (desiredPresenceSlug) socket?.emit("presence:enter", { slug: desiredPresenceSlug });
+      if (presenceSubscriberCount > 0) socket?.emit("presence:snapshot");
+    });
+    socket.on("character:access-revoked", (payload: unknown) => {
+      const slug = typeof payload === "string"
+        ? payload
+        : payload && typeof payload === "object" && typeof (payload as { slug?: unknown }).slug === "string"
+          ? (payload as { slug: string }).slug
+          : "";
+      if (!slug) return;
+      notifyCharacterAccessRevoked(slug);
+    });
+    socket.on("auth:session-revoked", () => {
+      notifyRealtimeSessionRevoked();
+    });
+  } else if (!socket.connected && sessionRevokedGeneration === null) {
+    socket.connect();
   }
   return socket;
 }
@@ -139,13 +187,138 @@ export async function getOrCreateDmConversation(slug: string) {
   }) as Promise<ChatConversationSummary>;
 }
 
-export function joinCharacterRoom(slug: string) {
-  getSocket().emit("character:join", slug);
+type CharacterJoinAck = { ok: true } | { ok: false; code?: string; error?: string };
+
+function notifyRealtimeSessionRevoked() {
+  if (sessionRevokedGeneration === realtimeGeneration) return;
+  realtimeGeneration += 1;
+  sessionRevokedGeneration = realtimeGeneration;
+  characterRevisions.clear();
+  characterUpdateQueues.clear();
+  characterQueueGenerations.clear();
+  desiredCharacterRooms.clear();
+  desiredPresenceSlug = null;
+  invalidatedCharacterSlugs.clear();
+  const error = characterUpdateError("La sessione non è più valida.", undefined, "AUTH_REQUIRED");
+  pendingCharacterUpdates.forEach((pending) => pending.reject(error));
+  pendingCharacterUpdates.clear();
+  try {
+    socket?.disconnect();
+  } catch {}
+  realtimeSessionRevokedListeners.forEach((listener) => listener());
 }
 
-export function onCharacterState(cb: (state: any) => void) {
+function notifyCharacterAccessRevoked(slug: string) {
+  invalidateCharacterRealtime(slug);
+  characterAccessRevokedListeners.forEach((listener) => listener(slug));
+}
+
+function emitCharacterJoin(slug: string) {
+  const currentSocket = socket;
+  if (!currentSocket?.connected || invalidatedCharacterSlugs.has(slug)) return;
+  currentSocket.timeout(7_000).emit(
+    "character:join",
+    { slug },
+    (timeoutError: Error | null, response?: CharacterJoinAck) => {
+      if (timeoutError || response?.ok !== false) return;
+      if (response.code === "AUTH_REQUIRED") {
+        notifyRealtimeSessionRevoked();
+      } else if (response.code === "FORBIDDEN" || response.code === "CHARACTER_NOT_FOUND") {
+        notifyCharacterAccessRevoked(slug);
+      }
+    }
+  );
+}
+
+export function joinCharacterRoom(slug: string) {
+  if (invalidatedCharacterSlugs.has(slug)) return;
+  desiredCharacterRooms.set(slug, (desiredCharacterRooms.get(slug) ?? 0) + 1);
+  const currentSocket = getSocket();
+  if (currentSocket.connected) emitCharacterJoin(slug);
+}
+
+export function leaveCharacterRoom(slug: string) {
+  const nextCount = (desiredCharacterRooms.get(slug) ?? 0) - 1;
+  if (nextCount > 0) {
+    desiredCharacterRooms.set(slug, nextCount);
+    return;
+  }
+  desiredCharacterRooms.delete(slug);
+  socket?.emit("character:leave", { slug });
+}
+
+function invalidateCharacterQueue(slug: string, message: string, code: string) {
+  characterQueueGenerations.set(slug, (characterQueueGenerations.get(slug) ?? 0) + 1);
+  const error = characterUpdateError(message, undefined, code);
+  pendingCharacterUpdates.forEach((pending) => {
+    if (pending.slug === slug) pending.reject(error);
+  });
+  return error;
+}
+
+export function invalidateCharacterRealtime(slug: string) {
+  invalidatedCharacterSlugs.add(slug);
+  characterRevisions.delete(slug);
+  desiredCharacterRooms.delete(slug);
+  if (desiredPresenceSlug === slug) {
+    desiredPresenceSlug = null;
+    socket?.emit("presence:leave");
+  }
+  invalidateCharacterQueue(slug, "L'accesso a questa scheda è stato revocato.", "CHARACTER_ACCESS_REVOKED");
+  if (socket?.connected) socket.emit("character:leave", { slug });
+}
+
+export type CharacterStatePayload<T = Record<string, unknown>> = {
+  slug: string;
+  state: T;
+  revision?: string;
+};
+
+export type CharacterPatchPayload = {
+  slug: string;
+  patch: Record<string, unknown>;
+  revision?: string;
+};
+
+export type CharacterInventoryUpdatedPayload = {
+  slug: string;
+  reason?: string;
+  occurredAt?: string;
+};
+
+function normalizeCharacterStatePayload(payload: unknown): CharacterStatePayload | null {
+  if (!payload || typeof payload !== "object") return null;
+  const record = payload as Record<string, unknown>;
+  const state = record.state && typeof record.state === "object" ? record.state as Record<string, unknown> : record;
+  const slug = typeof record.slug === "string" ? record.slug : typeof state.slug === "string" ? state.slug : "";
+  if (!slug) return null;
+  return {
+    slug,
+    state: state.slug === slug ? state : { ...state, slug },
+    revision: typeof record.revision === "string" ? record.revision : undefined,
+  };
+}
+
+function normalizeCharacterPatchPayload(payload: unknown): CharacterPatchPayload | null {
+  if (!payload || typeof payload !== "object") return null;
+  const record = payload as Record<string, unknown>;
+  if (typeof record.slug !== "string" || !record.patch || typeof record.patch !== "object") return null;
+  return {
+    slug: record.slug,
+    patch: record.patch as Record<string, unknown>,
+    revision: typeof record.revision === "string" ? record.revision : undefined,
+  };
+}
+
+export function onCharacterState(cb: (payload: CharacterStatePayload) => void) {
   const s = getSocket();
-  const handler = (state: any) => cb(state);
+  const handler = (payload: unknown) => {
+    const normalized = normalizeCharacterStatePayload(payload);
+    if (normalized) {
+      if (normalized.revision) characterRevisions.set(normalized.slug, normalized.revision);
+      cb(normalized);
+    }
+  };
   s.on("character:state", handler);
   // ⬇️ cleanup che NON ritorna Socket
   return () => {
@@ -153,9 +326,15 @@ export function onCharacterState(cb: (state: any) => void) {
   };
 }
 
-export function onCharacterPatch(cb: (patch: any) => void) {
+export function onCharacterPatch(cb: (patch: CharacterPatchPayload) => void) {
   const s = getSocket();
-  const handler = (patch: any) => cb(patch);
+  const handler = (payload: unknown) => {
+    const normalized = normalizeCharacterPatchPayload(payload);
+    if (normalized) {
+      if (normalized.revision) characterRevisions.set(normalized.slug, normalized.revision);
+      cb(normalized);
+    }
+  };
   s.on("character:patch", handler);
   // ⬇️ cleanup che NON ritorna Socket
   return () => {
@@ -163,9 +342,136 @@ export function onCharacterPatch(cb: (patch: any) => void) {
   };
 }
 
-export function updateCharacter(slug: string, patch: any) {
-  if (playerWritesLocked) return;
-  getSocket().emit("character:update", { slug, patch });
+export function onCharacterInventoryUpdated(
+  cb: (payload: CharacterInventoryUpdatedPayload) => void
+): () => void {
+  const s = getSocket();
+  const handler = (payload: unknown) => {
+    if (!payload || typeof payload !== "object") return;
+    const record = payload as Record<string, unknown>;
+    if (typeof record.slug !== "string" || !record.slug.trim()) return;
+    cb({
+      slug: record.slug,
+      reason: typeof record.reason === "string" ? record.reason : undefined,
+      occurredAt: typeof record.occurredAt === "string" ? record.occurredAt : undefined,
+    });
+  };
+  s.on("character:inventory-updated", handler);
+  return () => {
+    s.off("character:inventory-updated", handler);
+  };
+}
+
+export function onCharacterAccessRevoked(cb: (slug: string) => void) {
+  getSocket();
+  characterAccessRevokedListeners.add(cb);
+  return () => characterAccessRevokedListeners.delete(cb);
+}
+
+export function onRealtimeSessionRevoked(cb: () => void) {
+  getSocket();
+  realtimeSessionRevokedListeners.add(cb);
+  return () => realtimeSessionRevokedListeners.delete(cb);
+}
+
+export type CharacterUpdateAck =
+  | { ok: true; slug: string; revision?: string; state?: Record<string, unknown> }
+  | { ok: false; error: string; code?: string; revision?: string; state?: Record<string, unknown> };
+
+export type CharacterUpdateError = Error & { code?: string; state?: Record<string, unknown>; revision?: string };
+
+function characterUpdateError(message: string, response?: Exclude<CharacterUpdateAck, { ok: true }>, fallbackCode?: string): CharacterUpdateError {
+  const error = new Error(message) as CharacterUpdateError;
+  error.name = "CharacterUpdateError";
+  error.code = response?.code ?? fallbackCode;
+  error.state = response?.state;
+  error.revision = response?.revision;
+  return error;
+}
+
+export function updateCharacterWithAck(
+  slug: string,
+  patch: Record<string, unknown>
+): Promise<Extract<CharacterUpdateAck, { ok: true }>> {
+  if (playerWritesLocked) return Promise.reject(characterUpdateError("La sessione è chiusa. Le modifiche del personaggio sono bloccate."));
+  if (invalidatedCharacterSlugs.has(slug)) return Promise.reject(characterUpdateError("L'accesso a questa scheda è stato revocato.", undefined, "CHARACTER_ACCESS_REVOKED"));
+  const requestRealtimeGeneration = realtimeGeneration;
+  const requestQueueGeneration = characterQueueGenerations.get(slug) ?? 0;
+  const previous = characterUpdateQueues.get(slug) ?? Promise.resolve();
+  const request = previous.then(() => new Promise<Extract<CharacterUpdateAck, { ok: true }>>((resolve, reject) => {
+    if (
+      requestRealtimeGeneration !== realtimeGeneration ||
+      requestQueueGeneration !== (characterQueueGenerations.get(slug) ?? 0) ||
+      invalidatedCharacterSlugs.has(slug)
+    ) {
+      reject(characterUpdateError("Il salvataggio non è più valido.", undefined, "STALE_CHARACTER_UPDATE"));
+      return;
+    }
+    const pending: PendingCharacterUpdate = {
+      slug,
+      realtimeGeneration: requestRealtimeGeneration,
+      queueGeneration: requestQueueGeneration,
+      reject,
+    };
+    pendingCharacterUpdates.add(pending);
+    const complete = (callback: () => void) => {
+      pendingCharacterUpdates.delete(pending);
+      callback();
+    };
+    getSocket()
+      .timeout(7_000)
+      .emit(
+        "character:update",
+        {
+          slug,
+          patch,
+          ...(characterRevisions.get(slug) ? { revision: characterRevisions.get(slug) } : {}),
+        },
+        (timeoutError: Error | null, response?: CharacterUpdateAck) => {
+          if (
+            requestRealtimeGeneration !== realtimeGeneration ||
+            requestQueueGeneration !== (characterQueueGenerations.get(slug) ?? 0) ||
+            invalidatedCharacterSlugs.has(slug)
+          ) {
+            complete(() => reject(characterUpdateError("Il salvataggio non è più valido.", undefined, "STALE_CHARACTER_UPDATE")));
+            return;
+          }
+          if (timeoutError || !response) {
+            const error = characterUpdateError("Il server non ha confermato il salvataggio della scheda.");
+            characterUpdateErrorListeners.forEach((listener) => listener(error, slug));
+            complete(() => reject(error));
+            return;
+          }
+          if (!response.ok) {
+            const error = characterUpdateError(response.error, response);
+            if (response.revision) characterRevisions.set(slug, response.revision);
+            if (response.code === "REVISION_CONFLICT") {
+              characterUpdateErrorListeners.forEach((listener) => listener(error, slug));
+              invalidateCharacterQueue(slug, error.message, "REVISION_CONFLICT");
+            } else {
+              characterUpdateErrorListeners.forEach((listener) => listener(error, slug));
+            }
+            complete(() => reject(error));
+            return;
+          }
+          if (response.revision) characterRevisions.set(slug, response.revision);
+          complete(() => resolve(response));
+        }
+      );
+  }));
+  characterUpdateQueues.set(slug, request.then(() => undefined, () => undefined));
+  return request;
+}
+
+export function updateCharacter(slug: string, patch: Record<string, unknown>) {
+  void updateCharacterWithAck(slug, patch).catch(() => {
+    // Errors are exposed to the active sheet through onCharacterUpdateError.
+  });
+}
+
+export function onCharacterUpdateError(listener: (error: CharacterUpdateError, slug: string) => void) {
+  characterUpdateErrorListeners.add(listener);
+  return () => characterUpdateErrorListeners.delete(listener);
 }
 
 export type SpellSlotConversionResult = {
@@ -248,11 +554,14 @@ export function applyPatch<T>(target: T, patch: any): T {
 /* ===== Presence helpers ===== */
 
 export function announceEnter(slug: string) {
-  getSocket().emit("presence:enter", { slug });
+  desiredPresenceSlug = slug;
+  const currentSocket = getSocket();
+  if (currentSocket.connected) currentSocket.emit("presence:enter", { slug });
 }
 
 export function announceLeave() {
-  getSocket().emit("presence:leave");
+  desiredPresenceSlug = null;
+  socket?.emit("presence:leave");
 }
 
 export function requestPresenceSnapshot() {
@@ -264,10 +573,12 @@ export function subscribePresence(
 ): () => void {
   const s = getSocket();
   const handler = (payload: Array<{ slug: string; count: number }>) => cb(payload);
+  presenceSubscriberCount += 1;
   s.on("presence:update", handler);
   // ⬇️ cleanup che NON ritorna Socket
   return () => {
     s.off("presence:update", handler);
+    presenceSubscriberCount = Math.max(0, presenceSubscriberCount - 1);
   };
 }
 

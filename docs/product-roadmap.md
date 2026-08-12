@@ -12,23 +12,25 @@ La roadmap esprime priorita e dipendenze, non scadenze. Le versioni proposte pos
 - Le nuove strutture dati devono preparare la multi-campagna senza rendere fragile l'app a campagna singola.
 - Ogni funzione realtime deve mantenere autorizzazioni server-side: nascondere un comando nella UI non e sufficiente.
 - La mappa tattica non deve trasformare subito l'app in un clone completo di Roll20.
+- Il prossimo level-up reale della campagna richiede il multiclasse: stabilizzazione e progressione hanno precedenza sulle altre nuove funzioni.
 
 ## Sequenza consigliata
 
-| Fase/versione proposta | Obiettivo | Complessita | Motivazione dell'ordine |
+| Fase proposta | Obiettivo | Priorita | Motivazione dell'ordine |
 | --- | --- | --- | --- |
-| Fase 0, pre-1.8 | Audit completo della scheda personaggio | Media come analisi, variabile per i fix | Stabilisce cosa funziona davvero, cosa manca e quali fondamenta servono prima di costruire wizard e level-up. |
-| 1.8 | Gestione del party e idoneita alle interazioni | Medio-alta | Chiude subito un problema di riservatezza e definisce chi puo interagire con chi. |
-| 1.9 | Creazione guidata della scheda | Alta | Introduce un ciclo di creazione controllato, riusabile anche dai futuri level-up. |
-| 1.10 | Level-up guidato | Alta | Riusa motore, componenti e tracciamento delle scelte costruiti nella 1.9. |
-| 1.11 | Fondazioni UI e restyling completo | Alta | Stabilizza navigazione e componenti prima di aggiungere la selezione campagna. |
-| 1.12 | Preparazione tecnica multi-campagna | Molto alta | Introduce e migra il confine di campagna senza esporre ancora la seconda campagna. |
-| 2.0 | Gestione di piu campagne | Molto alta/critica | Completa isolamento dati, utenti e realtime dopo una migrazione preparatoria separata. |
-| 2.1+ | Tavolo tattico condiviso | Molto alta/epica | Funzione autonoma, piu sicura da costruire sopra campagne e UI gia consolidate. |
+| P0, pre-1.8 | Stabilizzazione core scheda | Massima/bloccante | Elimina perdita o sovrascrittura di dati e rende affidabili persistenza, realtime e autorizzazioni prima della progressione. |
+| 1.8A | Gate tecnico della progressione | Massima/bloccante | Introduce contratti, modello classi, storico, PF/Dadi Vita e pool di risorse compatibili con il multiclasse. |
+| 1.8B | Level-up guidato monoclasse | Massima, milestone interna | Collauda preview/apply atomici e resolver sul caso piu semplice; non e un lungo obiettivo separato dal multiclasse. |
+| 1.8C | Estensione multiclasse | Massima, obiettivo operativo | Deve essere disponibile per il prossimo level-up reale di un giocatore. |
+| Dopo 1.8 | Creazione guidata della scheda | Media | Riusa strutture e componenti della progressione gia collaudati, diventando un'aggiunta piu semplice e meno rischiosa. |
+| Dopo 1.8 | Gestione del party e idoneita alle interazioni | Media | Resta utile per riservatezza e personaggi inattivi, ma non e propedeutica al prossimo level-up. |
+| Trasversale | Migliorie UI e design system incrementale | Opportunistica | Si interviene mentre si toccano le schermate, senza aprire ora un restyling completo. |
+| Futuro | Fondazioni e gestione multi-campagna | Molto bassa | Non c'e una necessita corrente; una one-shot puo usare temporaneamente un'istanza locale con dati dedicati. |
+| Futuro | Tavolo tattico condiviso | Molto bassa | Grande investimento non necessario per il prossimo uso reale dell'app. |
 
-## Fase 0, pre-1.8 — Audit completo della scheda personaggio
+## P0, pre-1.8 — Stabilizzazione core della scheda personaggio
 
-> Stato al 2026-07-15: prima analisi statica completata. Matrice, problemi P0-P3, mappa dati e suite di regressione sono raccolti in [`character-sheet-audit.md`](./character-sheet-audit.md). La fase resta aperta fino alla correzione/verifica dei P0-P1 destinati al prerequisito pre-1.8.
+> Stato al 2026-08-12: pacchetto P0 implementato e verificato. La persistenza core usa mutazioni seriali per personaggio, revisioni ottimistiche e ACK dopo commit; riposi e patch condividono lo stesso coordinatore; le aperture non riscrivono piu PF, Dadi Vita o slot; stanze, riconnessione e revoca Socket sono state consolidate. Completati inoltre il realtime dell'inventario/equipaggiamento e la reidratazione dei TS morte, modificabili soltanto a 0 PF. I dettagli e i P1-P3 ancora aperti sono raccolti in [`character-sheet-audit.md`](./character-sheet-audit.md).
 
 ### Obiettivo
 
@@ -80,13 +82,22 @@ Questa fase e principalmente di analisi e non coincide necessariamente con una r
 - mappa delle dipendenze tra dati sorgente, calcoli derivati e override;
 - suite minima di test di regressione da conservare;
 - lista dei fix da completare prima della 1.8;
-- requisiti tecnici che la 1.9 e la 1.10 dovranno riusare invece di reimplementare.
+- requisiti tecnici che il Gate 1.8A e le milestone successive dovranno riusare invece di reimplementare.
 
 ### Criterio di completamento
 
-Ogni sezione della scheda ha una valutazione motivata e un percorso dati noto. I problemi P0/P1 hanno una destinazione precisa e sappiamo quali parti sono abbastanza affidabili da diventare fondamenta della creazione guidata e del level-up.
+Ogni sezione della scheda ha una valutazione motivata e un percorso dati noto. I fix P0 necessari alla progressione e i P1 selezionati sono implementati, coperti da test di regressione e verificati in scenari multi-client; nessuna apertura, patch pendente, riposo o riconnessione puo sovrascrivere silenziosamente uno stato valido.
 
-## 1.8 — Party gestito dal DM
+### Esito incremento P0 del 2026-08-12
+
+- completati P0.1-P0.6 dell'audit con coda FIFO per slug, revisione canonica, commit atomici, lifecycle room e riconvalida delle sessioni Socket;
+- rimossi i salvataggi automatici distruttivi di PF, Dadi Vita e slot all'apertura;
+- aggiunto aggiornamento realtime post-commit dell'inventario normalizzato, incluso lo stato equipaggiato, nelle schede e nei riepiloghi aperti;
+- reidratati e sincronizzati i TS morte; i riepiloghi DM e iniziativa continuano a mostrarli solo a 0 PF e scheda/server ne impediscono la modifica sopra 0 PF;
+- verifiche tecniche superate: controllo sintassi server, TypeScript, build di produzione e revisione quality/security; test manuali dell'utente positivi sui casi concordati;
+- nessuna modifica a schema o dati Railway; il lavoro prosegue dai P1 selezionati e dal Gate tecnico 1.8A.
+
+## Dopo la progressione — Party gestito dal DM
 
 ### Problema
 
@@ -125,7 +136,7 @@ L'assegnazione di un PG a un utente e la sua appartenenza al party devono restar
 
 Un PG non attivo non appare come possibile interlocutore o destinatario e non puo essere forzato in un'interazione chiamando direttamente le API. Il DM continua a poterlo amministrare.
 
-## 1.9 — Creazione guidata della scheda
+## Dopo la progressione — Creazione guidata della scheda
 
 ### Obiettivo
 
@@ -155,20 +166,23 @@ Prima di importare testi o opzioni bisogna verificare puntualmente fonte, licenz
 
 Si puo creare e riprendere una bozza, completare un PG usando il catalogo automatizzato oppure opzioni manuali, vedere un riepilogo delle scelte e produrre una scheda coerente senza modifiche nascoste.
 
-## 1.10 — Level-up guidato
+## 1.8B — Level-up guidato monoclasse
+
+> Il programma tecnico dettagliato e raccolto in [`multiclass-roadmap.md`](./multiclass-roadmap.md). La sequenza vincolante e: Gate di compatibilita 1.8A -> milestone monoclasse 1.8B -> multiclasse 1.8C. Il primo level-up usa gia `targetClassKey`, storico per livello e strutture plurali, ma il server consente una sola classe durante il collaudo 1.8B.
 
 ### Dipendenza
 
-Va costruito dopo la creazione guidata, riusando lo stesso modello di scelte, prerequisiti, anteprima e conferma.
+Va costruito dopo il Gate tecnico della progressione. La creazione guidata non e piu un prerequisito: sara aggiunta dopo, riusando il modello di scelte, prerequisiti, anteprima e conferma gia collaudato dal level-up.
 
 ### Perimetro consigliato
 
 - anteprima del passaggio di livello senza scritture;
 - aumento PF con metodo dichiarato;
 - nuove risorse, competenze e scelte previste dal catalogo automatizzato;
+- scelta strutturata della sottoclasse quando ogni singola classe raggiunge la soglia prevista dal regolamento adottato, usando il livello di quella classe e non il livello totale;
 - riepilogo differenziale "prima/dopo";
 - conferma finale atomica;
-- procedura manuale per classi, sottoclassi e opzioni non automatizzate;
+- procedura manuale per privilegi di sottoclasse e altre opzioni non automatizzate;
 - storico minimo del level-up, utile per capire e correggere cosa e cambiato.
 
 ### Da rimandare inizialmente
@@ -177,11 +191,32 @@ Va costruito dopo la creazione guidata, riusando lo stesso modello di scelte, pr
 - validazione universale di ogni talento, incantesimo o eccezione;
 - rollback automatico arbitrario dopo che il personaggio ha gia giocato con il nuovo livello.
 
-## 1.11 — Restyling UI e grafica
+## 1.8C — Estensione multiclasse
+
+### Dipendenza
+
+E l'obiettivo operativo prioritario per il prossimo level-up reale. Parte dopo il collaudo della milestone monoclasse, ma appartiene allo stesso percorso di consegna e non introduce un secondo motore: estende la stessa preview/apply scegliendo se incrementare una classe posseduta o prendere il primo livello in una nuova classe.
+
+### Perimetro consigliato
+
+- prerequisiti della nuova classe secondo il ruleset;
+- competenze specifiche dell'ingresso multiclass, distinte dalla classe iniziale;
+- PF e Dado Vita attribuiti al livello della classe scelta;
+- livello totale, livelli di classe e livello effettivo caster distinti;
+- Spellcasting e Pact Magic separati;
+- sottoclasse indipendente per ciascuna classe alla propria soglia;
+- regole censite di cumulo e non cumulo dei privilegi;
+- stesso storico, anteprima, conferma atomica e gestione conflitti della 1.8B.
+
+### Criterio di completamento
+
+L'aggiunta della seconda classe non richiede migrazioni dei level-up gia registrati, non ricalcola distruttivamente PF o risorse e non introduce un nuovo contratto di progressione.
+
+## Trasversale — Migliorie UI opportunistiche
 
 ### Strategia consigliata
 
-Prima definire un piccolo design system, poi migrare le schermate per famiglie. Evitare una riscrittura unica che mescoli grafica e logica di dominio.
+Non e previsto ora un restyling completo. Quando una schermata viene modificata per stabilizzazione o progressione, si possono estrarre componenti riusabili e correggere incoerenze evidenti se il costo e il rischio restano contenuti. Evitare una riscrittura unica che mescoli grafica e logica di dominio.
 
 ### Fasi interne
 
@@ -192,13 +227,15 @@ Prima definire un piccolo design system, poi migrare le schermate per famiglie. 
 5. Migrazione area DM e schermate ad alta densita.
 6. Revisione responsive, accessibilita e prestazioni.
 
-### Perche prima della 2.0
+### Relazione con le funzioni future
 
-La multi-campagna aggiungera selezione e contesto campagna alla navigazione globale. E preferibile inserirli in una struttura UI gia coerente, invece di duplicare adattamenti su schermate destinate a essere ridisegnate.
+Il restyling non e piu un gate per la multi-campagna. Se quella funzione tornera prioritaria, si rivalutera allora quanta parte della navigazione globale conviene consolidare prima.
 
-## 1.12 — Fondazioni tecniche multi-campagna
+## Futuro a bassa priorita — Fondazioni tecniche multi-campagna
 
 Questa versione non deve ancora permettere di creare una seconda campagna. Serve a rendere esplicita la campagna attuale e a migrare i dati in sicurezza.
+
+Non esiste al momento una necessita operativa sufficiente a giustificare questo intervento trasversale. Per una one-shot occasionale e accettabile usare, se necessario, un'istanza locale separata dell'app con un set di dati dedicato.
 
 ### Lavoro previsto
 
@@ -209,13 +246,13 @@ Questa versione non deve ancora permettere di creare una seconda campagna. Serve
 - rendere esplicito lo scope nelle query, negli endpoint e nelle stanze realtime;
 - isolare file persistenti, documenti e risorse per campagna;
 - aggiungere verifiche che impediscano relazioni tra campagne;
-- mantenere l'UI bloccata sulla campagna predefinita fino alla 2.0.
+- mantenere l'UI bloccata sulla campagna predefinita fino all'eventuale attivazione della multi-campagna.
 
 ### Motivo della release separata
 
 Il rischio maggiore non e creare la schermata "Nuova campagna", ma dimenticare una query senza filtro e mostrare o modificare dati dell'altra campagna. La migrazione dello scope deve essere verificata mentre il comportamento visibile resta invariato.
 
-## 2.0 — Multi-campagna
+## Futuro a bassa priorita — Multi-campagna
 
 ### Esperienza DM
 
@@ -241,7 +278,7 @@ E una modifica trasversale a quasi ogni tabella, endpoint e flusso realtime. Ric
 
 Due campagne possono essere usate dagli stessi account senza che dati, selettori, notifiche o azioni di una risultino accessibili nell'altra. I personaggi restano definitivamente legati alla campagna di origine.
 
-## 2.1+ — Tavolo tattico condiviso
+## Futuro a bassa priorita — Tavolo tattico condiviso
 
 ### Visione
 
@@ -274,31 +311,40 @@ Niente videochiamata, marketplace di asset, macro generiche, illuminazione dinam
 ## Dipendenze principali
 
 ```text
-Audit scheda (Fase 0)
+Stabilizzazione P0 e test di regressione
         |
-        +--> Fix prioritari e test di regressione
-        |
-        +--> Party gestito (1.8)
-        |           |
-        |           +--> Fondazioni multi-campagna (1.12) --> Multi-campagna (2.0)
-        |
-        +--> Creazione guidata (1.9) --> Level-up (1.10)
+        +--> Gate progressione (1.8A)
+                    |
+                    +--> Level-up monoclasse (1.8B, milestone)
+                                |
+                                +--> Multiclasse (1.8C, obiettivo operativo)
+                                            |
+                                            +--> Creazione guidata
 
-Restyling UI (1.11) -----------------------------> Multi-campagna (2.0)
+Party gestito -------------------------------> backlog successivo indipendente
 
-Multi-campagna (2.0) + tracker/realtime esistenti --> Tavolo tattico (2.1+)
+Migliorie UI -------------------------------> opportunistiche lungo il percorso
+
+Fondazioni multi-campagna --> Multi-campagna --> Tavolo tattico
+        (intero ramo futuro a priorita molto bassa)
 ```
 
 ## Decisioni aperte da riprendere
 
-1. L'audit deve verificare soltanto il comportamento dell'app o anche la copertura delle regole SRD che la scheda dichiara di supportare? E consigliato includere entrambe, tenendole separate nei risultati.
-2. Un player puo vedere e modificare la propria scheda mentre il PG e **In preparazione**?
-3. Serve distinguere **Temporaneamente fuori dal party** da **Ritirato/archiviato**, o basta un solo stato inattivo?
-4. La creazione guidata e avviata dal DM, dal player autorizzato o da entrambi?
-5. Il DM deve approvare la creazione e ogni level-up prima che diventino effettivi?
-6. Il restyling deve conservare l'identita visiva attuale evolvendola o partire da una direzione completamente nuova?
-7. Nella 2.0 il ruolo DM e globale oppure un utente puo essere DM in una campagna e player in un'altra? La seconda opzione e piu flessibile ed e quella consigliata.
-8. Per la mappa, i player possono muovere soltanto le proprie pedine o anche quelle alleate autorizzate?
+### Da chiudere prima dell'automazione 1.8A
+
+1. Confermare SRD 5.1/2014 come ruleset base e censire separatamente le house rule effettive della campagna.
+2. Confermare l'autorita V1 del level-up: raccomandazione corrente, operazione eseguita soltanto dal DM.
+3. Confermare prerequisiti multiclasse standard con eventuale override DM esplicito e motivato.
+4. Stabilire per ogni livello la scelta fra media, tiro e inserimento manuale dei PF, registrando sempre il valore applicato.
+5. Rendere esplicita la policy dei riposi e del recupero Dadi Vita prima di normalizzare quei dati.
+
+### Rinviate con le funzioni non prioritarie
+
+1. Visibilita e modifica player dei PG **In preparazione** e distinzione fra fuori party e ritirato.
+2. Autorita e approvazione della futura creazione guidata.
+3. Direzione di un eventuale restyling completo.
+4. Ruoli per campagna e movimento delle pedine del tavolo tattico.
 
 ## Parcheggio idee
 

@@ -7849,6 +7849,18 @@ function readCharacter(slug) {
   return normalizeCharacterRow(row);
 }
 
+function readCharacterSnapshot(slug) {
+  ensureSqliteConnectionFresh();
+  const row = sqlite
+    .prepare('SELECT * FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(slug);
+  if (!row) return null;
+  return {
+    state: normalizeCharacterRow(row),
+    revision: String(row.updatedAt ?? ""),
+  };
+}
+
 function listCharacters() {
   ensureSqliteConnectionFresh();
   return sqlite
@@ -8686,12 +8698,37 @@ function broadcastShopVisit(io, eventName, visitRow) {
   io.to(rooms).emit(eventName, payload);
 }
 
-function writeCharacter(slug, data) {
+function broadcastCharacterInventoryUpdated(io, slug, reason, occurredAt = new Date().toISOString()) {
+  const normalizedSlug = String(slug ?? "").trim();
+  const normalizedReason = String(reason ?? "").trim();
+  if (!io || !normalizedSlug || !normalizedReason) return;
+  const payload = {
+    slug: normalizedSlug,
+    reason: normalizedReason,
+    occurredAt,
+  };
+  io.to(`char:${normalizedSlug}`).emit("character:inventory-updated", payload);
+  return payload;
+}
+
+function nextCharacterRevision(previousRevision = null) {
+  const now = Date.now();
+  const previousTime = Date.parse(String(previousRevision ?? ""));
+  return new Date(Number.isFinite(previousTime) && previousTime >= now ? previousTime + 1 : now).toISOString();
+}
+
+function writeCharacter(slug, data, { expectedRevision = undefined } = {}) {
   const basicInfo = data?.basicInfo ?? {};
   const createdByUserId = data?.createdBy?.userId ?? null;
   const existing = sqlite
-    .prepare('SELECT id, ownerUserId, createdByUserId, createdAt, archivedAt FROM "Character" WHERE slug = ? LIMIT 1')
+    .prepare('SELECT id, ownerUserId, createdByUserId, createdAt, archivedAt, updatedAt FROM "Character" WHERE slug = ? LIMIT 1')
     .get(slug);
+
+  if (existing && expectedRevision !== undefined && String(existing.updatedAt ?? "") !== String(expectedRevision)) {
+    const error = new Error("Il personaggio e stato modificato da un'altra operazione.");
+    error.code = "REVISION_CONFLICT";
+    throw error;
+  }
 
   const payload = {
     id: existing?.id ?? slug,
@@ -8709,11 +8746,11 @@ function writeCharacter(slug, data) {
     archivedAt: existing?.archivedAt ?? null,
     data: JSON.stringify(data),
     createdAt: existing?.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextCharacterRevision(existing?.updatedAt),
   };
 
   if (existing) {
-    sqlite.prepare(`
+    const result = sqlite.prepare(`
       UPDATE "Character"
       SET
         name = ?,
@@ -8729,7 +8766,7 @@ function writeCharacter(slug, data) {
         archivedAt = ?,
         data = ?,
         updatedAt = ?
-      WHERE slug = ?
+      WHERE slug = ?${expectedRevision !== undefined ? " AND updatedAt = ?" : ""}
     `).run(
       payload.name,
       payload.characterType,
@@ -8744,9 +8781,15 @@ function writeCharacter(slug, data) {
       payload.archivedAt,
       payload.data,
       payload.updatedAt,
-      slug
+      slug,
+      ...(expectedRevision !== undefined ? [String(expectedRevision)] : [])
     );
-    return;
+    if (!result.changes) {
+      const error = new Error("Il personaggio e stato modificato da un'altra operazione.");
+      error.code = "REVISION_CONFLICT";
+      throw error;
+    }
+    return payload.updatedAt;
   }
 
   sqlite.prepare(`
@@ -8773,6 +8816,7 @@ function writeCharacter(slug, data) {
     payload.updatedAt
   );
   ensureCharacterCurrencyBalanceForCharacter(payload.id);
+  return payload.updatedAt;
 }
 
 function archiveCharacter(slug) {
@@ -9626,45 +9670,124 @@ function resetCharacterItemFeatureStatesForRest(characterSlugs, restType) {
   `).run(now, now, ...normalizedSlugs, ...resetValues);
 }
 
-// Optional: debounce writes per slug to avoid hammering the disk.
-// Keep the latest in-memory state so rapid patches merge with each other instead
-// of repeatedly starting from the last state already persisted to SQLite.
-const persistTimers = new Map();
-const pendingCharacterStates = new Map();
+// Every mutation of Character.data is committed through one FIFO queue per slug.
+// The durable Character.updatedAt value is also the optimistic revision token.
+const characterMutationQueues = new Map();
 
-function readLatestCharacterState(slug) {
-  return pendingCharacterStates.has(slug)
-    ? pendingCharacterStates.get(slug)
-    : readCharacter(slug);
-}
-
-function cancelScheduledCharacterWrite(slug) {
-  const timer = persistTimers.get(slug);
-  if (timer) clearTimeout(timer);
-  persistTimers.delete(slug);
-}
-
-function scheduleWrite(slug, state) {
-  pendingCharacterStates.set(slug, state);
-  cancelScheduledCharacterWrite(slug);
-  const t = setTimeout(() => {
-    if (persistTimers.get(slug) !== t) return;
-    const latestState = pendingCharacterStates.get(slug);
-    persistTimers.delete(slug);
-    if (!latestState) return;
-    try {
-      writeCharacter(slug, latestState);
-      if (pendingCharacterStates.get(slug) === latestState) {
-        pendingCharacterStates.delete(slug);
-      }
-    } catch (e) {
-      console.error(`[server] persist failed for ${slug}:`, e);
-      if (pendingCharacterStates.get(slug) === latestState) {
-        pendingCharacterStates.delete(slug);
-      }
+function enqueueCharacterMutation(slug, mutation) {
+  const normalizedSlug = String(slug ?? "").trim();
+  const previous = characterMutationQueues.get(normalizedSlug) ?? Promise.resolve();
+  const task = previous.catch(() => undefined).then(mutation);
+  const tail = task.catch(() => undefined);
+  characterMutationQueues.set(normalizedSlug, tail);
+  tail.then(() => {
+    if (characterMutationQueues.get(normalizedSlug) === tail) {
+      characterMutationQueues.delete(normalizedSlug);
     }
-  }, 200);
-  persistTimers.set(slug, t);
+  });
+  return task;
+}
+
+function enqueueCharacterMutations(slugs, mutation) {
+  const normalizedSlugs = Array.from(new Set(
+    (Array.isArray(slugs) ? slugs : []).map((slug) => String(slug ?? "").trim()).filter(Boolean)
+  )).sort();
+  const previous = normalizedSlugs.map((slug) => characterMutationQueues.get(slug) ?? Promise.resolve());
+  const task = Promise.all(previous.map((entry) => entry.catch(() => undefined))).then(mutation);
+  const tail = task.catch(() => undefined);
+  for (const slug of normalizedSlugs) characterMutationQueues.set(slug, tail);
+  tail.then(() => {
+    for (const slug of normalizedSlugs) {
+      if (characterMutationQueues.get(slug) === tail) characterMutationQueues.delete(slug);
+    }
+  });
+  return task;
+}
+
+function createCharacterMutationError(code, message, snapshot = null) {
+  const error = new Error(message);
+  error.code = code;
+  error.snapshot = snapshot;
+  return error;
+}
+
+function commitCharacterMutation(slug, {
+  expectedRevision = undefined,
+  authorize = null,
+  mutate,
+  afterCommit = null,
+}) {
+  return enqueueCharacterMutation(slug, () => {
+    if (typeof authorize === "function") authorize();
+
+    const snapshot = readCharacterSnapshot(slug);
+    if (!snapshot) {
+      throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+    }
+    if (
+      expectedRevision !== undefined &&
+      expectedRevision !== null &&
+      String(expectedRevision) !== snapshot.revision
+    ) {
+      throw createCharacterMutationError(
+        "REVISION_CONFLICT",
+        "Il personaggio e stato modificato da un'altra operazione.",
+        snapshot
+      );
+    }
+
+    const mutation = mutate(snapshot.state, snapshot);
+    if (!mutation || mutation.write === false) {
+      return {
+        slug,
+        revision: snapshot.revision,
+        state: snapshot.state,
+        patch: mutation?.patch ?? null,
+        meta: mutation?.meta ?? null,
+        committed: false,
+      };
+    }
+
+    const nextState = mutation.state ?? mutation;
+    let revision;
+    runInTransaction(() => {
+      revision = writeCharacter(slug, nextState, { expectedRevision: snapshot.revision });
+    });
+    if (typeof afterCommit === "function") {
+      afterCommit(nextState, mutation, snapshot, revision);
+    }
+
+    const committedSnapshot = readCharacterSnapshot(slug);
+    return {
+      slug,
+      revision: committedSnapshot?.revision ?? revision,
+      state: committedSnapshot?.state ?? nextState,
+      patch: mutation.patch ?? null,
+      meta: mutation.meta ?? null,
+      committed: true,
+    };
+  });
+}
+
+function buildCharacterStatePayload(slug, snapshotOrState = null) {
+  const snapshot = snapshotOrState?.state && snapshotOrState?.revision !== undefined
+    ? snapshotOrState
+    : readCharacterSnapshot(slug);
+  if (!snapshot?.state) return null;
+
+  return {
+    slug,
+    revision: snapshot.revision,
+    state: snapshot.state,
+  };
+}
+
+function buildCharacterPatchPayload(result) {
+  return {
+    slug: result.slug,
+    revision: result.revision,
+    patch: result.patch ?? {},
+  };
 }
 
 // ---- App ----
@@ -9747,6 +9870,22 @@ async function start() {
       if (req.user.role !== role) return res.status(403).json({ error: "Forbidden" });
       next();
     };
+  }
+
+  function disconnectSocketsForSession(sessionId) {
+    if (!sessionId) return;
+    io.in(`session:${sessionId}`).disconnectSockets(true);
+  }
+
+  function disconnectSocketsForUser(userId) {
+    if (!userId) return;
+    io.in(`user:${userId}`).disconnectSockets(true);
+  }
+
+  function revokeCharacterRoomAccess(slug, userId) {
+    if (!slug || !userId) return;
+    io.to(`user:${userId}`).emit("character:access-revoked", { slug });
+    io.in(`user:${userId}`).socketsLeave(`char:${slug}`);
   }
 
   app.use("/portraits", requireAuth, express.static(PORTRAIT_DIR, {
@@ -9927,6 +10066,7 @@ async function start() {
 
   app.post("/api/auth/logout", (req, res) => {
     if (req.sessionId) deleteSessionById(req.sessionId);
+    disconnectSocketsForSession(req.sessionId);
     res.setHeader("Set-Cookie", serializeExpiredSessionCookie(req));
     return res.status(204).end();
   });
@@ -9954,6 +10094,7 @@ async function start() {
     }
 
     deleteSessionsByUserId(req.user.id);
+    disconnectSocketsForUser(req.user.id);
     const sessionId = createSession(updatedUser.id);
     res.setHeader("Set-Cookie", serializeSessionCookie(sessionId, req));
     return res.json(sanitizeUser(updatedUser, readOwnership()));
@@ -10028,6 +10169,7 @@ async function start() {
     }
 
     deleteSessionsByUserId(userId);
+    disconnectSocketsForUser(userId);
     return res.json({
       ...sanitizeUserForAdmin(updatedUser, readOwnership()),
       temporaryPassword,
@@ -10044,6 +10186,8 @@ async function start() {
     if (!result.changes) {
       return res.status(404).json({ error: "User not found" });
     }
+
+    disconnectSocketsForUser(userId);
 
     return res.status(204).end();
   });
@@ -10065,6 +10209,7 @@ async function start() {
     const slug = req.params.slug;
     const userId = req.body?.userId ?? null;
     const ownership = readOwnership();
+    const previousOwnerUserId = ownership[slug] ?? null;
 
     if (!listCharacterSlugs().includes(slug)) {
       return res.status(404).json({ error: "Character not found" });
@@ -10081,6 +10226,9 @@ async function start() {
     }
 
     writeOwnership(ownership);
+    if (previousOwnerUserId && previousOwnerUserId !== (ownership[slug] ?? null)) {
+      revokeCharacterRoomAccess(slug, previousOwnerUserId);
+    }
     return res.json({ slug, userId: ownership[slug] ?? null });
   });
 
@@ -10577,9 +10725,17 @@ async function start() {
       if (!currentOffer) return res.status(409).json({ error: "Negotiation has no offer" });
       if (shopOfferProposerSide(currentOffer) === shopActorSide(req.user)) return res.status(409).json({ error: "The other side must accept this offer" });
       acceptShopNegotiationAtomically(negotiation, currentOffer, req.user?.id ?? null, shopActorSide(req.user));
+      broadcastCharacterInventoryUpdated(
+        io,
+        negotiation.characterSlug,
+        negotiation.direction === "SHOP_TO_CHARACTER" ? "shop-purchase" : "shop-sale"
+      );
       broadcastShopNegotiationState(io, negotiation.visitId);
       const characterState = readCharacter(negotiation.characterSlug);
-      if (characterState) io.to(`char:${negotiation.characterSlug}`).emit("character:state", characterState);
+      if (characterState) {
+        const payload = buildCharacterStatePayload(negotiation.characterSlug);
+        if (payload) io.to(`char:${negotiation.characterSlug}`).emit("character:state", payload);
+      }
       return res.json(serializeShopVisitDetail(readShopVisitById(negotiation.visitId), { dm: req.user?.role === "dm" }));
     } catch (error) {
       return res.status(400).json({ error: String(error?.message ?? error) });
@@ -10792,6 +10948,7 @@ async function start() {
 
     try {
       const items = assignItemDefinitionToCharacter(slug, req.body ?? {}, req.user?.id ?? null);
+      broadcastCharacterInventoryUpdated(io, slug, "item-assigned");
       return res.status(201).json(items);
     } catch (error) {
       const message = String(error?.message ?? error);
@@ -10880,6 +11037,7 @@ async function start() {
         sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
       });
 
+      broadcastCharacterInventoryUpdated(io, character.slug, "item-removed");
       return res.status(204).end();
     });
 
@@ -10896,6 +11054,14 @@ async function start() {
       if (!item) {
         return res.status(404).json({ error: "Character item not found" });
       }
+      const reason = req.body?.featureState && typeof req.body.featureState === "object"
+        ? "feature-state-updated"
+        : req.body?.isEquipped === true
+          ? "item-equipped"
+          : req.body?.isEquipped === false
+            ? "item-unequipped"
+            : "item-updated";
+      broadcastCharacterInventoryUpdated(io, slug, reason);
       return res.json(item);
       } catch (error) {
         const message = String(error?.message ?? error);
@@ -10919,6 +11085,10 @@ async function start() {
         req.body ?? {},
         req.user?.id ?? null
       );
+      const occurredAt = new Date().toISOString();
+      for (const affectedSlug of new Set([slug, String(req.body?.toCharacterSlug ?? "").trim()])) {
+        if (affectedSlug) broadcastCharacterInventoryUpdated(io, affectedSlug, "item-transferred", occurredAt);
+      }
       return res.json(items);
     } catch (error) {
       const message = String(error?.message ?? error);
@@ -10933,7 +11103,20 @@ async function start() {
 
   app.post("/api/inventory-transactions/:transactionId/undo", requireRole("dm"), (req, res) => {
     try {
-      return res.json(undoInventoryTransfer(req.params.transactionId, req.user?.id ?? null));
+      const transaction = sqlite.prepare(`
+        SELECT fc.slug AS fromCharacterSlug, tc.slug AS toCharacterSlug
+        FROM "InventoryTransaction" t
+        LEFT JOIN "Character" fc ON fc.id = t.fromCharacterId
+        LEFT JOIN "Character" tc ON tc.id = t.toCharacterId
+        WHERE t.id = ?
+        LIMIT 1
+      `).get(req.params.transactionId);
+      const result = undoInventoryTransfer(req.params.transactionId, req.user?.id ?? null);
+      const occurredAt = new Date().toISOString();
+      for (const slug of new Set([transaction?.fromCharacterSlug, transaction?.toCharacterSlug])) {
+        if (slug) broadcastCharacterInventoryUpdated(io, slug, "item-transfer-undone", occurredAt);
+      }
+      return res.json(result);
     } catch (error) {
       const message = String(error?.message ?? error);
       const status = Number(error?.statusCode) || (/not found/i.test(message) ? 404 : 400);
@@ -10945,10 +11128,16 @@ async function start() {
     try {
       const result = undoShopOperationAtomically(req.params.operationId, req.user?.id ?? null);
       try {
+        if (result.characterSlug) {
+          broadcastCharacterInventoryUpdated(io, result.characterSlug, "shop-trade-undone");
+        }
         if (result.visitId) broadcastShopNegotiationState(io, result.visitId);
         if (result.characterSlug) {
           const state = readCharacter(result.characterSlug);
-          if (state) io.to(`char:${result.characterSlug}`).emit("character:state", state);
+          if (state) {
+            const payload = buildCharacterStatePayload(result.characterSlug);
+            if (payload) io.to(`char:${result.characterSlug}`).emit("character:state", payload);
+          }
         }
       } catch (broadcastError) {
         console.error("Shop undo committed, but realtime refresh failed", broadcastError);
@@ -10991,7 +11180,8 @@ async function start() {
         if (!row?.slug) continue;
         const state = readCharacter(row.slug);
         if (state) {
-          io.to(`char:${row.slug}`).emit("character:state", state);
+          const payload = buildCharacterStatePayload(row.slug);
+          if (payload) io.to(`char:${row.slug}`).emit("character:state", payload);
         }
       }
       return res.json({ ok: true });
@@ -11638,7 +11828,7 @@ async function start() {
     return res.json({ documents: listCampaignDocumentsForCharacterSlugs(visibleSlugs) });
   });
 
-  app.post("/api/dm/rests/apply", requireRole("dm"), (req, res) => {
+  app.post("/api/dm/rests/apply", requireRole("dm"), async (req, res) => {
     const restType = String(req.body?.type ?? "").trim().toLowerCase();
     if (restType !== "short" && restType !== "long") {
       return res.status(400).json({ error: "Tipo di riposo non valido." });
@@ -11663,30 +11853,61 @@ async function start() {
       return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
     }
 
-    const changedCharacters = [];
-    const summaries = [];
+    let results;
+    try {
+      const targetSlugs = targetCharacters.map((character) => character.slug);
+      results = await enqueueCharacterMutations(targetSlugs, () => {
+        const session = getSessionById(req.sessionId);
+        const user = session?.userId ? getUserById(session.userId) : null;
+        if (!user || user.id !== req.user?.id || user.role !== "dm") {
+          throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non piu valida.");
+        }
 
-    runInTransaction(() => {
-      for (const character of targetCharacters) {
-        const result = applyCharacterRest(character, restType);
-        summaries.push(result.summary);
-        if (!result.summary.applied) continue;
+        const prepared = targetSlugs.map((slug) => {
+          assertCharacterInventoryNotInActiveShopVisit({ characterSlug: slug });
+          const snapshot = readCharacterSnapshot(slug);
+          if (!snapshot) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+          const rest = applyCharacterRest(snapshot.state, restType);
+          return { slug, snapshot, rest };
+        });
 
-        writeCharacter(result.character.slug, result.character);
-        changedCharacters.push(result.character);
-      }
+        runInTransaction(() => {
+          for (const entry of prepared) {
+            if (!entry.rest.summary.applied) continue;
+            entry.revision = writeCharacter(entry.slug, entry.rest.character, {
+              expectedRevision: entry.snapshot.revision,
+            });
+          }
+          resetCharacterItemFeatureStatesForRest(
+            prepared.filter((entry) => entry.rest.summary.applied).map((entry) => entry.slug),
+            restType
+          );
+        });
 
-      resetCharacterItemFeatureStatesForRest(
-        changedCharacters.map((character) => character.slug),
-        restType
-      );
-    });
+        return prepared.map((entry) => {
+          const committedSnapshot = entry.rest.summary.applied ? readCharacterSnapshot(entry.slug) : entry.snapshot;
+          return {
+            slug: entry.slug,
+            revision: committedSnapshot?.revision ?? entry.revision ?? entry.snapshot.revision,
+            state: committedSnapshot?.state ?? entry.rest.character,
+            patch: null,
+            meta: { summary: entry.rest.summary },
+            committed: entry.rest.summary.applied,
+          };
+        });
+      });
+    } catch (error) {
+      const status = error?.code === "AUTH_REQUIRED" ? 401 : Number(error?.statusCode) || 400;
+      return res.status(status).json({ error: String(error?.message ?? error) });
+    }
 
-    for (const character of changedCharacters) {
-      const state = readCharacter(character.slug);
-      if (state) {
-        io.to(`char:${character.slug}`).emit("character:state", state);
-      }
+    const changedCharacters = results.filter((result) => result.committed);
+    const summaries = results.map((result) => result.meta?.summary).filter(Boolean);
+
+    for (const result of changedCharacters) {
+      broadcastCharacterInventoryUpdated(io, result.slug, `${restType}-rest-feature-reset`);
+      const payload = buildCharacterStatePayload(result.slug, result);
+      if (payload) io.to(`char:${result.slug}`).emit("character:state", payload);
     }
 
     const initiativeState = readInitiativeTrackerState();
@@ -11701,7 +11922,10 @@ async function start() {
     return res.json({
       ok: true,
       type: restType,
-      updatedCharacters: changedCharacters.map((character) => readCharacter(character.slug)).filter(Boolean),
+      updatedCharacters: changedCharacters.map((result) => ({
+        ...result.state,
+        revision: result.revision,
+      })),
       summaries,
     });
   });
@@ -11990,12 +12214,14 @@ async function start() {
 
     const sourceState = readCharacter(slug);
     if (sourceState) {
-      io.to(`char:${slug}`).emit("character:state", sourceState);
+      const payload = buildCharacterStatePayload(slug);
+      if (payload) io.to(`char:${slug}`).emit("character:state", payload);
     }
     if (targetCharacter?.slug) {
       const targetState = readCharacter(targetCharacter.slug);
       if (targetState) {
-        io.to(`char:${targetCharacter.slug}`).emit("character:state", targetState);
+        const payload = buildCharacterStatePayload(targetCharacter.slug);
+        if (payload) io.to(`char:${targetCharacter.slug}`).emit("character:state", payload);
       }
     }
 
@@ -12064,14 +12290,14 @@ async function start() {
     });
   });
 
-  app.delete("/api/characters/:slug", requireRole("dm"), (req, res) => {
+  app.delete("/api/characters/:slug", requireRole("dm"), async (req, res) => {
     const slug = req.params.slug;
 
     if (!listCharacterSlugs().includes(slug)) {
       return res.status(404).json({ error: "Character not found" });
     }
 
-    const archivedPath = archiveCharacter(slug);
+    const archivedPath = await enqueueCharacterMutation(slug, () => archiveCharacter(slug));
     if (!archivedPath) {
       return res.status(500).json({ error: "Archive failed" });
     }
@@ -12083,6 +12309,8 @@ async function start() {
     }
 
     deleteLegacyCharacterChatConversation(slug);
+    io.to(`char:${slug}`).emit("character:access-revoked", { slug });
+    io.in(`char:${slug}`).socketsLeave(`char:${slug}`);
 
     return res.status(204).end();
   });
@@ -12184,81 +12412,201 @@ async function start() {
     pendingPresenceRemovalBySocket.set(socketId, timer);
   };
 
-  function getSocketUser(socket) {
+  function getSocketIdentity(socket) {
     const cookies = parseCookies(socket.request.headers.cookie);
     const sessionId = cookies[SESSION_COOKIE];
     const session = getSessionById(sessionId);
     if (sessionId && session) touchSession(sessionId);
-    return session?.userId ? getUserById(session.userId) : null;
+    const refreshedSession = sessionId && session ? getSessionById(sessionId) : null;
+    return {
+      sessionId: sessionId ?? null,
+      session: refreshedSession,
+      user: refreshedSession?.userId ? getUserById(refreshedSession.userId) : null,
+    };
+  }
+
+  function scheduleSocketSessionExpiry(socket, session) {
+    if (socket.data.sessionExpiryTimer) clearTimeout(socket.data.sessionExpiryTimer);
+    socket.data.sessionExpiryTimer = null;
+    if (!session?.expiresAt) return;
+
+    const remainingMs = Math.max(1, Date.parse(session.expiresAt) - Date.now());
+    const delay = Math.min(remainingMs + 25, 2_147_000_000);
+    socket.data.sessionExpiryTimer = setTimeout(() => {
+      const current = getSessionById(socket.data.sessionId);
+      if (!current || current.userId !== socket.data.user?.id) {
+        socket.emit("auth:session-revoked", { reason: "SESSION_EXPIRED" });
+        socket.disconnect(true);
+        return;
+      }
+      scheduleSocketSessionExpiry(socket, current);
+    }, delay);
+  }
+
+  function requireLiveSocketUser(socket) {
+    const session = getSessionById(socket.data.sessionId);
+    const user = session?.userId ? getUserById(session.userId) : null;
+    if (!session || !user || user.id !== socket.data.user?.id) {
+      socket.emit("auth:session-revoked", { reason: "SESSION_INVALID" });
+      socket.disconnect(true);
+      return null;
+    }
+    touchSession(session.id);
+    const refreshedSession = getSessionById(session.id);
+    socket.data.user = user;
+    scheduleSocketSessionExpiry(socket, refreshedSession);
+    return user;
+  }
+
+  function createSocketAcknowledger(acknowledge) {
+    let acknowledged = false;
+    return (response) => {
+      if (acknowledged || typeof acknowledge !== "function") return;
+      acknowledged = true;
+      acknowledge(response);
+    };
   }
 
   io.on("connection", (socket) => {
-    const user = getSocketUser(socket);
+    const identity = getSocketIdentity(socket);
+    const user = identity.user;
+    socket.data.sessionId = identity.sessionId;
     socket.data.user = user;
+    socket.data.characterSlugs = new Set();
     console.log(`[server] socket connected ${socket.id} from ${socket.handshake.address} user=${user?.username ?? "anon"}`);
     if (user?.id) {
+      socket.join(`session:${identity.sessionId}`);
       socket.join(`user:${user.id}`);
       if (user.role === "dm") socket.join("role:dm");
       socket.emit("game-session:state", readGameSessionState());
+      scheduleSocketSessionExpiry(socket, identity.session);
     }
 
-    socket.on("character:join", (slug) => {
+    socket.on("character:join", (payload, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
+      const slug = typeof payload === "string" ? payload.trim() : String(payload?.slug ?? "").trim();
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) {
+        ack({ ok: false, code: "AUTH_REQUIRED", error: "Sessione non valida." });
+        return;
+      }
       const ownership = readOwnership();
-      if (!canAccessCharacter(socket.data.user, slug, ownership)) return;
-
-      socket.join(`char:${slug}`);
-      const state = readLatestCharacterState(slug);
-      if (state) socket.emit("character:state", state);
-    });
-
-    socket.on("character:update", ({ slug, patch }) => {
-      if (!slug || !patch) return;
-
-      const ownership = readOwnership();
-      if (!canEditCharacter(socket.data.user, slug, ownership)) return;
-      if (!canUserWriteDuringSession(socket.data.user)) {
-        socket.emit("game-session:state", readGameSessionState());
+      if (!slug || !canAccessCharacter(liveUser, slug, ownership)) {
+        ack({ ok: false, code: "FORBIDDEN", error: "Accesso al personaggio non autorizzato." });
         return;
       }
 
-      const current = readLatestCharacterState(slug) || {};
-      const next = deepMerge(current, patch);
-      scheduleWrite(slug, next);
-      socket.to(`char:${slug}`).emit("character:patch", { slug, patch });
-      socket.emit("character:state", next);
+      socket.join(`char:${slug}`);
+      socket.data.characterSlugs.add(slug);
+      const statePayload = buildCharacterStatePayload(slug);
+      if (!statePayload) {
+        socket.leave(`char:${slug}`);
+        socket.data.characterSlugs.delete(slug);
+        ack({ ok: false, code: "CHARACTER_NOT_FOUND", error: "Personaggio non trovato." });
+        return;
+      }
+      socket.emit("character:state", statePayload);
+      ack({ ok: true, slug, revision: statePayload.revision, state: statePayload.state });
+    });
 
-      const initiativeState = readInitiativeTrackerState();
-      if (initiativeState.players.some((entry) => entry.slug === slug)) {
-        setTimeout(() => {
-          try {
-            broadcastInitiativeTrackerState(io);
-          } catch {}
-        }, 60);
+    socket.on("character:leave", (payload, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
+      const requestedSlug = typeof payload === "string" ? payload.trim() : String(payload?.slug ?? "").trim();
+      if (requestedSlug) {
+        socket.leave(`char:${requestedSlug}`);
+        socket.data.characterSlugs.delete(requestedSlug);
+      } else {
+        for (const slug of socket.data.characterSlugs) socket.leave(`char:${slug}`);
+        socket.data.characterSlugs.clear();
+      }
+      ack({ ok: true, slug: requestedSlug || null });
+    });
+
+    socket.on("character:update", async (payload = {}, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
+      const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
+      const patch = payload?.patch;
+      if (!slug || !patch || typeof patch !== "object" || Array.isArray(patch)) {
+        ack({ ok: false, code: "INVALID_PATCH", error: "Patch del personaggio non valida." });
+        return;
+      }
+
+      try {
+        const result = await commitCharacterMutation(slug, {
+          expectedRevision: payload?.revision ?? payload?.expectedRevision,
+          authorize: () => {
+            const liveUser = requireLiveSocketUser(socket);
+            if (!liveUser) throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non valida.");
+            const ownership = readOwnership();
+            if (!canEditCharacter(liveUser, slug, ownership)) {
+              throw createCharacterMutationError("FORBIDDEN", "Modifica del personaggio non autorizzata.");
+            }
+            if (!canUserWriteDuringSession(liveUser)) {
+              socket.emit("game-session:state", readGameSessionState());
+              throw createCharacterMutationError("SESSION_CLOSED", "La sessione e chiusa. Le modifiche del personaggio sono bloccate.");
+            }
+          },
+          mutate: (current, snapshot) => {
+            const next = deepMerge(current, patch);
+            const includesDeathSaves =
+              patch?.combatStats &&
+              typeof patch.combatStats === "object" &&
+              !Array.isArray(patch.combatStats) &&
+              Object.prototype.hasOwnProperty.call(patch.combatStats, "deathSaves");
+            const currentDeathSaves = current?.combatStats?.deathSaves ?? {};
+            const nextDeathSaves = next?.combatStats?.deathSaves ?? {};
+            const changesDeathSaves =
+              includesDeathSaves &&
+              (Number(currentDeathSaves.successes ?? 0) !== Number(nextDeathSaves.successes ?? 0) ||
+                Number(currentDeathSaves.failures ?? 0) !== Number(nextDeathSaves.failures ?? 0));
+            if (changesDeathSaves && Number(next?.combatStats?.currentHitPoints) !== 0) {
+              throw createCharacterMutationError(
+                "DEATH_SAVES_REQUIRE_ZERO_HP",
+                "I tiri salvezza contro morte sono modificabili solo a 0 PF.",
+                snapshot
+              );
+            }
+            return { state: next, patch };
+          },
+        });
+
+        const patchPayload = buildCharacterPatchPayload(result);
+        const statePayload = buildCharacterStatePayload(slug, result);
+        socket.to(`char:${slug}`).emit("character:patch", patchPayload);
+        socket.emit("character:state", statePayload);
+        ack({ ok: true, ...patchPayload, state: result.state });
+
+        const initiativeState = readInitiativeTrackerState();
+        if (initiativeState.players.some((entry) => entry.slug === slug)) {
+          setTimeout(() => {
+            try {
+              broadcastInitiativeTrackerState(io);
+            } catch {}
+          }, 60);
+        }
+      } catch (error) {
+        const mayReturnCanonicalState =
+          error?.code === "REVISION_CONFLICT" || error?.code === "DEATH_SAVES_REQUIRE_ZERO_HP";
+        const snapshot = mayReturnCanonicalState ? error?.snapshot ?? readCharacterSnapshot(slug) : null;
+        const statePayload = snapshot ? buildCharacterStatePayload(slug, snapshot) : null;
+        if (statePayload) socket.emit("character:state", statePayload);
+        ack({
+          ok: false,
+          code: error?.code ?? "PERSIST_FAILED",
+          error: String(error?.message ?? "Non e stato possibile salvare il personaggio."),
+          slug,
+          revision: snapshot?.revision,
+          state: snapshot?.state,
+        });
       }
     });
 
-    socket.on("character:convert-spell-slots", (payload, acknowledge) => {
-      let acknowledged = false;
-      const ack = (response) => {
-        if (acknowledged || typeof acknowledge !== "function") return;
-        acknowledged = true;
-        acknowledge(response);
-      };
+    socket.on("character:convert-spell-slots", async (payload, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
       try {
       const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
       if (!slug) {
         ack({ ok: false, error: "Personaggio non valido." });
-        return;
-      }
-
-      const ownership = readOwnership();
-      if (!canEditCharacter(socket.data.user, slug, ownership)) {
-        ack({ ok: false, error: "Non sei autorizzato a modificare questo personaggio." });
-        return;
-      }
-      if (!canUserWriteDuringSession(socket.data.user)) {
-        socket.emit("game-session:state", readGameSessionState());
-        ack({ ok: false, error: "La sessione \u00e8 chiusa. Le modifiche del personaggio sono bloccate." });
         return;
       }
 
@@ -12281,66 +12629,96 @@ async function start() {
         ack({ ok: false, error: "La richiesta di conversione degli slot non \u00e8 valida." });
         return;
       }
-      const receiptKey = spellSlotConversionReceiptKey(socket.data.user.id, slug, requestId);
-      const existingReceipt = readSpellSlotConversionReceipt(receiptKey);
-      if (existingReceipt) {
-        if (existingReceipt.signature !== requestSignature) {
-          ack({ ok: false, error: "Questo identificativo richiesta \u00e8 gi\u00e0 stato usato con un payload diverso." });
-          return;
-        }
-        const latestState = readLatestCharacterState(slug);
-        if (latestState) socket.emit("character:state", latestState);
-        ack(existingReceipt.result);
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) {
+        ack({ ok: false, code: "AUTH_REQUIRED", error: "Sessione non valida." });
+        return;
+      }
+      const receiptKey = spellSlotConversionReceiptKey(liveUser.id, slug, requestId);
+      const requestedRevision = payload?.revision ?? payload?.expectedRevision;
+      const mutationResult = await commitCharacterMutation(slug, {
+        authorize: () => {
+          const currentUser = requireLiveSocketUser(socket);
+          if (!currentUser) throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non valida.");
+          const ownership = readOwnership();
+          if (!canEditCharacter(currentUser, slug, ownership)) {
+            throw createCharacterMutationError("FORBIDDEN", "Modifica del personaggio non autorizzata.");
+          }
+          if (!canUserWriteDuringSession(currentUser)) {
+            socket.emit("game-session:state", readGameSessionState());
+            throw createCharacterMutationError("SESSION_CLOSED", "La sessione e chiusa. Le modifiche del personaggio sono bloccate.");
+          }
+        },
+        mutate: (current, snapshot) => {
+          const existingReceipt = readSpellSlotConversionReceipt(receiptKey);
+          if (existingReceipt) {
+            if (existingReceipt.signature !== requestSignature) {
+              throw createCharacterMutationError("REQUEST_ID_REUSED", "Questo identificativo richiesta e gia stato usato con un payload diverso.");
+            }
+            return { write: false, meta: { receipt: existingReceipt.result } };
+          }
+
+          if (
+            requestedRevision !== undefined &&
+            requestedRevision !== null &&
+            String(requestedRevision) !== snapshot.revision
+          ) {
+            throw createCharacterMutationError(
+              "REVISION_CONFLICT",
+              "Il personaggio e stato modificato da un'altra operazione.",
+              snapshot
+            );
+          }
+
+          const currentSlotState = canonicalizeSpellSlotState(current?.combatStats?.spellSlots);
+          if (JSON.stringify(currentSlotState) !== JSON.stringify(expectedSlotState)) {
+            throw createCharacterMutationError(
+              "STALE_SLOT_STATE",
+              "Lo stato degli slot e cambiato. Riapri la conversione e verifica la selezione.",
+              snapshot
+            );
+          }
+          const conversion = prepareSpellSlotConversion(current, payload?.targetLevel, payload?.selections);
+          if (!conversion.ok) throw createCharacterMutationError("INVALID_CONVERSION", conversion.error, snapshot);
+          return { state: conversion.next, patch: conversion.patch, meta: { conversion } };
+        },
+        afterCommit: (_next, mutation) => {
+          const conversion = mutation.meta.conversion;
+          const receiptResult = {
+            ok: true,
+            requestId,
+            targetLevel: conversion.targetLevel,
+            selections: conversion.selections,
+            cost: conversion.cost,
+            pointsSpent: conversion.pointsSpent,
+            excess: conversion.excess,
+          };
+          writeSpellSlotConversionReceipt(receiptKey, requestSignature, receiptResult);
+        },
+      });
+
+      const statePayload = buildCharacterStatePayload(slug, mutationResult);
+      socket.emit("character:state", statePayload);
+      if (!mutationResult.committed && mutationResult.meta?.receipt) {
+        ack({ ...mutationResult.meta.receipt, slug, revision: mutationResult.revision, state: mutationResult.state });
         return;
       }
 
-      const current = readLatestCharacterState(slug);
-      if (!current) {
-        ack({ ok: false, error: "Personaggio non trovato." });
-        return;
-      }
-      const currentSlotState = canonicalizeSpellSlotState(current?.combatStats?.spellSlots);
-      if (JSON.stringify(currentSlotState) !== JSON.stringify(expectedSlotState)) {
-        socket.emit("character:state", current);
-        ack({
-          ok: false,
-          code: "STALE_SLOT_STATE",
-          error: "Lo stato degli slot \u00e8 cambiato. Riapri la conversione e verifica la selezione.",
-        });
-        return;
-      }
-
-      const conversion = prepareSpellSlotConversion(current, payload?.targetLevel, payload?.selections);
-      if (!conversion.ok) {
-        ack({ ok: false, error: conversion.error });
-        return;
-      }
-
-      const pendingBeforeConversion = pendingCharacterStates.get(slug);
-      cancelScheduledCharacterWrite(slug);
-      try {
-        writeCharacter(slug, conversion.next);
-        pendingCharacterStates.delete(slug);
-      } catch (error) {
-        if (pendingBeforeConversion) scheduleWrite(slug, pendingBeforeConversion);
-        console.error(`[server] spell slot conversion persist failed for ${slug}:`, error);
-        ack({ ok: false, error: "Non \u00e8 stato possibile salvare la conversione degli slot." });
-        return;
-      }
-
-      const result = {
+      const conversion = mutationResult.meta.conversion;
+      const patchPayload = buildCharacterPatchPayload(mutationResult);
+      socket.to(`char:${slug}`).emit("character:patch", patchPayload);
+      ack({
         ok: true,
         requestId,
+        slug,
+        revision: mutationResult.revision,
+        state: mutationResult.state,
         targetLevel: conversion.targetLevel,
         selections: conversion.selections,
         cost: conversion.cost,
         pointsSpent: conversion.pointsSpent,
         excess: conversion.excess,
-      };
-      writeSpellSlotConversionReceipt(receiptKey, requestSignature, result);
-      socket.to(`char:${slug}`).emit("character:patch", { slug, patch: conversion.patch });
-      socket.emit("character:state", conversion.next);
-      ack(result);
+      });
 
       const initiativeState = readInitiativeTrackerState();
       if (initiativeState.players.some((entry) => entry.slug === slug)) {
@@ -12352,36 +12730,49 @@ async function start() {
       }
       } catch (error) {
         console.error("[server] spell slot conversion failed:", error);
-        ack({ ok: false, error: "Non \u00e8 stato possibile completare la conversione degli slot." });
+        const snapshot = error?.snapshot;
+        if (snapshot) socket.emit("character:state", buildCharacterStatePayload(payload?.slug, snapshot));
+        ack({
+          ok: false,
+          code: error?.code ?? "CONVERSION_FAILED",
+          error: String(error?.message ?? "Non e stato possibile completare la conversione degli slot."),
+          revision: snapshot?.revision,
+          state: snapshot?.state,
+        });
       }
     });
 
     socket.on("initiative:join-dm", () => {
-      if (socket.data.user?.role !== "dm") return;
+      const liveUser = requireLiveSocketUser(socket);
+      if (liveUser?.role !== "dm") return;
       socket.join("initiative:dm");
       socket.emit("initiative:state", readInitiativeTrackerState());
     });
 
     socket.on("initiative:join-character", (slug) => {
       const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) return;
       const ownership = readOwnership();
-      if (!normalizedSlug || !canAccessCharacter(socket.data.user, normalizedSlug, ownership)) return;
+      if (!normalizedSlug || !canAccessCharacter(liveUser, normalizedSlug, ownership)) return;
       socket.emit("initiative:player-state", buildPlayerInitiativeTrackerView(readInitiativeTrackerState(), normalizedSlug));
     });
 
     socket.on("initiative:update-state", (payload) => {
-      if (socket.data.user?.role !== "dm") return;
+      const liveUser = requireLiveSocketUser(socket);
+      if (liveUser?.role !== "dm") return;
       const nextState = writeInitiativeTrackerState(payload);
       broadcastInitiativeTrackerState(io, nextState);
     });
 
     socket.on("dm:private-message", ({ slug, title, message }) => {
+      const liveUser = requireLiveSocketUser(socket);
       const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
       const normalizedMessage = typeof message === "string" ? message.trim() : "";
       const normalizedTitle = typeof title === "string" ? title.trim() : "";
       const ownership = readOwnership();
 
-      if (socket.data.user?.role !== "dm" || !normalizedSlug || !normalizedMessage) return;
+      if (liveUser?.role !== "dm" || !normalizedSlug || !normalizedMessage) return;
 
       const ownerUserId = ownership[normalizedSlug];
       if (!ownerUserId) return;
@@ -12395,6 +12786,8 @@ async function start() {
     });
 
     socket.on("chat:conversation-message", ({ conversationId, text }) => {
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) return;
       const normalizedConversationId = typeof conversationId === "string" ? conversationId.trim() : "";
       const normalizedText = typeof text === "string" ? text.trim() : "";
       const ownership = readOwnership();
@@ -12403,7 +12796,7 @@ async function start() {
 
       const nextMessage = appendConversationMessage(
         normalizedConversationId,
-        socket.data.user,
+        liveUser,
         normalizedText,
         ownership
       );
@@ -12416,10 +12809,11 @@ async function start() {
     });
 
     socket.on("initiative:turn-start", ({ slug }) => {
+      const liveUser = requireLiveSocketUser(socket);
       const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
       const ownership = readOwnership();
 
-      if (socket.data.user?.role !== "dm" || !normalizedSlug) return;
+      if (liveUser?.role !== "dm" || !normalizedSlug) return;
 
       const ownerUserId = ownership[normalizedSlug];
       if (!ownerUserId) return;
@@ -12431,6 +12825,7 @@ async function start() {
     });
 
     socket.on("presence:snapshot", () => {
+      if (!requireLiveSocketUser(socket)) return;
       const payload = Array.from(viewersBySlug.entries())
         .map(([slug, set]) => ({ slug, count: set.size }))
         .filter(({ count }) => count > 0);
@@ -12438,10 +12833,12 @@ async function start() {
     });
 
     socket.on("presence:enter", ({ slug }) => {
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) return;
       const ownership = readOwnership();
-      if (!slug || !canAccessCharacter(socket.data.user, slug, ownership)) return;
-      if (socket.data.user?.role !== "player") return;
-      if (ownership[slug] !== socket.data.user?.id) return;
+      if (!slug || !canAccessCharacter(liveUser, slug, ownership)) return;
+      if (liveUser.role !== "player") return;
+      if (ownership[slug] !== liveUser.id) return;
       removePendingPresenceSocketsForSlug(slug);
       cancelPendingPresenceRemoval(socket.id);
       if (!viewersBySlug.has(slug)) viewersBySlug.set(slug, new Set());
@@ -12455,6 +12852,7 @@ async function start() {
     });
 
     socket.on("disconnect", () => {
+      if (socket.data.sessionExpiryTimer) clearTimeout(socket.data.sessionExpiryTimer);
       console.log(`[server] socket disconnected ${socket.id} from ${socket.handshake.address}`);
       const slug = slugBySocket.get(socket.id);
       if (!slug) return;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Heart, ShieldPlus, ShieldX, Sword, Plus, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -141,54 +141,6 @@ const HitPoints = ({
         passiveCapabilities,
         passiveEffectContext,
         resolvedAbilityData.scores,
-    ]);
-
-    useEffect(() => {
-        // Calculate max HP
-        const conMod = abilityModifier(resolvedConstitution);
-        const dice = parseInt(derivedHitDice.split("d")[1], 10);
-        const baseMaxHP = (conMod + dice) * characterData.basicInfo.level;
-        const maxHP = baseMaxHP + hitPointBonusData.bonusTotal;
-        const nextCombatStats = {
-            ...characterData.combatStats,
-            hitDice: derivedHitDice,
-            hitPointMaximum: maxHP,
-            currentHitPoints: Math.min(characterData.combatStats.currentHitPoints ?? 0, maxHP),
-        };
-
-        if (
-            characterData.combatStats.hitPointMaximum !== maxHP ||
-            characterData.combatStats.hitDice !== derivedHitDice ||
-            (characterData.combatStats.currentHitPoints ?? 0) !== nextCombatStats.currentHitPoints
-        ) {
-            setCharacterData((prev: any) => ({
-                ...prev,
-                combatStats: nextCombatStats,
-            }));
-            // Update on server (and JSON file)
-            if (characterData.slug) {
-                setTimeout(() => {
-                    updateCharacter(characterData.slug, {
-                        combatStats: {
-                            hitDice: derivedHitDice,
-                            hitPointMaximum: maxHP,
-                            currentHitPoints: nextCombatStats.currentHitPoints,
-                        },
-                    });
-                }, 500);
-            }
-        }
-    }, [
-        resolvedConstitution,
-        derivedHitDice,
-        hitPointBonusData.bonusTotal,
-        characterData.basicInfo.level,
-        characterData.basicInfo.class,
-        setCharacterData,
-        characterData.combatStats.hitPointMaximum,
-        characterData.combatStats.hitDice,
-        characterData.combatStats.currentHitPoints,
-        characterData.slug,
     ]);
 
     const applyCombatStatsUpdate = (nextCombatStats: any) => {

@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { updateCharacter } from "@/realtime";
 import { Check, Eye, Settings2, X } from "lucide-react";
 import SectionCard from "@/components/characterSheet/section-card";
@@ -32,6 +33,10 @@ const Proficiencies = ({
     passiveEffectContext = {},
     canEdit = true,
 }: any) => {
+    const isAtZeroHitPoints = Number(characterData?.combatStats?.currentHitPoints) === 0;
+    const canEditDeathSaves = canEdit && isAtZeroHitPoints;
+    const deathSavesBlockedByHitPoints = canEdit && !isAtZeroHitPoints;
+
     // ===== Edit mode per le ABILITA' =====
     const [editingSkills, setEditingSkills] = useState(false);
 
@@ -217,40 +222,46 @@ const Proficiencies = ({
                             <Label className={`${SECTION_LABEL_CLASS} mb-1`}>Riuscita</Label>
                             <div className="flex gap-3">
                                 {deathSaves.success.map((checked: boolean, i: number) => (
-                                    <label
-                                        key={`success-${i}`}
-                                        className={`flex flex-col items-center cursor-pointer ${checked ? "opacity-100" : "opacity-70"}`}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={checked}
-                                            disabled={!canEdit || (i > 0 && !deathSaves.success[i - 1])}
-                                            onChange={() => {
-                                                if (!canEdit) return;
-                                                const next = [...deathSaves.success];
-                                                next[i] = !next[i];
-                                                if (!next[i]) {
-                                                    for (let j = i + 1; j < next.length; j++) next[j] = false;
-                                                }
-                                                const successes = next.filter(Boolean).length;
-                                                setDeathSaves({ ...deathSaves, success: next });
+                                    <Tooltip key={`success-${i}`}>
+                                        <TooltipTrigger asChild>
+                                            <span className="inline-flex">
+                                                <label
+                                                    className={`flex flex-col items-center ${canEditDeathSaves ? "cursor-pointer" : "cursor-not-allowed"} ${checked ? "opacity-100" : "opacity-70"}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        disabled={!canEditDeathSaves || (i > 0 && !deathSaves.success[i - 1])}
+                                                        onChange={() => {
+                                                            if (!canEditDeathSaves) return;
+                                                            const next = [...deathSaves.success];
+                                                            next[i] = !next[i];
+                                                            if (!next[i]) {
+                                                                for (let j = i + 1; j < next.length; j++) next[j] = false;
+                                                            }
+                                                            const successes = next.filter(Boolean).length;
+                                                            setDeathSaves({ ...deathSaves, success: next });
 
-                                                if (characterData.slug) {
-                                                    updateCharacter(characterData.slug, {
-                                                        combatStats: {
-                                                            ...characterData.combatStats,
-                                                            deathSaves: {
-                                                                ...characterData.combatStats.deathSaves,
-                                                                successes,
-                                                            },
-                                                        },
-                                                    });
-                                                }
-                                            }}
-                                            aria-label={`Riuscita ${i + 1}`}
-                                            className="w-5 h-5 accent-green-600 rounded border-2 border-green-400"
-                                        />
-                                    </label>
+                                                            if (characterData.slug) {
+                                                                updateCharacter(characterData.slug, {
+                                                                    combatStats: {
+                                                                        deathSaves: {
+                                                                            successes,
+                                                                        },
+                                                                    },
+                                                                });
+                                                            }
+                                                        }}
+                                                        aria-label={`Riuscita ${i + 1}`}
+                                                        className="w-5 h-5 accent-green-600 rounded border-2 border-green-400"
+                                                    />
+                                                </label>
+                                            </span>
+                                        </TooltipTrigger>
+                                        {deathSavesBlockedByHitPoints && (
+                                            <TooltipContent>Modificabile solo quando il personaggio è a 0 PF.</TooltipContent>
+                                        )}
+                                    </Tooltip>
                                 ))}
                             </div>
                         </div>
@@ -258,40 +269,46 @@ const Proficiencies = ({
                             <Label className={`${SECTION_LABEL_CLASS} mb-1`}>Fallimento</Label>
                             <div className="flex gap-3">
                                 {deathSaves.fail.map((checked: boolean, i: number) => (
-                                    <label
-                                        key={`fail-${i}`}
-                                        className={`flex flex-col items-center cursor-pointer ${checked ? "opacity-100" : "opacity-70"}`}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={checked}
-                                            disabled={!canEdit || (i > 0 && !deathSaves.fail[i - 1])}
-                                            onChange={() => {
-                                                if (!canEdit) return;
-                                                const next = [...deathSaves.fail];
-                                                next[i] = !next[i];
-                                                if (!next[i]) {
-                                                    for (let j = i + 1; j < next.length; j++) next[j] = false;
-                                                }
-                                                const failures = next.filter(Boolean).length;
-                                                setDeathSaves({ ...deathSaves, fail: next });
+                                    <Tooltip key={`fail-${i}`}>
+                                        <TooltipTrigger asChild>
+                                            <span className="inline-flex">
+                                                <label
+                                                    className={`flex flex-col items-center ${canEditDeathSaves ? "cursor-pointer" : "cursor-not-allowed"} ${checked ? "opacity-100" : "opacity-70"}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        disabled={!canEditDeathSaves || (i > 0 && !deathSaves.fail[i - 1])}
+                                                        onChange={() => {
+                                                            if (!canEditDeathSaves) return;
+                                                            const next = [...deathSaves.fail];
+                                                            next[i] = !next[i];
+                                                            if (!next[i]) {
+                                                                for (let j = i + 1; j < next.length; j++) next[j] = false;
+                                                            }
+                                                            const failures = next.filter(Boolean).length;
+                                                            setDeathSaves({ ...deathSaves, fail: next });
 
-                                                if (characterData.slug) {
-                                                    updateCharacter(characterData.slug, {
-                                                        combatStats: {
-                                                            ...characterData.combatStats,
-                                                            deathSaves: {
-                                                                ...characterData.combatStats.deathSaves,
-                                                                failures,
-                                                            },
-                                                        },
-                                                    });
-                                                }
-                                            }}
-                                            aria-label={`Fallimento ${i + 1}`}
-                                            className="deathsave-checkbox w-5 h-5 accent-red-600 rounded border-2 border-red-400"
-                                        />
-                                    </label>
+                                                            if (characterData.slug) {
+                                                                updateCharacter(characterData.slug, {
+                                                                    combatStats: {
+                                                                        deathSaves: {
+                                                                            failures,
+                                                                        },
+                                                                    },
+                                                                });
+                                                            }
+                                                        }}
+                                                        aria-label={`Fallimento ${i + 1}`}
+                                                        className="deathsave-checkbox w-5 h-5 accent-red-600 rounded border-2 border-red-400"
+                                                    />
+                                                </label>
+                                            </span>
+                                        </TooltipTrigger>
+                                        {deathSavesBlockedByHitPoints && (
+                                            <TooltipContent>Modificabile solo quando il personaggio è a 0 PF.</TooltipContent>
+                                        )}
+                                    </Tooltip>
                                 ))}
                             </div>
                         </div>

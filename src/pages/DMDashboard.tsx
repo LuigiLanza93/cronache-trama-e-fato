@@ -43,9 +43,12 @@ import {
   fetchCharacters,
   getOrCreateDmConversation,
   joinCharacterRoom,
+  leaveCharacterRoom,
+  onCharacterAccessRevoked,
   onConversationMessage,
   onCharacterPatch,
   onCharacterState,
+  onCharacterInventoryUpdated,
   requestPresenceSnapshot,
   subscribePresence,
 } from "@/realtime";
@@ -289,6 +292,7 @@ export default function DMDashboard() {
   const joinedRoomsRef = useRef<Set<string>>(new Set());
   const itemDefinitionsByIdRef = useRef(itemDefinitionsById);
   const onlineRefreshInFlightRef = useRef(false);
+  const inventoryRefreshInFlightBySlugRef = useRef(new Map<string, { promise: Promise<void>; dirty: boolean }>());
   const conversationsRef = useRef(conversations);
   const openChatSlugsRef = useRef(openChatSlugs);
   const minimizedChatSlugsRef = useRef(minimizedChatSlugs);
@@ -405,6 +409,13 @@ export default function DMDashboard() {
   }, []);
 
   useEffect(() => {
+    const onlineSet = new Set(onlineSlugs);
+    for (const slug of joinedRoomsRef.current) {
+      if (onlineSet.has(slug)) continue;
+      leaveCharacterRoom(slug);
+      joinedRoomsRef.current.delete(slug);
+    }
+
     onlineSlugs.forEach((slug) => {
       if (joinedRoomsRef.current.has(slug)) return;
       joinedRoomsRef.current.add(slug);
@@ -505,11 +516,87 @@ export default function DMDashboard() {
     };
   }, [onlineSlugs]);
 
+  useEffect(() => () => {
+    for (const slug of joinedRoomsRef.current) leaveCharacterRoom(slug);
+    joinedRoomsRef.current.clear();
+  }, []);
+
   useEffect(() => {
-    const offState = onCharacterState((state: CharacterState) => {
-      const slug = state?.slug;
+    const offInventoryUpdated = onCharacterInventoryUpdated(({ slug }) => {
+      if (!joinedRoomsRef.current.has(slug)) return;
+      const existing = inventoryRefreshInFlightBySlugRef.current.get(slug);
+      if (existing) {
+        existing.dirty = true;
+        return;
+      }
+
+      const request = { promise: Promise.resolve(), dirty: false };
+      request.promise = (async () => {
+        do {
+          request.dirty = false;
+          const inventoryItems = await fetchCharacterInventoryItems(slug);
+          const normalized = Array.isArray(inventoryItems) ? inventoryItems : [];
+          if (!joinedRoomsRef.current.has(slug)) return;
+          setLiveInventoryBySlug((prev) => ({ ...prev, [slug]: normalized }));
+
+          const definitionIds = Array.from(
+            new Set(
+              normalized
+                .filter((item) => item?.isEquipped && item?.itemDefinitionId)
+                .map((item) => item.itemDefinitionId)
+                .filter(
+                  (itemDefinitionId): itemDefinitionId is string =>
+                    !!itemDefinitionId && !itemDefinitionsByIdRef.current[itemDefinitionId]
+                )
+            )
+          );
+          const definitions = await Promise.all(
+            definitionIds.map(async (itemDefinitionId) => {
+              try {
+                return [itemDefinitionId, await fetchItemDefinition(itemDefinitionId)] as const;
+              } catch {
+                return null;
+              }
+            })
+          );
+          const validDefinitions = definitions.filter(
+            (entry): entry is readonly [string, ItemDefinitionEntry] => Array.isArray(entry)
+          );
+          if (validDefinitions.length > 0) {
+            setItemDefinitionsById((prev) => ({ ...prev, ...Object.fromEntries(validDefinitions) }));
+          }
+        } while (request.dirty && joinedRoomsRef.current.has(slug));
+      })().catch((error) => {
+        if (joinedRoomsRef.current.has(slug)) {
+          setErrors((prev) => [...prev, `[inventory ${slug}] ${String(error)}`]);
+        }
+      }).finally(() => {
+        if (inventoryRefreshInFlightBySlugRef.current.get(slug) === request) {
+          inventoryRefreshInFlightBySlugRef.current.delete(slug);
+        }
+      });
+
+      inventoryRefreshInFlightBySlugRef.current.set(slug, request);
+    });
+
+    return offInventoryUpdated;
+  }, []);
+
+  useEffect(() => {
+    const offAccessRevoked = onCharacterAccessRevoked((slug) => {
+      joinedRoomsRef.current.delete(slug);
+      setLiveStates((prev) => {
+        const { [slug]: _removed, ...next } = prev;
+        return next;
+      });
+      setLiveInventoryBySlug((prev) => {
+        const { [slug]: _removed, ...next } = prev;
+        return next;
+      });
+    });
+    const offState = onCharacterState(({ slug, state }) => {
       if (!slug) return;
-      setLiveStates((prev) => ({ ...prev, [slug]: state }));
+      setLiveStates((prev) => ({ ...prev, [slug]: state as CharacterState }));
     });
 
     const offPatch = onCharacterPatch(({ slug, patch }: { slug: string; patch: any }) => {
@@ -526,6 +613,9 @@ export default function DMDashboard() {
       } catch {}
       try {
         offPatch();
+      } catch {}
+      try {
+        offAccessRevoked();
       } catch {}
     };
   }, []);

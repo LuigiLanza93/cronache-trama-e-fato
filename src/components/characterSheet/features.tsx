@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import SectionCard from "@/components/characterSheet/section-card";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { convertSpellSlots, updateCharacter } from "@/realtime";
+import { convertSpellSlots, updateCharacter, updateCharacterWithAck } from "@/realtime";
 
 const MAX_SPELL_LEVEL = 12;
 const SPELL_SLOT_CONVERSION_COSTS: Record<number, number> = {
@@ -94,52 +94,6 @@ const Features = ({
         updateCharacter(characterData.slug, patch);
     };
 
-    useEffect(() => {
-        const charClass = (characterData?.basicInfo?.class ?? "").toLowerCase();
-        const level = characterData?.basicInfo?.level;
-
-        if (!charClass || !level || !spellSlotTable || Object.keys(spellSlotTable).length === 0) {
-            return;
-        }
-
-        const classProgression = spellSlotTable[charClass];
-        if (!classProgression) {
-            return;
-        }
-
-        const expectedSlots = classProgression[level] || classProgression[String(level)] || {};
-        const currentSlots = characterData.combatStats.spellSlots || {};
-
-        const patch: Record<string, any> = { combatStats: { spellSlots: {} } };
-        let needsUpdate = false;
-
-        for (let spellLvl = 1; spellLvl <= MAX_SPELL_LEVEL; spellLvl++) {
-            const expectedCount = expectedSlots[spellLvl] || 0;
-            const currentArr = currentSlots[spellLvl] || [];
-            const updated = [...currentArr];
-
-            while (updated.length < expectedCount) {
-                updated.push({ id: updated.length + 1, active: false });
-                needsUpdate = true;
-            }
-
-            if (updated.length > expectedCount) {
-                updated.length = expectedCount;
-                needsUpdate = true;
-            }
-
-            if (needsUpdate) {
-                patch.combatStats.spellSlots[spellLvl] = updated;
-            }
-        }
-
-        if (needsUpdate) {
-            setTimeout(() => {
-                updateCharacter(characterData.slug, patch);
-            }, 500);
-        }
-    }, [characterData.slug, characterData.basicInfo.class, characterData.basicInfo.level, spellSlotTable]);
-
     const orderedFeatures = [...characterData.features]
         .map((feature: any, index: number) => {
             const baseName = stripName(feature.name);
@@ -174,6 +128,41 @@ const Features = ({
         () => characterData.combatStats.spellSlots ?? {},
         [characterData.combatStats.spellSlots]
     );
+    const slotInitializationPreview = useMemo(() => {
+        const charClass = String(characterData?.basicInfo?.class ?? "").trim().toLowerCase();
+        const level = characterData?.basicInfo?.level;
+        const progression = spellSlotTable?.[charClass];
+        const expectedSlots = progression?.[level] ?? progression?.[String(level)] ?? null;
+        if (!expectedSlots) return null;
+
+        const changes: Array<{ level: number; current: number; expected: number }> = [];
+        for (let spellLevel = 1; spellLevel <= MAX_SPELL_LEVEL; spellLevel++) {
+            const current = Array.isArray(spellSlots[spellLevel]) ? spellSlots[spellLevel].length : 0;
+            const expected = Number(expectedSlots[spellLevel] ?? 0);
+            if (current !== expected) changes.push({ level: spellLevel, current, expected });
+        }
+        return changes;
+    }, [characterData?.basicInfo?.class, characterData?.basicInfo?.level, spellSlotTable, spellSlots]);
+
+    const initializeStandardSpellSlots = async () => {
+        if (!canEdit || !slotInitializationPreview?.length) return;
+        const nextSlots: Record<number, unknown[]> = {};
+        for (const { level, expected } of slotInitializationPreview) {
+            const current = Array.isArray(spellSlots[level]) ? spellSlots[level] : [];
+            nextSlots[level] = Array.from({ length: expected }, (_, index) => {
+                const existing = current[index];
+                return existing && typeof existing === "object"
+                    ? existing
+                    : { id: index + 1, active: false };
+            });
+        }
+        try {
+            await updateCharacterWithAck(characterData.slug, { combatStats: { spellSlots: nextSlots } });
+            toast.success("Slot standard inizializzati.");
+        } catch {
+            // The active sheet renders the actionable save/conflict feedback.
+        }
+    };
     const conversionTargets = useMemo(
         () => Object.keys(SPELL_SLOT_CONVERSION_COSTS)
             .map(Number)
@@ -409,6 +398,18 @@ const Features = ({
                         Slot Incantesimi
                     </span>
                     <div className="flex shrink-0 items-center gap-1.5">
+                        {slotInitializationPreview?.length ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => void initializeStandardSpellSlots()}
+                                disabled={!canEdit}
+                            >
+                                Inizializza slot
+                            </Button>
+                        ) : null}
                         {canConvertSpellSlots ? (
                             <Button
                                 type="button"
@@ -484,6 +485,11 @@ const Features = ({
                         );
                     })}
                 </div>
+                {slotInitializationPreview?.length ? (
+                    <p className="text-xs text-muted-foreground">
+                        La progressione standard propone modifiche a {slotInitializationPreview.map(({ level, current, expected }) => `L${level}: ${current}→${expected}`).join(", ")}. Applica solo con “Inizializza slot”.
+                    </p>
+                ) : null}
             </div>
         </SectionCard>
 

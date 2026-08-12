@@ -1,7 +1,7 @@
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { changePasswordRequest, fetchCurrentUser, loginRequest, logoutRequest, type AuthUser } from "@/lib/auth";
-import { resetRealtimeSocket } from "@/realtime";
+import { onRealtimeSessionRevoked, resetRealtimeSocket } from "@/realtime";
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -28,16 +28,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       const nextUser = await fetchCurrentUser();
-      resetRealtimeSocket();
+      resetRealtimeSocket({ preserveDesiredState: nextUser.id === user?.id });
       setUser(nextUser);
     } catch {
       resetRealtimeSocket();
       setUser(null);
     }
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     let active = true;
@@ -58,6 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    return onRealtimeSessionRevoked(() => {
+      // The realtime layer already invalidated queues and stopped reconnects;
+      // keep its revocation latch set until the next explicit login/reset.
+      setUser(null);
+      setLoading(false);
+    });
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -75,13 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       changePassword: async (newPassword) => {
         const nextUser = await changePasswordRequest(newPassword);
-        resetRealtimeSocket();
+        resetRealtimeSocket({ preserveDesiredState: nextUser.id === user?.id });
         setUser(nextUser);
         return nextUser;
       },
       refresh,
     }),
-    [user, loading]
+    [user, loading, refresh]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
