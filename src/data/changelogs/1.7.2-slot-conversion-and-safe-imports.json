@@ -1,0 +1,36 @@
+{
+  "version": "1.7.2",
+  "releaseName": "Conversione Slot e Import Sicuri",
+  "releasedAt": "2026-08-12",
+  "summary": "Questa release introduce una conversione controllata degli slot incantesimo consumati e rende piu' sicuro l'import dei negozi, consolidando le definizioni equivalenti senza perdere le singole istanze.",
+  "sections": [
+    {
+      "title": "Per i Player",
+      "items": [
+        "La scheda permette di sacrificare slot Spellcasting disponibili di livello inferiore per recuperare uno slot consumato, mostrando in anticipo costo, combinazione scelta ed eventuale eccedenza persa.",
+        "La selezione degli slot usa controlli compatti e un riepilogo chiaro del valore accumulato rispetto al costo richiesto.",
+        "La conversione non aumenta mai il numero massimo di slot e non e' disponibile per Warlock, Guerriero/Fighter o Ladro/Rogue finche' i rispettivi pool e sottoclassi non saranno modellati separatamente.",
+        "In caso di aggiornamenti concorrenti, la conversione rileva lo stato non piu' attuale e richiede di riprovare sui dati aggiornati, evitando consumi incoerenti."
+      ]
+    },
+    {
+      "title": "Per il DM",
+      "items": [
+        "L'import JSON dei negozi consolida le definizioni inline semanticamente equivalenti, mantenendo comunque separate le copie reali degli oggetti non stackabili.",
+        "L'anteprima dell'import indica quante definizioni nuove verranno create, quante righe riutilizzano il catalogo e quante copie equivalenti vengono consolidate.",
+        "Collisioni tra oggetti con lo stesso nome o slug ma contenuti differenti vengono bloccate prima dell'applicazione.",
+        "Campi strutturati non ammessi, stati feature duplicati e passive effect con tipi non validi vengono segnalati durante il dry-run."
+      ]
+    },
+    {
+      "title": "Novita' tecniche",
+      "items": [
+        "La conversione slot usa un evento Socket.IO dedicato con autorizzazione sulla scheda, blocco durante la sessione, validazione server-side e persistenza immediata.",
+        "Request ID, ricevute temporanee limitate e precondizione sullo stato canonico degli slot rendono sicuri retry e perdita dell'ack senza applicare due volte la stessa operazione.",
+        "Le patch rapide della scheda vengono ora unite allo stato pending piu' recente, riducendo il rischio che una modifica ravvicinata venga persa prima della scrittura SQLite.",
+        "L'import negozi confronta firme normalizzate delle definizioni inline e preserva l'ordine degli array contenuti nei campi JSON opachi.",
+        "La documentazione tecnica include un audit completo della scheda personaggio con criticita', dipendenze e test necessari prima di creazione e level-up guidati."
+      ]
+    }
+  ]
+}
