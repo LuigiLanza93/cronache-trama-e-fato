@@ -1,12 +1,12 @@
 ﻿import { useEffect } from "react";
-import { ArrowRightLeft, Plus, RotateCcw } from "lucide-react";
+import { ArrowRightLeft, Check, Minus, Plus, RotateCcw } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import SectionCard from "@/components/characterSheet/section-card";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
@@ -202,11 +202,19 @@ const Features = ({
     );
     const conversionExcess = Math.max(0, conversionValue - conversionCost);
     const conversionMissing = Math.max(0, conversionCost - conversionValue);
+    const conversionProgress = conversionCost > 0
+        ? Math.min(100, Math.round((conversionValue / conversionCost) * 100))
+        : 0;
+    const conversionBreakdown = Object.entries(conversionSelections)
+        .filter(([, quantity]) => quantity > 0)
+        .sort(([leftLevel], [rightLevel]) => Number(leftLevel) - Number(rightLevel))
+        .map(([level, quantity]) => `${quantity}× L${level}`)
+        .join(" + ");
 
     const openSlotConversion = () => {
         if (!canEdit) return;
         resetSlotConversionRequest();
-        setConversionTargetLevel(null);
+        setConversionTargetLevel(conversionTargets.length === 1 ? conversionTargets[0] : null);
         setConversionSelections({});
         setSlotConversionOpen(true);
     };
@@ -224,7 +232,8 @@ const Features = ({
     };
 
     const updateConversionSelection = (level: number, value: string) => {
-        const quantity = Math.max(0, Number(value) || 0);
+        const available = conversionSources.find((source) => source.level === level)?.available ?? 0;
+        const quantity = Math.min(available, Math.max(0, Number(value) || 0));
         setConversionSelections((current) => {
             if ((current[level] ?? 0) === quantity) return current;
             resetSlotConversionRequest();
@@ -496,60 +505,74 @@ const Features = ({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <div className="space-y-5">
                     <div className="space-y-2">
-                        <Label htmlFor="slot-conversion-target">Slot da recuperare</Label>
-                        <Select
-                            value={conversionTargetLevel?.toString() ?? ""}
-                            onValueChange={selectConversionTarget}
-                            disabled={!canEdit || conversionSubmitting}
+                        <Label id="slot-conversion-target-label">Slot da recuperare</Label>
+                        <div
+                            className="flex flex-wrap gap-2"
+                            role="group"
+                            aria-labelledby="slot-conversion-target-label"
                         >
-                            <SelectTrigger id="slot-conversion-target">
-                                <SelectValue placeholder="Scegli un livello" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {conversionTargets.map((level) => (
-                                    <SelectItem key={level} value={level.toString()}>
-                                        Livello {level} — costo {SPELL_SLOT_CONVERSION_COSTS[level]}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            {conversionTargets.map((level) => {
+                                const selected = conversionTargetLevel === level;
+                                return (
+                                    <Button
+                                        key={level}
+                                        type="button"
+                                        size="sm"
+                                        variant={selected ? "default" : "outline"}
+                                        className="h-9 rounded-full px-3 text-xs shadow-none"
+                                        aria-pressed={selected}
+                                        onClick={() => selectConversionTarget(level.toString())}
+                                        disabled={!canEdit || conversionSubmitting}
+                                    >
+                                        <span>Liv. {level}</span>
+                                        <span className={cn("ml-1 opacity-75", selected && "text-primary-foreground")}>· {SPELL_SLOT_CONVERSION_COSTS[level]}</span>
+                                    </Button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {conversionTargetLevel ? (
                         <>
                             {conversionSources.length > 0 ? (
-                                <div className="space-y-3">
-                                    <div className="text-sm font-medium text-primary">Slot da spendere</div>
+                                <div className="space-y-1">
+                                    <div className="pb-1 text-sm font-medium text-primary">Slot da spendere</div>
                                     {conversionSources.map(({ level, available }) => (
-                                        <div key={level} className="flex flex-col gap-2 rounded-lg border border-border/50 bg-background/25 p-3 sm:flex-row sm:items-center sm:justify-between">
-                                            <div>
+                                        <div key={level} className="flex items-center justify-between gap-3 border-b border-border/50 py-2.5 last:border-b-0">
+                                            <div className="min-w-0">
                                                 <div className="text-sm font-medium">Livello {level}</div>
                                                 <div className="text-xs text-muted-foreground">
                                                     {available} {available === 1 ? "slot disponibile" : "slot disponibili"}
                                                 </div>
                                             </div>
-                                            <div className="w-full sm:w-28">
-                                                <Label className="sr-only" htmlFor={`slot-conversion-source-${level}`}>
-                                                    Slot di livello {level} da spendere
-                                                </Label>
-                                                <Select
-                                                    value={(conversionSelections[level] ?? 0).toString()}
-                                                    onValueChange={(value) => updateConversionSelection(level, value)}
-                                                    disabled={!canEdit || conversionSubmitting}
+                                            <div className="flex shrink-0 items-center gap-2" role="group" aria-label={`Slot di livello ${level} da spendere`}>
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="h-9 w-9 rounded-full"
+                                                    onClick={() => updateConversionSelection(level, String((conversionSelections[level] ?? 0) - 1))}
+                                                    disabled={!canEdit || conversionSubmitting || (conversionSelections[level] ?? 0) === 0}
+                                                    aria-label={`Rimuovi uno slot di livello ${level}`}
                                                 >
-                                                    <SelectTrigger id={`slot-conversion-source-${level}`}>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {Array.from({ length: available + 1 }, (_, quantity) => (
-                                                            <SelectItem key={quantity} value={quantity.toString()}>
-                                                                {quantity}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                                    <Minus className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <output className="w-5 text-center text-sm font-semibold tabular-nums" aria-live="polite">
+                                                    {conversionSelections[level] ?? 0}
+                                                </output>
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="outline"
+                                                    className="h-9 w-9 rounded-full"
+                                                    onClick={() => updateConversionSelection(level, String((conversionSelections[level] ?? 0) + 1))}
+                                                    disabled={!canEdit || conversionSubmitting || (conversionSelections[level] ?? 0) >= available}
+                                                    aria-label={`Aggiungi uno slot di livello ${level}`}
+                                                >
+                                                    <Plus className="h-3.5 w-3.5" />
+                                                </Button>
                                             </div>
                                         </div>
                                     ))}
@@ -560,12 +583,17 @@ const Features = ({
                                 </p>
                             )}
 
-                            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
-                                <div className="flex flex-wrap justify-between gap-x-4 gap-y-1">
-                                    <span>Valore selezionato: <strong>{conversionValue}</strong></span>
-                                    <span>Costo: <strong>{conversionCost}</strong></span>
+                            <div className="space-y-2 border-y border-border/60 py-3 text-sm">
+                                <div className="flex items-baseline justify-between gap-3">
+                                    <span className="text-muted-foreground">Sacrificio</span>
+                                    <span className="font-medium tabular-nums">{conversionValue} <span className="font-normal text-muted-foreground">/ {conversionCost}</span></span>
                                 </div>
-                                <p className="mt-1 text-muted-foreground" aria-live="polite">
+                                {conversionValue > 0 ? (
+                                    <p className="text-xs text-muted-foreground">{conversionBreakdown}</p>
+                                ) : null}
+                                <Progress value={conversionProgress} className="h-1.5" aria-label={`Valore selezionato ${conversionValue} su costo ${conversionCost}`} />
+                                <p className={cn("flex items-center gap-1.5 text-xs", conversionMissing > 0 ? "text-muted-foreground" : conversionExcess > 0 ? "text-amber-700 dark:text-amber-400" : "text-primary")} aria-live="polite">
+                                    {conversionMissing === 0 && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
                                     {conversionMissing > 0
                                         ? `Mancano ${conversionMissing} punti di valore.`
                                         : conversionExcess > 0
@@ -577,9 +605,10 @@ const Features = ({
                     ) : null}
                 </div>
 
-                <DialogFooter className="mt-2">
+                <DialogFooter className="mt-1 gap-2 sm:gap-2">
                     <Button
                         type="button"
+                        size="sm"
                         variant="outline"
                         onClick={closeSlotConversion}
                         disabled={conversionSubmitting}
@@ -588,10 +617,13 @@ const Features = ({
                     </Button>
                     <Button
                         type="button"
+                        size="sm"
+                        className="gap-1.5"
                         onClick={submitSlotConversion}
                         disabled={!canEdit || !conversionTargetLevel || conversionValue < conversionCost || conversionSubmitting}
                     >
-                        {conversionSubmitting ? "Conversione in corso…" : "Conferma conversione"}
+                        <ArrowRightLeft className="h-3.5 w-3.5" />
+                        {conversionSubmitting ? "Conversione in corso…" : "Recupera slot"}
                     </Button>
                 </DialogFooter>
             </DialogContent>
