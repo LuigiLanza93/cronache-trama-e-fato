@@ -969,7 +969,7 @@ export default function DmShopsPage() {
         <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Import negozi JSON</DialogTitle>
-            <DialogDescription>Anteprima e conferma usano la validazione del server; nessun negozio viene creato durante il dry-run.</DialogDescription>
+            <DialogDescription>Anteprima e conferma usano la validazione del server; il dry-run non crea dati e consolida le definizioni inline equivalenti.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="space-y-3">
@@ -999,6 +999,7 @@ export default function DmShopsPage() {
                     <Badge variant="outline">{importPreview.summary.items} prodotti</Badge>
                     <Badge variant="outline">{importPreview.summary.newDefinitions} nuovi oggetti</Badge>
                     <Badge variant="outline">{importPreview.summary.reusedDefinitions} da catalogo</Badge>
+                    <Badge variant="outline">{importPreview.summary.consolidatedDefinitions} copie consolidate</Badge>
                   </div>
                   {importPreview.errors.length > 0 && <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3"><p className="font-medium text-destructive">Errori</p><ul className="mt-2 list-disc space-y-1 pl-5">{importPreview.errors.map((entry, index) => <li key={index}>{entry}</li>)}</ul></div>}
                   {importPreview.warnings.length > 0 && <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3"><p className="font-medium text-amber-700">Avvisi</p><ul className="mt-2 list-disc space-y-1 pl-5">{importPreview.warnings.map((entry, index) => <li key={index}>{entry}</li>)}</ul></div>}
@@ -1011,7 +1012,7 @@ export default function DmShopsPage() {
                           {shop.items.map((item, index) => (
                             <div key={`${item.definitionSlug}-${index}`} className="flex items-center justify-between gap-2 text-xs">
                               <span className="truncate">{item.name}</span>
-                              <span className="shrink-0 text-muted-foreground">x{item.quantity} · {item.price.amount} {item.price.currency} · {item.source === "inline" ? "nuovo" : "catalogo"}</span>
+                              <span className="shrink-0 text-muted-foreground">x{item.quantity} · {item.price.amount} {item.price.currency} · {item.source === "inline" ? "nuovo" : item.source === "inline-reuse" ? "consolidato" : "catalogo"}</span>
                             </div>
                           ))}
                         </div>

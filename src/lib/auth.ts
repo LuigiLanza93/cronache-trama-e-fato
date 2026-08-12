@@ -1245,7 +1245,7 @@ export type ShopItemFormPayload = {
 };
 
 export type ShopImportPreviewItem = {
-  source: "catalog" | "inline";
+  source: "catalog" | "inline" | "inline-reuse";
   catalogSlug: string | null;
   definitionSlug: string | null;
   name: string;
@@ -1272,6 +1272,7 @@ export type ShopImportPreview = {
     items: number;
     newDefinitions: number;
     reusedDefinitions: number;
+    consolidatedDefinitions: number;
   };
   shops: ShopImportPreviewShop[];
   createdShops?: DmShop[];

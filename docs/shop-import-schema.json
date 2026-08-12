@@ -182,9 +182,31 @@
         "resetOn": { "type": ["string", "null"], "enum": ["AT_WILL", "ENCOUNTER", "SHORT_REST", "LONG_REST", "DAILY", "CUSTOM", null] },
         "customResetLabel": { "$ref": "#/$defs/nullableString" },
         "maxUses": { "type": ["integer", "null"], "minimum": 1 },
-        "passiveEffects": { "type": "array", "items": { "type": "object" } },
+        "passiveEffects": { "type": "array", "items": { "$ref": "#/$defs/passiveEffect" } },
         "condition": { "enum": ["ALWAYS", "WHILE_EQUIPPED"] },
         "sortOrder": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "passiveEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "value", "trigger"],
+      "properties": {
+        "target": { "type": "string", "minLength": 1 },
+        "operationType": { "enum": ["BONUS", "SET"] },
+        "valueMode": { "enum": ["FLAT", "ABILITY_MODIFIER", "ABILITY_SCORE", "PROFICIENCY_BONUS", "CHARACTER_LEVEL"] },
+        "value": { "type": "number" },
+        "setMode": { "enum": ["ABSOLUTE", "MINIMUM_FLOOR"] },
+        "setValue": { "type": ["number", "null"] },
+        "capValue": { "type": ["number", "null"] },
+        "sourceAbility": { "type": ["string", "null"], "enum": ["STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA", null] },
+        "multiplierNumerator": { "type": "number", "exclusiveMinimum": 0 },
+        "multiplierDenominator": { "type": "number", "exclusiveMinimum": 0 },
+        "rounding": { "enum": ["FLOOR", "CEIL"] },
+        "trigger": { "type": "string", "minLength": 1 },
+        "customTargetLabel": { "$ref": "#/$defs/nullableString" },
+        "customTriggerLabel": { "$ref": "#/$defs/nullableString" },
+        "notes": { "$ref": "#/$defs/nullableString" }
       }
     },
     "abilityRequirement": {

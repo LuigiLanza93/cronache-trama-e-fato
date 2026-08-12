@@ -215,7 +215,14 @@ Ogni riga stock contiene:
 
 Con `catalogSlug` il prodotto deve gia' esistere nel catalogo e viene riusata integralmente la sua `ItemDefinition`.
 
-Con `definition` viene creata una nuova `ItemDefinition` completa. Lo `slug` e' obbligatorio e deve essere nuovo: l'import non aggiorna mai silenziosamente una definizione esistente. Se ChatGPT vuole riusare un oggetto noto deve produrre `catalogSlug`, non ripeterne la definizione.
+Con `definition` viene proposta una nuova `ItemDefinition` completa. Lo `slug` e' obbligatorio. L'import non aggiorna mai silenziosamente una definizione esistente e applica queste protezioni:
+
+- definizioni inline semanticamente equivalenti vengono consolidate in una sola definizione, mantenendo separate tutte le righe stock;
+- se una definizione equivalente esiste gia' nel catalogo, viene riusata con un avviso nel dry-run;
+- lo stesso nome o slug associato a meccaniche differenti blocca l'import come ambiguo;
+- campi non previsti, inclusi ID database e timestamp, vengono rifiutati negli oggetti strutturati e nei relativi figli; `definition.data` e `item.data` restano JSON opachi, vengono confrontati senza riordinare gli array e non sono mai interpretati come identificativi DB dall'importatore.
+
+Per piu' copie non stackabili di un nuovo oggetto, il generatore deve produrre piu' righe con `quantity: 1` e la stessa definizione inline; il dry-run le consolida e tutte le istanze risultanti condividono una sola `ItemDefinition`. Se ChatGPT vuole riusare un oggetto noto deve preferire `catalogSlug`, non ripeterne la definizione.
 
 ### Definizione oggetto inline
 
@@ -252,7 +259,7 @@ Il nome deve corrispondere in modo univoco a una feature della definizione. Lo s
 
 Oltre al JSON Schema, il server deve verificare:
 
-- unicita' di `externalKey` e slug nel file;
+- unicita' di `externalKey`; gli slug inline ripetuti sono ammessi soltanto per definizioni equivalenti e vengono consolidati;
 - inesistenza nel DB delle chiavi/definizioni da creare;
 - esistenza di ogni `catalogSlug`;
 - compatibilita' tra categoria e campi arma/armatura;
@@ -264,12 +271,14 @@ Oltre al JSON Schema, il server deve verificare:
 - percentuali, saldi, prezzi e quantita' nei limiti accettati dall'app;
 - normalizzazione degli slug e rifiuto delle collisioni risultanti;
 - rifiuto di campi privati o ID DB forniti dal generatore.
+- rifiuto di stati feature duplicati nella stessa istanza;
+- conteggio nel dry-run di definizioni nuove, riusate dal catalogo e consolidate nel payload.
 
 ### Istruzione consigliata per il progetto ChatGPT
 
 Il progetto generatore dovra' ricevere `shop-import-schema.json` come contratto e produrre esclusivamente JSON valido, senza Markdown. Nelle istruzioni e' utile specificare:
 
-> Genera uno o piu' negozi conformi al JSON Schema fornito. Usa `catalogSlug` solo per oggetti certamente esistenti nel catalogo indicato dall'utente; altrimenti crea una `definition` completa. Non inventare campi, non includere ID database e restituisci soltanto JSON.
+> Genera uno o piu' negozi conformi al JSON Schema fornito. Usa `catalogSlug` per ogni oggetto esistente nell'indice allegato. Per piu' copie non stackabili usa righe separate con lo stesso `catalogSlug` e `quantity: 1`. Se l'oggetto non esiste, crea una `definition` completa; per piu' copie ripeti la stessa definizione e lo stesso slug su righe separate con `quantity: 1`, senza inventare suffissi per istanza. Non inventare campi, non includere ID database e restituisci soltanto JSON.
 
 Per usare in modo affidabile `catalogSlug`, in futuro la pagina negozi potra' esportare un piccolo indice del catalogo (`slug`, nome, categoria, rarita') da allegare al progetto ChatGPT.
 
