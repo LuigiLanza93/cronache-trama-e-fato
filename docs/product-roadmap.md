@@ -30,7 +30,7 @@ La roadmap esprime priorita e dipendenze, non scadenze. Le versioni proposte pos
 
 ## P0, pre-1.8 — Stabilizzazione core della scheda personaggio
 
-> Stato al 2026-08-12: pacchetto P0 implementato e verificato. La persistenza core usa mutazioni seriali per personaggio, revisioni ottimistiche e ACK dopo commit; riposi e patch condividono lo stesso coordinatore; le aperture non riscrivono piu PF, Dadi Vita o slot; stanze, riconnessione e revoca Socket sono state consolidate. Completati inoltre il realtime dell'inventario/equipaggiamento e la reidratazione dei TS morte, modificabili soltanto a 0 PF. I dettagli e i P1-P3 ancora aperti sono raccolti in [`character-sheet-audit.md`](./character-sheet-audit.md).
+> Stato al 2026-08-12: P0 verificato e P1 implementato tecnicamente, in attesa di test manuale. Oltre alla pipeline seriale/versionata sono presenti validazione core, feedback di persistenza, competenze armi e TWF SRD, riposi SRD 5.1, skill/percezione unificate e gestione corretta del punteggio 0. I dettagli e i limiti residui sono raccolti in [`character-sheet-audit.md`](./character-sheet-audit.md).
 
 ### Obiettivo
 
@@ -96,6 +96,17 @@ Ogni sezione della scheda ha una valutazione motivata e un percorso dati noto. I
 - reidratati e sincronizzati i TS morte; i riepiloghi DM e iniziativa continuano a mostrarli solo a 0 PF e scheda/server ne impediscono la modifica sopra 0 PF;
 - verifiche tecniche superate: controllo sintassi server, TypeScript, build di produzione e revisione quality/security; test manuali dell'utente positivi sui casi concordati;
 - nessuna modifica a schema o dati Railway; il lavoro prosegue dai P1 selezionati e dal Gate tecnico 1.8A.
+
+### Esito incremento P1 del 2026-08-12
+
+- patch core validate server-side prima del commit e stato `Salvataggio/Salvato/Errore` riconciliato nella scheda;
+- catalogo armi esteso in modo additivo con gruppo semplice/marziale e proprieta leggera, con backfill locale idempotente;
+- competenza, percezione passiva, rank skill, attacco bonus con due armi e punteggio caratteristica 0 risolti da funzioni pure condivise dai consumer client;
+- riposi brevi/lunghi riallineati a SRD 5.1 nel modello monoclasse corrente;
+- le competenze ottenute da capacità possono essere espresse come `passiveEffects` di categoria `PROFICIENCY`, con il solo bersaglio; coperti Collegio Bardico del Valore, categorie armatura/scudo e competenza per l'esatta Arma del Patto legata o evocata;
+- `Competenze & Abilità` include un riepilogo read-only delle competenze effettive in armi, armature e scudi, con provenienza da classe, capacità passive o grant espliciti; le armi specifiche restano separate dalle categorie e l'Arma del Patto non viene generalizzata;
+- aggiunta suite Vitest di non regressione con 86 casi su regole, validazione server, riposi, bootstrap/health e migrazione/backfill, eseguita anche dal workflow Build manuale; checklist browser in [`p1-manual-test-plan.md`](./p1-manual-test-plan.md);
+- migrazione e backfill applicati soltanto al DB locale di sviluppo; Railway invariato e test manuale ancora richiesto prima del commit.
 
 ## Dopo la progressione — Party gestito dal DM
 

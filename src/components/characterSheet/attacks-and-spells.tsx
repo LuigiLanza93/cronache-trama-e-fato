@@ -43,6 +43,8 @@ import {
   isPassiveTriggerActive,
   resolvePassiveEffectScalarValue,
 } from "@/utils";
+import { hasTwoWeaponFightingStyle, resolveWeaponProficiency } from "@/lib/character-combat-rules";
+import { PACT_BLADE_TEMPLATE_ITEM_ID_PREFIX } from "@/data/pact-blade-weapons";
 
 type SkillType = "volonta" | "incontro" | "riposoBreve" | "riposoLungo";
 
@@ -407,15 +409,26 @@ function getWeaponHandAssignments(
   };
 }
 
+function isLightWeapon(detail: ItemDefinitionEntry | undefined) {
+  return (detail as (ItemDefinitionEntry & { isLightWeapon?: boolean }) | undefined)?.isLightWeapon === true;
+}
+
+function getWeaponProficiencyGroup(detail: ItemDefinitionEntry | undefined) {
+  return (detail as (ItemDefinitionEntry & { weaponProficiencyGroup?: "SIMPLE" | "MARTIAL" | null }) | undefined)
+    ?.weaponProficiencyGroup ?? null;
+}
+
 function buildRelationalAttackMath(
   attack: ItemAttackEntry,
   item: CharacterInventoryItemEntry | null | undefined,
+  itemDetail: ItemDefinitionEntry | undefined,
   characterData: any,
   resolvedAbilityScores: Record<string, number>,
   passiveCapabilities: any[],
   passiveEffectContext: any,
   options: {
-    isOffHandAttack: boolean;
+    isTwoWeaponBonusAttack: boolean;
+    hasTwoWeaponFightingStyle: boolean;
     isUnarmedAttack?: boolean;
   }
 ) {
@@ -428,6 +441,17 @@ function buildRelationalAttackMath(
       : null;
   const abilityModifier = getAbilityModifier(abilityScore);
   const proficiencyBonus = getProficiencyBonus(Number(characterData?.basicInfo?.level ?? 1));
+  const proficiency = options.isUnarmedAttack
+    ? { known: true, proficient: true, breakdown: ["Attacco senz'armi"] }
+    : resolveWeaponProficiency({ ...characterData, capabilities: passiveCapabilities }, {
+        id: item?.itemDefinitionId,
+        characterItemId: item?.id,
+        isPactWeapon: String(item?.id ?? "").startsWith(PACT_BLADE_TEMPLATE_ITEM_ID_PREFIX),
+        slug: itemDetail?.slug,
+        name: itemDetail?.name ?? item?.itemName,
+        weaponProficiencyGroup: getWeaponProficiencyGroup(itemDetail),
+        attackKind: attack.kind,
+      });
   const weaponAttackBonus =
     attack.attackBonus !== null && attack.attackBonus !== undefined ? attack.attackBonus : 0;
   const passiveAttackBonus = getAttackRollPassiveBonus(
@@ -436,7 +460,7 @@ function buildRelationalAttackMath(
     resolvedAbilityScores,
     passiveCapabilities,
     passiveEffectContext,
-    options
+    { isOffHandAttack: options.isTwoWeaponBonusAttack, isUnarmedAttack: options.isUnarmedAttack }
   );
   const passiveDamageBonus = getDamageRollPassiveBonus(
     attack,
@@ -444,15 +468,17 @@ function buildRelationalAttackMath(
     resolvedAbilityScores,
     passiveCapabilities,
     passiveEffectContext,
-    options
+    { isOffHandAttack: options.isTwoWeaponBonusAttack, isUnarmedAttack: options.isUnarmedAttack }
   );
 
   const hitParts = ["1d20"];
   if (weaponAttackBonus !== 0) {
     hitParts.push(`Arma (${formatSigned(weaponAttackBonus)})`);
   }
-  if (proficiencyBonus !== 0) {
+  if (proficiency.proficient && proficiencyBonus !== 0) {
     hitParts.push(`B. Comp. (${formatSigned(proficiencyBonus)})`);
+  } else if (!proficiency.proficient && !options.isUnarmedAttack) {
+    hitParts.push(`Senza competenza (${proficiency.breakdown.join(", ")})`);
   }
   if (abilityKey) {
     hitParts.push(`${ABILITY_LABELS[abilityKey]} (${formatSigned(abilityModifier)})`);
@@ -462,11 +488,15 @@ function buildRelationalAttackMath(
   }
 
   const totalHitBonus =
-    weaponAttackBonus + proficiencyBonus + (abilityKey ? abilityModifier : 0) + passiveAttackBonus;
-  const totalDamageBonus =
+    weaponAttackBonus + (proficiency.proficient ? proficiencyBonus : 0) + (abilityKey ? abilityModifier : 0) + passiveAttackBonus;
+  const baseDamageAbilityModifier =
     abilityKey && ["MELEE_WEAPON", "RANGED_WEAPON", "THROWN"].includes(attack.kind)
       ? abilityModifier
       : 0;
+  const totalDamageBonus =
+    options.isTwoWeaponBonusAttack && !options.hasTwoWeaponFightingStyle
+      ? Math.min(baseDamageAbilityModifier, 0)
+      : baseDamageAbilityModifier;
   const parsedDamage = parseDiceExpressionParts(attack.damageDice);
   const totalDamageFlatBonus = parsedDamage.flatBonus + totalDamageBonus + passiveDamageBonus;
 
@@ -474,8 +504,10 @@ function buildRelationalAttackMath(
   if (parsedDamage.flatBonus !== 0) {
     damageParts.push(`Danno arma (${formatSigned(parsedDamage.flatBonus)})`);
   }
-  if (abilityKey && ["MELEE_WEAPON", "RANGED_WEAPON", "THROWN"].includes(attack.kind)) {
+  if (abilityKey && ["MELEE_WEAPON", "RANGED_WEAPON", "THROWN"].includes(attack.kind) && totalDamageBonus !== 0) {
     damageParts.push(`${ABILITY_LABELS[abilityKey]} (${formatSigned(abilityModifier)})`);
+  } else if (options.isTwoWeaponBonusAttack && baseDamageAbilityModifier > 0 && !options.hasTwoWeaponFightingStyle) {
+    damageParts.push("Mod. caratteristica escluso (due armi)");
   }
   if (passiveDamageBonus !== 0) {
     damageParts.push(`Effetti passivi (${formatSigned(passiveDamageBonus)})`);
@@ -487,6 +519,10 @@ function buildRelationalAttackMath(
   return {
     abilityKey,
     isAccurate: isAccurateAttack(attack),
+    isTwoWeaponBonusAttack: options.isTwoWeaponBonusAttack,
+    attackModeLabel: options.isTwoWeaponBonusAttack ? "Azione bonus: Combattere con Due Armi" : null,
+    isProficient: proficiency.proficient,
+    proficiencyBreakdown: proficiency.breakdown,
     hitSummaryLine: `Tiro per colpire: 1d20 ${formatSigned(totalHitBonus)}`,
     damageSummaryLine: `Danni: ${parsedDamage.dicePart} ${formatSigned(totalDamageFlatBonus)}${attack.damageType ? ` ${attack.damageType}` : ""}`,
     formulaLine: `Tiro per colpire: ${hitParts.join(" + ")}`,
@@ -815,6 +851,14 @@ const AttacksAndSpells = ({
 
   const relationalAttacks = useMemo<RelationalAttackRow[]>(() => {
     const handAssignments = getWeaponHandAssignments(equippedRelationalItems, allItemDetailsById);
+    const primaryWeaponItem = equippedRelationalItems.find((item) => item.id === handAssignments.primaryWeaponItemId);
+    const primaryWeaponDetail = primaryWeaponItem?.itemDefinitionId
+      ? allItemDetailsById[primaryWeaponItem.itemDefinitionId]
+      : undefined;
+    const primaryWeaponSupportsTwoWeaponFighting =
+      isLightWeapon(primaryWeaponDetail) &&
+      primaryWeaponDetail?.attacks?.some((attack) => attack.kind === "MELEE_WEAPON");
+    const usesTwoWeaponFightingStyle = hasTwoWeaponFightingStyle(characterData);
     const derivedAttacks = equippedRelationalItems.flatMap((item) => {
       const definitionId = item.itemDefinitionId;
       if (!definitionId) return [];
@@ -843,20 +887,25 @@ const AttacksAndSpells = ({
                 ? `Gittata ${attack.rangeNormal}/${attack.rangeLong}`
                 : `Gittata ${attack.rangeNormal}`
               : null;
-          const isOffHandAttack =
+          const isTwoWeaponBonusAttack =
             handAssignments.hasDualWeapons &&
-            handAssignments.secondaryWeaponItemId === item.id;
+            handAssignments.secondaryWeaponItemId === item.id &&
+            primaryWeaponSupportsTwoWeaponFighting &&
+            isLightWeapon(detail) &&
+            attack.kind === "MELEE_WEAPON";
 
           const math = buildRelationalAttackMath(
             attack,
             item,
+            detail,
             characterData,
             resolvedAbilityData.scores,
             passiveCapabilities,
             passiveEffectContext,
-            { isOffHandAttack, isUnarmedAttack: false }
+            { isTwoWeaponBonusAttack, hasTwoWeaponFightingStyle: usesTwoWeaponFightingStyle, isUnarmedAttack: false }
           );
           const attackName = attack.name || item.itemName;
+          if (math.attackModeLabel) detailParts.push(math.attackModeLabel);
 
           return {
             rowKey: `${item.id}-${attack.id}`,
@@ -886,11 +935,12 @@ const AttacksAndSpells = ({
       const math = buildRelationalAttackMath(
         UNARMED_ATTACK,
         null,
+        undefined,
         characterData,
         resolvedAbilityData.scores,
         passiveCapabilities,
         passiveEffectContext,
-        { isOffHandAttack: false, isUnarmedAttack: true }
+        { isTwoWeaponBonusAttack: false, hasTwoWeaponFightingStyle: false, isUnarmedAttack: true }
       );
 
       derivedAttacks.push({

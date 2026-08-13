@@ -26,6 +26,20 @@ const ABILITY_LABELS: Record<string, string> = {
   charisma: "Carisma",
 };
 
+const ABILITY_KEYS = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"] as const;
+const MIN_ABILITY_SCORE = 0;
+const MAX_ABILITY_SCORE = 30;
+
+function editableAbilityScores(source: any) {
+  const scores = source?.abilityScores ?? {};
+  return Object.fromEntries(
+    ABILITY_KEYS.map((ability) => {
+      const raw = scores[ability];
+      return [ability, Number.isFinite(Number(raw)) ? Number(raw) : 10];
+    })
+  ) as Record<(typeof ABILITY_KEYS)[number], number>;
+}
+
 const AbilityScores = ({
   characterData,
   abilityModifier,
@@ -33,14 +47,12 @@ const AbilityScores = ({
   passiveEffectContext = {},
   canEdit = true,
 }: any) => {
-  const persistedScores = useMemo(
-    () => ({ ...(characterData?.abilityScores ?? {}) }),
-    [characterData?.abilityScores]
-  );
+  const persistedScores = useMemo(() => editableAbilityScores(characterData), [characterData?.abilityScores]);
   const [editingScores, setEditingScores] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [activeDetail, setActiveDetail] = useState<string | null>(null);
   const [draftScores, setDraftScores] = useState<Record<string, number | string>>(persistedScores);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const resolvedAbilityData = useMemo(
     () => resolveCharacterAbilityScores(characterData, passiveCapabilities, passiveEffectContext),
     [characterData, passiveCapabilities, passiveEffectContext]
@@ -56,7 +68,7 @@ const AbilityScores = ({
     if (!editingScores) return;
     setDraftScores((prev) => ({
       ...prev,
-      [ability]: Math.max(0, (Number(prev[ability]) || 0) + delta),
+      [ability]: Math.max(MIN_ABILITY_SCORE, Math.min(MAX_ABILITY_SCORE, (Number(prev[ability]) || 0) + delta)),
     }));
   };
 
@@ -67,16 +79,23 @@ const AbilityScores = ({
       return;
     }
 
+    const invalidAbility = ABILITY_KEYS.find((ability) => {
+      const value = Number(draftScores[ability]);
+      return !Number.isInteger(value) || value < MIN_ABILITY_SCORE || value > MAX_ABILITY_SCORE;
+    });
+    if (invalidAbility) {
+      setValidationError(`${ABILITY_LABELS[invalidAbility]} deve essere un intero tra ${MIN_ABILITY_SCORE} e ${MAX_ABILITY_SCORE}.`);
+      return;
+    }
+
+    setValidationError(null);
     setConfirmOpen(true);
   };
 
   const handleConfirmSave = () => {
     if (!canEdit) return;
     const nextScores = Object.fromEntries(
-      Object.entries(draftScores).map(([ability, value]) => [
-        ability,
-        value === "" ? 0 : parseInt(String(value), 10) || 0,
-      ])
+      ABILITY_KEYS.map((ability) => [ability, Number(draftScores[ability])])
     );
 
     updateCharacter(characterData.slug, {
@@ -85,16 +104,19 @@ const AbilityScores = ({
 
     setConfirmOpen(false);
     setEditingScores(false);
+    setValidationError(null);
   };
 
   const handleCancel = () => {
     setDraftScores(persistedScores);
     setConfirmOpen(false);
     setEditingScores(false);
+    setValidationError(null);
   };
 
-  const scoreChanges = Object.entries(draftScores)
-    .map(([ability, value]) => {
+  const scoreChanges = ABILITY_KEYS
+    .map((ability) => {
+      const value = draftScores[ability];
       const nextValue = value === "" ? 0 : parseInt(String(value), 10) || 0;
       const previousValue = parseInt(String(persistedScores[ability] ?? 0), 10) || 0;
       const delta = nextValue - previousValue;
@@ -159,6 +181,16 @@ const AbilityScores = ({
           )
         }
       >
+        {validationError ? (
+          <p role="alert" className="mb-3 text-sm text-destructive">
+            {validationError}
+          </p>
+        ) : null}
+        {editingScores ? (
+          <p className="mb-3 text-xs text-muted-foreground" id="ability-score-limits">
+            Ogni punteggio deve essere un numero intero tra {MIN_ABILITY_SCORE} e {MAX_ABILITY_SCORE}.
+          </p>
+        ) : null}
         <div className="grid grid-cols-2 gap-3">
           {Object.entries(draftScores).map(([ability, data]) => {
             const detail = resolvedAbilityData.details[ability];

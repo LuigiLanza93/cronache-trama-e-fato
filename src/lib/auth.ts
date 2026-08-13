@@ -458,6 +458,13 @@ export type SpellSlotTable = Record<string, Record<string, Record<string, number
 
 export type PartyRestType = "short" | "long";
 
+export type PartyShortRestOption = {
+  hitDiceSpent: number;
+  hitDiceRollTotal: number;
+};
+
+export type PartyRestOptionsBySlug = Record<string, PartyShortRestOption>;
+
 export type PartyRestSummaryEntry = {
   slug: string;
   name: string;
@@ -470,6 +477,8 @@ export type PartyRestSummaryEntry = {
   temporaryHitPointsAfter: number;
   healingApplied: number;
   hitDiceSpent: number;
+  hitDiceRollTotal?: number;
+  hitDiceRecovered: number;
   hitDiceRemaining: number;
   hitDiceRemainingAfter: number;
   maxHitDice: number;
@@ -489,6 +498,8 @@ export type ItemDefinitionSummary = {
   slug: string;
   name: string;
   category: string;
+  weaponProficiencyGroup: "SIMPLE" | "MARTIAL" | null;
+  isLightWeapon: boolean;
   rarity: string | null;
   description: string | null;
   playerVisible: boolean;
@@ -587,6 +598,8 @@ export type ItemDefinitionEntry = {
   category: string;
   subcategory: string | null;
   weaponHandling: string | null;
+  weaponProficiencyGroup: "SIMPLE" | "MARTIAL" | null;
+  isLightWeapon: boolean;
   gloveWearMode: string | null;
   armorCategory: string | null;
   armorClassCalculation: string | null;
@@ -1046,17 +1059,25 @@ export function fetchSpellSlots() {
   return cacheRequest(spellSlotsRequestCache, () => authFetch<SpellSlotTable>("/api/rules/spell-slots", { method: "GET" }));
 }
 
-export function applyPartyRestRequest(type: PartyRestType, slugs?: string[]) {
+export function applyPartyRestRequest(
+  type: PartyRestType,
+  slugs?: string[],
+  optionsBySlug?: PartyRestOptionsBySlug
+) {
   return authFetch<PartyRestResponse>("/api/dm/rests/apply", {
     method: "POST",
-    body: JSON.stringify({ type, slugs }),
+    body: JSON.stringify({ type, slugs, optionsBySlug }),
   });
 }
 
-export function previewPartyRestRequest(type: PartyRestType, slugs?: string[]) {
+export function previewPartyRestRequest(
+  type: PartyRestType,
+  slugs?: string[],
+  optionsBySlug?: PartyRestOptionsBySlug
+) {
   return authFetch<Omit<PartyRestResponse, "updatedCharacters">>("/api/dm/rests/preview", {
     method: "POST",
-    body: JSON.stringify({ type, slugs }),
+    body: JSON.stringify({ type, slugs, optionsBySlug }),
   });
 }
 

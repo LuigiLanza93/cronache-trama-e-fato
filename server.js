@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { DatabaseSync } from "node:sqlite";
 import express from "express";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
@@ -63,6 +62,12 @@ const REQUEST_LOG_PATHS = new Set([
 ]);
 const loginAttempts = new Map();
 const backupAttempts = new Map();
+let DatabaseSync = null;
+const PACT_BLADE_TEMPLATE_IDS = new Set([
+  "club", "dagger", "greatclub", "handaxe", "javelin", "light-hammer", "mace", "quarterstaff", "sickle", "spear",
+  "battleaxe", "flail", "glaive", "greataxe", "greatsword", "halberd", "lance", "longsword", "maul", "morningstar",
+  "pike", "rapier", "scimitar", "shortsword", "trident", "war-pick", "warhammer", "whip",
+]);
 
 function resolveSqliteDbFile() {
   const raw = String(process.env.SQLITE_DB_FILE || process.env.DATABASE_PATH || process.env.DATABASE_URL || "").trim();
@@ -156,10 +161,8 @@ function getSqliteDbMtimeMs() {
   }
 }
 
-bootstrapPersistentStorage();
-
-let sqlite = createSqliteConnection();
-let sqliteLastKnownMtimeMs = getSqliteDbMtimeMs();
+let sqlite = null;
+let sqliteLastKnownMtimeMs = 0;
 
 function ensureSqliteConnectionFresh() {
   const currentMtimeMs = getSqliteDbMtimeMs();
@@ -1131,24 +1134,6 @@ function runInTransaction(work) {
     throw error;
   }
 }
-
-ensureRaceSpeedReferenceTable();
-ensureUserLayoutPreferenceTable();
-ensureAppStateTable();
-ensureCharacterBackstoryTable();
-ensureCampaignSessionStateTable();
-ensureCampaignEventTables();
-ensureCampaignDocumentTables();
-ensureGameSessionStateTable();
-ensureCharacterCurrencyBalanceTable();
-ensureCurrencyTransactionTable();
-ensureChatConversationTables();
-ensureCampaignSessionStateRow();
-ensureGameSessionStateRow();
-ensureInitiativeTrackerStateMigrated();
-ensureCharacterCurrencyBalanceRows();
-ensureLegacyCharacterCurrencyBalancesMigrated();
-ensureLegacyCharacterChatConversationsMigrated();
 
 function normalizeUserRow(row) {
   if (!row) return null;
@@ -2237,6 +2222,8 @@ function createEmptyItemDefinition(name = "Nuovo oggetto") {
     category: "OTHER",
     subcategory: null,
     weaponHandling: null,
+    weaponProficiencyGroup: null,
+    isLightWeapon: false,
     gloveWearMode: null,
     armorCategory: null,
     armorClassCalculation: null,
@@ -2683,6 +2670,8 @@ function serializeShopVisitItem(row, { dm = false, known = false, featureStates 
   };
   const publicDefinition = definition ? {
     category: definition.category ?? null,
+    weaponProficiencyGroup: definition.weaponProficiencyGroup ?? null,
+    isLightWeapon: !!definition.isLightWeapon,
     rarity: definition.rarity ?? null,
     stackable: !!definition.stackable,
     equippable: !!definition.equippable,
@@ -3939,6 +3928,8 @@ function buildShopImportCatalogIndex() {
     slug: item.slug,
     name: item.name,
     category: item.category,
+    weaponProficiencyGroup: item.weaponProficiencyGroup ?? null,
+    isLightWeapon: !!item.isLightWeapon,
     rarity: item.rarity ?? null,
     stackable: !!item.stackable,
     equippable: !!item.equippable,
@@ -3959,7 +3950,7 @@ function validateImportObjectKeys(value, allowedKeys, label, errors) {
 }
 
 const SHOP_IMPORT_DEFINITION_KEYS = [
-  "slug", "name", "category", "subcategory", "weaponHandling", "gloveWearMode",
+  "slug", "name", "category", "subcategory", "weaponHandling", "weaponProficiencyGroup", "isLightWeapon", "gloveWearMode",
   "armorCategory", "armorClassCalculation", "armorClassBase", "armorClassBonus", "rarity",
   "description", "playerVisible", "stackable", "equippable", "attunement", "weight", "valueCp",
   "data", "slotRules", "attacks", "modifiers", "features", "abilityRequirements", "useEffects",
@@ -3974,7 +3965,7 @@ const SHOP_IMPORT_FEATURE_KEYS = [
   "name", "kind", "description", "resetOn", "customResetLabel", "maxUses", "passiveEffects", "condition", "sortOrder",
 ];
 const SHOP_IMPORT_PASSIVE_EFFECT_KEYS = [
-  "target", "operationType", "valueMode", "value", "setMode", "setValue", "capValue", "sourceAbility",
+  "category", "target", "operationType", "valueMode", "value", "setMode", "setValue", "capValue", "sourceAbility",
   "multiplierNumerator", "multiplierDenominator", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes",
 ];
 const SHOP_IMPORT_ABILITY_REQUIREMENT_KEYS = ["ability", "minScore", "sortOrder"];
@@ -3987,6 +3978,11 @@ const SHOP_IMPORT_PASSIVE_EFFECT_VALUE_MODES = new Set(["FLAT", "ABILITY_MODIFIE
 const SHOP_IMPORT_PASSIVE_EFFECT_SET_MODES = new Set(["ABSOLUTE", "MINIMUM_FLOOR"]);
 const SHOP_IMPORT_PASSIVE_EFFECT_SOURCE_ABILITIES = new Set(ITEM_ABILITY_SCORE_VALUES);
 const SHOP_IMPORT_PASSIVE_EFFECT_ROUNDING = new Set(["FLOOR", "CEIL"]);
+const PASSIVE_EFFECT_CATEGORIES = new Set(["MODIFIER", "PROFICIENCY"]);
+const PASSIVE_EFFECT_PROFICIENCY_TARGETS = new Set([
+  "WEAPON_SIMPLE", "WEAPON_MARTIAL", "ARMOR_LIGHT", "ARMOR_MEDIUM", "ARMOR_HEAVY", "SHIELD",
+]);
+const PASSIVE_EFFECT_PROFICIENCY_KEYS = new Set(["category", "target"]);
 const SHOP_IMPORT_SLOT_SELECTION_MODES = new Set(["ALL_REQUIRED", "ANY_ONE"]);
 const SHOP_IMPORT_SLOTS = new Set([
   "HEAD", "BACK", "ARMOR", "GLOVE_LEFT", "GLOVE_RIGHT", "RING_1", "RING_2", "RING_3", "RING_4",
@@ -3995,6 +3991,7 @@ const SHOP_IMPORT_SLOTS = new Set([
 ]);
 const SHOP_IMPORT_ATTACK_KINDS = new Set(["MELEE_WEAPON", "RANGED_WEAPON", "THROWN", "SPECIAL"]);
 const SHOP_IMPORT_ATTACK_HAND_REQUIREMENTS = new Set(["ANY", "ONE_HANDED", "TWO_HANDED"]);
+const ITEM_WEAPON_PROFICIENCY_GROUPS = new Set(["SIMPLE", "MARTIAL"]);
 const SHOP_IMPORT_MODIFIER_TARGETS = new Set([
   "ARMOR_CLASS", "STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA",
   "SPEED", "INITIATIVE", "HIT_POINT_MAX",
@@ -4071,7 +4068,46 @@ function validateShopImportObjectArray(value, allowedKeys, label, errors, nested
   });
 }
 
+function validatePassiveEffectCategoryContract(effect, label, errors) {
+  const category = effect.category === undefined ? "MODIFIER" : effect.category;
+  if (!PASSIVE_EFFECT_CATEGORIES.has(category)) {
+    errors.push(`${label}.category must be MODIFIER or PROFICIENCY`);
+    return null;
+  }
+  if (category !== "PROFICIENCY") return category;
+
+  for (const key of Object.keys(effect)) {
+    if (!PASSIVE_EFFECT_PROFICIENCY_KEYS.has(key)) {
+      errors.push(`${label}.${key} is not supported for a PROFICIENCY effect`);
+    }
+  }
+  if (!hasShopImportField(effect, "target") || !PASSIVE_EFFECT_PROFICIENCY_TARGETS.has(effect.target)) {
+    errors.push(`${label}.target must be a supported proficiency category`);
+  }
+  return category;
+}
+
+function assertItemFeaturePassiveEffectCategoryContracts(features) {
+  features.forEach((feature, featureIndex) => {
+    const kind = String(feature?.kind ?? "ACTIVE").trim().toUpperCase() === "PASSIVE" ? "PASSIVE" : "ACTIVE";
+    if (kind !== "PASSIVE" || !Array.isArray(feature?.passiveEffects)) return;
+    feature.passiveEffects.forEach((effect, effectIndex) => {
+      if (!effect || typeof effect !== "object" || Array.isArray(effect)) return;
+      const errors = [];
+      validatePassiveEffectCategoryContract(
+        effect,
+        `Feature #${featureIndex + 1}.passiveEffects[${effectIndex}]`,
+        errors
+      );
+      if (errors.length > 0) throw new Error(errors.join("; "));
+    });
+  });
+}
+
 function validateShopImportPassiveEffect(effect, label, errors) {
+  const category = validatePassiveEffectCategoryContract(effect, label, errors);
+  if (category === "PROFICIENCY" || category === null) return;
+
   const target = typeof effect.target === "string" ? effect.target.trim() : "";
   const trigger = typeof effect.trigger === "string" ? effect.trigger.trim() : "";
   if (!target) errors.push(`${label}.target must be a non-empty string`);
@@ -4190,6 +4226,8 @@ function validateShopImportUseEffect(effect, label, errors) {
 
 function validateShopImportInlineDefinitionKeys(definition, label, errors) {
   validateImportObjectKeys(definition, SHOP_IMPORT_DEFINITION_KEYS, label, errors);
+  validateShopImportEnum(definition, "weaponProficiencyGroup", ITEM_WEAPON_PROFICIENCY_GROUPS, label, errors, { nullable: true });
+  validateShopImportBoolean(definition, "isLightWeapon", label, errors);
   validateShopImportObjectArray(definition.slotRules, SHOP_IMPORT_SLOT_RULE_KEYS, `${label}.slotRules`, errors, validateShopImportSlotRule);
   validateShopImportObjectArray(definition.attacks, SHOP_IMPORT_ATTACK_KEYS, `${label}.attacks`, errors, validateShopImportAttack);
   validateShopImportObjectArray(definition.modifiers, SHOP_IMPORT_MODIFIER_KEYS, `${label}.modifiers`, errors, validateShopImportModifier);
@@ -4630,6 +4668,8 @@ function readItemDefinitions() {
   const hasPlayerVisible = columnExists("ItemDefinition", "playerVisible");
   const hasValueCurrency = columnExists("ItemDefinition", "valueCurrency");
   const hasValueAmount = columnExists("ItemDefinition", "valueAmount");
+  const hasWeaponProficiencyGroup = columnExists("ItemDefinition", "weaponProficiencyGroup");
+  const hasIsLightWeapon = columnExists("ItemDefinition", "isLightWeapon");
 
   return sqlite.prepare(`
     SELECT
@@ -4637,6 +4677,8 @@ function readItemDefinitions() {
       d.slug,
       d.name,
       d.category,
+      ${hasWeaponProficiencyGroup ? "d.weaponProficiencyGroup" : "NULL AS weaponProficiencyGroup"},
+      ${hasIsLightWeapon ? "d.isLightWeapon" : "0 AS isLightWeapon"},
       d.rarity,
       d.description,
       ${hasPlayerVisible ? "d.playerVisible" : "1 AS playerVisible"},
@@ -4655,6 +4697,8 @@ function readItemDefinitions() {
     slug: row.slug,
     name: row.name,
     category: row.category,
+    weaponProficiencyGroup: row.weaponProficiencyGroup ?? null,
+    isLightWeapon: !!row.isLightWeapon,
     rarity: row.rarity ?? null,
     description: row.description ?? null,
     playerVisible: !!row.playerVisible,
@@ -4780,6 +4824,10 @@ function readItemDefinition(itemId) {
     category: base.category,
     subcategory: base.subcategory ?? null,
     weaponHandling: base.weaponHandling ?? null,
+    weaponProficiencyGroup: columnExists("ItemDefinition", "weaponProficiencyGroup")
+      ? base.weaponProficiencyGroup ?? null
+      : null,
+    isLightWeapon: columnExists("ItemDefinition", "isLightWeapon") ? !!base.isLightWeapon : false,
     gloveWearMode: base.gloveWearMode ?? null,
     armorCategory: base.armorCategory ?? null,
     armorClassCalculation: base.armorClassCalculation ?? null,
@@ -4820,9 +4868,18 @@ function normalizeItemDefinitionPayload(payload, existingId = null) {
   const rawAbilityRequirements = Array.isArray(payload?.abilityRequirements) ? payload.abilityRequirements : [];
   const rawUseEffects = Array.isArray(payload?.useEffects) ? payload.useEffects : [];
   const normalizedRarity = normalizeNullableString(payload?.rarity);
+  const rawWeaponProficiencyGroup = normalizeNullableString(payload?.weaponProficiencyGroup);
+  const weaponProficiencyGroup = rawWeaponProficiencyGroup?.toUpperCase() ?? null;
+  if (weaponProficiencyGroup && !ITEM_WEAPON_PROFICIENCY_GROUPS.has(weaponProficiencyGroup)) {
+    throw new Error("Weapon proficiency group must be SIMPLE, MARTIAL or null");
+  }
+  if (payload?.isLightWeapon !== undefined && typeof payload.isLightWeapon !== "boolean") {
+    throw new Error("isLightWeapon must be a boolean");
+  }
 
   assertNamedEntries(rawAttacks, "Attacco", ["kind", "handRequirement", "ability", "attackBonus", "damageDice", "damageType", "rangeNormal", "rangeLong", "conditionText"]);
   assertNamedEntries(rawFeatures, "Feature", ["description", "resetOn", "customResetLabel", "maxUses", "condition"]);
+  assertItemFeaturePassiveEffectCategoryContracts(rawFeatures);
 
   return {
     ...base,
@@ -4832,6 +4889,8 @@ function normalizeItemDefinitionPayload(payload, existingId = null) {
     category: String(payload?.category ?? "OTHER").trim() || "OTHER",
     subcategory: normalizeNullableString(payload?.subcategory),
     weaponHandling: normalizeNullableString(payload?.weaponHandling),
+    weaponProficiencyGroup,
+    isLightWeapon: payload?.isLightWeapon === true,
     gloveWearMode: normalizeNullableString(payload?.gloveWearMode),
     armorCategory: normalizeNullableString(payload?.armorCategory),
     armorClassCalculation: normalizeNullableString(payload?.armorClassCalculation),
@@ -4956,6 +5015,15 @@ function saveItemDefinition(payload, existingId = null) {
   const hasPlayerVisible = columnExists("ItemDefinition", "playerVisible");
   const hasValueCurrency = columnExists("ItemDefinition", "valueCurrency");
   const hasValueAmount = columnExists("ItemDefinition", "valueAmount");
+  const hasWeaponProficiencyGroup = columnExists("ItemDefinition", "weaponProficiencyGroup");
+  const hasIsLightWeapon = columnExists("ItemDefinition", "isLightWeapon");
+
+  if (
+    (!hasWeaponProficiencyGroup && normalized.weaponProficiencyGroup !== null) ||
+    (!hasIsLightWeapon && normalized.isLightWeapon)
+  ) {
+    throw new Error("La classificazione delle armi richiede l'applicazione della migrazione 20260812_item_weapon_classification.");
+  }
 
   runInTransaction(() => {
     if (existing) {
@@ -5047,6 +5115,15 @@ function saveItemDefinition(payload, existingId = null) {
         now,
         now
       );
+    }
+
+    if (hasWeaponProficiencyGroup) {
+      sqlite.prepare('UPDATE "ItemDefinition" SET weaponProficiencyGroup = ? WHERE id = ?')
+        .run(normalized.weaponProficiencyGroup, normalized.id);
+    }
+    if (hasIsLightWeapon) {
+      sqlite.prepare('UPDATE "ItemDefinition" SET isLightWeapon = ? WHERE id = ?')
+        .run(normalized.isLightWeapon ? 1 : 0, normalized.id);
     }
 
     sqlite.prepare('DELETE FROM "ItemSlotRule" WHERE itemDefinitionId = ?').run(normalized.id);
@@ -6232,6 +6309,13 @@ function buildQuickCreateItemDefinitionPayload(raw) {
 
   if (mode === "weapon") {
     const weaponHandling = String(raw?.weaponHandling ?? "ONE_HANDED").trim() || "ONE_HANDED";
+    const weaponProficiencyGroup = normalizeNullableString(raw?.weaponProficiencyGroup)?.toUpperCase() ?? null;
+    if (weaponProficiencyGroup && !ITEM_WEAPON_PROFICIENCY_GROUPS.has(weaponProficiencyGroup)) {
+      throw new Error("Weapon proficiency group must be SIMPLE, MARTIAL or null");
+    }
+    if (raw?.isLightWeapon !== undefined && typeof raw.isLightWeapon !== "boolean") {
+      throw new Error("isLightWeapon must be a boolean");
+    }
     const attackKind = String(raw?.attackKind ?? "MELEE_WEAPON").trim() || "MELEE_WEAPON";
     const damageDice = normalizeNullableString(raw?.damageDice);
     const damageType = normalizeNullableString(raw?.damageType);
@@ -6277,6 +6361,8 @@ function buildQuickCreateItemDefinitionPayload(raw) {
       equippable: true,
       stackable: false,
       weaponHandling,
+      weaponProficiencyGroup,
+      isLightWeapon: raw?.isLightWeapon === true,
       slotRules: buildQuickCreateWeaponSlotRules(weaponHandling),
       attacks,
     };
@@ -9188,6 +9274,519 @@ function createEmptyCharacter({
   };
 }
 
+const CHARACTER_PATCH_MAX_BYTES = 512 * 1024;
+const CHARACTER_PATCH_MAX_DEPTH = 12;
+const CHARACTER_PATCH_FORBIDDEN_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+const CHARACTER_ABILITY_KEYS = new Set([
+  "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
+]);
+const CHARACTER_PATCH_TOP_LEVEL_KEYS = new Set([
+  "basicInfo", "abilityScores", "combatStats", "proficiencies", "equipment",
+  "features", "capabilities", "pactBlade",
+]);
+
+function isPlainRecord(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function addCharacterPatchIssue(issues, path, message) {
+  if (issues.length < 40) issues.push(`${path}: ${message}`);
+}
+
+function validateCharacterPatchStructure(value, path, issues, depth = 0) {
+  if (depth > CHARACTER_PATCH_MAX_DEPTH) {
+    addCharacterPatchIssue(issues, path, `profondita massima ${CHARACTER_PATCH_MAX_DEPTH} superata`);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    if (value.length > 1_000) addCharacterPatchIssue(issues, path, "array troppo lungo");
+    value.forEach((entry, index) => validateCharacterPatchStructure(entry, `${path}[${index}]`, issues, depth + 1));
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un oggetto semplice");
+    return;
+  }
+  const keys = Object.keys(value);
+  if (keys.length > 250) addCharacterPatchIssue(issues, path, "troppi campi");
+  for (const key of keys) {
+    if (CHARACTER_PATCH_FORBIDDEN_KEYS.has(key)) {
+      addCharacterPatchIssue(issues, `${path}.${key}`, "campo non consentito");
+      continue;
+    }
+    validateCharacterPatchStructure(value[key], `${path}.${key}`, issues, depth + 1);
+  }
+}
+
+function validateCharacterPatchKeys(value, allowedKeys, path, issues) {
+  if (!isPlainRecord(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un oggetto");
+    return false;
+  }
+  for (const key of Object.keys(value)) {
+    if (!allowedKeys.has(key)) addCharacterPatchIssue(issues, `${path}.${key}`, "campo sconosciuto");
+  }
+  return true;
+}
+
+function validateCharacterPatchString(value, path, issues, { maxLength = 500, nullable = false } = {}) {
+  if (nullable && value === null) return;
+  if (typeof value !== "string") {
+    addCharacterPatchIssue(issues, path, nullable ? "deve essere una stringa o null" : "deve essere una stringa");
+    return;
+  }
+  if (value.length > maxLength) addCharacterPatchIssue(issues, path, `massimo ${maxLength} caratteri`);
+}
+
+function validateCharacterPatchNumber(value, path, issues, { integer = false, min = -Number.MAX_VALUE, max = Number.MAX_VALUE } = {}) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un numero finito");
+    return;
+  }
+  if (integer && !Number.isInteger(value)) addCharacterPatchIssue(issues, path, "deve essere un intero");
+  if (value < min || value > max) addCharacterPatchIssue(issues, path, `deve essere compreso tra ${min} e ${max}`);
+}
+
+function validateCharacterPatchBoolean(value, path, issues) {
+  if (typeof value !== "boolean") addCharacterPatchIssue(issues, path, "deve essere booleano");
+}
+
+function validateCharacterPatchStringArray(value, path, issues, { maxItems = 100, maxLength = 200 } = {}) {
+  if (!Array.isArray(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un array");
+    return;
+  }
+  if (value.length > maxItems) addCharacterPatchIssue(issues, path, `massimo ${maxItems} elementi`);
+  value.forEach((entry, index) => validateCharacterPatchString(entry, `${path}[${index}]`, issues, { maxLength }));
+}
+
+function validateCharacterPatchBasicInfo(value, issues) {
+  const path = "patch.basicInfo";
+  const allowed = new Set([
+    "characterName", "class", "level", "background", "playerName", "race", "alignment",
+    "experiencePoints", "portraitUrl",
+  ]);
+  if (!validateCharacterPatchKeys(value, allowed, path, issues)) return;
+  const limits = {
+    characterName: 120, class: 120, background: 240, playerName: 120,
+    race: 120, alignment: 120, portraitUrl: 1_024,
+  };
+  for (const [key, maxLength] of Object.entries(limits)) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchString(value[key], `${path}.${key}`, issues, { maxLength });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "level")) {
+    validateCharacterPatchNumber(value.level, `${path}.level`, issues, { integer: true, min: 1, max: 20 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "experiencePoints")) {
+    validateCharacterPatchNumber(value.experiencePoints, `${path}.experiencePoints`, issues, { integer: true, min: 0, max: 100_000_000 });
+  }
+}
+
+function validateCharacterPatchAbilityScores(value, issues) {
+  const path = "patch.abilityScores";
+  if (!validateCharacterPatchKeys(value, CHARACTER_ABILITY_KEYS, path, issues)) return;
+  for (const [key, score] of Object.entries(value)) {
+    validateCharacterPatchNumber(score, `${path}.${key}`, issues, { integer: true, min: 0, max: 30 });
+  }
+}
+
+function validateCharacterPatchDeathSaves(value, issues) {
+  const path = "patch.combatStats.deathSaves";
+  if (!validateCharacterPatchKeys(value, new Set(["successes", "failures"]), path, issues)) return;
+  for (const key of ["successes", "failures"]) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchNumber(value[key], `${path}.${key}`, issues, { integer: true, min: 0, max: 3 });
+    }
+  }
+}
+
+function validateCharacterPatchRestState(value, issues) {
+  const path = "patch.combatStats.restState";
+  const allowed = new Set([
+    "maxHitDice", "hitDiceRemaining", "shortRestsUsedSinceLongRest", "lastShortRestAt", "lastLongRestAt",
+  ]);
+  if (!validateCharacterPatchKeys(value, allowed, path, issues)) return;
+  for (const key of ["maxHitDice", "hitDiceRemaining", "shortRestsUsedSinceLongRest"]) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchNumber(value[key], `${path}.${key}`, issues, { integer: true, min: 0, max: 1_000 });
+    }
+  }
+  for (const key of ["lastShortRestAt", "lastLongRestAt"]) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchString(value[key], `${path}.${key}`, issues, { maxLength: 64, nullable: true });
+    }
+  }
+}
+
+function validateCharacterPatchSpellSlots(value, issues) {
+  const path = "patch.combatStats.spellSlots";
+  if (!isPlainRecord(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un oggetto");
+    return;
+  }
+  for (const [levelKey, slots] of Object.entries(value)) {
+    const level = Number(levelKey);
+    if (!Number.isInteger(level) || level < 0 || level > 12 || String(level) !== levelKey) {
+      addCharacterPatchIssue(issues, `${path}.${levelKey}`, "livello slot non valido");
+      continue;
+    }
+    if (!Array.isArray(slots)) {
+      addCharacterPatchIssue(issues, `${path}.${levelKey}`, "deve essere un array");
+      continue;
+    }
+    if (slots.length > 100) addCharacterPatchIssue(issues, `${path}.${levelKey}`, "massimo 100 slot");
+    slots.forEach((slot, index) => {
+      const slotPath = `${path}.${levelKey}[${index}]`;
+      if (!validateCharacterPatchKeys(slot, new Set(["id", "active"]), slotPath, issues)) return;
+      if (Object.prototype.hasOwnProperty.call(slot, "id")) {
+        const validId = (typeof slot.id === "string" && slot.id.length <= 120) ||
+          (typeof slot.id === "number" && Number.isInteger(slot.id) && Number.isSafeInteger(slot.id));
+        if (!validId) addCharacterPatchIssue(issues, `${slotPath}.id`, "identificativo non valido");
+      }
+      if (!Object.prototype.hasOwnProperty.call(slot, "active")) {
+        addCharacterPatchIssue(issues, `${slotPath}.active`, "campo obbligatorio");
+      } else {
+        validateCharacterPatchBoolean(slot.active, `${slotPath}.active`, issues);
+      }
+    });
+  }
+}
+
+function validateCharacterPatchCombatStats(value, issues) {
+  const path = "patch.combatStats";
+  const allowed = new Set([
+    "armorClass", "initiative", "speed", "hitPointMaximum", "currentHitPoints", "temporaryHitPoints",
+    "hitDice", "deathSaves", "spellSlots", "restState",
+  ]);
+  if (!validateCharacterPatchKeys(value, allowed, path, issues)) return;
+  const numericLimits = {
+    armorClass: [0, 1_000], initiative: [-1_000, 1_000], speed: [0, 10_000],
+    hitPointMaximum: [0, 10_000_000], currentHitPoints: [0, 10_000_000], temporaryHitPoints: [0, 10_000_000],
+  };
+  for (const [key, [min, max]] of Object.entries(numericLimits)) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchNumber(value[key], `${path}.${key}`, issues, { integer: true, min, max });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "hitDice")) {
+    validateCharacterPatchString(value.hitDice, `${path}.hitDice`, issues, { maxLength: 40 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "deathSaves")) validateCharacterPatchDeathSaves(value.deathSaves, issues);
+  if (Object.prototype.hasOwnProperty.call(value, "spellSlots")) validateCharacterPatchSpellSlots(value.spellSlots, issues);
+  if (Object.prototype.hasOwnProperty.call(value, "restState")) validateCharacterPatchRestState(value.restState, issues);
+}
+
+function validateCharacterPatchProficiencies(value, issues) {
+  const path = "patch.proficiencies";
+  const allowed = new Set(["proficiencyBonus", "savingThrows", "skills", "languages", "weapons"]);
+  if (!validateCharacterPatchKeys(value, allowed, path, issues)) return;
+  if (Object.prototype.hasOwnProperty.call(value, "proficiencyBonus")) {
+    validateCharacterPatchNumber(value.proficiencyBonus, `${path}.proficiencyBonus`, issues, { integer: true, min: 0, max: 20 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "savingThrows")) {
+    validateCharacterPatchStringArray(value.savingThrows, `${path}.savingThrows`, issues, { maxItems: 12, maxLength: 60 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "languages")) {
+    validateCharacterPatchStringArray(value.languages, `${path}.languages`, issues, { maxItems: 100, maxLength: 120 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "skills")) {
+    if (!Array.isArray(value.skills)) {
+      addCharacterPatchIssue(issues, `${path}.skills`, "deve essere un array");
+    } else {
+      if (value.skills.length > 100) addCharacterPatchIssue(issues, `${path}.skills`, "massimo 100 elementi");
+      value.skills.forEach((skill, index) => {
+        const skillPath = `${path}.skills[${index}]`;
+        if (!validateCharacterPatchKeys(skill, new Set(["name", "ability", "value", "proficient", "rank"]), skillPath, issues)) return;
+        if (Object.prototype.hasOwnProperty.call(skill, "name")) validateCharacterPatchString(skill.name, `${skillPath}.name`, issues, { maxLength: 120 });
+        if (Object.prototype.hasOwnProperty.call(skill, "ability")) validateCharacterPatchString(skill.ability, `${skillPath}.ability`, issues, { maxLength: 40 });
+        if (Object.prototype.hasOwnProperty.call(skill, "value")) validateCharacterPatchNumber(skill.value, `${skillPath}.value`, issues, { min: -1_000, max: 1_000 });
+        if (Object.prototype.hasOwnProperty.call(skill, "proficient")) validateCharacterPatchBoolean(skill.proficient, `${skillPath}.proficient`, issues);
+        if (Object.prototype.hasOwnProperty.call(skill, "rank")) {
+          validateCharacterPatchString(skill.rank, `${skillPath}.rank`, issues, { maxLength: 20 });
+          if (!["none", "half", "proficient", "expertise"].includes(skill.rank)) {
+            addCharacterPatchIssue(issues, `${skillPath}.rank`, "valore non supportato");
+          }
+        }
+      });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "weapons")) {
+    const weapons = value.weapons;
+    if (Array.isArray(weapons)) {
+      if (weapons.length > 100) addCharacterPatchIssue(issues, `${path}.weapons`, "massimo 100 elementi");
+      weapons.forEach((entry, index) => {
+        if (typeof entry === "string") validateCharacterPatchString(entry, `${path}.weapons[${index}]`, issues, { maxLength: 120 });
+        else if (isPlainRecord(entry)) {
+          const entryPath = `${path}.weapons[${index}]`;
+          if (!validateCharacterPatchKeys(entry, new Set(["id", "slug", "name", "group", "weaponProficiencyGroup"]), entryPath, issues)) return;
+          Object.entries(entry).forEach(([key, item]) => validateCharacterPatchString(item, `${entryPath}.${key}`, issues, { maxLength: 120 }));
+        } else addCharacterPatchIssue(issues, `${path}.weapons[${index}]`, "deve essere una stringa o un oggetto");
+      });
+    } else if (isPlainRecord(weapons)) {
+      if (Object.keys(weapons).length > 100) addCharacterPatchIssue(issues, `${path}.weapons`, "massimo 100 elementi");
+      Object.entries(weapons).forEach(([key, enabled]) => {
+        if (key.length > 120) addCharacterPatchIssue(issues, `${path}.weapons`, "identificativo troppo lungo");
+        validateCharacterPatchBoolean(enabled, `${path}.weapons.${key}`, issues);
+      });
+    } else {
+      addCharacterPatchIssue(issues, `${path}.weapons`, "deve essere un array o un oggetto");
+    }
+  }
+}
+
+function validateCharacterPatchSkillGroups(value, path, issues) {
+  if (!validateCharacterPatchKeys(value, new Set(["volonta", "incontro", "riposoBreve", "riposoLungo"]), path, issues)) return;
+  for (const [group, entries] of Object.entries(value)) {
+    if (!Array.isArray(entries)) {
+      addCharacterPatchIssue(issues, `${path}.${group}`, "deve essere un array");
+      continue;
+    }
+    if (entries.length > 100) addCharacterPatchIssue(issues, `${path}.${group}`, "massimo 100 elementi");
+    entries.forEach((entry, index) => {
+      const entryPath = `${path}.${group}[${index}]`;
+      if (!validateCharacterPatchKeys(entry, new Set(["name", "used"]), entryPath, issues)) return;
+      validateCharacterPatchString(entry.name, `${entryPath}.name`, issues, { maxLength: 2_000 });
+      validateCharacterPatchBoolean(entry.used, `${entryPath}.used`, issues);
+    });
+  }
+}
+
+function validateCharacterPatchEquipment(value, issues) {
+  const path = "patch.equipment";
+  if (!validateCharacterPatchKeys(value, new Set(["attacks", "equipment", "items", "coins"]), path, issues)) return;
+  if (Object.prototype.hasOwnProperty.call(value, "equipment")) {
+    validateCharacterPatchStringArray(value.equipment, `${path}.equipment`, issues, { maxItems: 1_000, maxLength: 500 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "coins")) {
+    const coinsPath = `${path}.coins`;
+    if (validateCharacterPatchKeys(value.coins, new Set(["cp", "sp", "ep", "gp", "pp"]), coinsPath, issues)) {
+      Object.entries(value.coins).forEach(([key, amount]) => validateCharacterPatchNumber(amount, `${coinsPath}.${key}`, issues, { integer: true, min: 0, max: 1_000_000_000 }));
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "attacks")) {
+    if (!Array.isArray(value.attacks)) addCharacterPatchIssue(issues, `${path}.attacks`, "deve essere un array");
+    else {
+      if (value.attacks.length > 500) addCharacterPatchIssue(issues, `${path}.attacks`, "massimo 500 elementi");
+      value.attacks.forEach((attack, index) => {
+        const attackPath = `${path}.attacks[${index}]`;
+        const allowed = new Set(["name", "attackBonus", "damageDice", "damageType", "category", "hands", "range", "equipped", "skill", "skills", "skillsByType"]);
+        if (!validateCharacterPatchKeys(attack, allowed, attackPath, issues)) return;
+        for (const key of ["name", "damageDice", "damageType", "category", "hands", "range", "skill"]) {
+          if (Object.prototype.hasOwnProperty.call(attack, key)) validateCharacterPatchString(attack[key], `${attackPath}.${key}`, issues, { maxLength: key === "name" ? 200 : 500 });
+        }
+        if (Object.prototype.hasOwnProperty.call(attack, "attackBonus")) validateCharacterPatchNumber(attack.attackBonus, `${attackPath}.attackBonus`, issues, { min: -1_000, max: 1_000 });
+        if (Object.prototype.hasOwnProperty.call(attack, "equipped")) validateCharacterPatchBoolean(attack.equipped, `${attackPath}.equipped`, issues);
+        if (Object.prototype.hasOwnProperty.call(attack, "skills")) validateCharacterPatchStringArray(attack.skills, `${attackPath}.skills`, issues, { maxItems: 100, maxLength: 500 });
+        if (Object.prototype.hasOwnProperty.call(attack, "skillsByType")) validateCharacterPatchSkillGroups(attack.skillsByType, `${attackPath}.skillsByType`, issues);
+      });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "items")) {
+    if (!Array.isArray(value.items)) addCharacterPatchIssue(issues, `${path}.items`, "deve essere un array");
+    else {
+      if (value.items.length > 1_000) addCharacterPatchIssue(issues, `${path}.items`, "massimo 1000 elementi");
+      value.items.forEach((item, index) => {
+        const itemPath = `${path}.items[${index}]`;
+        const allowed = new Set(["type", "name", "description", "equippable", "equipped", "quantity", "subtype", "dice", "skillsByType"]);
+        if (!validateCharacterPatchKeys(item, allowed, itemPath, issues)) return;
+        for (const key of ["type", "name", "description", "subtype", "dice"]) {
+          if (Object.prototype.hasOwnProperty.call(item, key)) validateCharacterPatchString(item[key], `${itemPath}.${key}`, issues, { maxLength: key === "description" ? 10_000 : 500 });
+        }
+        for (const key of ["equippable", "equipped"]) {
+          if (Object.prototype.hasOwnProperty.call(item, key)) validateCharacterPatchBoolean(item[key], `${itemPath}.${key}`, issues);
+        }
+        if (Object.prototype.hasOwnProperty.call(item, "quantity")) validateCharacterPatchNumber(item.quantity, `${itemPath}.quantity`, issues, { integer: true, min: 0, max: 1_000_000 });
+        if (Object.prototype.hasOwnProperty.call(item, "skillsByType")) validateCharacterPatchSkillGroups(item.skillsByType, `${itemPath}.skillsByType`, issues);
+      });
+    }
+  }
+}
+
+function validateCharacterPatchFeatures(value, issues) {
+  const path = "patch.features";
+  if (!Array.isArray(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un array");
+    return;
+  }
+  if (value.length > 500) addCharacterPatchIssue(issues, path, "massimo 500 elementi");
+  value.forEach((feature, index) => {
+    const featurePath = `${path}[${index}]`;
+    if (!validateCharacterPatchKeys(feature, new Set(["name", "description", "uses"]), featurePath, issues)) return;
+    validateCharacterPatchString(feature.name, `${featurePath}.name`, issues, { maxLength: 300 });
+    validateCharacterPatchString(feature.description, `${featurePath}.description`, issues, { maxLength: 30_000 });
+    if (Object.prototype.hasOwnProperty.call(feature, "uses")) validateCharacterPatchString(feature.uses, `${featurePath}.uses`, issues, { maxLength: 200 });
+  });
+}
+
+function validateCharacterPatchCapabilities(value, issues) {
+  const path = "patch.capabilities";
+  if (!Array.isArray(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un array");
+    return;
+  }
+  if (value.length > 250) addCharacterPatchIssue(issues, path, "massimo 250 elementi");
+  value.forEach((capability, index) => {
+    const capabilityPath = `${path}[${index}]`;
+    const allowed = new Set(["name", "category", "kind", "shortDescription", "description", "passiveEffects", "sourceType", "sourceLabel", "sourceItemId", "sourceFeatureId", "readOnly", "usage"]);
+    if (!validateCharacterPatchKeys(capability, allowed, capabilityPath, issues)) return;
+    for (const key of ["name", "category", "kind", "shortDescription", "description", "sourceType", "sourceLabel", "sourceItemId", "sourceFeatureId"]) {
+      if (Object.prototype.hasOwnProperty.call(capability, key)) validateCharacterPatchString(capability[key], `${capabilityPath}.${key}`, issues, { maxLength: key === "description" ? 30_000 : 500 });
+    }
+    if (Object.prototype.hasOwnProperty.call(capability, "readOnly")) validateCharacterPatchBoolean(capability.readOnly, `${capabilityPath}.readOnly`, issues);
+    if (Object.prototype.hasOwnProperty.call(capability, "usage")) {
+      const usagePath = `${capabilityPath}.usage`;
+      if (validateCharacterPatchKeys(capability.usage, new Set(["resetOn", "customLabel", "used"]), usagePath, issues)) {
+        validateCharacterPatchString(capability.usage.resetOn, `${usagePath}.resetOn`, issues, { maxLength: 40 });
+        if (Object.prototype.hasOwnProperty.call(capability.usage, "customLabel")) validateCharacterPatchString(capability.usage.customLabel, `${usagePath}.customLabel`, issues, { maxLength: 200 });
+        if (!Array.isArray(capability.usage.used)) addCharacterPatchIssue(issues, `${usagePath}.used`, "deve essere un array");
+        else {
+          if (capability.usage.used.length > 500) addCharacterPatchIssue(issues, `${usagePath}.used`, "massimo 500 elementi");
+          capability.usage.used.forEach((used, usedIndex) => validateCharacterPatchBoolean(used, `${usagePath}.used[${usedIndex}]`, issues));
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(capability, "passiveEffects")) {
+      const effectsPath = `${capabilityPath}.passiveEffects`;
+      if (!Array.isArray(capability.passiveEffects)) addCharacterPatchIssue(issues, effectsPath, "deve essere un array");
+      else {
+        if (capability.passiveEffects.length > 50) addCharacterPatchIssue(issues, effectsPath, "massimo 50 elementi");
+        capability.passiveEffects.forEach((effect, effectIndex) => {
+          const effectPath = `${effectsPath}[${effectIndex}]`;
+          const allowedEffect = new Set(["category", "target", "operationType", "valueMode", "value", "setMode", "setValue", "capValue", "sourceAbility", "multiplierNumerator", "multiplierDenominator", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes"]);
+          if (!validateCharacterPatchKeys(effect, allowedEffect, effectPath, issues)) return;
+          const category = effect.category === undefined ? "MODIFIER" : effect.category;
+          if (!PASSIVE_EFFECT_CATEGORIES.has(category)) {
+            addCharacterPatchIssue(issues, `${effectPath}.category`, "deve essere MODIFIER o PROFICIENCY");
+            return;
+          }
+          if (category === "PROFICIENCY") {
+            for (const key of Object.keys(effect)) {
+              if (!PASSIVE_EFFECT_PROFICIENCY_KEYS.has(key)) {
+                addCharacterPatchIssue(issues, `${effectPath}.${key}`, "campo non consentito per una competenza");
+              }
+            }
+            if (!Object.prototype.hasOwnProperty.call(effect, "target")) {
+              addCharacterPatchIssue(issues, `${effectPath}.target`, "campo obbligatorio");
+            } else if (!PASSIVE_EFFECT_PROFICIENCY_TARGETS.has(effect.target)) {
+              addCharacterPatchIssue(issues, `${effectPath}.target`, "categoria di competenza non supportata");
+            }
+            return;
+          }
+          for (const key of ["target", "operationType", "valueMode", "setMode", "sourceAbility", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes"]) {
+            if (Object.prototype.hasOwnProperty.call(effect, key)) validateCharacterPatchString(effect[key], `${effectPath}.${key}`, issues, { maxLength: key === "notes" ? 2_000 : 200 });
+          }
+          for (const key of ["value", "setValue", "capValue", "multiplierNumerator", "multiplierDenominator"]) {
+            if (Object.prototype.hasOwnProperty.call(effect, key)) validateCharacterPatchNumber(effect[key], `${effectPath}.${key}`, issues, { min: -1_000_000, max: 1_000_000 });
+          }
+        });
+      }
+    }
+  });
+}
+
+function validateCharacterPatchPactBlade(value, issues) {
+  const path = "patch.pactBlade";
+  if (!validateCharacterPatchKeys(value, new Set(["bondedCharacterItemId", "activeSummon"]), path, issues)) return;
+  if (Object.prototype.hasOwnProperty.call(value, "bondedCharacterItemId")) {
+    validateCharacterPatchString(value.bondedCharacterItemId, `${path}.bondedCharacterItemId`, issues, { maxLength: 200, nullable: true });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "activeSummon")) {
+    const summonPath = `${path}.activeSummon`;
+    if (validateCharacterPatchKeys(value.activeSummon, new Set(["mode", "templateId"]), summonPath, issues)) {
+      if (Object.prototype.hasOwnProperty.call(value.activeSummon, "mode")) validateCharacterPatchString(value.activeSummon.mode, `${summonPath}.mode`, issues, { maxLength: 40, nullable: true });
+      if (Object.prototype.hasOwnProperty.call(value.activeSummon, "templateId")) validateCharacterPatchString(value.activeSummon.templateId, `${summonPath}.templateId`, issues, { maxLength: 200, nullable: true });
+    }
+  }
+}
+
+export function validatePactBladeState(characterState, bondedItem = null) {
+  const issues = [];
+  const className = String(characterState?.basicInfo?.class ?? "").trim().toLowerCase();
+  if (className !== "warlock") {
+    issues.push("patch.pactBlade: disponibile soltanto per un Warlock");
+    return issues;
+  }
+
+  const pactBlade = characterState?.pactBlade ?? {};
+  const bondedCharacterItemId = pactBlade?.bondedCharacterItemId ?? null;
+  const activeSummon = pactBlade?.activeSummon ?? { mode: null, templateId: null };
+  const mode = activeSummon?.mode ?? null;
+  const templateId = activeSummon?.templateId ?? null;
+
+  if (bondedCharacterItemId !== null) {
+    if (
+      !bondedItem ||
+      bondedItem.id !== bondedCharacterItemId ||
+      bondedItem.itemCategory !== "WEAPON" ||
+      bondedItem.hasMeleeAttack !== true
+    ) {
+      issues.push("patch.pactBlade.bondedCharacterItemId: deve indicare un'arma da mischia posseduta dal personaggio");
+    }
+  }
+
+  if (![null, "bonded", "template"].includes(mode)) {
+    issues.push("patch.pactBlade.activeSummon.mode: modalita non supportata");
+  } else if (mode === "bonded") {
+    if (!bondedCharacterItemId) issues.push("patch.pactBlade.activeSummon.mode: richiede un'arma legata");
+    if (templateId !== null) issues.push("patch.pactBlade.activeSummon.templateId: deve essere null per un'arma legata");
+  } else if (mode === "template") {
+    if (typeof templateId !== "string" || !PACT_BLADE_TEMPLATE_IDS.has(templateId)) {
+      issues.push("patch.pactBlade.activeSummon.templateId: modello non supportato");
+    }
+  } else if (templateId !== null) {
+    issues.push("patch.pactBlade.activeSummon.templateId: deve essere null senza evocazione");
+  }
+
+  return issues;
+}
+
+function readPactBladeBondedItem(characterSlug, characterItemId) {
+  if (!characterItemId || !tableExists("CharacterItem") || !tableExists("ItemDefinition") || !tableExists("ItemAttack")) return null;
+  const row = sqlite.prepare(`
+    SELECT ci.id, d.category AS itemCategory,
+      CASE WHEN EXISTS (
+        SELECT 1 FROM "ItemAttack" a
+        WHERE a.itemDefinitionId = ci.itemDefinitionId AND a.kind = 'MELEE_WEAPON'
+      ) THEN 1 ELSE 0 END AS hasMeleeAttack
+    FROM "CharacterItem" ci
+    INNER JOIN "Character" c ON c.id = ci.characterId
+    INNER JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
+    WHERE c.slug = ? AND c.archivedAt IS NULL AND ci.id = ?
+    LIMIT 1
+  `).get(characterSlug, characterItemId);
+  return row ? { id: row.id, itemCategory: row.itemCategory, hasMeleeAttack: !!row.hasMeleeAttack } : null;
+}
+
+export function validateCharacterPatch(patch) {
+  const issues = [];
+  if (!isPlainRecord(patch)) return ["patch: deve essere un oggetto"];
+  let serialized;
+  try {
+    serialized = JSON.stringify(patch);
+  } catch {
+    return ["patch: contenuto non serializzabile"];
+  }
+  if (Buffer.byteLength(serialized, "utf8") > CHARACTER_PATCH_MAX_BYTES) {
+    addCharacterPatchIssue(issues, "patch", `dimensione massima ${CHARACTER_PATCH_MAX_BYTES} byte superata`);
+  }
+  validateCharacterPatchStructure(patch, "patch", issues);
+  validateCharacterPatchKeys(patch, CHARACTER_PATCH_TOP_LEVEL_KEYS, "patch", issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "basicInfo")) validateCharacterPatchBasicInfo(patch.basicInfo, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "abilityScores")) validateCharacterPatchAbilityScores(patch.abilityScores, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "combatStats")) validateCharacterPatchCombatStats(patch.combatStats, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "proficiencies")) validateCharacterPatchProficiencies(patch.proficiencies, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "equipment")) validateCharacterPatchEquipment(patch.equipment, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "features")) validateCharacterPatchFeatures(patch.features, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "capabilities")) validateCharacterPatchCapabilities(patch.capabilities, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "pactBlade")) validateCharacterPatchPactBlade(patch.pactBlade, issues);
+  return issues;
+}
+
 /** Deep merge (objects merged, arrays replaced, scalars overwritten) */
 function deepMerge(target, patch) {
   if (Array.isArray(target) && Array.isArray(patch)) {
@@ -9241,12 +9840,6 @@ function parseHitDieSize(hitDice, className) {
   const match = source.match(/d\s*(\d+)/i);
   const size = match ? Number(match[1]) : 8;
   return Number.isFinite(size) && size > 0 ? size : 8;
-}
-
-function getFixedHitDieHealing(hitDieSize, constitutionScore) {
-  const conScore = Number.isFinite(Number(constitutionScore)) ? Number(constitutionScore) : 10;
-  const conMod = Math.floor((conScore - 10) / 2);
-  return Math.max(1, Math.floor(hitDieSize / 2) + 1 + conMod);
 }
 
 function resetCapabilityUses(capabilities, restType) {
@@ -9516,7 +10109,7 @@ function prepareSpellSlotConversion(character, targetLevelValue, selectionsValue
   };
 }
 
-function applyCharacterRest(character, restType) {
+export function applyCharacterRest(character, restType, options = {}, now = new Date()) {
   const data = character && typeof character === "object" ? character : {};
   const basicInfo = data.basicInfo ?? {};
   const combatStats = data.combatStats ?? {};
@@ -9531,57 +10124,105 @@ function applyCharacterRest(character, restType) {
     Math.min(maxHitDice, Math.floor(Number(restState.hitDiceRemaining ?? maxHitDice)) || 0)
   );
   const shortRestsUsed = Math.max(0, Math.floor(Number(restState.shortRestsUsedSinceLongRest ?? 0)) || 0);
+  const normalizedOptions = options === undefined || options === null ? {} : options;
+  if (!isPlainRecord(normalizedOptions)) {
+    const error = new Error("Le opzioni del riposo devono essere un oggetto.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const optionKeys = Object.keys(normalizedOptions);
+  if (optionKeys.some((key) => CHARACTER_PATCH_FORBIDDEN_KEYS.has(key) || !["hitDiceSpent", "hitDiceRollTotal"].includes(key))) {
+    const error = new Error("Le opzioni del riposo contengono campi non supportati.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const requestedHitDiceSpent = normalizedOptions.hitDiceSpent ?? 0;
+  const requestedHitDiceRollTotal = normalizedOptions.hitDiceRollTotal ?? 0;
+  if (!Number.isInteger(requestedHitDiceSpent) || requestedHitDiceSpent < 0 || requestedHitDiceSpent > hitDiceRemaining) {
+    const error = new Error(`I Dadi Vita spesi devono essere un intero tra 0 e ${hitDiceRemaining}.`);
+    error.statusCode = 400;
+    throw error;
+  }
+  const minimumRollTotal = requestedHitDiceSpent === 0 ? 0 : requestedHitDiceSpent;
+  const maximumRollTotal = requestedHitDiceSpent * hitDieSize;
+  if (
+    !Number.isInteger(requestedHitDiceRollTotal) ||
+    requestedHitDiceRollTotal < minimumRollTotal ||
+    requestedHitDiceRollTotal > maximumRollTotal
+  ) {
+    const error = new Error(
+      requestedHitDiceSpent === 0
+        ? "Il totale naturale dei Dadi Vita deve essere 0 quando non si spendono dadi."
+        : `Il totale naturale dei Dadi Vita deve essere un intero tra ${minimumRollTotal} e ${maximumRollTotal}.`
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+  if (restType === "long" && (requestedHitDiceSpent !== 0 || requestedHitDiceRollTotal !== 0)) {
+    const error = new Error("Un riposo lungo non accetta Dadi Vita spesi o tirati.");
+    error.statusCode = 400;
+    throw error;
+  }
 
   let nextCombatStats = {
     ...combatStats,
-    deathSaves: { successes: 0, failures: 0 },
     spellSlots: resetSpellSlotsForRest(combatStats.spellSlots ?? {}, basicInfo.class, restType),
   };
   let healingApplied = 0;
   let hitDiceSpent = 0;
+  let hitDiceRecovered = 0;
   let restApplied = true;
   let blockedReason = null;
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const nowTime = Number.isFinite(nowDate.getTime()) ? nowDate.getTime() : Date.now();
+  const nowIso = new Date(nowTime).toISOString();
 
   if (restType === "long") {
-    nextCombatStats = {
-      ...nextCombatStats,
-      currentHitPoints: maxHp,
-      temporaryHitPoints: 0,
-      restState: {
-        ...restState,
-        maxHitDice,
-        hitDiceRemaining: maxHitDice,
-        shortRestsUsedSinceLongRest: 0,
-        lastLongRestAt: new Date().toISOString(),
-      },
-    };
-  } else {
-    if (shortRestsUsed >= 2) {
+    const lastLongRestTime = Date.parse(String(restState.lastLongRestAt ?? ""));
+    if (currentHp <= 0) {
       restApplied = false;
-      blockedReason = "Limite di 2 riposi brevi raggiunto.";
+      blockedReason = "Il riposo lungo richiede almeno 1 PF all'inizio.";
+    } else if (Number.isFinite(lastLongRestTime) && nowTime - lastLongRestTime < 24 * 60 * 60 * 1_000) {
+      restApplied = false;
+      blockedReason = "E gia stato completato un riposo lungo nelle ultime 24 ore.";
     } else {
-      const missingHp = Math.max(0, maxHp - currentHp);
-      const budget = maxHitDice > 0 ? Math.max(1, Math.floor(maxHitDice / 2)) : 0;
-      const usableHitDice = Math.min(budget, hitDiceRemaining);
-      const healingPerDie = getFixedHitDieHealing(hitDieSize, data.abilityScores?.constitution);
-
-      if (missingHp > 0 && usableHitDice > 0) {
-        hitDiceSpent = Math.min(usableHitDice, Math.ceil(missingHp / healingPerDie));
-        healingApplied = Math.min(missingHp, hitDiceSpent * healingPerDie);
-      }
-
+      const spentHitDice = Math.max(0, maxHitDice - hitDiceRemaining);
+      hitDiceRecovered = Math.min(spentHitDice, Math.max(1, Math.floor(maxHitDice / 2)));
       nextCombatStats = {
         ...nextCombatStats,
-        currentHitPoints: Math.min(maxHp, currentHp + healingApplied),
+        currentHitPoints: maxHp,
+        temporaryHitPoints: 0,
         restState: {
           ...restState,
           maxHitDice,
-          hitDiceRemaining: Math.max(0, hitDiceRemaining - hitDiceSpent),
-          shortRestsUsedSinceLongRest: shortRestsUsed + 1,
-          lastShortRestAt: new Date().toISOString(),
+          hitDiceRemaining: Math.min(maxHitDice, hitDiceRemaining + hitDiceRecovered),
+          shortRestsUsedSinceLongRest: 0,
+          lastLongRestAt: nowIso,
         },
       };
     }
+  } else {
+    const missingHp = Math.max(0, maxHp - currentHp);
+    const constitutionScore = Number.isFinite(Number(data.abilityScores?.constitution))
+      ? Number(data.abilityScores.constitution)
+      : 10;
+    const constitutionModifier = Math.floor((constitutionScore - 10) / 2);
+    hitDiceSpent = requestedHitDiceSpent;
+    const requestedHealing = Math.max(0, requestedHitDiceRollTotal + hitDiceSpent * constitutionModifier);
+    healingApplied = Math.min(missingHp, requestedHealing);
+
+    nextCombatStats = {
+      ...nextCombatStats,
+      currentHitPoints: Math.min(maxHp, currentHp + healingApplied),
+      restState: {
+        ...restState,
+        maxHitDice,
+        hitDiceRemaining: Math.max(0, hitDiceRemaining - hitDiceSpent),
+        shortRestsUsedSinceLongRest: shortRestsUsed + 1,
+        lastShortRestAt: nowIso,
+      },
+    };
   }
 
   if (!restApplied) {
@@ -9599,6 +10240,8 @@ function applyCharacterRest(character, restType) {
         temporaryHitPointsAfter: Math.max(0, Math.floor(Number(combatStats.temporaryHitPoints ?? 0)) || 0),
         healingApplied: 0,
         hitDiceSpent: 0,
+        hitDiceRollTotal: 0,
+        hitDiceRecovered: 0,
         hitDiceRemaining,
         hitDiceRemainingAfter: hitDiceRemaining,
         maxHitDice,
@@ -9609,6 +10252,12 @@ function applyCharacterRest(character, restType) {
   }
 
   const nextCurrentHp = Math.max(0, Math.floor(Number(nextCombatStats.currentHitPoints ?? currentHp)) || 0);
+  if (nextCurrentHp > 0) {
+    nextCombatStats = {
+      ...nextCombatStats,
+      deathSaves: { successes: 0, failures: 0 },
+    };
+  }
   const tempHpBefore = Math.max(0, Math.floor(Number(combatStats.temporaryHitPoints ?? 0)) || 0);
   const tempHpAfter = Math.max(0, Math.floor(Number(nextCombatStats.temporaryHitPoints ?? tempHpBefore)) || 0);
   const nextHitDiceRemaining = nextCombatStats.restState?.hitDiceRemaining ?? hitDiceRemaining;
@@ -9631,6 +10280,8 @@ function applyCharacterRest(character, restType) {
       temporaryHitPointsAfter: tempHpAfter,
       healingApplied,
       hitDiceSpent,
+      hitDiceRollTotal: requestedHitDiceRollTotal,
+      hitDiceRecovered,
       hitDiceRemaining,
       hitDiceRemainingAfter: nextHitDiceRemaining,
       maxHitDice,
@@ -9638,6 +10289,30 @@ function applyCharacterRest(character, restType) {
       shortRestsUsedSinceLongRestAfter: nextShortRestsUsed,
     },
   };
+}
+
+function readRestOptionsBySlug(payload, targetSlugs) {
+  const raw = payload?.optionsBySlug;
+  if (raw === undefined || raw === null) return {};
+  if (!isPlainRecord(raw)) {
+    const error = new Error("optionsBySlug deve essere un oggetto indicizzato per slug.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const allowedSlugs = new Set(targetSlugs);
+  for (const [slug, options] of Object.entries(raw)) {
+    if (CHARACTER_PATCH_FORBIDDEN_KEYS.has(slug) || !allowedSlugs.has(slug)) {
+      const error = new Error(`Opzioni di riposo riferite a un personaggio non selezionato: ${slug}.`);
+      error.statusCode = 400;
+      throw error;
+    }
+    if (!isPlainRecord(options)) {
+      const error = new Error(`Le opzioni di riposo per ${slug} devono essere un oggetto.`);
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+  return raw;
 }
 
 function resetCharacterItemFeatureStatesForRest(characterSlugs, restType) {
@@ -9736,7 +10411,13 @@ function commitCharacterMutation(slug, {
       );
     }
 
-    const mutation = mutate(snapshot.state, snapshot);
+    let mutation;
+    try {
+      mutation = mutate(snapshot.state, snapshot);
+    } catch (error) {
+      if (error && !error.snapshot) error.snapshot = snapshot;
+      throw error;
+    }
     if (!mutation || mutation.write === false) {
       return {
         slug,
@@ -9750,11 +10431,21 @@ function commitCharacterMutation(slug, {
 
     const nextState = mutation.state ?? mutation;
     let revision;
-    runInTransaction(() => {
-      revision = writeCharacter(slug, nextState, { expectedRevision: snapshot.revision });
-    });
+    try {
+      runInTransaction(() => {
+        revision = writeCharacter(slug, nextState, { expectedRevision: snapshot.revision });
+      });
+    } catch (error) {
+      if (error && !error.snapshot) error.snapshot = snapshot;
+      throw error;
+    }
     if (typeof afterCommit === "function") {
-      afterCommit(nextState, mutation, snapshot, revision);
+      try {
+        afterCommit(nextState, mutation, snapshot, revision);
+      } catch (error) {
+        if (error && !error.snapshot) error.snapshot = readCharacterSnapshot(slug) ?? snapshot;
+        throw error;
+      }
     }
 
     const committedSnapshot = readCharacterSnapshot(slug);
@@ -9792,6 +10483,28 @@ function buildCharacterPatchPayload(result) {
 
 // ---- App ----
 async function start() {
+  ({ DatabaseSync } = await import("node:sqlite"));
+  bootstrapPersistentStorage();
+  sqlite = createSqliteConnection();
+  sqliteLastKnownMtimeMs = getSqliteDbMtimeMs();
+  ensureRaceSpeedReferenceTable();
+  ensureUserLayoutPreferenceTable();
+  ensureAppStateTable();
+  ensureCharacterBackstoryTable();
+  ensureCampaignSessionStateTable();
+  ensureCampaignEventTables();
+  ensureCampaignDocumentTables();
+  ensureGameSessionStateTable();
+  ensureCharacterCurrencyBalanceTable();
+  ensureCurrencyTransactionTable();
+  ensureChatConversationTables();
+  ensureCampaignSessionStateRow();
+  ensureGameSessionStateRow();
+  ensureInitiativeTrackerStateMigrated();
+  ensureCharacterCurrencyBalanceRows();
+  ensureLegacyCharacterCurrencyBalancesMigrated();
+  ensureLegacyCharacterChatConversationsMigrated();
+
   const app = express();
   if (TRUST_PROXY !== "0" && TRUST_PROXY.toLowerCase() !== "false") {
     app.set("trust proxy", TRUST_PROXY === "1" || TRUST_PROXY.toLowerCase() === "true" ? 1 : TRUST_PROXY);
@@ -11856,6 +12569,8 @@ async function start() {
     let results;
     try {
       const targetSlugs = targetCharacters.map((character) => character.slug);
+      const optionsBySlug = readRestOptionsBySlug(req.body, targetSlugs);
+      const restNow = new Date();
       results = await enqueueCharacterMutations(targetSlugs, () => {
         const session = getSessionById(req.sessionId);
         const user = session?.userId ? getUserById(session.userId) : null;
@@ -11867,7 +12582,7 @@ async function start() {
           assertCharacterInventoryNotInActiveShopVisit({ characterSlug: slug });
           const snapshot = readCharacterSnapshot(slug);
           if (!snapshot) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
-          const rest = applyCharacterRest(snapshot.state, restType);
+          const rest = applyCharacterRest(snapshot.state, restType, optionsBySlug[slug], restNow);
           return { slug, snapshot, rest };
         });
 
@@ -11952,11 +12667,20 @@ async function start() {
       });
     }
 
-    return res.json({
-      ok: true,
-      type: restType,
-      summaries: targetCharacters.map((character) => applyCharacterRest(character, restType).summary),
-    });
+    try {
+      const targetSlugs = targetCharacters.map((character) => character.slug);
+      const optionsBySlug = readRestOptionsBySlug(req.body, targetSlugs);
+      const restNow = new Date();
+      return res.json({
+        ok: true,
+        type: restType,
+        summaries: targetCharacters.map((character) =>
+          applyCharacterRest(character, restType, optionsBySlug[character.slug], restNow).summary
+        ),
+      });
+    } catch (error) {
+      return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
+    }
   });
 
   app.get("/api/characters/:slug", requireAuth, (req, res) => {
@@ -12526,8 +13250,8 @@ async function start() {
       const ack = createSocketAcknowledger(acknowledge);
       const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
       const patch = payload?.patch;
-      if (!slug || !patch || typeof patch !== "object" || Array.isArray(patch)) {
-        ack({ ok: false, code: "INVALID_PATCH", error: "Patch del personaggio non valida." });
+      if (!slug) {
+        ack({ ok: false, code: "VALIDATION_ERROR", error: "Personaggio non valido." });
         return;
       }
 
@@ -12547,7 +13271,36 @@ async function start() {
             }
           },
           mutate: (current, snapshot) => {
+            const validationIssues = validateCharacterPatch(patch);
+            if (validationIssues.length > 0) {
+              const validationError = createCharacterMutationError(
+                "VALIDATION_ERROR",
+                validationIssues[0],
+                snapshot
+              );
+              validationError.issues = validationIssues;
+              throw validationError;
+            }
             const next = deepMerge(current, patch);
+            const changesClass =
+              patch?.basicInfo &&
+              typeof patch.basicInfo === "object" &&
+              !Array.isArray(patch.basicInfo) &&
+              Object.prototype.hasOwnProperty.call(patch.basicInfo, "class");
+            if (Object.prototype.hasOwnProperty.call(patch, "pactBlade") || changesClass) {
+              const bondedId = next?.pactBlade?.bondedCharacterItemId ?? null;
+              const hasPactBladeState = Boolean(
+                bondedId || next?.pactBlade?.activeSummon?.mode || next?.pactBlade?.activeSummon?.templateId
+              );
+              const pactBladeIssues = hasPactBladeState
+                ? validatePactBladeState(next, readPactBladeBondedItem(slug, bondedId))
+                : [];
+              if (pactBladeIssues.length > 0) {
+                const validationError = createCharacterMutationError("VALIDATION_ERROR", pactBladeIssues[0], snapshot);
+                validationError.issues = pactBladeIssues;
+                throw validationError;
+              }
+            }
             const includesDeathSaves =
               patch?.combatStats &&
               typeof patch.combatStats === "object" &&
@@ -12585,9 +13338,7 @@ async function start() {
           }, 60);
         }
       } catch (error) {
-        const mayReturnCanonicalState =
-          error?.code === "REVISION_CONFLICT" || error?.code === "DEATH_SAVES_REQUIRE_ZERO_HP";
-        const snapshot = mayReturnCanonicalState ? error?.snapshot ?? readCharacterSnapshot(slug) : null;
+        const snapshot = error?.snapshot ?? null;
         const statePayload = snapshot ? buildCharacterStatePayload(slug, snapshot) : null;
         if (statePayload) socket.emit("character:state", statePayload);
         ack({
@@ -12597,6 +13348,7 @@ async function start() {
           slug,
           revision: snapshot?.revision,
           state: snapshot?.state,
+          ...(Array.isArray(error?.issues) ? { issues: error.issues } : {}),
         });
       }
     });
@@ -12919,7 +13671,9 @@ async function start() {
   });
 }
 
-start();
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  start();
+}
 
 
 

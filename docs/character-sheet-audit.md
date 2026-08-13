@@ -1,6 +1,6 @@
 # Audit completo della scheda personaggio
 
-Stato: **analisi completata; pacchetto P0 implementato e verificato il 2026-08-12**.
+Stato: **analisi completata; pacchetti P0 e P1 implementati tecnicamente il 2026-08-12; P1 in attesa di test manuale utente**.
 Branch analizzato: `dev`.
 Perimetro: comportamento applicativo, persistenza, autorizzazioni, realtime, UI e copertura delle regole dichiarate dalla scheda.
 
@@ -23,7 +23,7 @@ I sei problemi P0 descritti sotto sono stati corretti. Le mutazioni core sono se
 
 Sono stati chiusi anche due difetti realtime emersi durante il test manuale: inventario ed equipaggiamento ora emettono un'invalidazione autorizzata dopo commit e le viste aperte rifanno una lettura deduplicata; i TS morte vengono reidratati dallo stato persistito e sincronizzati con patch minime. I TS morte restano visibili nei riepiloghi DM/iniziativa soltanto a 0 PF e sono modificabili soltanto a 0 PF, con controllo sia UI sia server.
 
-Verifiche completate: `node --check server.js`, `npx.cmd tsc --noEmit --pretty false`, `npm.cmd run build`, `git diff --check` e revisione quality/security senza finding significativi residui. I test manuali concordati con l'utente sono positivi; la suite browser/API automatizzata ampia resta da costruire.
+Verifiche completate: `node --check server.js`, `npx.cmd tsc --noEmit --pretty false`, `npm.cmd run test:p1`, `npm.cmd run build`, `git diff --check` e revisione quality/security senza finding significativi residui. I test manuali P0 concordati con l'utente sono positivi; per P1 e disponibile una suite automatica mirata di 86 casi, incluso il bootstrap server con `/healthz`, e resta da completare il collaudo browser autenticato/multi-client descritto in [`p1-manual-test-plan.md`](./p1-manual-test-plan.md).
 
 ## Metodo e limiti
 
@@ -36,7 +36,7 @@ Sono stati eseguiti:
 - ispezione read-only del DB locale di sviluppo: 4 personaggi attivi, tutti con schema JSON non uniforme; 61 `CharacterItem` normalizzati;
 - build di produzione e lint mirato.
 
-Non sono stati eseguiti test browser end-to-end o chiamate API autenticate con account reali. Il repository non contiene una suite automatica dedicata alla scheda; i casi indicati sotto diventano la baseline da implementare.
+Non sono stati eseguiti test browser end-to-end o chiamate API autenticate con account reali per P1. Il repository contiene ora una suite Vitest mirata a regole, validazione patch, riposi e migrazione/backfill; i casi multi-client, autorizzazione con sessioni reali, responsive e accessibilita restano nella baseline manuale sotto.
 
 Per il confronto regolistico si assume come riferimento attuale **SRD 5.1 / regole 2014**, coerente con i cataloghi legacy esistenti. Se la campagna adotta regole 2024 o house rule, ogni divergenza va riclassificata esplicitamente. Riferimenti ufficiali:
 
@@ -162,16 +162,18 @@ Evidenze centrali: `prisma/schema.prisma:324`, `server.js:1168`, `server.js:8273
 
 ## Problemi P1 - correttezza centrale
 
+**Stato complessivo:** implementato localmente il 2026-08-12. Le patch core hanno validazione server allowlist/tipi/range e risposta canonica; la scheda mostra lo stato di persistenza e si riconcilia dopo gli errori. Le armi censite distinguono gruppo semplice/marziale e proprieta leggera, il resolver applica la competenza della classe monoclasse corrente e tratta correttamente l'attacco bonus con due armi. I riposi seguono SRD 5.1 per scelta/tiro dei Dadi Vita, recupero lungo della meta e requisiti temporali; skill e percezione condividono un solo calcolo e il punteggio 0 resta 0. Restano fuori dal pacchetto i pool Dadi Vita multiclasse del Gate 1.8A e una garanzia di flush su chiusura brutale del browser; le mutazioni gia ricevute dal server sono sincrone/accodate e confermate post-commit.
+
 | ID | Problema | Riproduzione/Impatto | Soluzione consigliata |
 | --- | --- | --- | --- |
-| P1.1 | Nessuna validazione server del core scheda | Patch diretta con livello negativo, stringa nei PF o array al posto di oggetto; il JSON puo diventare non renderizzabile | Schema condiviso e allowlist dei path, tipi e range |
-| P1.2 | Nessun ack di persistenza | Il client riceve subito lo stato; errore SQLite o restart entro 200 ms perde il dato senza feedback | Ack post-commit, revisione, UI salvataggio/errore e flush shutdown |
+| P1.1 | Validazione server core — **risolto localmente 2026-08-12** | Patch invalide o campi server-owned vengono rifiutati prima del merge/commit | Conservare test negativi su tipi, range, path e prototype keys |
+| P1.2 | ACK e feedback persistenza — **risolto nel flusso normale; hard-unload residuo** | ACK/revisioni post-commit e riconciliazione sono attivi; una chiusura brutale puo interrompere richieste client non ancora emesse | Aggiungere in futuro warning/flush REST se serve garanzia anche su hard close |
 | P1.3 | TS morte non reidratati — **risolto 2026-08-12** | La UI deriva ora i contatori persistiti, sincronizza patch minime e impedisce modifiche sopra 0 PF | Conservare regressioni su refresh, due client, guarigione e riposo |
-| P1.4 | Competenza arma sempre aggiunta | Equipaggiare a un personaggio un'arma non competente: il tiro aggiunge comunque PB | Modello competenze armi e resolver server/client condiviso |
-| P1.5 | Danno off-hand sempre con modificatore | Attacco con arma secondaria aggiunge il modificatore anche senza regola/feature abilitante | Resolver two-weapon fighting con eccezioni esplicite |
-| P1.6 | Riposi non allineati a SRD 5.1 | Lungo recupera tutti i Dadi Vita; breve auto-spende dadi fissi e impone massimo due | Dichiarare house rule oppure introdurre scelta/tiro e recupero conforme |
-| P1.7 | Percezione passiva divergente | La scheda aggiunge PB alla Percezione competente; home, dashboard e tracker usano il resolver condiviso che non aggiunge la competenza | Un solo resolver di skill/rank usato da ogni consumer |
-| P1.8 | Punteggio caratteristica 0 risolto come 10 | L'editor consente 0, ma `Number(value) || 10` tratta zero come dato mancante | Validare il dominio e usare un controllo esplicito `Number.isFinite` |
+| P1.4 | Competenza armi — **risolto localmente 2026-08-13** | Gruppo arma, classe, effetti passivi `PROFICIENCY` e Arma del Patto determinano se aggiungere PB; il riepilogo mostra categorie, armi specifiche e provenienza senza generalizzare l'Arma del Patto | Migrare in futuro la provenienza verso regole sottoclasse/multiclasse normalizzate |
+| P1.5 | Danno mano secondaria — **risolto localmente 2026-08-12** | La riga sinistra e azione bonus TWF solo con due armi leggere; il mod positivo richiede lo stile esplicito | Conservare test su light, stile, mod negativo e attacco normale |
+| P1.6 | Riposi SRD 5.1 — **risolto localmente 2026-08-12** | Il DM sceglie dadi e totale naturale; niente limite di due brevi; il lungo recupera meta Dadi Vita e rispetta PF/24h | Separare i pool per classe nel Gate 1.8A |
+| P1.7 | Percezione passiva — **risolto localmente 2026-08-12** | Skill e percezione usano lo stesso rank/contributo di competenza in ogni consumer | Aggiungere regressioni automatiche cross-view |
+| P1.8 | Punteggio 0 — **risolto localmente 2026-08-12** | Lo zero resta finito e produce modificatore -5; editor/server accettano solo interi 0..30 | Conservare test 0, mancanti e non-finiti |
 
 Evidenze: `src/pages/CharacterSheet.tsx:694-698`, `src/components/characterSheet/proficiencies.tsx:125-135`, `src/components/characterSheet/proficiencies.tsx:219-289`, `src/components/characterSheet/attacks-and-spells.tsx:410-479`, `src/lib/character-derived-stats.ts:286-306`, `src/utils.ts:188-197`, `server.js:8814-8890`.
 
@@ -262,4 +264,5 @@ Questi fix sono candidati a una patch di stabilizzazione 1.7.x o a un prerequisi
 - `npm.cmd run build`: **passato**; warning chunk principale oltre 500 kB e Browserslist obsoleto.
 - lint mirato sulla scheda: **non passato**, 167 problemi (156 errori, 11 warning), in maggioranza `no-explicit-any` e dipendenze Hook.
 - ispezione DB locale: **sola lettura**, nessuna modifica a `prisma/migration.db`.
-- API/browser/realtime multi-client: **test manuali concordati positivi** sul pacchetto P0 e sui difetti realtime segnalati; resta da aggiungere una suite automatizzata completa per la baseline elencata nell'audit.
+- regressioni automatiche P1: **86 test passati** su regole derivate/combattimento, riepilogo competenze, competenze passive e Arma del Patto, validazione patch server, riposi, bootstrap/health e migrazione/backfill armi;
+- API/browser/realtime multi-client: **test manuali concordati positivi** sul pacchetto P0 e sui difetti realtime segnalati; il collaudo P1 autenticato resta da eseguire con la checklist dedicata.

@@ -71,6 +71,11 @@ enum WeaponHandling {
   VERSATILE
 }
 
+enum WeaponProficiencyGroup {
+  SIMPLE
+  MARTIAL
+}
+
 enum GloveWearMode {
   SINGLE
   PAIR
@@ -798,6 +803,8 @@ model ItemDefinition {
   category      ItemCategory
   subcategory   String?
   weaponHandling WeaponHandling?
+  weaponProficiencyGroup WeaponProficiencyGroup?
+  isLightWeapon Boolean      @default(false)
   gloveWearMode  GloveWearMode?
   armorCategory  ArmorCategory?
   armorClassCalculation ArmorClassCalculation?

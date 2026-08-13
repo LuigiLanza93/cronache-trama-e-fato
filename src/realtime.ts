@@ -67,10 +67,38 @@ let desiredPresenceSlug: string | null = null;
 let presenceSubscriberCount = 0;
 const invalidatedCharacterSlugs = new Set<string>();
 const characterUpdateErrorListeners = new Set<(error: CharacterUpdateError, slug: string) => void>();
+export type CharacterPersistenceStatus = "idle" | "saving" | "saved" | "error";
+export type CharacterPersistenceState = {
+  status: CharacterPersistenceStatus;
+  pendingCount: number;
+  error?: CharacterUpdateError;
+};
+const characterPersistenceStates = new Map<string, CharacterPersistenceState>();
+const characterPersistenceListeners = new Set<(state: CharacterPersistenceState, slug: string) => void>();
 const characterAccessRevokedListeners = new Set<(slug: string) => void>();
 const realtimeSessionRevokedListeners = new Set<() => void>();
 type PendingCharacterUpdate = { slug: string; realtimeGeneration: number; queueGeneration: number; reject: (reason: CharacterUpdateError) => void };
 const pendingCharacterUpdates = new Set<PendingCharacterUpdate>();
+
+function publishCharacterPersistence(slug: string, next: CharacterPersistenceState) {
+  characterPersistenceStates.set(slug, next);
+  characterPersistenceListeners.forEach((listener) => listener(next, slug));
+}
+
+function startCharacterPersistence(slug: string) {
+  const previous = characterPersistenceStates.get(slug);
+  publishCharacterPersistence(slug, { status: "saving", pendingCount: (previous?.pendingCount ?? 0) + 1 });
+}
+
+function finishCharacterPersistence(slug: string, error?: CharacterUpdateError) {
+  const previous = characterPersistenceStates.get(slug);
+  const pendingCount = Math.max(0, (previous?.pendingCount ?? 1) - 1);
+  if (pendingCount > 0) {
+    publishCharacterPersistence(slug, { status: "saving", pendingCount, ...(error ? { error } : {}) });
+    return;
+  }
+  publishCharacterPersistence(slug, { status: error ? "error" : "saved", pendingCount, ...(error ? { error } : {}) });
+}
 
 export function setRealtimePlayerWritesLocked(locked: boolean) {
   playerWritesLocked = locked;
@@ -82,6 +110,12 @@ export function resetRealtimeSocket({ preserveDesiredState = false }: { preserve
   characterRevisions.clear();
   characterUpdateQueues.clear();
   characterQueueGenerations.clear();
+  const resetError = characterUpdateError("Il salvataggio precedente Ã¨ stato annullato dal cambio sessione.", undefined, "REALTIME_RESET");
+  characterPersistenceStates.forEach((state, slug) => {
+    if (state.pendingCount > 0) {
+      publishCharacterPersistence(slug, { status: "error", pendingCount: 0, error: resetError });
+    }
+  });
   if (!preserveDesiredState) {
     desiredCharacterRooms.clear();
     desiredPresenceSlug = null;
@@ -395,6 +429,7 @@ export function updateCharacterWithAck(
 ): Promise<Extract<CharacterUpdateAck, { ok: true }>> {
   if (playerWritesLocked) return Promise.reject(characterUpdateError("La sessione è chiusa. Le modifiche del personaggio sono bloccate."));
   if (invalidatedCharacterSlugs.has(slug)) return Promise.reject(characterUpdateError("L'accesso a questa scheda è stato revocato.", undefined, "CHARACTER_ACCESS_REVOKED"));
+  startCharacterPersistence(slug);
   const requestRealtimeGeneration = realtimeGeneration;
   const requestQueueGeneration = characterQueueGenerations.get(slug) ?? 0;
   const previous = characterUpdateQueues.get(slug) ?? Promise.resolve();
@@ -459,8 +494,18 @@ export function updateCharacterWithAck(
         }
       );
   }));
-  characterUpdateQueues.set(slug, request.then(() => undefined, () => undefined));
-  return request;
+  const trackedRequest = request.then(
+    (response) => {
+      finishCharacterPersistence(slug);
+      return response;
+    },
+    (error: CharacterUpdateError) => {
+      finishCharacterPersistence(slug, error);
+      throw error;
+    }
+  );
+  characterUpdateQueues.set(slug, trackedRequest.then(() => undefined, () => undefined));
+  return trackedRequest;
 }
 
 export function updateCharacter(slug: string, patch: Record<string, unknown>) {
@@ -472,6 +517,15 @@ export function updateCharacter(slug: string, patch: Record<string, unknown>) {
 export function onCharacterUpdateError(listener: (error: CharacterUpdateError, slug: string) => void) {
   characterUpdateErrorListeners.add(listener);
   return () => characterUpdateErrorListeners.delete(listener);
+}
+
+export function onCharacterPersistenceChange(listener: (state: CharacterPersistenceState, slug: string) => void) {
+  characterPersistenceListeners.add(listener);
+  return () => characterPersistenceListeners.delete(listener);
+}
+
+export function getCharacterPersistenceState(slug: string): CharacterPersistenceState {
+  return characterPersistenceStates.get(slug) ?? { status: "idle", pendingCount: 0 };
 }
 
 export type SpellSlotConversionResult = {

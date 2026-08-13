@@ -55,6 +55,8 @@ import {
   announceEnter,
   announceLeave,
   onCharacterUpdateError,
+  onCharacterPersistenceChange,
+  type CharacterPersistenceState,
   onCharacterAccessRevoked,
 } from "@/realtime";
 import {
@@ -154,6 +156,14 @@ type InventoryEditTarget =
   | { kind: "legacyObject"; index: number };
 type CapabilityKind = "passive" | "active";
 type CapabilityReset = "atWill" | "encounter" | "shortRest" | "longRest" | "custom";
+type PassiveEffectCategory = "MODIFIER" | "PROFICIENCY";
+type PassiveEffectProficiencyTarget =
+  | "WEAPON_SIMPLE"
+  | "WEAPON_MARTIAL"
+  | "ARMOR_LIGHT"
+  | "ARMOR_MEDIUM"
+  | "ARMOR_HEAVY"
+  | "SHIELD";
 type PassiveEffectTarget =
   | "ARMOR_CLASS"
   | "INITIATIVE"
@@ -175,6 +185,7 @@ type PassiveEffectTarget =
   | "UNARMED_DAMAGE_ROLL"
   | "OFF_HAND_DAMAGE_ROLL"
   | PassiveEffectSkillTarget
+  | PassiveEffectProficiencyTarget
   | "CUSTOM";
 type PassiveEffectTrigger =
   | "ALWAYS"
@@ -202,6 +213,7 @@ type PassiveEffectSourceAbility =
   | "CHARISMA";
 type PassiveEffectEntry = {
   target: PassiveEffectTarget;
+  category?: PassiveEffectCategory;
   operationType?: PassiveEffectOperationType;
   valueMode?: PassiveEffectValueMode;
   value: number;
@@ -786,6 +798,10 @@ const CharacterSheet = () => {
     DEFAULT_CHARACTER_SHEET_LAYOUT
   );
   const [draggedCardId, setDraggedCardId] = useState<CharacterSheetCardId | null>(null);
+  const [characterPersistence, setCharacterPersistence] = useState<CharacterPersistenceState>({
+    status: "idle",
+    pendingCount: 0,
+  });
   const [dragStartLayout, setDragStartLayout] = useState<CharacterSheetLayoutCardEntry[] | null>(null);
   const [collapsedLayoutCards, setCollapsedLayoutCards] = useState<Record<string, boolean>>({});
   const [preEditCollapsedCards, setPreEditCollapsedCards] = useState<Record<string, boolean> | null>(null);
@@ -1742,6 +1758,13 @@ const CharacterSheet = () => {
   }, [character]);
 
   useEffect(() => {
+    const offPersistence = onCharacterPersistenceChange((state, slug) => {
+      if (slug === character) setCharacterPersistence(state);
+    });
+    return offPersistence;
+  }, [character]);
+
+  useEffect(() => {
     const offUpdateError = onCharacterUpdateError((error, slug) => {
       if (slug !== character) return;
       if (
@@ -1749,6 +1772,12 @@ const CharacterSheet = () => {
         error.state
       ) {
         setCharacterData(error.state as Character);
+      } else {
+        void fetchCharacter(slug)
+          .then((state) => setCharacterData(state as Character))
+          .catch(() => {
+            // Keep the current optimistic view visible; the error feedback remains actionable.
+          });
       }
       toast.error(error.code === "REVISION_CONFLICT"
         ? "La scheda è stata aggiornata altrove: ho ricaricato l'ultima versione."
@@ -2251,6 +2280,7 @@ const CharacterSheet = () => {
               setCurrencyHistoryOpen={setCurrencyHistoryOpen}
               currencyHistoryEntries={currencyHistoryEntries}
               currencyHistoryLoading={currencyHistoryLoading}
+              passiveCapabilities={passiveEffectCapabilities}
               showPactBladeSection={isWarlock}
               pactBladeState={pactBladeState}
               pactBladeBondedWeapon={bondedPactWeapon}
@@ -2504,6 +2534,15 @@ const CharacterSheet = () => {
   return (
     <div className="min-h-screen parchment p-6">
       <div className={`max-w-5xl mx-auto space-y-6 rounded-[1.75rem] transition-all ${turnAlertActive ? "turn-highlight-active" : ""}`}>
+        <div className="flex min-h-5 justify-end" aria-live="polite" aria-atomic="true">
+          {characterPersistence.status === "saving" ? (
+            <span className="text-xs text-muted-foreground">Salvataggio...</span>
+          ) : characterPersistence.status === "saved" ? (
+            <span className="text-xs text-muted-foreground">Salvato</span>
+          ) : characterPersistence.status === "error" ? (
+            <span className="text-xs text-destructive">Salvataggio non riuscito: verifica i dati e riprova.</span>
+          ) : null}
+        </div>
         {sessionState?.isOpen === false && user?.role === "player" ? (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 shadow-sm">
             Sessione chiusa: la scheda è in sola lettura. Le modifiche dei giocatori sono temporaneamente bloccate.
