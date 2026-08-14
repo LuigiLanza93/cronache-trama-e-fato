@@ -1,6 +1,6 @@
 # Piano di test manuale P1
 
-Stato: pronto per il collaudo locale su `dev`. Non eseguire questi test su Railway.
+Stato: collaudo locale completato con esito positivo e pacchetto consolidato su `dev` in `f7e1837`. Conservare questa checklist come baseline di regressione; non eseguirla su Railway senza un piano di test esplicito.
 
 ## Preparazione
 
@@ -244,45 +244,45 @@ Sostituisci una delle due armi con un'arma non leggera oppure senza attacco da m
 
 Atteso: la riga sinistra non viene presentata come attacco bonus TWF e non subisce la regola di rimozione del modificatore.
 
-## 6. Riposo breve SRD 5.1
+## 6. Riposo breve - house rule campagna
 
 Prepara un PG livello 5, Dado Vita d8, COS 14 (`+2`), PF `10/30`, 3 Dadi Vita disponibili.
 
-### P1-REST-S01 — Zero dadi
+### P1-REST-S01 — Cura automatica
 
 1. Apri il riposo breve.
-2. Seleziona `0` dadi e totale naturale `0`.
-3. Controlla anteprima e applica.
+2. Controlla l'anteprima senza inserire dadi o risultati.
+3. Applica il riposo.
 
-Atteso: PF e Dadi Vita non cambiano; le risorse `shortRest` vengono recuperate; il riposo non è bloccato da un contatore massimo.
+Atteso: ogni d8 cura `5 + 2 = 7`; il server spende automaticamente 2 dadi, cura `14` PF e porta il PG a `24/30`, con Dadi Vita `3 -> 1`. Anteprima e risultato applicato coincidono; le risorse `shortRest` vengono recuperate.
 
-### P1-REST-S02 — Due dadi
+### P1-REST-S02 — Solo i dadi necessari
 
-1. Seleziona 2 dadi e inserisci totale naturale `9`.
+Imposta il PG a `28/30` con almeno un Dado Vita disponibile e apri il riposo breve.
 
-Atteso: cura prevista `13` (`9 + 2*2`), PF finali `23/30`, Dadi Vita `3 -> 1`. Anteprima e risultato applicato coincidono.
+Atteso: viene speso un solo dado, la cura applicata e limitata a `2` e i PF arrivano a `30/30`.
 
-### P1-REST-S03 — Cap ai PF massimi
+### P1-REST-S03 — Nessuna cura necessaria
 
-Con PF `28/30`, spendi 1 dado con totale naturale `8`.
+Imposta il PG a PF massimi e applica un riposo breve.
 
-Atteso: cura applicata `2`, PF finali `30`; il dado viene comunque consumato.
+Atteso: nessun Dado Vita viene speso, ma il riposo conta e le risorse `shortRest` vengono recuperate.
 
-### P1-REST-S04 — Input invalidi
+### P1-REST-S04 — Limite di due brevi
 
-Prova più dadi di quelli disponibili, totale sotto il minimo naturale o sopra `numero dadi * taglia dado`.
+Applica due riposi brevi, quindi apri l'anteprima del terzo senza eseguire un lungo.
 
-Atteso: conferma disabilitata o errore server; nessun valore cambia.
+Atteso: il terzo risulta bloccato con motivazione; PF, Dadi Vita e risorse non cambiano.
 
 ### P1-REST-S05 — COS negativa
 
-Con COS 6 (`-2`), spendi 1d8 con risultato naturale 1.
+Con COS 0 (`-5`), PF mancanti e almeno due d8 disponibili, apri il riposo breve.
 
-Atteso: la cura non scende sotto `0`; il Dado Vita viene consumato.
+Atteso: ogni dado cura almeno `1` PF; il budget automatico non supera meta dei Dadi Vita massimi.
 
-## 7. Riposo lungo SRD 5.1
+## 7. Riposo lungo - house rule campagna
 
-### P1-REST-L01 — Recupero della metà
+### P1-REST-L01 — Recupero completo
 
 PG livello 5 con 1/5 Dadi Vita, PF mancanti e PF temporanei.
 
@@ -290,33 +290,39 @@ Atteso dopo il lungo:
 
 - PF al massimo;
 - PF temporanei a 0;
-- recupero di 2 Dadi Vita, quindi `1 -> 3`;
+- recupero di tutti i Dadi Vita, quindi `1 -> 5`;
 - slot e risorse short/long recuperati;
 - TS morte azzerati.
 
-### P1-REST-L02 — Minimo un dado
+### P1-REST-L02 — Reset del limite brevi
 
-PG livello 1 con 0/1 Dadi Vita.
+Dopo due riposi brevi, applica un riposo lungo e poi un nuovo breve.
 
-Atteso: recupera 1 Dado Vita.
+Atteso: il lungo azzera il contatore e il nuovo breve viene applicato.
 
-### P1-REST-L03 — Blocco a 0 PF
+### P1-REST-L03 — Consentito a 0 PF
 
 Imposta il PG a 0 PF e prova il lungo.
 
-Atteso: il PG risulta bloccato, con motivazione; nessun dato cambia.
+Atteso: il lungo viene applicato e porta il PG ai PF massimi.
 
-### P1-REST-L04 — Un solo lungo nelle 24 ore
+### P1-REST-L04 — Nessun blocco nelle 24 ore
 
 Applica un lungo valido e riprova subito.
 
-Atteso: il secondo è bloccato; nessun reset o recupero aggiuntivo.
+Atteso: anche il secondo viene applicato; non esiste un vincolo temporale nella house rule.
 
-### P1-REST-L05 — Applicazione parziale al roster
+### P1-REST-L05 — Applicazione al roster
 
-Seleziona insieme un PG idoneo e uno bloccato.
+Seleziona insieme piu PG con stati diversi.
 
-Atteso: il primo viene aggiornato, il secondo resta invariato; il riepilogo indica chiaramente l'applicazione parziale.
+Atteso: tutti i PG selezionati vengono aggiornati atomicamente per personaggio e il riepilogo mostra PF e Dadi Vita prima/dopo.
+
+### P1-REST-C01 - Modifica realtime mentre il dialog e aperto
+
+Apri l'anteprima del riposo sul browser DM, poi modifica e salva i PF dello stesso PG da un secondo browser prima di confermare.
+
+Atteso: nessuna modifica viene persa o sovrascritta. Se la dashboard ha gia ricevuto lo stato/revisione realtime, il riposo puo essere applicato coerentemente sui nuovi PF anche se l'anteprima visibile era precedente; altrimenti viene restituito un conflitto e il DM deve riaprire l'anteprima. In entrambi i casi non sono ammesse scritture parziali o calcoli basati sui vecchi PF.
 
 ## 8. Regressioni P0 da ricontrollare
 
@@ -360,11 +366,13 @@ Copertura preparata:
 | Regole combattimento | `tests/rules/character-combat-rules.test.ts` | 22 | competenze per gruppo/classe e passive, riepilogo con provenienza, armi specifiche, armature/scudi, Arma del Patto per istanza, grant legacy strutturati, armi sconosciute, sinonimi Druido/Monaco, stile TWF |
 | Statistiche derivate | `tests/rules/character-derived-stats.test.ts` | 8 | punteggio 0, fallback non-finiti, rank skill, bonus passivi e Percezione passiva |
 | Validazione server | `tests/server/character-patch-validation.test.mjs` | 31 | allowlist, tipi e range, contratto stretto delle competenze passive, guardie server Arma del Patto, array/oggetti, campi server-owned, prototype pollution, profondita e dimensione massima |
-| Riposi | `tests/server/character-rest.test.mjs` | 19 | 0/N Dadi Vita, tiro naturale, COS negativa, cap PF, recupero lungo, guardie 0 PF/24h, TS morte, immutabilita input |
+| Riposi | `tests/server/character-rest.test.mjs` | 17 | cura automatica, budget DV, media fissa, COS negativa, limite due brevi, recupero lungo completo, TS morte, compatibilita input legacy e immutabilita |
+| Persistenza | `tests/server/character-persistence.test.mjs` | 13 | FIFO, retry, conflitto, rollback multi-PG, revoca accodata, patch/riposo, receipt durevoli, replay prima dello stato mutabile e lookup O(1) |
+| Classi/progressione pura | `tests/rules/character-class-rules.test.mjs` | 22 | chiavi stabili, prerequisiti, totale/PB, Dadi Vita, caster full/half/third, Pact Magic, soglie e custom manuali |
 | Avvio server | `tests/server/server-startup-smoke.test.mjs` | 1 | bootstrap reale in produzione su copia DB temporanea e risposta `/healthz` |
 | Migrazione e backfill | `tests/database/item-weapon-classification.test.mjs` | 5 | default SQL, conservazione dati, dry-run, apply idempotente, conflitti, DB temporanei e guardia produzione |
 
-Totale: **86 test**. Il workflow GitHub Actions `Build`, avviato manualmente, esegue la stessa suite prima della build.
+Totale: **119 test**. Il workflow GitHub Actions `Build`, avviato manualmente, esegue la stessa suite prima della build.
 
 Esecuzione completa P1:
 
@@ -378,4 +386,4 @@ Modalità watch durante lo sviluppo:
 npm.cmd run test:watch
 ```
 
-La suite automatica copre regole pure, validazione patch, riposi e migrazione/backfill su SQLite temporanei. Non sostituisce i casi browser multi-client, che restano necessari prima del commit.
+La suite automatica copre regole pure, validazione patch, riposi, persistenza/receipt e migrazione/backfill su SQLite temporanei. Non sostituisce i casi browser multi-client e il round-trip HTTP/Socket autenticato, che restano necessari prima del commit.

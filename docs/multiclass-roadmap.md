@@ -1,7 +1,7 @@
 # Progressione del personaggio: level-up guidato e multiclasse
 
-Stato: **analisi completata; stabilizzazione P0 propedeutica implementata e verificata, Gate 1.8A non ancora avviato**.
-Data: 2026-08-12.
+Stato: **M0 e M1 completati; M2.1 catalogo e resolver puri implementato, prossimo incremento M2.2**.
+Data: 2026-08-13.
 Perimetro: personaggi giocanti, scheda, progressione, riposi, incantesimi, persistenza e UI DM/player.
 
 ## Esito esecutivo
@@ -12,9 +12,17 @@ Prima del level-up vanno corretti tutti i comportamenti che renderebbero incompa
 
 Il modello nascera capace di indicare quale classe viene incrementata (`targetClassKey`). Durante la milestone monoclasse il server consentira soltanto la classe gia posseduta; appena completato quel collaudo, nello stesso percorso prioritario l'estensione multiclasse sblocchera l'aggiunta di una nuova classe senza cambiare contratto, storico o struttura dei PF.
 
-### Avanzamento propedeutico del 2026-08-12
+### Avanzamento propedeutico verificato al 2026-08-13
 
-Il pacchetto P0 della scheda e completato: niente piu scritture automatiche di PF, Dadi Vita o slot all'apertura; mutazioni per personaggio seriali e versionate; riposi coordinati con le patch; ACK dopo commit; room, riconnessioni e revoche Socket consolidate. Inventario/equipaggiamento e TS morte aggiornano ora correttamente le viste realtime. Questo rimuove i rischi immediati di sovrascrittura che impedivano di iniziare la progressione, ma non sostituisce il Gate 1.8A: modello classi plurale, storico dei livelli, PF/Dadi Vita per classe e pool Spellcasting/Pact Magic restano da implementare.
+I pacchetti P0 e P1 della scheda sono completati, testati, committati e pushati su `dev` (`fc0d5a8`, `f7e1837`): niente piu scritture automatiche di PF, Dadi Vita o slot all'apertura; mutazioni per personaggio seriali, validate e versionate; riposi coordinati con le patch; ACK dopo commit; room, riconnessioni e revoche Socket consolidate. Inventario/equipaggiamento e TS morte aggiornano correttamente le viste realtime; regole centrali di armi, TWF, riposi, skill/percezione e punteggio zero hanno test dedicati.
+
+La baseline fresca passa 119/119 test P1/Gate dopo il riallineamento dei riposi e l'introduzione dei resolver, oltre a build di produzione e controlli statici. Il DB locale canonico e Railway non sono stati modificati. Questo consente di proseguire il Gate 1.8A, ma non lo sostituisce: modello persistito classi plurale, storico dei livelli, PF/Dadi Vita per classe e pool di risorse separati restano da implementare.
+
+M0 e completato. Anche M1 e ora coperto da test SQLite deterministici per FIFO, retry, conflitto, rollback multi-PG, revoca accodata e interazione patch/riposo. Riposi roster e conversione slot usano request ID e receipt durevoli in `AppState`, scritte nello stesso confine transazionale e riutilizzabili dopo restart entro il TTL. Il collaudo browser del 2026-08-14 ha confermato riposi, roster, realtime, persistenza e conversione: quando i PF cambiano mentre il dialog e aperto, la dashboard puo ricevere la revisione live e applicare coerentemente il riposo sui nuovi valori, senza lost update. M2.1 introduce il contratto condiviso, le 12 chiavi classe stabili, prerequisiti, Dadi Vita, profili caster e resolver puri; il prossimo incremento completa catalogo e progressioni prima di M3.
+
+La baseline M0 locale, il decision record confermato, la matrice consumer e i casi attesi sono raccolti in [`multiclass-m0-baseline.md`](./multiclass-m0-baseline.md). D0 usa le regole gia implementate come house rule e SRD 5.1/2014 come fallback per i vuoti. I PF di ogni level-up usano il Dado Vita pieno della classe incrementata + COS; i riposi seguono la house rule storica con due brevi tra lunghi e cura automatica a media fissa.
+
+Il DB locale storico non contiene `_prisma_migrations`, quindi `prisma migrate status` non puo certificarne la cronologia. Lo schema effettivo e il DB risultano validi e integri, ma M3 deve introdurre una procedura tracciabile, additiva e restart-safe. La migrazione P1 delle armi non e applicata a Railway e andra inclusa in un futuro rilascio controllato con backup fresco; cio non blocca il lavoro su `dev`.
 
 La scelta della sottoclasse fa gia parte del level-up monoclasse: ogni classe sceglie la propria sottoclasse quando raggiunge il livello previsto dal ruleset. L'automazione completa dei privilegi resta successiva.
 
@@ -70,7 +78,7 @@ Per un `Mago 3 / Guerriero 2` servono invece:
 - tre Dadi Vita d6 e due d10;
 - residui distinti per taglia;
 - PF acquisiti livello per livello o un override manuale esplicito;
-- una policy per media, tiro e inserimento manuale.
+- la house rule confermata del Dado Vita pieno della classe incrementata + COS, con storico e adeguamenti COS tracciati.
 
 Il ricalcolo automatico all'apertura e bloccante: puo sovrascrivere PF e Dadi Vita validi senza conferma.
 
@@ -95,12 +103,7 @@ Le competenze non registrano la provenienza: non si distingue la classe iniziale
 
 ### Scritture e concorrenza
 
-Lo stato pending per slug mitiga la perdita tra patch rapide, ma non sostituisce una pipeline versionata:
-
-- manca ack post-commit per le patch generiche;
-- manca una revisione attesa della scheda;
-- riposi e altre operazioni server-side non usano un unico coordinatore;
-- una progressione coinvolgera piu tabelle e stato legacy.
+La pipeline corrente e versionata e seriale per slug; patch, riposi e conversioni condividono il coordinatore e le operazioni retry-safe usano receipt durevoli. Restano da progettare per la progressione le scritture su piu tabelle e le proiezioni legacy con un unico writer.
 
 La progressione deve essere un comando transazionale dedicato.
 
@@ -110,15 +113,15 @@ Il modello base puo essere preparato prima, ma l'automazione non deve iniziare f
 
 | Decisione | Opzioni | Raccomandazione iniziale |
 | --- | --- | --- |
-| Ruleset | SRD 5.1/2014, 2024, personalizzato | SRD 5.1/2014 come base corrente; divergenze versionate |
-| Autorita | Solo DM, approvazione DM, player autonomo | V1 solo DM |
-| Prerequisiti | Obbligatori, ignorati, override | Standard con override DM motivato |
-| Ambito V1 | Manuale, guidato, automatico | Guidato; automatizzare solo derivati affidabili |
-| PF | Media, tiro, manuale | Scelta esplicita per livello e valore registrato |
-| Riposi | House rule attuale o regole canoniche | Policy esplicita prima di riscrivere Dadi Vita/recuperi |
-| Classi custom | Vietate o fallback manuale | Fallback manuale chiaramente marcato |
-| Sottoclassi | Soglia prevista dal ruleset per ciascuna classe | Ogni classe usa la propria soglia regolamentare; privilegi automatici rinviati |
-| Classe primaria | Classe visuale o prima classe acquisita | Deve rappresentare la classe iniziale e non essere un semplice ordinamento UI |
+| Ruleset | **Confermato:** regole esistenti come house rule; SRD 5.1/2014 per cio che manca; conflitti risolti esplicitamente |
+| Autorita | **Confermato:** V1 solo DM |
+| Prerequisiti | **Confermato:** standard con override DM motivato e storicizzato |
+| Ambito V1 | **Confermato:** guidato; automatizzare solo derivati affidabili |
+| PF | **Confermato:** a ogni level-up Dado Vita pieno della classe incrementata + COS; valore e provenienza registrati |
+| Riposi | **Confermato:** house rule storica, massimo due brevi, cura automatica media fissa + COS, lungo ripristina tutti i Dadi Vita |
+| Classi custom | **Confermato:** fallback manuale chiaramente marcato |
+| Sottoclassi | **Confermato:** ogni classe usa la propria soglia regolamentare; privilegi automatici rinviati |
+| Classe primaria | **Confermato:** prima classe acquisita, non ordinamento UI |
 
 La soglia non deve essere codificata globalmente. `subclassSelectionLevel` appartiene alla regola della singola classe e deve provenire dal ruleset/versione scelto. In un personaggio multiclasse si considera sempre `classLevel(classKey)`, mai il livello totale del personaggio.
 
@@ -281,6 +284,8 @@ Deliverable: decision record, rapporto qualita dati, matrice consumer e suite ca
 
 ### M1 - Stabilizzazione core scheda
 
+**Stato:** completato tecnicamente il 2026-08-14; resta il collaudo manuale browser del pacchetto non committato.
+
 **Obiettivo:** impedire che apertura, concorrenza o errori alterino la progressione.
 
 Interventi:
@@ -296,6 +301,8 @@ Interventi:
 **Uscita:** apertura senza scritture; nessun overwrite silenzioso; riposo non annullabile da patch pendente; client consapevole di salvataggio/conflitto/errore.
 
 ### M2 - Contratto e catalogo classi
+
+**Stato:** M2.1 implementato il 2026-08-14 in `shared/character-class-rules.mjs` con dichiarazioni TypeScript e 22 test. Sono coperti chiavi/alias, fonte/versione, prerequisiti, totale e livello per classe, PB, pool Dadi Vita, contributi full/half/third, Pact Magic separata, soglie sottoclasse e fallback manuale. Nessuna API, UI, migrazione o scrittura `Character.data` e stata introdotta.
 
 **Obiettivo:** definire chiavi, tipi e resolver indipendenti dalla UI.
 
@@ -365,8 +372,8 @@ Interventi:
 1. Storico livelli/guadagni PF e pool per taglia.
 2. Migrare conservando PF correnti/massimi come valori effettivi.
 3. Usare stato `legacy/manuale` quando lo storico non e ricostruibile.
-4. Level-up con scelta media/tiro/manuale.
-5. Riposi DM capaci di scegliere/consumare il dado corretto.
+4. Level-up con Dado Vita pieno della classe incrementata + COS e registrazione dell'incremento.
+5. Riposi DM capaci di consumare automaticamente i pool corretti secondo la house rule.
 6. Applicare la policy definitiva del recupero lungo.
 7. UI senza ricalcoli impliciti.
 
@@ -551,7 +558,7 @@ Per ogni release con schema/backfill:
 
 ### PF/riposi
 
-- media, tiro, manuale e COS negativa/positiva;
+- Dado Vita pieno della classe incrementata e COS negativa/positiva, inclusi adeguamenti retroattivi;
 - pool di taglie diverse e recupero lungo;
 - refresh/due client durante riposo;
 - policy cambio COS.

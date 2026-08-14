@@ -39,6 +39,9 @@ const CAMPAIGN_DOCUMENT_DIR = process.env.CAMPAIGN_DOCUMENT_DIR
     : DEFAULT_CAMPAIGN_DOCUMENT_DIR;
 const INITIATIVE_TRACKER_FILE = path.resolve(DATA_DIR, "initiative-tracker.json");
 const INITIATIVE_TRACKER_STATE_KEY = "initiative-tracker";
+const OPERATION_RECEIPT_KEY_PREFIX = "m1-operation-receipt:";
+const OPERATION_RECEIPT_TTL_MS = 10 * 60 * 1000;
+const OPERATION_RECEIPT_LIMIT = 1_000;
 const SESSION_COOKIE = "ctf_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const SQLITE_DB_FILE = resolveSqliteDbFile();
@@ -7085,6 +7088,104 @@ function writeAppStateValue(key, value) {
     .run(key, value, now, now);
 }
 
+function deleteAppStateValue(key) {
+  sqlite.prepare('DELETE FROM "AppState" WHERE "key" = ?').run(key);
+}
+
+function listAppStateValuesByPrefix(prefix) {
+  return sqlite
+    .prepare('SELECT "key", "value", "updatedAt" FROM "AppState" WHERE "key" LIKE ? ORDER BY "updatedAt", "key"')
+    .all(`${prefix}%`);
+}
+
+export function createDurableOperationReceiptStore({
+  read,
+  write,
+  remove,
+  list,
+  now = () => Date.now(),
+  ttlMs = OPERATION_RECEIPT_TTL_MS,
+  limit = OPERATION_RECEIPT_LIMIT,
+  keyPrefix = OPERATION_RECEIPT_KEY_PREFIX,
+}) {
+  if (![read, write, remove, list].every((entry) => typeof entry === "function")) {
+    throw new TypeError("Il receipt store richiede read, write, remove e list.");
+  }
+  const normalizedTtlMs = Math.max(1, Math.floor(Number(ttlMs)) || OPERATION_RECEIPT_TTL_MS);
+  const normalizedLimit = Math.max(1, Math.floor(Number(limit)) || OPERATION_RECEIPT_LIMIT);
+  const receiptKey = (identity) => `${keyPrefix}${crypto.createHash("sha256").update(String(identity)).digest("hex")}`;
+  const parseReceipt = (value) => {
+    try {
+      const receipt = typeof value === "string" ? JSON.parse(value) : value;
+      if (
+        !receipt ||
+        typeof receipt !== "object" ||
+        typeof receipt.signature !== "string" ||
+        !Number.isFinite(Number(receipt.createdAt)) ||
+        !Number.isFinite(Number(receipt.expiresAt)) ||
+        !Object.prototype.hasOwnProperty.call(receipt, "result")
+      ) return null;
+      return receipt;
+    } catch {
+      return null;
+    }
+  };
+
+  function prune() {
+    const currentTime = now();
+    const valid = [];
+    for (const row of list(keyPrefix)) {
+      const receipt = parseReceipt(row?.value);
+      if (!receipt || Number(receipt.expiresAt) <= currentTime) {
+        remove(row.key);
+        continue;
+      }
+      valid.push({ key: row.key, receipt });
+    }
+    valid.sort((left, right) =>
+      Number(left.receipt.createdAt) - Number(right.receipt.createdAt) || left.key.localeCompare(right.key)
+    );
+    while (valid.length > normalizedLimit) remove(valid.shift().key);
+  }
+
+  function lookup(identity, signature) {
+    const key = receiptKey(identity);
+    const receipt = parseReceipt(read(key));
+    if (!receipt) return { status: "miss", key };
+    if (Number(receipt.expiresAt) <= now()) {
+      remove(key);
+      return { status: "miss", key };
+    }
+    return receipt.signature === signature
+      ? { status: "match", key, receipt }
+      : { status: "conflict", key, receipt };
+  }
+
+  function save(identity, signature, result) {
+    const createdAt = now();
+    const key = receiptKey(identity);
+    const receipt = {
+      version: 1,
+      signature,
+      result,
+      createdAt,
+      expiresAt: createdAt + normalizedTtlMs,
+    };
+    write(key, JSON.stringify(receipt));
+    prune();
+    return receipt;
+  }
+
+  return { lookup, save, prune, keyFor: receiptKey };
+}
+
+const durableOperationReceipts = createDurableOperationReceiptStore({
+  read: readAppStateValue,
+  write: writeAppStateValue,
+  remove: deleteAppStateValue,
+  list: listAppStateValuesByPrefix,
+});
+
 function readJsonAppState(key, fallback) {
   const value = readAppStateValue(key);
   if (!value) return fallback;
@@ -9842,6 +9943,12 @@ function parseHitDieSize(hitDice, className) {
   return Number.isFinite(size) && size > 0 ? size : 8;
 }
 
+function getFixedHitDieHealing(hitDieSize, constitutionScore) {
+  const conScore = Number.isFinite(Number(constitutionScore)) ? Number(constitutionScore) : 10;
+  const constitutionModifier = Math.floor((conScore - 10) / 2);
+  return Math.max(1, Math.floor(hitDieSize / 2) + 1 + constitutionModifier);
+}
+
 function resetCapabilityUses(capabilities, restType) {
   return (Array.isArray(capabilities) ? capabilities : []).map((capability) => {
     const usage = capability?.usage;
@@ -9893,9 +10000,6 @@ const SPELL_SLOT_CONVERSION_EXCLUDED_CLASSES = new Set([
   "ladro",
   "rogue",
 ]);
-const SPELL_SLOT_CONVERSION_RECEIPT_TTL_MS = 10 * 60 * 1000;
-const SPELL_SLOT_CONVERSION_RECEIPT_LIMIT = 1_000;
-const spellSlotConversionReceipts = new Map();
 
 function normalizeSpellSlotConversionClass(value) {
   return String(value ?? "")
@@ -9968,41 +10072,48 @@ function buildSpellSlotConversionRequestSignature(targetLevel, selectionsValue, 
   });
 }
 
-function normalizeSpellSlotConversionRequestId(value) {
+function normalizeOperationRequestId(value) {
   if (typeof value !== "string") return null;
   const requestId = value.trim();
   if (requestId.length < 8 || requestId.length > 128 || !/^[A-Za-z0-9_-]+$/.test(requestId)) return null;
   return requestId;
 }
 
-function spellSlotConversionReceiptKey(userId, slug, requestId) {
-  return JSON.stringify([String(userId), slug, requestId]);
+function buildOperationReceiptIdentity(kind, userId, scope, requestId) {
+  return JSON.stringify([kind, String(userId), String(scope), requestId]);
 }
 
-function pruneSpellSlotConversionReceipts(now = Date.now()) {
-  for (const [key, receipt] of spellSlotConversionReceipts) {
-    if (receipt.expiresAt <= now) spellSlotConversionReceipts.delete(key);
+function normalizeRestExpectedRevisions(value, slugs) {
+  if (!isPlainRecord(value)) return null;
+  const normalizedSlugs = Array.from(new Set(slugs)).sort();
+  if (Object.keys(value).length !== normalizedSlugs.length) return null;
+  const revisions = {};
+  for (const slug of normalizedSlugs) {
+    const revision = value[slug];
+    if (typeof revision !== "string" || !revision.trim()) return null;
+    revisions[slug] = revision.trim();
   }
-  while (spellSlotConversionReceipts.size > SPELL_SLOT_CONVERSION_RECEIPT_LIMIT) {
-    const oldestKey = spellSlotConversionReceipts.keys().next().value;
-    if (oldestKey === undefined) break;
-    spellSlotConversionReceipts.delete(oldestKey);
-  }
+  return revisions;
 }
 
-function readSpellSlotConversionReceipt(key) {
-  pruneSpellSlotConversionReceipts();
-  return spellSlotConversionReceipts.get(key) ?? null;
-}
-
-function writeSpellSlotConversionReceipt(key, signature, result) {
-  spellSlotConversionReceipts.delete(key);
-  spellSlotConversionReceipts.set(key, {
-    signature,
-    result,
-    expiresAt: Date.now() + SPELL_SLOT_CONVERSION_RECEIPT_TTL_MS,
+function buildRestRequestSignature(restType, slugs, expectedRevisions) {
+  const normalizedSlugs = Array.from(new Set(
+    (Array.isArray(slugs) ? slugs : []).map((slug) => String(slug ?? "").trim()).filter(Boolean)
+  )).sort();
+  return JSON.stringify({
+    type: restType,
+    slugs: normalizedSlugs,
+    expectedRevisions: Object.fromEntries(normalizedSlugs.map((slug) => [slug, expectedRevisions[slug]])),
   });
-  pruneSpellSlotConversionReceipts();
+}
+
+function throwRequestIdReuse() {
+  const error = createCharacterMutationError(
+    "REQUEST_ID_REUSED",
+    "Questo identificativo richiesta e gia stato usato con un payload diverso."
+  );
+  error.statusCode = 409;
+  throw error;
 }
 
 function prepareSpellSlotConversion(character, targetLevelValue, selectionsValue) {
@@ -10109,7 +10220,7 @@ function prepareSpellSlotConversion(character, targetLevelValue, selectionsValue
   };
 }
 
-export function applyCharacterRest(character, restType, options = {}, now = new Date()) {
+export function applyCharacterRest(character, restType, now = new Date()) {
   const data = character && typeof character === "object" ? character : {};
   const basicInfo = data.basicInfo ?? {};
   const combatStats = data.combatStats ?? {};
@@ -10124,46 +10235,6 @@ export function applyCharacterRest(character, restType, options = {}, now = new 
     Math.min(maxHitDice, Math.floor(Number(restState.hitDiceRemaining ?? maxHitDice)) || 0)
   );
   const shortRestsUsed = Math.max(0, Math.floor(Number(restState.shortRestsUsedSinceLongRest ?? 0)) || 0);
-  const normalizedOptions = options === undefined || options === null ? {} : options;
-  if (!isPlainRecord(normalizedOptions)) {
-    const error = new Error("Le opzioni del riposo devono essere un oggetto.");
-    error.statusCode = 400;
-    throw error;
-  }
-  const optionKeys = Object.keys(normalizedOptions);
-  if (optionKeys.some((key) => CHARACTER_PATCH_FORBIDDEN_KEYS.has(key) || !["hitDiceSpent", "hitDiceRollTotal"].includes(key))) {
-    const error = new Error("Le opzioni del riposo contengono campi non supportati.");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const requestedHitDiceSpent = normalizedOptions.hitDiceSpent ?? 0;
-  const requestedHitDiceRollTotal = normalizedOptions.hitDiceRollTotal ?? 0;
-  if (!Number.isInteger(requestedHitDiceSpent) || requestedHitDiceSpent < 0 || requestedHitDiceSpent > hitDiceRemaining) {
-    const error = new Error(`I Dadi Vita spesi devono essere un intero tra 0 e ${hitDiceRemaining}.`);
-    error.statusCode = 400;
-    throw error;
-  }
-  const minimumRollTotal = requestedHitDiceSpent === 0 ? 0 : requestedHitDiceSpent;
-  const maximumRollTotal = requestedHitDiceSpent * hitDieSize;
-  if (
-    !Number.isInteger(requestedHitDiceRollTotal) ||
-    requestedHitDiceRollTotal < minimumRollTotal ||
-    requestedHitDiceRollTotal > maximumRollTotal
-  ) {
-    const error = new Error(
-      requestedHitDiceSpent === 0
-        ? "Il totale naturale dei Dadi Vita deve essere 0 quando non si spendono dadi."
-        : `Il totale naturale dei Dadi Vita deve essere un intero tra ${minimumRollTotal} e ${maximumRollTotal}.`
-    );
-    error.statusCode = 400;
-    throw error;
-  }
-  if (restType === "long" && (requestedHitDiceSpent !== 0 || requestedHitDiceRollTotal !== 0)) {
-    const error = new Error("Un riposo lungo non accetta Dadi Vita spesi o tirati.");
-    error.statusCode = 400;
-    throw error;
-  }
 
   let nextCombatStats = {
     ...combatStats,
@@ -10179,50 +10250,47 @@ export function applyCharacterRest(character, restType, options = {}, now = new 
   const nowIso = new Date(nowTime).toISOString();
 
   if (restType === "long") {
-    const lastLongRestTime = Date.parse(String(restState.lastLongRestAt ?? ""));
-    if (currentHp <= 0) {
-      restApplied = false;
-      blockedReason = "Il riposo lungo richiede almeno 1 PF all'inizio.";
-    } else if (Number.isFinite(lastLongRestTime) && nowTime - lastLongRestTime < 24 * 60 * 60 * 1_000) {
-      restApplied = false;
-      blockedReason = "E gia stato completato un riposo lungo nelle ultime 24 ore.";
-    } else {
-      const spentHitDice = Math.max(0, maxHitDice - hitDiceRemaining);
-      hitDiceRecovered = Math.min(spentHitDice, Math.max(1, Math.floor(maxHitDice / 2)));
-      nextCombatStats = {
-        ...nextCombatStats,
-        currentHitPoints: maxHp,
-        temporaryHitPoints: 0,
-        restState: {
-          ...restState,
-          maxHitDice,
-          hitDiceRemaining: Math.min(maxHitDice, hitDiceRemaining + hitDiceRecovered),
-          shortRestsUsedSinceLongRest: 0,
-          lastLongRestAt: nowIso,
-        },
-      };
-    }
-  } else {
-    const missingHp = Math.max(0, maxHp - currentHp);
-    const constitutionScore = Number.isFinite(Number(data.abilityScores?.constitution))
-      ? Number(data.abilityScores.constitution)
-      : 10;
-    const constitutionModifier = Math.floor((constitutionScore - 10) / 2);
-    hitDiceSpent = requestedHitDiceSpent;
-    const requestedHealing = Math.max(0, requestedHitDiceRollTotal + hitDiceSpent * constitutionModifier);
-    healingApplied = Math.min(missingHp, requestedHealing);
-
+    hitDiceRecovered = Math.max(0, maxHitDice - hitDiceRemaining);
     nextCombatStats = {
       ...nextCombatStats,
-      currentHitPoints: Math.min(maxHp, currentHp + healingApplied),
+      currentHitPoints: maxHp,
+      temporaryHitPoints: 0,
+      deathSaves: { successes: 0, failures: 0 },
       restState: {
         ...restState,
         maxHitDice,
-        hitDiceRemaining: Math.max(0, hitDiceRemaining - hitDiceSpent),
-        shortRestsUsedSinceLongRest: shortRestsUsed + 1,
-        lastShortRestAt: nowIso,
+        hitDiceRemaining: maxHitDice,
+        shortRestsUsedSinceLongRest: 0,
+        lastLongRestAt: nowIso,
       },
     };
+  } else {
+    if (shortRestsUsed >= 2) {
+      restApplied = false;
+      blockedReason = "Limite di 2 riposi brevi raggiunto.";
+    } else {
+      const missingHp = Math.max(0, maxHp - currentHp);
+      const hitDiceBudget = maxHitDice > 0 ? Math.max(1, Math.floor(maxHitDice / 2)) : 0;
+      const usableHitDice = Math.min(hitDiceBudget, hitDiceRemaining);
+      const healingPerDie = getFixedHitDieHealing(hitDieSize, data.abilityScores?.constitution);
+
+      if (missingHp > 0 && usableHitDice > 0) {
+        hitDiceSpent = Math.min(usableHitDice, Math.ceil(missingHp / healingPerDie));
+        healingApplied = Math.min(missingHp, hitDiceSpent * healingPerDie);
+      }
+
+      nextCombatStats = {
+        ...nextCombatStats,
+        currentHitPoints: healingApplied > 0 ? Math.min(maxHp, currentHp + healingApplied) : currentHp,
+        restState: {
+          ...restState,
+          maxHitDice,
+          hitDiceRemaining: Math.max(0, hitDiceRemaining - hitDiceSpent),
+          shortRestsUsedSinceLongRest: shortRestsUsed + 1,
+          lastShortRestAt: nowIso,
+        },
+      };
+    }
   }
 
   if (!restApplied) {
@@ -10240,7 +10308,6 @@ export function applyCharacterRest(character, restType, options = {}, now = new 
         temporaryHitPointsAfter: Math.max(0, Math.floor(Number(combatStats.temporaryHitPoints ?? 0)) || 0),
         healingApplied: 0,
         hitDiceSpent: 0,
-        hitDiceRollTotal: 0,
         hitDiceRecovered: 0,
         hitDiceRemaining,
         hitDiceRemainingAfter: hitDiceRemaining,
@@ -10280,7 +10347,6 @@ export function applyCharacterRest(character, restType, options = {}, now = new 
       temporaryHitPointsAfter: tempHpAfter,
       healingApplied,
       hitDiceSpent,
-      hitDiceRollTotal: requestedHitDiceRollTotal,
       hitDiceRecovered,
       hitDiceRemaining,
       hitDiceRemainingAfter: nextHitDiceRemaining,
@@ -10291,9 +10357,9 @@ export function applyCharacterRest(character, restType, options = {}, now = new 
   };
 }
 
-function readRestOptionsBySlug(payload, targetSlugs) {
+export function validateRestClientOptions(payload, targetSlugs) {
   const raw = payload?.optionsBySlug;
-  if (raw === undefined || raw === null) return {};
+  if (raw === undefined || raw === null) return;
   if (!isPlainRecord(raw)) {
     const error = new Error("optionsBySlug deve essere un oggetto indicizzato per slug.");
     error.statusCode = 400;
@@ -10311,8 +10377,15 @@ function readRestOptionsBySlug(payload, targetSlugs) {
       error.statusCode = 400;
       throw error;
     }
+    const unsupportedKeys = Object.keys(options).filter(
+      (key) => CHARACTER_PATCH_FORBIDDEN_KEYS.has(key) || !["hitDiceSpent", "hitDiceRollTotal"].includes(key)
+    );
+    if (unsupportedKeys.length > 0) {
+      const error = new Error(`Le opzioni di riposo per ${slug} contengono campi non supportati.`);
+      error.statusCode = 400;
+      throw error;
+    }
   }
-  return raw;
 }
 
 function resetCharacterItemFeatureStatesForRest(characterSlugs, restType) {
@@ -10345,40 +10418,6 @@ function resetCharacterItemFeatureStatesForRest(characterSlugs, restType) {
   `).run(now, now, ...normalizedSlugs, ...resetValues);
 }
 
-// Every mutation of Character.data is committed through one FIFO queue per slug.
-// The durable Character.updatedAt value is also the optimistic revision token.
-const characterMutationQueues = new Map();
-
-function enqueueCharacterMutation(slug, mutation) {
-  const normalizedSlug = String(slug ?? "").trim();
-  const previous = characterMutationQueues.get(normalizedSlug) ?? Promise.resolve();
-  const task = previous.catch(() => undefined).then(mutation);
-  const tail = task.catch(() => undefined);
-  characterMutationQueues.set(normalizedSlug, tail);
-  tail.then(() => {
-    if (characterMutationQueues.get(normalizedSlug) === tail) {
-      characterMutationQueues.delete(normalizedSlug);
-    }
-  });
-  return task;
-}
-
-function enqueueCharacterMutations(slugs, mutation) {
-  const normalizedSlugs = Array.from(new Set(
-    (Array.isArray(slugs) ? slugs : []).map((slug) => String(slug ?? "").trim()).filter(Boolean)
-  )).sort();
-  const previous = normalizedSlugs.map((slug) => characterMutationQueues.get(slug) ?? Promise.resolve());
-  const task = Promise.all(previous.map((entry) => entry.catch(() => undefined))).then(mutation);
-  const tail = task.catch(() => undefined);
-  for (const slug of normalizedSlugs) characterMutationQueues.set(slug, tail);
-  tail.then(() => {
-    for (const slug of normalizedSlugs) {
-      if (characterMutationQueues.get(slug) === tail) characterMutationQueues.delete(slug);
-    }
-  });
-  return task;
-}
-
 function createCharacterMutationError(code, message, snapshot = null) {
   const error = new Error(message);
   error.code = code;
@@ -10386,78 +10425,196 @@ function createCharacterMutationError(code, message, snapshot = null) {
   return error;
 }
 
-function commitCharacterMutation(slug, {
-  expectedRevision = undefined,
-  authorize = null,
-  mutate,
-  afterCommit = null,
-}) {
-  return enqueueCharacterMutation(slug, () => {
-    if (typeof authorize === "function") authorize();
+// Every mutation of Character.data is committed through one FIFO queue per slug.
+// The durable Character.updatedAt value is also the optimistic revision token.
+// Dependencies are injectable so the production coordination and transactional
+// guarantees can be exercised against a disposable SQLite database.
+export function createCharacterMutationCoordinator({ readSnapshot, writeState, transact }) {
+  if (typeof readSnapshot !== "function" || typeof writeState !== "function" || typeof transact !== "function") {
+    throw new TypeError("Il coordinatore delle mutazioni richiede readSnapshot, writeState e transact.");
+  }
 
-    const snapshot = readCharacterSnapshot(slug);
-    if (!snapshot) {
-      throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
-    }
-    if (
-      expectedRevision !== undefined &&
-      expectedRevision !== null &&
-      String(expectedRevision) !== snapshot.revision
-    ) {
-      throw createCharacterMutationError(
-        "REVISION_CONFLICT",
-        "Il personaggio e stato modificato da un'altra operazione.",
-        snapshot
-      );
-    }
+  const queues = new Map();
+  const normalizeSlugs = (slugs) => Array.from(new Set(
+    (Array.isArray(slugs) ? slugs : []).map((slug) => String(slug ?? "").trim()).filter(Boolean)
+  ));
 
-    let mutation;
-    try {
-      mutation = mutate(snapshot.state, snapshot);
-    } catch (error) {
-      if (error && !error.snapshot) error.snapshot = snapshot;
-      throw error;
-    }
-    if (!mutation || mutation.write === false) {
-      return {
-        slug,
-        revision: snapshot.revision,
-        state: snapshot.state,
-        patch: mutation?.patch ?? null,
-        meta: mutation?.meta ?? null,
-        committed: false,
-      };
-    }
+  function enqueue(slug, mutation) {
+    const normalizedSlug = String(slug ?? "").trim();
+    const previous = queues.get(normalizedSlug) ?? Promise.resolve();
+    const task = previous.catch(() => undefined).then(mutation);
+    const tail = task.catch(() => undefined);
+    queues.set(normalizedSlug, tail);
+    tail.then(() => {
+      if (queues.get(normalizedSlug) === tail) queues.delete(normalizedSlug);
+    });
+    return task;
+  }
 
-    const nextState = mutation.state ?? mutation;
-    let revision;
-    try {
-      runInTransaction(() => {
-        revision = writeCharacter(slug, nextState, { expectedRevision: snapshot.revision });
-      });
-    } catch (error) {
-      if (error && !error.snapshot) error.snapshot = snapshot;
-      throw error;
-    }
-    if (typeof afterCommit === "function") {
+  function enqueueMany(slugs, mutation) {
+    const normalizedSlugs = normalizeSlugs(slugs).sort();
+    const previous = normalizedSlugs.map((slug) => queues.get(slug) ?? Promise.resolve());
+    const task = Promise.all(previous.map((entry) => entry.catch(() => undefined))).then(mutation);
+    const tail = task.catch(() => undefined);
+    for (const slug of normalizedSlugs) queues.set(slug, tail);
+    tail.then(() => {
+      for (const slug of normalizedSlugs) {
+        if (queues.get(slug) === tail) queues.delete(slug);
+      }
+    });
+    return task;
+  }
+
+  function commit(slug, {
+    expectedRevision = undefined,
+    authorize = null,
+    mutate,
+    afterWrite = null,
+  }) {
+    return enqueue(slug, () => {
+      if (typeof authorize === "function") authorize();
+
+      const snapshot = readSnapshot(slug);
+      if (!snapshot) {
+        throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+      }
+      if (
+        expectedRevision !== undefined &&
+        expectedRevision !== null &&
+        String(expectedRevision) !== snapshot.revision
+      ) {
+        throw createCharacterMutationError(
+          "REVISION_CONFLICT",
+          "Il personaggio e stato modificato da un'altra operazione.",
+          snapshot
+        );
+      }
+
+      let mutation;
       try {
-        afterCommit(nextState, mutation, snapshot, revision);
+        mutation = mutate(snapshot.state, snapshot);
       } catch (error) {
-        if (error && !error.snapshot) error.snapshot = readCharacterSnapshot(slug) ?? snapshot;
+        if (error && !error.snapshot) error.snapshot = snapshot;
         throw error;
       }
-    }
+      if (!mutation || mutation.write === false) {
+        return {
+          slug,
+          revision: snapshot.revision,
+          state: snapshot.state,
+          patch: mutation?.patch ?? null,
+          meta: mutation?.meta ?? null,
+          committed: false,
+        };
+      }
 
-    const committedSnapshot = readCharacterSnapshot(slug);
-    return {
-      slug,
-      revision: committedSnapshot?.revision ?? revision,
-      state: committedSnapshot?.state ?? nextState,
-      patch: mutation.patch ?? null,
-      meta: mutation.meta ?? null,
-      committed: true,
-    };
-  });
+      const nextState = mutation.state ?? mutation;
+      let revision;
+      try {
+        transact(() => {
+          revision = writeState(slug, nextState, { expectedRevision: snapshot.revision });
+          // Durable operation receipts are part of the same SQLite success boundary.
+          if (typeof afterWrite === "function") {
+            afterWrite(nextState, mutation, snapshot, revision);
+          }
+        });
+      } catch (error) {
+        if (error && !error.snapshot) error.snapshot = readSnapshot(slug) ?? snapshot;
+        throw error;
+      }
+
+      const committedSnapshot = readSnapshot(slug);
+      return {
+        slug,
+        revision: committedSnapshot?.revision ?? revision,
+        state: committedSnapshot?.state ?? nextState,
+        patch: mutation.patch ?? null,
+        meta: mutation.meta ?? null,
+        committed: true,
+      };
+    });
+  }
+
+  function commitMany(slugs, {
+    lockKeys = null,
+    authorize = null,
+    beforeRead = null,
+    prepare,
+    afterWrites = null,
+  }) {
+    const normalizedSlugs = normalizeSlugs(slugs);
+    const normalizedLockKeys = normalizeSlugs(lockKeys ?? normalizedSlugs);
+    return enqueueMany(normalizedLockKeys, () => {
+      if (typeof authorize === "function") authorize();
+      if (typeof beforeRead === "function") {
+        const earlyResult = beforeRead();
+        if (earlyResult !== undefined) return earlyResult;
+      }
+
+      const snapshots = new Map();
+      for (const slug of normalizedSlugs) {
+        const snapshot = readSnapshot(slug);
+        if (!snapshot) {
+          throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+        }
+        snapshots.set(slug, snapshot);
+      }
+
+      const prepared = prepare(snapshots);
+      if (!Array.isArray(prepared)) throw new TypeError("La preparazione multi-personaggio deve restituire un array.");
+      const revisions = new Map();
+      try {
+        transact(() => {
+          for (const entry of prepared) {
+            if (!entry || entry.write === false) continue;
+            const snapshot = snapshots.get(entry.slug);
+            if (!snapshot) throw new TypeError(`Mutazione preparata per slug non bloccato: ${entry?.slug ?? ""}`);
+            revisions.set(
+              entry.slug,
+              writeState(entry.slug, entry.state ?? entry, { expectedRevision: snapshot.revision })
+            );
+          }
+          if (typeof afterWrites === "function") afterWrites(prepared, snapshots, revisions);
+        });
+      } catch (error) {
+        if (error && !error.snapshot) {
+          const failedSlug = prepared.find((entry) => entry && entry.write !== false)?.slug;
+          error.snapshot = (failedSlug && readSnapshot(failedSlug)) || null;
+        }
+        throw error;
+      }
+
+      return prepared.map((entry) => {
+        const snapshot = snapshots.get(entry.slug);
+        const committed = entry.write !== false;
+        const committedSnapshot = committed ? readSnapshot(entry.slug) : snapshot;
+        return {
+          slug: entry.slug,
+          revision: committedSnapshot?.revision ?? revisions.get(entry.slug) ?? snapshot?.revision,
+          state: committedSnapshot?.state ?? entry.state ?? snapshot?.state,
+          patch: entry.patch ?? null,
+          meta: entry.meta ?? null,
+          committed,
+        };
+      });
+    });
+  }
+
+  return { enqueue, enqueueMany, commit, commitMany };
+}
+
+const characterMutationCoordinator = createCharacterMutationCoordinator({
+  readSnapshot: readCharacterSnapshot,
+  writeState: writeCharacter,
+  transact: runInTransaction,
+});
+
+function enqueueCharacterMutation(slug, mutation) {
+  return characterMutationCoordinator.enqueue(slug, mutation);
+}
+
+function commitCharacterMutation(slug, options) {
+  return characterMutationCoordinator.commit(slug, options);
 }
 
 function buildCharacterStatePayload(slug, snapshotOrState = null) {
@@ -12374,7 +12531,10 @@ async function start() {
       canAccessCharacter(req.user, character.slug, ownership)
     );
 
-    return res.json(characters);
+    return res.json(characters.map((character) => {
+      const snapshot = readCharacterSnapshot(character.slug);
+      return { ...character, revision: snapshot?.revision };
+    }));
   });
 
   app.get("/api/characters/transfer-targets", requireAuth, (_req, res) => {
@@ -12546,17 +12706,40 @@ async function start() {
     if (restType !== "short" && restType !== "long") {
       return res.status(400).json({ error: "Tipo di riposo non valido." });
     }
+    const requestId = normalizeOperationRequestId(req.body?.requestId);
+    if (!requestId) {
+      return res.status(400).json({ code: "VALIDATION_ERROR", error: "Identificativo della richiesta non valido." });
+    }
 
-    const requestedSlugs = Array.isArray(req.body?.slugs)
-      ? req.body.slugs.map((slug) => String(slug ?? "").trim()).filter(Boolean)
-      : [];
+    const requestedSlugs = Array.from(new Set(
+      Array.isArray(req.body?.slugs)
+        ? req.body.slugs.map((slug) => String(slug ?? "").trim()).filter(Boolean)
+        : []
+    )).sort();
+    if (requestedSlugs.length === 0) {
+      return res.status(400).json({ code: "VALIDATION_ERROR", error: "Seleziona almeno un PG per il riposo." });
+    }
+    const expectedRevisions = normalizeRestExpectedRevisions(req.body?.expectedRevisions, requestedSlugs);
+    if (!expectedRevisions) {
+      return res.status(400).json({ code: "VALIDATION_ERROR", error: "Revisioni attese del roster non valide." });
+    }
+    const requestSignature = buildRestRequestSignature(restType, requestedSlugs, expectedRevisions);
+    const receiptIdentity = buildOperationReceiptIdentity("party-rest", req.user.id, "roster", requestId);
+    const preliminaryReceipt = durableOperationReceipts.lookup(receiptIdentity, requestSignature);
+    if (preliminaryReceipt.status === "conflict") {
+      return res.status(409).json({ code: "REQUEST_ID_REUSED", error: "Questo identificativo richiesta e gia stato usato con un payload diverso." });
+    }
+    if (preliminaryReceipt.status === "match") {
+      return res.json(preliminaryReceipt.receipt.result);
+    }
+
     const requestedSet = new Set(requestedSlugs);
     const targetCharacters = listCharacters()
       .filter((character) => character.characterType === "pg")
-      .filter((character) => requestedSet.size === 0 || requestedSet.has(character.slug));
+      .filter((character) => requestedSet.has(character.slug));
 
-    if (targetCharacters.length === 0) {
-      return res.status(400).json({ error: "Nessun PG valido selezionato per il riposo." });
+    if (targetCharacters.length !== requestedSlugs.length) {
+      return res.status(400).json({ error: "Uno o piu PG selezionati non sono disponibili." });
     }
     try {
       for (const character of targetCharacters) {
@@ -12567,82 +12750,99 @@ async function start() {
     }
 
     let results;
+    let restReceiptResult = null;
+    let restReceiptReplay = false;
     try {
       const targetSlugs = targetCharacters.map((character) => character.slug);
-      const optionsBySlug = readRestOptionsBySlug(req.body, targetSlugs);
+      validateRestClientOptions(req.body, targetSlugs);
       const restNow = new Date();
-      results = await enqueueCharacterMutations(targetSlugs, () => {
-        const session = getSessionById(req.sessionId);
-        const user = session?.userId ? getUserById(session.userId) : null;
-        if (!user || user.id !== req.user?.id || user.role !== "dm") {
-          throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non piu valida.");
-        }
-
-        const prepared = targetSlugs.map((slug) => {
-          assertCharacterInventoryNotInActiveShopVisit({ characterSlug: slug });
-          const snapshot = readCharacterSnapshot(slug);
-          if (!snapshot) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
-          const rest = applyCharacterRest(snapshot.state, restType, optionsBySlug[slug], restNow);
-          return { slug, snapshot, rest };
-        });
-
-        runInTransaction(() => {
-          for (const entry of prepared) {
-            if (!entry.rest.summary.applied) continue;
-            entry.revision = writeCharacter(entry.slug, entry.rest.character, {
-              expectedRevision: entry.snapshot.revision,
-            });
+      results = await characterMutationCoordinator.commitMany(targetSlugs, {
+        lockKeys: [...targetSlugs, durableOperationReceipts.keyFor(receiptIdentity)],
+        authorize: () => {
+          const session = getSessionById(req.sessionId);
+          const user = session?.userId ? getUserById(session.userId) : null;
+          if (!user || user.id !== req.user?.id || user.role !== "dm") {
+            throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non piu valida.");
           }
+        },
+        beforeRead: () => {
+          const receiptLookup = durableOperationReceipts.lookup(receiptIdentity, requestSignature);
+          if (receiptLookup.status === "conflict") throwRequestIdReuse();
+          if (receiptLookup.status !== "match") return undefined;
+          restReceiptReplay = true;
+          restReceiptResult = receiptLookup.receipt.result;
+          return [];
+        },
+        prepare: (snapshots) => {
+          return targetSlugs.map((slug) => {
+            assertCharacterInventoryNotInActiveShopVisit({ characterSlug: slug });
+            const snapshot = snapshots.get(slug);
+            if (snapshot.revision !== expectedRevisions[slug]) {
+              throw createCharacterMutationError(
+                "REVISION_CONFLICT",
+                "Il personaggio e stato modificato da un'altra operazione.",
+                snapshot
+              );
+            }
+            const rest = applyCharacterRest(snapshot.state, restType, restNow);
+            return {
+              slug,
+              state: rest.character,
+              patch: null,
+              meta: { summary: rest.summary },
+              write: rest.summary.applied,
+            };
+          });
+        },
+        afterWrites: (prepared, _snapshots, revisions) => {
+          if (restReceiptReplay) return;
           resetCharacterItemFeatureStatesForRest(
-            prepared.filter((entry) => entry.rest.summary.applied).map((entry) => entry.slug),
+            prepared.filter((entry) => entry.write !== false).map((entry) => entry.slug),
             restType
           );
-        });
-
-        return prepared.map((entry) => {
-          const committedSnapshot = entry.rest.summary.applied ? readCharacterSnapshot(entry.slug) : entry.snapshot;
-          return {
-            slug: entry.slug,
-            revision: committedSnapshot?.revision ?? entry.revision ?? entry.snapshot.revision,
-            state: committedSnapshot?.state ?? entry.rest.character,
-            patch: null,
-            meta: { summary: entry.rest.summary },
-            committed: entry.rest.summary.applied,
+          restReceiptResult = {
+            ok: true,
+            requestId,
+            type: restType,
+            changedSlugs: prepared.filter((entry) => entry.write !== false).map((entry) => entry.slug),
+            updatedCharacters: prepared
+              .filter((entry) => entry.write !== false)
+              .map((entry) => ({ ...entry.state, revision: revisions.get(entry.slug) })),
+            summaries: prepared.map((entry) => entry.meta?.summary).filter(Boolean),
           };
-        });
+          durableOperationReceipts.save(receiptIdentity, requestSignature, restReceiptResult);
+        },
       });
     } catch (error) {
-      const status = error?.code === "AUTH_REQUIRED" ? 401 : Number(error?.statusCode) || 400;
-      return res.status(status).json({ error: String(error?.message ?? error) });
+      const status = error?.code === "AUTH_REQUIRED"
+        ? 401
+        : error?.code === "REQUEST_ID_REUSED" || error?.code === "REVISION_CONFLICT"
+          ? 409
+          : Number(error?.statusCode) || 400;
+      return res.status(status).json({ code: error?.code, error: String(error?.message ?? error) });
     }
 
-    const changedCharacters = results.filter((result) => result.committed);
-    const summaries = results.map((result) => result.meta?.summary).filter(Boolean);
+    const changedSlugSet = new Set(restReceiptResult?.changedSlugs ?? []);
+    const changedCharacters = results.filter((result) => changedSlugSet.has(result.slug));
 
-    for (const result of changedCharacters) {
-      broadcastCharacterInventoryUpdated(io, result.slug, `${restType}-rest-feature-reset`);
-      const payload = buildCharacterStatePayload(result.slug, result);
-      if (payload) io.to(`char:${result.slug}`).emit("character:state", payload);
+    if (!restReceiptReplay) {
+      for (const result of changedCharacters) {
+        broadcastCharacterInventoryUpdated(io, result.slug, `${restType}-rest-feature-reset`);
+        const payload = buildCharacterStatePayload(result.slug, result);
+        if (payload) io.to(`char:${result.slug}`).emit("character:state", payload);
+      }
+
+      const initiativeState = readInitiativeTrackerState();
+      if (
+        changedCharacters.some((character) =>
+          initiativeState.players.some((entry) => entry.slug === character.slug)
+        )
+      ) {
+        broadcastInitiativeTrackerState(io);
+      }
     }
 
-    const initiativeState = readInitiativeTrackerState();
-    if (
-      changedCharacters.some((character) =>
-        initiativeState.players.some((entry) => entry.slug === character.slug)
-      )
-    ) {
-      broadcastInitiativeTrackerState(io);
-    }
-
-    return res.json({
-      ok: true,
-      type: restType,
-      updatedCharacters: changedCharacters.map((result) => ({
-        ...result.state,
-        revision: result.revision,
-      })),
-      summaries,
-    });
+    return res.json(restReceiptResult);
   });
 
   app.post("/api/dm/rests/preview", requireRole("dm"), (req, res) => {
@@ -12669,13 +12869,13 @@ async function start() {
 
     try {
       const targetSlugs = targetCharacters.map((character) => character.slug);
-      const optionsBySlug = readRestOptionsBySlug(req.body, targetSlugs);
+      validateRestClientOptions(req.body, targetSlugs);
       const restNow = new Date();
       return res.json({
         ok: true,
         type: restType,
         summaries: targetCharacters.map((character) =>
-          applyCharacterRest(character, restType, optionsBySlug[character.slug], restNow).summary
+          applyCharacterRest(character, restType, restNow).summary
         ),
       });
     } catch (error) {
@@ -12691,9 +12891,9 @@ async function start() {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const state = readCharacter(slug);
-    if (!state) return res.status(404).json({ error: "Character not found" });
-    return res.json(state);
+    const snapshot = readCharacterSnapshot(slug);
+    if (!snapshot) return res.status(404).json({ error: "Character not found" });
+    return res.json({ ...snapshot.state, revision: snapshot.revision });
   });
 
   app.get("/api/characters/:slug/backstory", requireAuth, (req, res) => {
@@ -13021,7 +13221,22 @@ async function start() {
       return res.status(404).json({ error: "Character not found" });
     }
 
-    const archivedPath = await enqueueCharacterMutation(slug, () => archiveCharacter(slug));
+    let archivedPath;
+    try {
+      archivedPath = await enqueueCharacterMutation(slug, () => {
+        const session = getSessionById(req.sessionId);
+        const user = session?.userId ? getUserById(session.userId) : null;
+        if (!user || user.id !== req.user?.id || user.role !== "dm") {
+          throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non piu valida.");
+        }
+        return archiveCharacter(slug);
+      });
+    } catch (error) {
+      if (error?.code === "AUTH_REQUIRED") {
+        return res.status(401).json({ error: String(error.message) });
+      }
+      throw error;
+    }
     if (!archivedPath) {
       return res.status(500).json({ error: "Archive failed" });
     }
@@ -13362,7 +13577,7 @@ async function start() {
         return;
       }
 
-      const requestId = normalizeSpellSlotConversionRequestId(payload?.requestId);
+      const requestId = normalizeOperationRequestId(payload?.requestId);
       if (!requestId) {
         ack({ ok: false, error: "Identificativo della richiesta non valido." });
         return;
@@ -13386,7 +13601,7 @@ async function start() {
         ack({ ok: false, code: "AUTH_REQUIRED", error: "Sessione non valida." });
         return;
       }
-      const receiptKey = spellSlotConversionReceiptKey(liveUser.id, slug, requestId);
+      const receiptIdentity = buildOperationReceiptIdentity("spell-slot-conversion", liveUser.id, slug, requestId);
       const requestedRevision = payload?.revision ?? payload?.expectedRevision;
       const mutationResult = await commitCharacterMutation(slug, {
         authorize: () => {
@@ -13402,12 +13617,10 @@ async function start() {
           }
         },
         mutate: (current, snapshot) => {
-          const existingReceipt = readSpellSlotConversionReceipt(receiptKey);
-          if (existingReceipt) {
-            if (existingReceipt.signature !== requestSignature) {
-              throw createCharacterMutationError("REQUEST_ID_REUSED", "Questo identificativo richiesta e gia stato usato con un payload diverso.");
-            }
-            return { write: false, meta: { receipt: existingReceipt.result } };
+          const receiptLookup = durableOperationReceipts.lookup(receiptIdentity, requestSignature);
+          if (receiptLookup.status === "conflict") throwRequestIdReuse();
+          if (receiptLookup.status === "match") {
+            return { write: false, meta: { receipt: receiptLookup.receipt.result } };
           }
 
           if (
@@ -13434,7 +13647,7 @@ async function start() {
           if (!conversion.ok) throw createCharacterMutationError("INVALID_CONVERSION", conversion.error, snapshot);
           return { state: conversion.next, patch: conversion.patch, meta: { conversion } };
         },
-        afterCommit: (_next, mutation) => {
+        afterWrite: (_next, mutation) => {
           const conversion = mutation.meta.conversion;
           const receiptResult = {
             ok: true,
@@ -13445,7 +13658,7 @@ async function start() {
             pointsSpent: conversion.pointsSpent,
             excess: conversion.excess,
           };
-          writeSpellSlotConversionReceipt(receiptKey, requestSignature, receiptResult);
+          durableOperationReceipts.save(receiptIdentity, requestSignature, receiptResult);
         },
       });
 

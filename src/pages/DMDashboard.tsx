@@ -24,7 +24,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -63,7 +62,6 @@ import {
   previewPartyRestRequest,
   updateGameSessionStateRequest,
   type PartyRestSummaryEntry,
-  type PartyRestOptionsBySlug,
   type PartyRestType,
   type CharacterInventoryItemEntry,
   type ItemDefinitionEntry,
@@ -265,6 +263,11 @@ function hpBarColor(hp: PlayerCardData["hp"]) {
   return "bg-rose-500";
 }
 
+function createRestRequestId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  return `rest_${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
+}
+
 export default function DMDashboard() {
   const { user } = useAuth();
   const { sessionState, refresh: refreshGameSession } = useGameSession();
@@ -289,9 +292,13 @@ export default function DMDashboard() {
   const [restDialogOpen, setRestDialogOpen] = useState(false);
   const [restDialogType, setRestDialogType] = useState<PartyRestType>("short");
   const [restSelectedSlugs, setRestSelectedSlugs] = useState<string[]>([]);
-  const [restOptionsBySlug, setRestOptionsBySlug] = useState<PartyRestOptionsBySlug>({});
   const [restPreview, setRestPreview] = useState<PartyRestSummaryEntry[]>([]);
   const [restPreviewLoading, setRestPreviewLoading] = useState(false);
+  const restApplyRequestRef = useRef<{
+    signature: string;
+    requestId: string;
+    expectedRevisions: Record<string, string>;
+  } | null>(null);
   const joinedRoomsRef = useRef<Set<string>>(new Set());
   const itemDefinitionsByIdRef = useRef(itemDefinitionsById);
   const onlineRefreshInFlightRef = useRef(false);
@@ -597,16 +604,19 @@ export default function DMDashboard() {
         return next;
       });
     });
-    const offState = onCharacterState(({ slug, state }) => {
+    const offState = onCharacterState(({ slug, state, revision }) => {
       if (!slug) return;
-      setLiveStates((prev) => ({ ...prev, [slug]: state as CharacterState }));
+      setLiveStates((prev) => ({
+        ...prev,
+        [slug]: { ...(state as CharacterState), revision: revision ?? prev[slug]?.revision },
+      }));
     });
 
-    const offPatch = onCharacterPatch(({ slug, patch }: { slug: string; patch: any }) => {
+    const offPatch = onCharacterPatch(({ slug, patch, revision }: { slug: string; patch: any; revision?: string }) => {
       setLiveStates((prev) => {
         const current = prev[slug];
         if (!current) return prev;
-        return { ...prev, [slug]: applyPatch(current, patch) };
+        return { ...prev, [slug]: { ...applyPatch(current, patch), revision: revision ?? current.revision } };
       });
     });
 
@@ -652,41 +662,6 @@ export default function DMDashboard() {
   );
   const restBlockedCount = restPreview.filter((entry) => !entry.applied).length;
   const restHealingTotal = restPreview.reduce((total, entry) => total + (entry.healingApplied ?? 0), 0);
-  const selectedRestOptions = useMemo<PartyRestOptionsBySlug>(
-    () => Object.fromEntries(
-      restSelectedSlugs.map((slug) => [
-        slug,
-        restOptionsBySlug[slug] ?? { hitDiceSpent: 0, hitDiceRollTotal: 0 },
-      ])
-    ),
-    [restOptionsBySlug, restSelectedSlugs]
-  );
-  const restOptionErrors = useMemo(() => {
-    if (restDialogType !== "short") return {} as Record<string, string>;
-    return Object.fromEntries(
-      restSelectedSlugs.flatMap((slug) => {
-        const option = selectedRestOptions[slug];
-        const remaining = restPreviewBySlug[slug]?.hitDiceRemaining;
-        if (!Number.isInteger(option.hitDiceSpent) || option.hitDiceSpent < 0) {
-          return [[slug, "Inserisci un numero valido di Dadi Vita."]];
-        }
-        if (typeof remaining === "number" && option.hitDiceSpent > remaining) {
-          return [[slug, `Puoi spendere al massimo ${remaining} Dadi Vita.`]];
-        }
-        if (!Number.isInteger(option.hitDiceRollTotal) || option.hitDiceRollTotal < 0) {
-          return [[slug, "Inserisci il totale naturale dei dadi."]];
-        }
-        if (option.hitDiceSpent > 0 && option.hitDiceRollTotal < option.hitDiceSpent) {
-          return [[slug, "Il totale naturale deve essere almeno un punto per dado speso."]];
-        }
-        if (option.hitDiceSpent === 0 && option.hitDiceRollTotal !== 0) {
-          return [[slug, "Il totale naturale deve essere 0 se non spendi Dadi Vita."]];
-        }
-        return [];
-      })
-    );
-  }, [restDialogType, restPreviewBySlug, restSelectedSlugs, selectedRestOptions]);
-  const hasRestOptionErrors = Object.keys(restOptionErrors).length > 0;
 
   useEffect(() => {
     let active = true;
@@ -764,7 +739,7 @@ export default function DMDashboard() {
 
     let active = true;
     setRestPreviewLoading(true);
-    void previewPartyRestRequest(restDialogType, restSelectedSlugs, selectedRestOptions)
+    void previewPartyRestRequest(restDialogType, restSelectedSlugs)
       .then((response) => {
         if (!active) return;
         setRestPreview(Array.isArray(response.summaries) ? response.summaries : []);
@@ -780,7 +755,7 @@ export default function DMDashboard() {
     return () => {
       active = false;
     };
-  }, [restDialogOpen, restDialogType, restSelectedSlugs, selectedRestOptions]);
+  }, [restDialogOpen, restDialogType, restSelectedSlugs]);
 
   const getDmConversationForSlug = (slug: string) =>
     Object.values(conversations).find(
@@ -914,11 +889,9 @@ export default function DMDashboard() {
   };
 
   const openRestDialog = (type: PartyRestType) => {
+    restApplyRequestRef.current = null;
     setRestDialogType(type);
     setRestSelectedSlugs(roster.map((player) => player.slug));
-    setRestOptionsBySlug(
-      Object.fromEntries(roster.map((player) => [player.slug, { hitDiceSpent: 0, hitDiceRollTotal: 0 }]))
-    );
     setRestPreview([]);
     setRestDialogOpen(true);
   };
@@ -935,17 +908,6 @@ export default function DMDashboard() {
     setRestSelectedSlugs(checked ? roster.map((player) => player.slug) : []);
   };
 
-  const updateShortRestOption = (slug: string, field: "hitDiceSpent" | "hitDiceRollTotal", value: string) => {
-    const parsed = value === "" ? 0 : Number(value);
-    setRestOptionsBySlug((prev) => ({
-      ...prev,
-      [slug]: {
-        ...(prev[slug] ?? { hitDiceSpent: 0, hitDiceRollTotal: 0 }),
-        [field]: Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : Number.NaN,
-      },
-    }));
-  };
-
   const confirmPartyRest = async () => {
     const type = restDialogType;
     const label = type === "short" ? "riposo breve" : "riposo lungo";
@@ -956,11 +918,32 @@ export default function DMDashboard() {
 
     setRestSubmitting(type);
     try {
-      if (type === "short" && hasRestOptionErrors) {
-        toast.error("Correggi le selezioni dei Dadi Vita prima di confermare.");
-        return;
+      const selectedSlugs = [...new Set(restSelectedSlugs)].sort();
+      const requestSignature = JSON.stringify({ type, slugs: selectedSlugs });
+      if (restApplyRequestRef.current?.signature !== requestSignature) {
+        const expectedRevisions = Object.fromEntries(selectedSlugs.flatMap((slug) => {
+          const state = liveStates[slug] ?? baseCharacterStates.find((entry) => entry.slug === slug);
+          return typeof state?.revision === "string" && state.revision.trim()
+            ? [[slug, state.revision.trim()]]
+            : [];
+        }));
+        if (Object.keys(expectedRevisions).length !== selectedSlugs.length) {
+          toast.error("Aggiorna il roster prima di applicare il riposo: manca una revisione canonica.");
+          return;
+        }
+        restApplyRequestRef.current = {
+          signature: requestSignature,
+          requestId: createRestRequestId(),
+          expectedRevisions,
+        };
       }
-      const response = await applyPartyRestRequest(type, restSelectedSlugs, selectedRestOptions);
+      const response = await applyPartyRestRequest(
+        type,
+        restSelectedSlugs,
+        restApplyRequestRef.current.requestId,
+        restApplyRequestRef.current.expectedRevisions
+      );
+      restApplyRequestRef.current = null;
       const updatedCharacters = Array.isArray(response.updatedCharacters)
         ? response.updatedCharacters as CharacterState[]
         : [];
@@ -1118,7 +1101,9 @@ export default function DMDashboard() {
                 {restDialogType === "short" ? "Riposo breve del roster" : "Riposo lungo del roster"}
               </DialogTitle>
               <DialogDescription>
-                Seleziona i PG coinvolti e controlla l'anteprima prima di applicare il riposo.
+                {restDialogType === "short"
+                  ? "Seleziona i PG coinvolti: il server cura automaticamente usando fino a metà dei Dadi Vita massimi, nei limiti di quelli disponibili, con media fissa del dado + modificatore di COS. Sono consentiti al massimo due riposi brevi tra riposi lunghi."
+                  : "Seleziona i PG coinvolti e controlla l'anteprima prima di applicare il riposo."}
               </DialogDescription>
             </DialogHeader>
 
@@ -1193,25 +1178,8 @@ export default function DMDashboard() {
                                 {preview.hitDiceRecovered > 0 ? ` (+${preview.hitDiceRecovered} recuperati)` : ""}
                               </div>
                               {restDialogType === "short" ? (
-                                <div className="space-y-2 border-t border-border/40 pt-2">
-                                  <div className="text-muted-foreground">Scegli Dadi Vita e totale naturale: il server aggiunge il mod. COS per dado.</div>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <label className="space-y-1">
-                                      <span className="text-muted-foreground">Dadi spesi</span>
-                                      <Input type="number" min={0} max={preview.hitDiceRemaining} inputMode="numeric"
-                                        value={Number.isFinite(selectedRestOptions[player.slug]?.hitDiceSpent) ? selectedRestOptions[player.slug]?.hitDiceSpent ?? 0 : ""}
-                                        onChange={(event) => updateShortRestOption(player.slug, "hitDiceSpent", event.target.value)}
-                                        aria-label={`Dadi Vita spesi da ${player.name}`} />
-                                    </label>
-                                    <label className="space-y-1">
-                                      <span className="text-muted-foreground">Totale dadi</span>
-                                      <Input type="number" min={0} inputMode="numeric" disabled={(selectedRestOptions[player.slug]?.hitDiceSpent ?? 0) === 0}
-                                        value={Number.isFinite(selectedRestOptions[player.slug]?.hitDiceRollTotal) ? selectedRestOptions[player.slug]?.hitDiceRollTotal ?? 0 : ""}
-                                        onChange={(event) => updateShortRestOption(player.slug, "hitDiceRollTotal", event.target.value)}
-                                        aria-label={`Totale naturale Dadi Vita di ${player.name}`} />
-                                    </label>
-                                  </div>
-                                  {restOptionErrors[player.slug] ? <div className="text-destructive" role="alert">{restOptionErrors[player.slug]}</div> : null}
+                                <div className="border-t border-border/40 pt-2 text-muted-foreground">
+                                  Cura automatica: fino a metà dei Dadi Vita massimi, nei limiti di quelli disponibili, media fissa + COS.
                                 </div>
                               ) : null}
                             </div>
@@ -1232,7 +1200,7 @@ export default function DMDashboard() {
               </Button>
               <Button
                 onClick={() => void confirmPartyRest()}
-                disabled={!!restSubmitting || restPreviewLoading || restSelectedSlugs.length === 0 || hasRestOptionErrors}
+                disabled={!!restSubmitting || restPreviewLoading || restSelectedSlugs.length === 0}
               >
                 {restSubmitting ? "Applico..." : "Conferma riposo"}
               </Button>

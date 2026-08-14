@@ -458,13 +458,6 @@ export type SpellSlotTable = Record<string, Record<string, Record<string, number
 
 export type PartyRestType = "short" | "long";
 
-export type PartyShortRestOption = {
-  hitDiceSpent: number;
-  hitDiceRollTotal: number;
-};
-
-export type PartyRestOptionsBySlug = Record<string, PartyShortRestOption>;
-
 export type PartyRestSummaryEntry = {
   slug: string;
   name: string;
@@ -477,7 +470,6 @@ export type PartyRestSummaryEntry = {
   temporaryHitPointsAfter: number;
   healingApplied: number;
   hitDiceSpent: number;
-  hitDiceRollTotal?: number;
   hitDiceRecovered: number;
   hitDiceRemaining: number;
   hitDiceRemainingAfter: number;
@@ -488,6 +480,7 @@ export type PartyRestSummaryEntry = {
 
 export type PartyRestResponse = {
   ok: true;
+  requestId: string;
   type: PartyRestType;
   updatedCharacters: Array<Record<string, unknown>>;
   summaries: PartyRestSummaryEntry[];
@@ -1061,23 +1054,23 @@ export function fetchSpellSlots() {
 
 export function applyPartyRestRequest(
   type: PartyRestType,
-  slugs?: string[],
-  optionsBySlug?: PartyRestOptionsBySlug
+  slugs: string[],
+  requestId: string,
+  expectedRevisions: Record<string, string>
 ) {
   return authFetch<PartyRestResponse>("/api/dm/rests/apply", {
     method: "POST",
-    body: JSON.stringify({ type, slugs, optionsBySlug }),
+    body: JSON.stringify({ type, slugs, requestId, expectedRevisions }),
   });
 }
 
 export function previewPartyRestRequest(
   type: PartyRestType,
-  slugs?: string[],
-  optionsBySlug?: PartyRestOptionsBySlug
+  slugs?: string[]
 ) {
   return authFetch<Omit<PartyRestResponse, "updatedCharacters">>("/api/dm/rests/preview", {
     method: "POST",
-    body: JSON.stringify({ type, slugs, optionsBySlug }),
+    body: JSON.stringify({ type, slugs }),
   });
 }
 
