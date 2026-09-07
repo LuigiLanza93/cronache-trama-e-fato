@@ -33,6 +33,7 @@ prisma/migration.db-journal
 app-data/
 .backups/
 codex-readme.md
+codex-history.md
 
 # Old local-only dev dashboard prototype
 Apri pannello sviluppo.cmd
