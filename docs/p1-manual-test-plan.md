@@ -368,11 +368,14 @@ Copertura preparata:
 | Validazione server | `tests/server/character-patch-validation.test.mjs` | 31 | allowlist, tipi e range, contratto stretto delle competenze passive, guardie server Arma del Patto, array/oggetti, campi server-owned, prototype pollution, profondita e dimensione massima |
 | Riposi | `tests/server/character-rest.test.mjs` | 17 | cura automatica, budget DV, media fissa, COS negativa, limite due brevi, recupero lungo completo, TS morte, compatibilita input legacy e immutabilita |
 | Persistenza | `tests/server/character-persistence.test.mjs` | 13 | FIFO, retry, conflitto, rollback multi-PG, revoca accodata, patch/riposo, receipt durevoli, replay prima dello stato mutabile e lookup O(1) |
-| Classi/progressione pura | `tests/rules/character-class-rules.test.mjs` | 22 | chiavi stabili, prerequisiti, totale/PB, Dadi Vita, caster full/half/third, Pact Magic, soglie e custom manuali |
+| Classi/progressione pura | `tests/rules/character-class-rules.test.mjs` | 31 | chiavi stabili, prerequisiti, totale/PB, Dadi Vita, progressioni monofonte/multiclass, Pact Magic, preview before/after, soglie, provenienza e custom manuali |
+| Progressione shadow | `tests/server/character-progression-shadow.test.mjs` | 8 | schema assente/parziale/completo, coerenza snapshot, alias, sottoclassi, fallback legacy e payload pubblico invariato |
+| Ritiro importatore legacy | `tests/server/import-json-retirement.test.mjs` | 3 | consenso distruttivo esplicito, rifiuto sui database con strutture M3 e blocco assoluto del percorso Railway canonico |
 | Avvio server | `tests/server/server-startup-smoke.test.mjs` | 1 | bootstrap reale in produzione su copia DB temporanea e risposta `/healthz` |
 | Migrazione e backfill | `tests/database/item-weapon-classification.test.mjs` | 5 | default SQL, conservazione dati, dry-run, apply idempotente, conflitti, DB temporanei e guardia produzione |
+| Schema progressione M3 | `tests/database/character-progression-m3.test.mjs` | 9 | migrazione additiva, catalogo versionato, divergenze o JSON incompleti irrisolti, trigger, dry-run read-only, idempotenza e guardia produzione |
 
-Totale: **119 test**. Il workflow GitHub Actions `Build`, avviato manualmente, esegue la stessa suite prima della build.
+Totale: **148 test**. Il workflow GitHub Actions `Build`, avviato manualmente, esegue la stessa suite prima della build.
 
 Esecuzione completa P1:
 

@@ -30,7 +30,7 @@ La roadmap esprime priorita e dipendenze, non scadenze. Le versioni proposte pos
 
 ## P0, pre-1.8 — Stabilizzazione core della scheda personaggio
 
-> Stato verificato al 2026-08-14: P0 e P1 sono chiusi, testati, committati e pushati su `dev` (`fc0d5a8` e `f7e1837`); M0 e completato localmente. Il pacchetto non committato chiude M1 con test transazionali e retry durevoli e avvia M2.1 con catalogo/resolver classi puri. Il prossimo lavoro prioritario e completare M2. I dettagli e i limiti residui sono raccolti in [`character-sheet-audit.md`](./character-sheet-audit.md) e [`multiclass-roadmap.md`](./multiclass-roadmap.md).
+> Stato verificato al 2026-09-07: P0, P1 e M0-M3 sono completati e consolidati su `dev`. M3 introduce catalogo versionato, backfill monoclasse e dual-read shadow senza cambiare UI o API pubbliche. Il prossimo incremento funzionale e M4, API autorevoli di progressione e proiezioni UI. I dettagli e i limiti residui sono raccolti in [`character-sheet-audit.md`](./character-sheet-audit.md), [`multiclass-roadmap.md`](./multiclass-roadmap.md) e [`character-progression-m3.md`](./character-progression-m3.md).
 
 ### Obiettivo
 
@@ -105,17 +105,17 @@ Ogni sezione della scheda ha una valutazione motivata e un percorso dati noto. I
 - riposi brevi/lunghi prima coperti dai test SRD e poi riallineati, dopo D0, alla house rule storica della campagna;
 - le competenze ottenute da capacità possono essere espresse come `passiveEffects` di categoria `PROFICIENCY`, con il solo bersaglio; coperti Collegio Bardico del Valore, categorie armatura/scudo e competenza per l'esatta Arma del Patto legata o evocata;
 - `Competenze & Abilità` include un riepilogo read-only delle competenze effettive in armi, armature e scudi, con provenienza da classe, capacità passive o grant espliciti; le armi specifiche restano separate dalle categorie e l'Arma del Patto non viene generalizzata;
-- suite Vitest di non regressione con 119 casi dopo M1/M2.1, inclusi persistenza concorrente, receipt durevoli, precondizioni retry e resolver classi, eseguita anche dal workflow Build manuale; checklist browser in [`p1-manual-test-plan.md`](./p1-manual-test-plan.md);
+- suite Vitest di non regressione con 148 casi dopo M3, inclusi persistenza concorrente, receipt durevoli, catalogo classi, backfill idempotente, dual-read shadow e ritiro dell'importatore distruttivo; checklist browser in [`p1-manual-test-plan.md`](./p1-manual-test-plan.md);
 - collaudo manuale utente completato; pacchetto committato e pushato su `dev` in `f7e1837`;
-- verifica fresca del 2026-08-14: 119/119 test P1/Gate, TypeScript, syntax server, build di produzione e `git diff --check` positivi;
+- verifica fresca del 2026-09-07: 148/148 test P1/Gate, Prisma validate, controlli sintassi, TypeScript Vite, build di produzione, dry-run M3 senza scritture e `git diff --check` positivi; il controllo TypeScript applicativo corretto (`tsc -p tsconfig.app.json`) fallisce ancora per errori esterni al diff M2/M3;
 - migrazione e backfill restano applicati soltanto al DB locale di sviluppo; `main` e Railway sono invariati. Prima di un rilascio servono backup Railway fresco, applicazione controllata della migrazione e verifiche post-deploy.
 
 ### Prontezza per il Gate 1.8A
 
-- la baseline applicativa di `dev` e allineata a `origin/dev`; dopo questa ricognizione restano non committati soltanto gli aggiornamenti documentali. P0 e P1 costituiscono la base consolidata da cui proseguire;
-- M0 e M1 sono completati tecnicamente; M2.1 e implementato senza schema/API/UI e il prossimo incremento completa M2 prima di passare a M3-M6;
+- `dev` include P0, P1 e M0-M3 consolidati; gli aggiornamenti della configurazione operativa Codex restano separati dal checkpoint funzionale. Questa e la base da cui proseguire con M4;
+- M0-M3 sono completati tecnicamente; M3 resta compatibile e invisibile alla UI, mentre M4 rendera autorevole il nuovo writer e introdurra API/proiezioni prima di M5-M6;
 - i P2/P3 dell'audit non bloccano la progressione, salvo che un censimento M0 riveli una dipendenza concreta;
-- il DB locale non contiene `_prisma_migrations`: `prisma migrate status` non puo certificare la cronologia del database storico. Integrita, schema effettivo e backfill sono verificati direttamente; M3 deve formalizzare una procedura di migrazione tracciabile, additiva e restart-safe senza ricreare il DB;
+- il DB locale non contiene `_prisma_migrations`: `prisma migrate status` non puo certificare la cronologia del database storico. Integrita, schema effettivo e backfill M3 sono verificati direttamente con uno script additivo, transazionale, idempotente e restart-safe; prima di ulteriori lavori DB la cronologia e le differenze Prisma vanno riconciliate su copie disposable, senza ricreare il DB;
 - nessuna modifica P0/P1 e ancora in produzione: questo non blocca lo sviluppo su `dev`, ma impedisce di considerare P0/P1 rilasciati finche non viene autorizzato e completato il flusso `dev` -> `main` -> Railway.
 - M0 e completato con censimento locale read-only, contratti legacy, matrice consumer, decisioni D0 confermate e casi attesi in [`multiclass-m0-baseline.md`](./multiclass-m0-baseline.md). Le regole esistenti restano house rule e SRD 5.1/2014 copre i vuoti; PF e riposi seguono le house rule esplicite della campagna.
 

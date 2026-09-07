@@ -103,7 +103,7 @@ Consumer da migrare per gruppi, mantenendo inizialmente la proiezione:
 | `unresolved-legacy` | classe composta o livello colonna/JSON divergente | nessun backfill automatico; stato esplicito e intervento DM |
 | `limits-and-integrity` | totale >20, duplicato classe, sottoclasse incoerente | rifiuto atomico e nessuna scrittura parziale |
 
-I casi relativi a chiavi, totale/PB, Dadi Vita, full/full, full/half, half/half, third-caster, Warlock + caster, soglie, prerequisiti, limiti e custom manuali sono ora fixture eseguibili di M2.1 in `tests/rules/character-class-rules.test.mjs`. Storico PF, scelte di progressione e stato legacy restano da trasformare in fixture quando esisteranno i relativi resolver.
+I casi relativi a chiavi, totale/PB, Dadi Vita, full/full, full/half, half/half, third-caster, Warlock + caster, soglie, prerequisiti, limiti e custom manuali sono fixture eseguibili in `tests/rules/character-class-rules.test.mjs`. M2.2 aggiunge progressioni slot monofonte/multiclass, Pact Magic separata e preview pura before/after con sottoclasse richiesta alla soglia. Storico PF e stato legacy persistito restano da trasformare in fixture con M3-M5.
 
 ## Decisioni chiuse e dati ancora da censire
 
@@ -118,5 +118,5 @@ Le decisioni di prodotto D0 sono chiuse. Restano attivita di catalogazione tecni
 Il censimento, la matrice consumer, i casi attesi e D0 sono completi per i dati locali:
 
 1. M1 completato con coordinatore iniettabile, test SQLite e receipt durevoli per retry di riposi/conversioni;
-2. M2.1 completato con tipi condivisi, chiavi stabili, catalogo regole e resolver puri; completare ora catalogo/progressioni M2.2;
-3. progettare M3 come migrazione additiva, idempotente e restart-safe, senza usare `prisma migrate status` come prova sul DB storico e senza toccare Railway prima di una release autorizzata.
+2. M2 completato con tipi condivisi, chiavi stabili, catalogo regole, progressioni slot e preview di avanzamento puri;
+3. M3 completato localmente con migrazione additiva, backfill idempotente, dual-read shadow e ritiro protetto dell'importatore distruttivo; il prossimo passo e M4, senza toccare Railway prima di una release autorizzata.

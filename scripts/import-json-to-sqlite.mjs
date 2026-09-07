@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { DatabaseSync } from "node:sqlite";
 import { buildMonsterDiscoverSkillRuleRows } from "../shared/monster-discover-skill-rules.mjs";
 import { computeMonsterRarity } from "../shared/monster-rarity-rules.mjs";
 import {
@@ -26,8 +27,11 @@ const CHATS_FILE = path.resolve(DATA_DIR, "chats.json");
 const ENCOUNTER_SCENARIOS_FILE = path.resolve(DATA_DIR, "encounter-scenarios.json");
 const SQLITE_CLI = path.resolve(repoRoot, "tools/sqlite/sqlite3.exe");
 const DATABASE_FILE = path.resolve(repoRoot, "prisma/migration.db");
+const PRODUCTION_DATABASE_FILE = path.resolve("/data/migration.db");
 const IMPORT_SQL_FILE = path.resolve(repoRoot, "prisma/import-json.sql");
 const CMD_EXE = "C:\\Windows\\System32\\cmd.exe";
+const M3_PROGRESSION_TABLES = ["ClassRule", "SubclassRule", "CharacterProgression", "CharacterClass"];
+const DESTRUCTIVE_IMPORT_FLAG = "--allow-destructive-legacy-import";
 
 function readJson(filePath, fallback) {
   try {
@@ -464,17 +468,60 @@ function buildImportSql() {
   };
 }
 
-function ensureRequirements() {
-  if (!fs.existsSync(SQLITE_CLI)) {
-    throw new Error(`SQLite CLI non trovato: ${SQLITE_CLI}`);
+function parseDatabasePath(argv) {
+  const index = argv.indexOf("--database");
+  const assignment = argv.find((argument) => argument.startsWith("--database="));
+  if (index >= 0) {
+    const value = argv[index + 1];
+    if (!value || value.startsWith("--")) throw new Error("--database richiede un percorso.");
+    return path.resolve(value);
   }
-  if (!fs.existsSync(DATABASE_FILE)) {
-    throw new Error(`Database SQLite non trovato: ${DATABASE_FILE}`);
+  if (assignment) {
+    const value = assignment.slice("--database=".length);
+    if (!value) throw new Error("--database richiede un percorso.");
+    return path.resolve(value);
+  }
+  return DATABASE_FILE;
+}
+
+export function assertDestructiveLegacyImportAllowed({ explicitlyAllowed = false, presentTables = [] } = {}) {
+  if (!explicitlyAllowed) {
+    throw new Error(
+      `Import JSON legacy ritirato: e distruttivo e richiede il flag esplicito ${DESTRUCTIVE_IMPORT_FLAG}.`,
+    );
+  }
+  const present = new Set(Array.isArray(presentTables) ? presentTables.map(String) : []);
+  const progressionTables = M3_PROGRESSION_TABLES.filter((tableName) => present.has(tableName));
+  if (progressionTables.length > 0) {
+    throw new Error(
+      `Import JSON legacy rifiutato: il database contiene strutture M3 (${progressionTables.join(", ")}).`,
+    );
   }
 }
 
-function applyImportSql() {
-  const command = `"${SQLITE_CLI}" "${DATABASE_FILE}" < "${IMPORT_SQL_FILE}"`;
+function readDatabaseTableNames(databasePath) {
+  const database = new DatabaseSync(databasePath, { readOnly: true });
+  try {
+    return database
+      .prepare("SELECT name FROM sqlite_schema WHERE type = 'table'")
+      .all()
+      .map((row) => String(row.name));
+  } finally {
+    database.close();
+  }
+}
+
+function ensureRequirements(databasePath) {
+  if (!fs.existsSync(SQLITE_CLI)) {
+    throw new Error(`SQLite CLI non trovato: ${SQLITE_CLI}`);
+  }
+  if (!fs.existsSync(databasePath)) {
+    throw new Error(`Database SQLite non trovato: ${databasePath}`);
+  }
+}
+
+function applyImportSql(databasePath) {
+  const command = `"${SQLITE_CLI}" "${databasePath}" < "${IMPORT_SQL_FILE}"`;
   const result = spawnSync(CMD_EXE, ["/d", "/s", "/c", command], {
     cwd: repoRoot,
     encoding: "utf-8",
@@ -490,9 +537,18 @@ function applyImportSql() {
 }
 
 function main() {
-  ensureRequirements();
-
-  const dryRun = process.argv.includes("--dry-run");
+  const argv = process.argv.slice(2);
+  const dryRun = argv.includes("--dry-run");
+  const databasePath = parseDatabasePath(argv);
+  if (databasePath === PRODUCTION_DATABASE_FILE) {
+    throw new Error("Import JSON legacy rifiutato sul database canonico di produzione /data/migration.db.");
+  }
+  assertDestructiveLegacyImportAllowed({ explicitlyAllowed: argv.includes(DESTRUCTIVE_IMPORT_FLAG) });
+  ensureRequirements(databasePath);
+  assertDestructiveLegacyImportAllowed({
+    explicitlyAllowed: true,
+    presentTables: readDatabaseTableNames(databasePath),
+  });
   const { sql, summary } = buildImportSql();
   fs.writeFileSync(IMPORT_SQL_FILE, sql, "utf-8");
 
@@ -504,8 +560,10 @@ function main() {
     return;
   }
 
-  applyImportSql();
-  console.log("[import-json-to-sqlite] Import completato in prisma/migration.db");
+  applyImportSql(databasePath);
+  console.log(`[import-json-to-sqlite] Import completato in ${databasePath}`);
 }
 
-main();
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main();
+}

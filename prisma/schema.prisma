@@ -322,6 +322,7 @@ model User {
   shopVisitsOpened ShopVisit[] @relation("ShopVisitOpenedBy")
   shopVisitsClosed ShopVisit[] @relation("ShopVisitClosedBy")
   shopOffersProposed ShopOffer[] @relation("ShopOfferProposedBy")
+  updatedCharacterClasses CharacterClass[] @relation("CharacterClassUpdatedBy")
 
   @@index([role])
 }
@@ -362,11 +363,112 @@ model Character {
   shopItemKnowledge ShopItemKnowledge[]
   shopVisits ShopVisit[]
   shopNegotiations ShopNegotiation[]
+  progression CharacterProgression?
+  classes CharacterClass[]
 
   @@index([characterType])
   @@index([ownerUserId])
   @@index([createdByUserId])
   @@index([archivedAt])
+}
+
+model ClassRule {
+  id                     String   @id
+  classKey               String
+  labelIt                String
+  labelEn                String
+  aliases                String
+  rulesetId              String
+  rulesetVersion         String
+  sourceReference        String
+  hitDie                 Int?
+  casterKind             String?
+  spellcastingAbility    String?
+  spellcastingStartLevel Int?
+  subclassSelectionLevel Int?
+  isCustom               Boolean  @default(false)
+  isManual               Boolean  @default(false)
+  ruleSnapshot           String
+  catalogHash            String
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  subclasses      SubclassRule[]
+  characterClasses CharacterClass[]
+
+  @@unique([rulesetId, rulesetVersion, classKey])
+  @@index([classKey])
+}
+
+model SubclassRule {
+  id                     String   @id
+  subclassKey            String
+  classRuleId            String
+  labelIt                String
+  labelEn                String
+  aliases                String
+  rulesetId              String
+  rulesetVersion         String
+  sourceReference        String
+  casterKind             String?
+  spellcastingAbility    String?
+  spellcastingStartLevel Int?
+  isCustom               Boolean  @default(false)
+  isManual               Boolean  @default(false)
+  archivedAt             DateTime?
+  ruleSnapshot           String
+  catalogHash            String
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  classRule       ClassRule        @relation(fields: [classRuleId], references: [id], onDelete: Restrict)
+  characterClasses CharacterClass[]
+
+  @@unique([rulesetId, rulesetVersion, subclassKey])
+  @@index([subclassKey])
+  @@index([classRuleId])
+}
+
+model CharacterProgression {
+  characterId   String   @id
+  revision      Int      @default(0)
+  backfillStatus String  @default("PENDING")
+  backfillIssues String  @default("[]")
+  legacySnapshot String  @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([backfillStatus])
+}
+
+model CharacterClass {
+  id              String   @id
+  characterId     String
+  classRuleId     String
+  subclassRuleId  String?
+  classKey         String
+  level            Int
+  sortOrder        Int
+  isPrimary        Boolean
+  subclassStatus   String   @default("UNSELECTED")
+  source            String   @default("LEGACY_BACKFILL")
+  ruleSnapshot      String
+  updatedByUserId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  character    Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  classRule    ClassRule     @relation(fields: [classRuleId], references: [id], onDelete: Restrict)
+  subclassRule SubclassRule? @relation(fields: [subclassRuleId], references: [id], onDelete: Restrict)
+  updatedBy    User?         @relation("CharacterClassUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, classKey])
+  @@unique([characterId, sortOrder])
+  @@index([classRuleId])
+  @@index([subclassRuleId])
+  @@index([updatedByUserId])
 }
 
 model CharacterBackstory {

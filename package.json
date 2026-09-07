@@ -24,6 +24,8 @@
     "items:backfill-features": "node scripts/backfill-item-features.mjs",
     "items:backfill-srd-equipment": "node scripts/backfill-srd-equipment.mjs",
     "db:import-json": "node scripts/import-json-to-sqlite.mjs",
+    "progression:m3:dry-run": "node scripts/apply-character-progression-m3.mjs --dry-run",
+    "progression:m3:apply-local": "node scripts/apply-character-progression-m3.mjs --apply",
     "backup:prod-db": "powershell -ExecutionPolicy Bypass -File scripts/backup-prod-db.ps1",
     "backup:install-task": "powershell -ExecutionPolicy Bypass -File scripts/register-prod-db-backup-task.ps1",
     "lint": "eslint .",

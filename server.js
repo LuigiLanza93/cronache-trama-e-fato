@@ -11,6 +11,12 @@ import { createServer as createViteServer } from "vite";
 import { Server as SocketIOServer } from "socket.io";
 import { normalizeMonsterTypeFields } from "./shared/monster-type-normalization.mjs";
 import { computeMonsterRarity } from "./shared/monster-rarity-rules.mjs";
+import {
+  CHARACTER_PROGRESSION_SCHEMA_COLUMNS,
+  CHARACTER_PROGRESSION_SCHEMA_OBJECTS,
+  inspectCharacterProgressionSchema,
+  resolveCharacterProgressionShadow,
+} from "./shared/character-progression-shadow.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -166,6 +172,7 @@ function getSqliteDbMtimeMs() {
 
 let sqlite = null;
 let sqliteLastKnownMtimeMs = 0;
+let characterProgressionSchemaInspection = null;
 
 function ensureSqliteConnectionFresh() {
   const currentMtimeMs = getSqliteDbMtimeMs();
@@ -181,6 +188,7 @@ function ensureSqliteConnectionFresh() {
 
   sqlite = createSqliteConnection();
   sqliteLastKnownMtimeMs = currentMtimeMs;
+  characterProgressionSchemaInspection = null;
 }
 
 const CHARACTER_SHEET_LAYOUT_KEY = "character-sheet";
@@ -1357,6 +1365,84 @@ function columnExists(tableName, columnName) {
     .prepare(`PRAGMA table_info("${tableName}")`)
     .all()
     .some((column) => String(column.name) === columnName);
+}
+
+export function inspectCharacterProgressionShadowDatabase(database) {
+  const tableColumns = {};
+  for (const tableName of Object.keys(CHARACTER_PROGRESSION_SCHEMA_COLUMNS)) {
+    const exists = !!database
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
+      .get(tableName);
+    if (!exists) continue;
+    tableColumns[tableName] = database
+      .prepare(`PRAGMA table_info("${tableName}")`)
+      .all()
+      .map((column) => String(column.name));
+  }
+  const schemaObjects = {};
+  for (const type of Object.keys(CHARACTER_PROGRESSION_SCHEMA_OBJECTS)) {
+    schemaObjects[type] = database
+      .prepare("SELECT name FROM sqlite_master WHERE type = ?")
+      .all(type)
+      .map((entry) => String(entry.name));
+  }
+  return inspectCharacterProgressionSchema(tableColumns, schemaObjects);
+}
+
+function getCharacterProgressionSchemaInspection() {
+  if (!characterProgressionSchemaInspection) {
+    characterProgressionSchemaInspection = inspectCharacterProgressionShadowDatabase(sqlite);
+  }
+  return characterProgressionSchemaInspection;
+}
+
+export function readCharacterProgressionShadowFromDatabase(database, row, schemaInspection = null) {
+  const schema = schemaInspection ?? inspectCharacterProgressionShadowDatabase(database);
+  if (!schema.complete) {
+    return resolveCharacterProgressionShadow({ schema, character: row });
+  }
+
+  const progression = database.prepare(`
+    SELECT characterId, revision, backfillStatus, backfillIssues, legacySnapshot
+    FROM "CharacterProgression"
+    WHERE characterId = ?
+    LIMIT 1
+  `).get(row.id) ?? null;
+  const classRows = database.prepare(`
+    SELECT
+      cc.id,
+      cc.characterId,
+      cc.classRuleId,
+      cc.subclassRuleId,
+      cc.classKey,
+      cc.level,
+      cc.sortOrder,
+      cc.isPrimary,
+      cc.subclassStatus,
+      cc.source AS classSource,
+      cr.id AS ruleId,
+      cr.classKey AS ruleClassKey,
+      cr.labelIt AS ruleLabelIt,
+      cr.labelEn AS ruleLabelEn,
+      cr.aliases AS ruleAliases,
+      sr.id AS subclassRuleIdResolved,
+      sr.subclassKey,
+      sr.classRuleId AS subclassRuleClassRuleId
+    FROM "CharacterClass" cc
+    LEFT JOIN "ClassRule" cr ON cr.id = cc.classRuleId
+    LEFT JOIN "SubclassRule" sr ON sr.id = cc.subclassRuleId
+    WHERE cc.characterId = ?
+    ORDER BY cc.sortOrder, cc.id
+  `).all(row.id);
+  return resolveCharacterProgressionShadow({ schema, character: row, progression, classRows });
+}
+
+function readCharacterProgressionShadow(row) {
+  return readCharacterProgressionShadowFromDatabase(
+    sqlite,
+    row,
+    getCharacterProgressionSchemaInspection(),
+  );
 }
 
 function formatSkillLabel(skillName, ability) {
@@ -8045,6 +8131,7 @@ function readCharacterSnapshot(slug) {
   return {
     state: normalizeCharacterRow(row),
     revision: String(row.updatedAt ?? ""),
+    progression: readCharacterProgressionShadow(row),
   };
 }
 
@@ -10617,7 +10704,7 @@ function commitCharacterMutation(slug, options) {
   return characterMutationCoordinator.commit(slug, options);
 }
 
-function buildCharacterStatePayload(slug, snapshotOrState = null) {
+export function buildCharacterStatePayload(slug, snapshotOrState = null) {
   const snapshot = snapshotOrState?.state && snapshotOrState?.revision !== undefined
     ? snapshotOrState
     : readCharacterSnapshot(slug);
