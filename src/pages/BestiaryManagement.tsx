@@ -752,7 +752,7 @@ export function PlayerMonsterPreviewCard({
             ["legendary", "Azioni leggendarie", 2],
             ["lair", "Azioni di tana ed effetti regionali", 2],
           ].map(([value, title, rows]) => (
-            <AccordionItem key={value} value={value} className="border-[#8d3821]/15 dark:border-amber-200/10">
+            <AccordionItem key={String(value)} value={String(value)} className="border-[#8d3821]/15 dark:border-amber-200/10">
               <AccordionTrigger className="font-heading text-left text-2xl uppercase tracking-wide text-[#7d2c17] hover:no-underline dark:text-amber-200">{title}</AccordionTrigger>
               <AccordionContent className="pb-6">
                 <BlurredSection rows={Number(rows)} />
@@ -1156,7 +1156,7 @@ export default function BestiaryManagement() {
   };
 
   const importMonsterFromJson = async () => {
-    if (!importPreview.ok) {
+    if (importPreview.ok === false) {
       toast.error(importPreview.error);
       return;
     }
@@ -1502,7 +1502,7 @@ export default function BestiaryManagement() {
                   <div className="mt-1 text-sm text-muted-foreground">La normalizzazione finale avviene lato server al salvataggio.</div>
                 </div>
 
-                {!importPreview.ok ? (
+                {importPreview.ok === false ? (
                   <div className="rounded-2xl border border-dashed border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
                     {importPreview.error}
                   </div>

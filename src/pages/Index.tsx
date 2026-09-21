@@ -1275,23 +1275,15 @@ const Index = () => {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  {user.role === "dm" ? (
-                    <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
-                      <Link to="/characters/new" aria-label="Crea nuova scheda">
-                        <PlusCircle className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9"
-                      aria-label="Crea nuova scheda"
-                      onClick={() => setPlayerCreateDialogOpen(true)}
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9"
+                    aria-label="Crea nuova scheda"
+                    onClick={() => setPlayerCreateDialogOpen(true)}
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent>Crea nuova scheda</TooltipContent>
               </Tooltip>

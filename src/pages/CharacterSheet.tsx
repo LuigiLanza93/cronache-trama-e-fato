@@ -120,6 +120,7 @@ import { SheetCardStateProvider } from "@/components/characterSheet/sheet-card-s
 
 type InputEl = HTMLInputElement | HTMLTextAreaElement;
 type Coins = { cp: number; sp: number; ep: number; gp: number };
+type LegacyCoins = Partial<Coins> & { pp?: number };
 
 /** === Nuovi tipi per skills categorizzate === */
 type SkillType = "volonta" | "incontro" | "riposoBreve" | "riposoLungo";
@@ -262,6 +263,7 @@ type PactBladeState = {
 
 interface Character {
   slug: string;
+  characterType?: "pg" | "png";
   basicInfo: {
     characterName: string;
     class: string;
@@ -372,7 +374,7 @@ function coinsToCopper(coins: Partial<Coins> | undefined): number {
   );
 }
 
-function normalizeCoinsShape(coins: Partial<Coins> | (Partial<Coins> & { pp?: number }) | undefined): Coins {
+function normalizeCoinsShape(coins: LegacyCoins | undefined): Coins {
   const platinumAsGold = (coins?.pp ?? 0) * 10;
   return {
     cp: coins?.cp ?? 0,
@@ -1605,9 +1607,7 @@ const CharacterSheet = () => {
 
       const nextCoins =
         coinFlow === "add"
-          ? compactCoinsOnAdd
-            ? compactCoinsAtTier({ ...coins, [stdKey]: coins[stdKey] + qty }, stdKey)
-            : { ...coins, [stdKey]: coins[stdKey] + qty }
+          ? compactCoinsAtTier({ ...coins, [stdKey]: coins[stdKey] + qty }, stdKey)
           : removeCoinsWithChange(coins, stdKey, qty);
 
       if (!nextCoins) {
@@ -1739,7 +1739,7 @@ const CharacterSheet = () => {
       if (!active) return;
       unsubState = onCharacterState(({ slug: stateSlug, state }) => {
         if (stateSlug !== slug) return;
-        setCharacterData(state as Character);
+        setCharacterData(state as unknown as Character);
       });
       unsubPatch = onCharacterPatch(({ slug: patchedSlug, patch }) => {
         if (patchedSlug !== slug) return;
@@ -1761,7 +1761,7 @@ const CharacterSheet = () => {
     const offPersistence = onCharacterPersistenceChange((state, slug) => {
       if (slug === character) setCharacterPersistence(state);
     });
-    return offPersistence;
+    return () => { offPersistence(); };
   }, [character]);
 
   useEffect(() => {
@@ -1771,10 +1771,10 @@ const CharacterSheet = () => {
         (error.code === "REVISION_CONFLICT" || error.code === "DEATH_SAVES_REQUIRE_ZERO_HP") &&
         error.state
       ) {
-        setCharacterData(error.state as Character);
+        setCharacterData(error.state as unknown as Character);
       } else {
         void fetchCharacter(slug)
-          .then((state) => setCharacterData(state as Character))
+          .then((state) => setCharacterData(state as unknown as Character))
           .catch(() => {
             // Keep the current optimistic view visible; the error feedback remains actionable.
           });
@@ -1783,7 +1783,7 @@ const CharacterSheet = () => {
         ? "La scheda è stata aggiornata altrove: ho ricaricato l'ultima versione."
         : error.message);
     });
-    return offUpdateError;
+    return () => { offUpdateError(); };
   }, [character]);
 
   useEffect(() => {
@@ -1794,7 +1794,7 @@ const CharacterSheet = () => {
       toast.error("L'accesso alla scheda è stato revocato.");
       navigate("/", { replace: true });
     });
-    return offAccessRevoked;
+    return () => { offAccessRevoked(); };
   }, [character, navigate]);
 
   useEffect(() => {
@@ -1844,7 +1844,7 @@ const CharacterSheet = () => {
           setSpellSlotTable(nextSpellSlots ?? {});
           setTransferTargets(
             (Array.isArray(nextCharacters) ? nextCharacters : [])
-              .filter((entry) => entry?.characterType !== "png" && entry?.slug !== character)
+              .filter((entry) => entry?.slug !== character)
               .map((entry) => ({
                 slug: entry.slug,
                 name: entry?.basicInfo?.characterName ?? entry.slug,

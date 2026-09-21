@@ -551,7 +551,24 @@ export type ItemFeatureEntry = {
   resetOn: string | null;
   customResetLabel: string | null;
   maxUses: number | null;
-  passiveEffects: Array<Record<string, unknown>>;
+  passiveEffects: Array<{
+    target: string;
+    category?: "MODIFIER" | "PROFICIENCY";
+    operationType?: string;
+    valueMode?: string;
+    value?: number | string;
+    setMode?: string;
+    setValue?: number | string;
+    capValue?: number | string;
+    sourceAbility?: string;
+    multiplierNumerator?: number;
+    multiplierDenominator?: number;
+    rounding?: string;
+    trigger?: string;
+    customTargetLabel?: string;
+    customTriggerLabel?: string;
+    notes?: string;
+  }>;
   condition: string;
   sortOrder: number;
 };
@@ -1244,7 +1261,7 @@ export type DmShop = {
   items: DmShopItem[];
 };
 
-export type ShopFormPayload = Pick<DmShop, "externalKey" | "name" | "description" | "ownerName" | "ownerDescription" | "city" | "discountDc" | "balance">;
+export type ShopFormPayload = Pick<DmShop, "externalKey" | "name" | "description" | "ownerName" | "ownerDescription" | "city" | "dmNotes" | "discountDc" | "balance">;
 export type ShopItemFormPayload = {
   itemDefinitionId: string;
   quantity: number;

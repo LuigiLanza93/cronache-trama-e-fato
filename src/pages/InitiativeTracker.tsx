@@ -1800,7 +1800,7 @@ export default function InitiativeTracker() {
         return next;
       });
     });
-    return offAccessRevoked;
+    return () => { offAccessRevoked(); };
   }, []);
 
   useEffect(() => {
@@ -2482,11 +2482,11 @@ export default function InitiativeTracker() {
   };
 
   const addPendingScenarioCombatants = () => {
-    const ready = pendingScenarioCombatants
-      .map((entry) => {
+    const ready: Array<Omit<MonsterEncounterEntry, "sortOrder">> = pendingScenarioCombatants
+      .flatMap((entry) => {
         const initiative = Number.isFinite(parseInt(entry.initiative, 10)) ? parseInt(entry.initiative, 10) : NaN;
-        if (!Number.isFinite(initiative)) return null;
-        return {
+        if (!Number.isFinite(initiative)) return [];
+        return [{
           id: `monster:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           type: "monster" as const,
           name: entry.name,
@@ -2495,12 +2495,11 @@ export default function InitiativeTracker() {
           currentHitPoints: entry.hitPoints,
           maxHitPoints: entry.hitPoints,
           statuses: [],
-          source: entry.source,
+          source: entry.source === "bestiary" ? "bestiary" : "custom",
           sourceMonsterId: entry.sourceMonsterId,
           powerTag: entry.powerTag ?? null,
-        };
-      })
-      .filter(Boolean);
+        }];
+      });
 
     if (ready.length !== pendingScenarioCombatants.length) return;
 
@@ -2509,7 +2508,7 @@ export default function InitiativeTracker() {
       monsters: [
         ...prev.monsters,
         ...ready.map((monster, index) => ({
-          ...monster!,
+          ...monster,
           sortOrder: prev.nextSortOrder + index,
         })),
       ],

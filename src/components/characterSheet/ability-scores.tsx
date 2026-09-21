@@ -215,7 +215,6 @@ const AbilityScores = ({
                     <Sparkles
                       className="h-3 w-3 text-primary"
                       aria-label={`${ABILITY_LABELS[ability] ?? ability} modificata`}
-                      title={`${ABILITY_LABELS[ability] ?? ability} modificata`}
                     />
                   ) : null}
                 </div>

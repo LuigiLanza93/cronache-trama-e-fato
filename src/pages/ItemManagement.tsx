@@ -84,7 +84,7 @@ const PASSIVE_EFFECT_SET_MODE_OPTIONS = ["ABSOLUTE", "MINIMUM_FLOOR"];
 const ABILITY_SCORE_TARGET_OPTIONS = ["STRENGTH_SCORE", "DEXTERITY_SCORE", "CONSTITUTION_SCORE", "INTELLIGENCE_SCORE", "WISDOM_SCORE", "CHARISMA_SCORE"];
 const PASSIVE_EFFECT_CATEGORY_OPTIONS = ["MODIFIER", "PROFICIENCY"] as const;
 const PASSIVE_PROFICIENCY_TARGET_OPTIONS = ["WEAPON_SIMPLE", "WEAPON_MARTIAL", "ARMOR_LIGHT", "ARMOR_MEDIUM", "ARMOR_HEAVY", "SHIELD"] as const;
-const PASSIVE_EFFECT_TARGET_LABELS: Record<(typeof PASSIVE_EFFECT_TARGET_OPTIONS)[number], string> = {
+const PASSIVE_EFFECT_TARGET_LABELS: Record<PassiveEffectTarget, string> = {
   ARMOR_CLASS: "Classe Armatura",
   INITIATIVE: "Iniziativa",
   SPEED: "Velocita",
@@ -431,6 +431,7 @@ export default function ItemManagement() {
         equippable: created.equippable,
         valueCurrency: created.valueCurrency,
         valueAmount: created.valueAmount,
+        assignedCharacterItemCount: 0,
         attackCount: created.attacks.length,
         slotRuleCount: created.slotRules.length,
         updatedAt: created.updatedAt,
@@ -467,6 +468,7 @@ export default function ItemManagement() {
         equippable: saved.equippable,
         valueCurrency: saved.valueCurrency,
         valueAmount: saved.valueAmount,
+        assignedCharacterItemCount: entry.assignedCharacterItemCount,
         attackCount: saved.attacks.length,
         slotRuleCount: saved.slotRules.length,
         updatedAt: saved.updatedAt,
@@ -1371,7 +1373,7 @@ export default function ItemManagement() {
                                                 ? {
                                                     ...row,
                                                     passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
-                                                      currentIndex === effectIndex ? { ...currentEffect, target: value } : currentEffect
+                                                      currentIndex === effectIndex ? { ...currentEffect, target: value as PassiveEffectTarget } : currentEffect
                                                     ),
                                                   }
                                                 : row
@@ -1440,13 +1442,13 @@ export default function ItemManagement() {
                                         }
                                       >
                                         <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>{getAllowedValueModeOptions(effect.target).map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                                        <SelectContent>{getAllowedValueModeOptions(effect.target as PassiveEffectTarget).map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                                       </Select>
                                     </div>}
                                     {effect.category !== "PROFICIENCY" && <div className="space-y-2">
                                       <Label>Trigger</Label>
                                       <Select
-                                        value={effect.trigger}
+                                        value={effect.trigger ?? "ALWAYS"}
                                         onValueChange={(value) =>
                                           setDraftItem({
                                             ...draftItem,

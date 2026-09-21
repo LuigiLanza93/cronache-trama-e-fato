@@ -674,7 +674,7 @@ export default function ShopVisitListener() {
           ? "Controlla i dettagli: confermando, oggetto e monete verranno trasferiti immediatamente."
           : offerDialog.kind === "counter"
             ? "Inserisci il nuovo importo da proporre alla controparte."
-            : offerDialog.direction === "SHOP_TO_CHARACTER"
+            : offerDialog.kind === "proposal" && offerDialog.direction === "SHOP_TO_CHARACTER"
               ? "Proponi l'acquisto di uno o più oggetti dal negozio."
               : "Proponi la vendita di uno o più oggetti al negozio."}
         initialValue={{

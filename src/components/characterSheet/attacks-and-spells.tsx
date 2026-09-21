@@ -309,6 +309,7 @@ function getAttackRollPassiveBonus(
   passiveCapabilities: any[],
   passiveEffectContext: any,
   options?: {
+    isOffHandAttack?: boolean;
     isUnarmedAttack?: boolean;
   }
 ) {
@@ -717,6 +718,8 @@ const UNARMED_ATTACK: ItemAttackEntry = {
   damageType: "contundente",
   rangeNormal: 1,
   rangeLong: null,
+  twoHandedOnly: false,
+  requiresEquipped: false,
   conditionText: null,
   sortOrder: 0,
 };
@@ -1393,13 +1396,13 @@ const AttacksAndSpells = ({
                 {detailDefinition?.category ? (
                   <div>
                     <span className="font-medium text-foreground">Categoria:</span>{" "}
-                    {detailDefinition.category.replaceAll("_", " ")}
+                    {detailDefinition.category.replace(/_/g, " ")}
                   </div>
                 ) : null}
                 {detailDefinition?.rarity ? (
                   <div>
                     <span className="font-medium text-foreground">Rarità:</span>{" "}
-                    {detailDefinition.rarity.replaceAll("_", " ")}
+                    {detailDefinition.rarity.replace(/_/g, " ")}
                   </div>
                 ) : null}
                 {detailDefinition?.weaponHandling ? (

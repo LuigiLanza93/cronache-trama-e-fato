@@ -101,13 +101,20 @@ type PassiveEffectEntry = {
   notes?: string;
 };
 
+type SavedPassiveEffectEntry =
+  | PassiveEffectEntry
+  | {
+      category: "PROFICIENCY";
+      target: PassiveEffectProficiencyTarget;
+    };
+
 type CapabilityEntry = {
   name: string;
   category?: string;
   kind: CapabilityKind;
   shortDescription: string;
   description?: string;
-  passiveEffects?: PassiveEffectEntry[];
+  passiveEffects?: SavedPassiveEffectEntry[];
   sourceType?: "character" | "item";
   sourceLabel?: string;
   sourceItemId?: string;
@@ -288,18 +295,18 @@ function normalizeDraftSignedInteger(value: number | string | undefined) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function passiveEffectSummary(effect: PassiveEffectEntry) {
+function passiveEffectSummary(effect: SavedPassiveEffectEntry) {
   const targetLabel =
     effect.target === "CUSTOM"
       ? effect.customTargetLabel?.trim() || "Altro"
       : PASSIVE_TARGET_LABELS[effect.target];
+  if (effect.category === "PROFICIENCY") {
+    return `Competenza: ${targetLabel}`;
+  }
   const triggerLabel =
     effect.trigger === "CUSTOM"
       ? effect.customTriggerLabel?.trim() || "Trigger personalizzato"
       : PASSIVE_TRIGGER_LABELS[effect.trigger];
-  if (effect.category === "PROFICIENCY") {
-    return `Competenza: ${targetLabel}`;
-  }
   const mode = effect.valueMode ?? "FLAT";
   const operationType = effect.operationType ?? "BONUS";
   const offset = Number(effect.value ?? 0);
@@ -358,7 +365,11 @@ function toFormState(entry: CapabilityEntry): CapabilityFormState {
     customLabel: entry.usage?.customLabel ?? "",
     maxUses: String(entry.usage?.used?.length ?? 1),
     passiveEffects: Array.isArray(entry.passiveEffects)
-      ? entry.passiveEffects.map((effect) => ({ ...effect }))
+      ? entry.passiveEffects.map((effect) =>
+          effect.category === "PROFICIENCY"
+            ? { ...newPassiveEffect(), category: "PROFICIENCY", target: effect.target }
+            : { ...effect }
+        )
       : [],
   };
 }
@@ -478,10 +489,13 @@ export default function Capabilities({
     };
 
     if (form.kind === "passive") {
-      const passiveEffects = form.passiveEffects
-        .map((effect) => {
+      const passiveEffects: SavedPassiveEffectEntry[] = form.passiveEffects
+        .map((effect): SavedPassiveEffectEntry => {
           if (effect.category === "PROFICIENCY") {
-            return { category: "PROFICIENCY" as const, target: effect.target };
+            return {
+              category: "PROFICIENCY",
+              target: effect.target as PassiveEffectProficiencyTarget,
+            };
           }
 
           return {
@@ -525,7 +539,7 @@ export default function Capabilities({
         return;
       }
 
-      if (passiveEffects.some((effect) => effect.trigger === "CUSTOM" && !effect.customTriggerLabel)) {
+      if (passiveEffects.some((effect) => effect.category !== "PROFICIENCY" && effect.trigger === "CUSTOM" && !effect.customTriggerLabel)) {
         setFormError("Inserisci un'etichetta per ogni trigger personalizzato.");
         return;
       }
@@ -533,6 +547,7 @@ export default function Capabilities({
       if (
         passiveEffects.some(
           (effect) =>
+            effect.category !== "PROFICIENCY" &&
             (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE") &&
             !effect.sourceAbility
         )
@@ -544,6 +559,7 @@ export default function Capabilities({
       if (
         passiveEffects.some(
           (effect) =>
+            effect.category !== "PROFICIENCY" &&
             ABILITY_SCORE_TARGETS.has(effect.target) &&
             (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE")
         )
@@ -555,6 +571,7 @@ export default function Capabilities({
       if (
         passiveEffects.some(
           (effect) =>
+            effect.category !== "PROFICIENCY" &&
             effect.operationType === "SET" &&
             !Number.isFinite(Number(effect.setValue))
         )
@@ -566,7 +583,8 @@ export default function Capabilities({
       if (
         passiveEffects.some(
           (effect) =>
-            (effect.multiplierDenominator ?? 1) <= 0 || (effect.multiplierNumerator ?? 1) <= 0
+            effect.category !== "PROFICIENCY" &&
+            ((effect.multiplierDenominator ?? 1) <= 0 || (effect.multiplierNumerator ?? 1) <= 0)
         )
       ) {
         setFormError("Rapporto non valido: numeratore e denominatore devono essere maggiori di zero.");
@@ -883,7 +901,7 @@ export default function Capabilities({
                                   rowIndex !== index
                                     ? row
                                     : e.target.value === "PROFICIENCY"
-                                      ? { category: "PROFICIENCY", target: "WEAPON_SIMPLE" }
+                                      ? { ...newPassiveEffect(), category: "PROFICIENCY", target: "WEAPON_SIMPLE" }
                                       : { ...newPassiveEffect(), category: "MODIFIER", target: "ARMOR_CLASS" }
                                 ),
                               }))
@@ -1352,7 +1370,7 @@ export default function Capabilities({
                     {detailCapability.passiveEffects.map((effect, index) => (
                       <div key={`detail-passive-effect-${index}`} className="rounded border border-border/70 px-3 py-2 text-muted-foreground">
                         <div>{passiveEffectSummary(effect)}</div>
-                        {effect.notes && <div className="mt-1 text-xs">{effect.notes}</div>}
+                        {effect.category !== "PROFICIENCY" && effect.notes && <div className="mt-1 text-xs">{effect.notes}</div>}
                       </div>
                     ))}
                   </div>

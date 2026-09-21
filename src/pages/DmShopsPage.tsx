@@ -1039,7 +1039,7 @@ export default function DmShopsPage() {
             ? "Controlla i dettagli: confermando, oggetto e monete verranno trasferiti immediatamente."
             : offerDialog.kind === "counter"
               ? "Inserisci il nuovo importo da proporre al player."
-              : offerDialog.direction === "SHOP_TO_CHARACTER"
+              : offerDialog.kind === "proposal" && offerDialog.direction === "SHOP_TO_CHARACTER"
                 ? "Formula una proposta di vendita al player."
                 : "Formula una proposta di acquisto dal player."}
           initialValue={{

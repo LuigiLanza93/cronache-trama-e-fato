@@ -59,12 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    return onRealtimeSessionRevoked(() => {
+    const unsubscribe = onRealtimeSessionRevoked(() => {
       // The realtime layer already invalidated queues and stopped reconnects;
       // keep its revocation latch set until the next explicit login/reset.
       setUser(null);
       setLoading(false);
     });
+    return () => { unsubscribe(); };
   }, []);
 
   const value = useMemo<AuthContextValue>(

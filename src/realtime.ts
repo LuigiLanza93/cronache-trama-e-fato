@@ -477,10 +477,11 @@ export function updateCharacterWithAck(
             complete(() => reject(error));
             return;
           }
-          if (!response.ok) {
-            const error = characterUpdateError(response.error, response);
-            if (response.revision) characterRevisions.set(slug, response.revision);
-            if (response.code === "REVISION_CONFLICT") {
+          if (response.ok !== true) {
+            const failure = response as Extract<CharacterUpdateAck, { ok: false }>;
+            const error = characterUpdateError(failure.error, failure);
+            if (failure.revision) characterRevisions.set(slug, failure.revision);
+            if (failure.code === "REVISION_CONFLICT") {
               characterUpdateErrorListeners.forEach((listener) => listener(error, slug));
               invalidateCharacterQueue(slug, error.message, "REVISION_CONFLICT");
             } else {
@@ -580,8 +581,9 @@ export function convertSpellSlots(
             reject(spellSlotConversionError("Risposta non valida durante la conversione degli slot."));
             return;
           }
-          if (!response.ok) {
-            reject(spellSlotConversionError(response.error, response.code));
+          if (response.ok !== true) {
+            const failure = response as Extract<SpellSlotConversionAck, { ok: false }>;
+            reject(spellSlotConversionError(failure.error, failure.code));
             return;
           }
           resolve(response);

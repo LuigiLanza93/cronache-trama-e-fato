@@ -693,7 +693,7 @@ const Inventory = ({
     if (!rarity) return null;
     return (
       <span className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {rarity.replaceAll("_", " ")}
+        {rarity.replace(/_/g, " ")}
       </span>
     );
   };
@@ -767,7 +767,7 @@ const Inventory = ({
               text: chip.replace(/^qty\s+/i, ""),
             });
           } else if (["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY", "ARTIFACT", "UNIQUE"].includes(chip)) {
-            textBadges.push(chip.replaceAll("_", " "));
+            textBadges.push(chip.replace(/_/g, " "));
           } else {
             const categorySpec = getCategoryMetaIcon(chip);
             if (categorySpec && chip === String(chip).toUpperCase()) {
@@ -2530,7 +2530,7 @@ const Inventory = ({
 
               <div className="grid gap-2 rounded-md border border-border/60 bg-muted/15 px-3 py-3 text-muted-foreground">
                 <div><span className="font-medium text-foreground">Categoria:</span> {getCategoryLabel((getDetailEntry() as any)?.itemCategory)}</div>
-                {detailDefinition?.rarity ? <div><span className="font-medium text-foreground">Rarità:</span> {detailDefinition.rarity.replaceAll("_", " ")}</div> : null}
+                {detailDefinition?.rarity ? <div><span className="font-medium text-foreground">Rarità:</span> {detailDefinition.rarity.replace(/_/g, " ")}</div> : null}
                 {(getDetailEntry() as any)?.stackable ? <div><span className="font-medium text-foreground">Quantità:</span> {(getDetailEntry() as any)?.quantity ?? 0}</div> : null}
                 <div><span className="font-medium text-foreground">Valore indicativo:</span> {formatIndicativeValue((getDetailEntry() as any)?.suggestedValue)}</div>
                 {(getDetailEntry() as any)?.isEquipped ? <div><span className="font-medium text-foreground">Stato:</span> Equipaggiato</div> : null}
@@ -3072,7 +3072,7 @@ const Inventory = ({
 
     if (detailTarget.kind === "weapon") {
       removeAttack(detailTarget.index);
-    } else if (detailTarget.kind !== "legacyObject") {
+    } else if (detailTarget.kind === "object" || detailTarget.kind === "consumable") {
       removeStructuredItem?.(detailTarget.index);
     }
 
