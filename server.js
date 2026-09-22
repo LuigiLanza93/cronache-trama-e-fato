@@ -17,6 +17,14 @@ import {
   inspectCharacterProgressionSchema,
   resolveCharacterProgressionShadow,
 } from "./shared/character-progression-shadow.mjs";
+import {
+  CHARACTER_RULESET,
+  CLASS_RULES,
+  SUBCLASS_RULES,
+  normalizeClassKey,
+  normalizeSubclassKey,
+  resolveClassAdvancementPreview,
+} from "./shared/character-class-rules.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1443,6 +1451,179 @@ function readCharacterProgressionShadow(row) {
     row,
     getCharacterProgressionSchemaInspection(),
   );
+}
+
+const CHARACTER_LEVEL_HISTORY_COLUMNS = Object.freeze([
+  "id", "characterId", "requestId", "requestSignature", "operationType", "mode",
+  "targetClassKey", "targetClassRuleId", "targetSubclassKey", "targetSubclassRuleId",
+  "classLevelBefore", "classLevelAfter", "totalLevelBefore", "totalLevelAfter",
+  "progressionRevisionBefore", "progressionRevisionAfter", "characterRevisionBefore",
+  "characterRevisionAfter", "rulesetId", "rulesetVersion", "policyVersion",
+  "requestSnapshot", "beforeSnapshot", "afterSnapshot", "ruleSnapshot", "resultSnapshot",
+  "overrideReason", "appliedByUserId", "appliedBySnapshot", "hitDieSize",
+  "hitPointMethod", "hitPointsGained", "constitutionModifier", "appliedAt",
+]);
+const CHARACTER_PROGRESSION_M4_SCHEMA_OBJECTS = Object.freeze({
+  index: Object.freeze([
+    "CharacterLevelHistory_characterId_requestId_key",
+    "CharacterLevelHistory_characterId_progressionRevisionAfter_key",
+    "CharacterLevelHistory_characterId_appliedAt_idx",
+    "CharacterLevelHistory_targetClassRuleId_idx",
+    "CharacterLevelHistory_targetSubclassRuleId_idx",
+    "CharacterLevelHistory_appliedByUserId_idx",
+  ]),
+  trigger: Object.freeze([
+    "CharacterLevelHistory_class_key_matches_rule_insert",
+    "CharacterLevelHistory_class_key_matches_rule_update",
+    "CharacterLevelHistory_subclass_matches_class_insert",
+    "CharacterLevelHistory_subclass_matches_class_update",
+    "CharacterClass_total_level_limit_insert",
+    "CharacterClass_total_level_limit_update",
+  ]),
+});
+
+export function inspectCharacterProgressionM4Database(database) {
+  const table = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'CharacterLevelHistory' LIMIT 1")
+    .get();
+  if (!table) {
+    return { ready: false, missingTable: true, missingColumns: [...CHARACTER_LEVEL_HISTORY_COLUMNS] };
+  }
+  const actualColumns = new Set(
+    database.prepare('PRAGMA table_info("CharacterLevelHistory")').all().map((column) => String(column.name))
+  );
+  const missingColumns = CHARACTER_LEVEL_HISTORY_COLUMNS.filter((column) => !actualColumns.has(column));
+  const missingObjects = {};
+  for (const [type, expectedNames] of Object.entries(CHARACTER_PROGRESSION_M4_SCHEMA_OBJECTS)) {
+    const actualNames = new Set(
+      database.prepare("SELECT name FROM sqlite_master WHERE type = ?").all(type).map((entry) => String(entry.name))
+    );
+    const missing = expectedNames.filter((name) => !actualNames.has(name));
+    if (missing.length > 0) missingObjects[type] = missing;
+  }
+  return {
+    ready: missingColumns.length === 0 && Object.keys(missingObjects).length === 0,
+    missingTable: false,
+    missingColumns,
+    missingObjects,
+  };
+}
+
+function getCharacterProgressionM4Inspection() {
+  return inspectCharacterProgressionM4Database(sqlite);
+}
+
+function publicProgressionClass(entry) {
+  const subclassRule = entry?.subclassKey ? SUBCLASS_RULES[entry.subclassKey] ?? null : null;
+  const subclass = entry?.subclassKey
+    ? {
+        subclassKey: entry.subclassKey,
+        label: subclassRule?.labels?.it ?? subclassRule?.labels?.en ?? entry.subclassKey,
+        status: entry?.subclassStatus ?? "UNSELECTED",
+      }
+    : null;
+  return {
+    classKey: entry.classKey,
+    label: entry.label ?? CLASS_RULES[entry.classKey]?.labels?.it ?? entry.classKey,
+    level: Number(entry.level),
+    sortOrder: Number(entry.sortOrder ?? 0),
+    isPrimary: entry.isPrimary === true || Number(entry.isPrimary) === 1,
+    subclass,
+  };
+}
+
+export function serializeCharacterSnapshot(snapshot) {
+  if (!snapshot?.state) return null;
+  const progression = snapshot.progression;
+  const structured = progression?.source === "STRUCTURED";
+  const classes = structured && Array.isArray(progression.classes)
+    ? progression.classes.map(publicProgressionClass)
+    : [];
+  const primaryClass = classes.find((entry) => entry.isPrimary) ?? null;
+  const legacyLevel = Number(snapshot.state?.basicInfo?.level);
+  const hasIncompleteSubclass = structured && progression.classes.some(
+    (entry) => entry?.subclassStatus === "INCOMPLETE_LEGACY"
+  );
+  return {
+    ...snapshot.state,
+    classes,
+    primaryClass,
+    totalLevel: structured
+      ? Number(progression.totalLevel)
+      : Number.isFinite(legacyLevel) ? legacyLevel : progression?.totalLevel ?? null,
+    progressionRevision: Number.isInteger(progression?.progressionRevision)
+      ? progression.progressionRevision
+      : null,
+    progressionStatus: structured
+      ? hasIncompleteSubclass ? "INCOMPLETE_LEGACY" : "READY"
+      : "LEGACY",
+  };
+}
+
+function initializeCreatedCharacterProgression(slug, updatedByUserId = null) {
+  if (!getCharacterProgressionSchemaInspection().complete) {
+    return { status: "LEGACY_SCHEMA", structured: false };
+  }
+  const row = sqlite.prepare(`
+    SELECT id, slug, className, level, data FROM "Character" WHERE slug = ? LIMIT 1
+  `).get(slug);
+  if (!row) throw new Error("Character missing after creation");
+  const data = parseJsonString(row.data, {});
+  const classKey = normalizeClassKey(row.className ?? data?.basicInfo?.class);
+  const level = Number(row.level ?? data?.basicInfo?.level);
+  const now = new Date().toISOString();
+  const legacySnapshot = JSON.stringify({
+    column: { className: row.className ?? null, level: row.level ?? null },
+    basicInfo: {
+      class: data?.basicInfo?.class ?? null,
+      level: data?.basicInfo?.level ?? null,
+    },
+  });
+  const classRule = classKey
+    ? sqlite.prepare(`
+        SELECT * FROM "ClassRule" WHERE classKey = ? ORDER BY updatedAt DESC LIMIT 1
+      `).get(classKey)
+    : null;
+  if (!classRule || !Number.isInteger(level) || level < 1 || level > 20) {
+    const issues = JSON.stringify([{
+      code: classRule ? "CREATED_LEVEL_INVALID" : "CREATED_CLASS_UNRESOLVED",
+      className: row.className ?? null,
+      level: row.level ?? null,
+    }]);
+    sqlite.prepare(`
+      INSERT INTO "CharacterProgression" (
+        characterId, revision, backfillStatus, backfillIssues, legacySnapshot, createdAt, updatedAt
+      ) VALUES (?, 0, 'UNRESOLVED', ?, ?, ?, ?)
+    `).run(row.id, issues, legacySnapshot, now, now);
+    return { status: "MANUAL", structured: false };
+  }
+
+  sqlite.prepare(`
+    INSERT INTO "CharacterProgression" (
+      characterId, revision, backfillStatus, backfillIssues, legacySnapshot, createdAt, updatedAt
+    ) VALUES (?, 0, 'BACKFILLED', '[]', ?, ?, ?)
+  `).run(row.id, legacySnapshot, now, now);
+  const subclassStatus = level >= Number(classRule.subclassSelectionLevel ?? 21)
+    ? "INCOMPLETE_LEGACY"
+    : "NOT_YET_ELIGIBLE";
+  sqlite.prepare(`
+    INSERT INTO "CharacterClass" (
+      id, characterId, classRuleId, subclassRuleId, classKey, level, sortOrder, isPrimary,
+      subclassStatus, source, ruleSnapshot, updatedByUserId, createdAt, updatedAt
+    ) VALUES (?, ?, ?, NULL, ?, ?, 0, 1, ?, 'CHARACTER_CREATION', ?, ?, ?, ?)
+  `).run(
+    crypto.randomUUID(),
+    row.id,
+    classRule.id,
+    classKey,
+    level,
+    subclassStatus,
+    classRule.ruleSnapshot,
+    updatedByUserId,
+    now,
+    now,
+  );
+  return { status: subclassStatus === "INCOMPLETE_LEGACY" ? "INCOMPLETE" : "READY", structured: true };
 }
 
 function formatSkillLabel(skillName, ability) {
@@ -9554,7 +9735,7 @@ function validateCharacterPatchStringArray(value, path, issues, { maxItems = 100
 function validateCharacterPatchBasicInfo(value, issues) {
   const path = "patch.basicInfo";
   const allowed = new Set([
-    "characterName", "class", "level", "background", "playerName", "race", "alignment",
+    "characterName", "background", "playerName", "race", "alignment",
     "experiencePoints", "portraitUrl",
   ]);
   if (!validateCharacterPatchKeys(value, allowed, path, issues)) return;
@@ -9566,9 +9747,6 @@ function validateCharacterPatchBasicInfo(value, issues) {
     if (Object.prototype.hasOwnProperty.call(value, key)) {
       validateCharacterPatchString(value[key], `${path}.${key}`, issues, { maxLength });
     }
-  }
-  if (Object.prototype.hasOwnProperty.call(value, "level")) {
-    validateCharacterPatchNumber(value.level, `${path}.level`, issues, { integer: true, min: 1, max: 20 });
   }
   if (Object.prototype.hasOwnProperty.call(value, "experiencePoints")) {
     validateCharacterPatchNumber(value.experiencePoints, `${path}.experiencePoints`, issues, { integer: true, min: 0, max: 100_000_000 });
@@ -10512,6 +10690,187 @@ function createCharacterMutationError(code, message, snapshot = null) {
   return error;
 }
 
+function createProgressionError(code, message, statusCode = 400, snapshot = null) {
+  const error = createCharacterMutationError(code, message, snapshot);
+  error.statusCode = statusCode;
+  return error;
+}
+
+function normalizeProgressionRequest(body, {
+  requireRequestId = false,
+  requireExpectedRevisions = false,
+} = {}) {
+  const targetClassValue = typeof body?.targetClassKey === "string" ? body.targetClassKey.trim() : "";
+  if (!targetClassValue) {
+    throw createProgressionError("TARGET_CLASS_KEY_REQUIRED", "targetClassKey e obbligatoria.", 400);
+  }
+  const targetClassKey = normalizeClassKey(targetClassValue) ?? targetClassValue;
+  let targetSubclassKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "targetSubclassKey")) {
+    if (body.targetSubclassKey === null) {
+      targetSubclassKey = null;
+    } else if (typeof body.targetSubclassKey === "string" && body.targetSubclassKey.trim()) {
+      const value = body.targetSubclassKey.trim();
+      targetSubclassKey = normalizeSubclassKey(value) ?? value;
+    } else {
+      throw createProgressionError("VALIDATION_ERROR", "targetSubclassKey non e valida.", 400);
+    }
+  }
+  let expectedRevision;
+  if (body?.expectedRevision !== undefined && body?.expectedRevision !== null) {
+    if (typeof body.expectedRevision !== "string" || !body.expectedRevision.trim()) {
+      throw createProgressionError("VALIDATION_ERROR", "expectedRevision non e valida.", 400);
+    }
+    expectedRevision = body.expectedRevision.trim();
+  }
+  let expectedProgressionRevision;
+  if (body?.expectedProgressionRevision !== undefined && body?.expectedProgressionRevision !== null) {
+    const value = body.expectedProgressionRevision;
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+      throw createProgressionError("VALIDATION_ERROR", "expectedProgressionRevision non e valida.", 400);
+    }
+    expectedProgressionRevision = value;
+  }
+  const requestId = requireRequestId ? normalizeOperationRequestId(body?.requestId) : undefined;
+  if (requireRequestId && !requestId) {
+    throw createProgressionError("VALIDATION_ERROR", "Identificativo della richiesta non valido.", 400);
+  }
+  if (requireExpectedRevisions && expectedRevision === undefined) {
+    throw createProgressionError(
+      "VALIDATION_ERROR",
+      "expectedRevision e obbligatoria per applicare la progressione.",
+      400,
+    );
+  }
+  if (requireExpectedRevisions && expectedProgressionRevision === undefined) {
+    throw createProgressionError(
+      "VALIDATION_ERROR",
+      "expectedProgressionRevision e obbligatoria per applicare la progressione.",
+      400,
+    );
+  }
+  return {
+    targetClassKey,
+    ...(targetSubclassKey !== undefined ? { targetSubclassKey } : {}),
+    ...(expectedRevision !== undefined ? { expectedRevision } : {}),
+    ...(expectedProgressionRevision !== undefined ? { expectedProgressionRevision } : {}),
+    ...(requestId ? { requestId } : {}),
+  };
+}
+
+export function prepareCharacterProgressionPreview(snapshot, request) {
+  if (!snapshot?.state) {
+    throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
+  }
+  if (snapshot.state.characterType !== "pg") {
+    throw createProgressionError(
+      "CHARACTER_TYPE_UNSUPPORTED",
+      "La progressione guidata M4 e disponibile soltanto per i PG.",
+      422,
+      snapshot,
+    );
+  }
+  if (request.expectedRevision !== undefined && request.expectedRevision !== snapshot.revision) {
+    throw createProgressionError(
+      "REVISION_CONFLICT",
+      "Il personaggio e stato modificato da un'altra operazione.",
+      409,
+      snapshot,
+    );
+  }
+  const progression = snapshot.progression;
+  if (progression?.source !== "STRUCTURED" || !Array.isArray(progression.classes)) {
+    throw createProgressionError(
+      "PROGRESSION_UNAVAILABLE",
+      "La progressione strutturata del personaggio non e disponibile o richiede una risoluzione manuale.",
+      409,
+      snapshot,
+    );
+  }
+  if (
+    request.expectedProgressionRevision !== undefined
+    && request.expectedProgressionRevision !== progression.progressionRevision
+  ) {
+    throw createProgressionError(
+      "PROGRESSION_REVISION_CONFLICT",
+      "La progressione del personaggio e stata modificata da un'altra operazione.",
+      409,
+      snapshot,
+    );
+  }
+  if (progression.classes.length !== 1) {
+    throw createProgressionError(
+      "MULTICLASS_NOT_ENABLED",
+      "M4 consente soltanto la progressione monoclasse.",
+      422,
+      snapshot,
+    );
+  }
+  const currentClass = progression.classes[0];
+  const targetClassKey = normalizeClassKey(request.targetClassKey) ?? request.targetClassKey;
+  if (targetClassKey !== currentClass.classKey) {
+    throw createProgressionError(
+      "MULTICLASS_NOT_ENABLED",
+      "M4 consente di incrementare soltanto la classe gia posseduta.",
+      422,
+      snapshot,
+    );
+  }
+  const requestedSubclassKey = request.targetSubclassKey;
+  if (
+    requestedSubclassKey !== undefined
+    && currentClass.subclassKey
+    && requestedSubclassKey !== currentClass.subclassKey
+  ) {
+    throw createProgressionError(
+      "SUBCLASS_CHANGE_NOT_ALLOWED",
+      "La sottoclasse gia selezionata non puo essere cambiata durante un normale level-up.",
+      422,
+      snapshot,
+    );
+  }
+  const entries = progression.classes.map((entry) => ({
+    classKey: entry.classKey,
+    level: Number(entry.level),
+    ...(entry.subclassKey ? { subclassKey: entry.subclassKey } : {}),
+    isPrimary: entry.isPrimary,
+  }));
+  const options = requestedSubclassKey !== undefined
+    ? { targetSubclassKey: requestedSubclassKey }
+    : {};
+  const resolved = resolveClassAdvancementPreview(entries, targetClassKey, options);
+  return {
+    ...resolved,
+    canApply: resolved.canAdvance === true,
+    prerequisites: { status: "NOT_APPLICABLE", eligible: true, reason: null },
+  };
+}
+
+export function progressionRequestSignature(slug, request, actorId = null) {
+  const canonical = JSON.stringify({
+    slug,
+    actorId: actorId == null ? null : String(actorId),
+    targetClassKey: request.targetClassKey,
+    targetSubclassKey: request.targetSubclassKey === undefined ? "__PRESERVE__" : request.targetSubclassKey,
+    expectedRevision: request.expectedRevision ?? null,
+    expectedProgressionRevision: request.expectedProgressionRevision ?? null,
+  });
+  return crypto.createHash("sha256").update(canonical).digest("hex");
+}
+
+function readCharacterLevelHistoryReceipt(characterId, requestId) {
+  return sqlite.prepare(`
+    SELECT * FROM "CharacterLevelHistory"
+    WHERE characterId = ? AND requestId = ?
+    LIMIT 1
+  `).get(characterId, requestId) ?? null;
+}
+
+function parseCharacterLevelHistoryResult(row) {
+  const result = parseJsonString(row?.resultSnapshot, null);
+  return result && typeof result === "object" && !Array.isArray(result) ? result : null;
+}
+
 // Every mutation of Character.data is committed through one FIFO queue per slug.
 // The durable Character.updatedAt value is also the optimistic revision token.
 // Dependencies are injectable so the production coordination and transactional
@@ -10705,15 +11064,22 @@ function commitCharacterMutation(slug, options) {
 }
 
 export function buildCharacterStatePayload(slug, snapshotOrState = null) {
-  const snapshot = snapshotOrState?.state && snapshotOrState?.revision !== undefined
+  let snapshot = snapshotOrState?.state && snapshotOrState?.revision !== undefined
     ? snapshotOrState
     : readCharacterSnapshot(slug);
+  // Coordinator results contain state/revision but not the structured projection.
+  // Re-read after commit so realtime never publishes a legacy-only partial view.
+  if (snapshot?.progression === undefined && sqlite) {
+    snapshot = readCharacterSnapshot(slug) ?? snapshot;
+  }
   if (!snapshot?.state) return null;
 
   return {
     slug,
     revision: snapshot.revision,
-    state: snapshot.state,
+    state: snapshot.progression === undefined
+      ? snapshot.state
+      : serializeCharacterSnapshot(snapshot),
   };
 }
 
@@ -12620,7 +12986,9 @@ async function start() {
 
     return res.json(characters.map((character) => {
       const snapshot = readCharacterSnapshot(character.slug);
-      return { ...character, revision: snapshot?.revision };
+      return snapshot
+        ? { ...serializeCharacterSnapshot(snapshot), revision: snapshot.revision }
+        : { ...character, revision: null };
     }));
   });
 
@@ -12970,6 +13338,385 @@ async function start() {
     }
   });
 
+  app.post("/api/dm/characters/:slug/progression/preview", requireRole("dm"), (req, res) => {
+    if (!getCharacterProgressionM4Inspection().ready) {
+      return res.status(503).json({
+        code: "PROGRESSION_SCHEMA_NOT_READY",
+        error: "Lo schema M4 della progressione non e ancora disponibile.",
+      });
+    }
+    try {
+      const request = normalizeProgressionRequest(req.body);
+      const snapshot = readCharacterSnapshot(req.params.slug);
+      const preview = prepareCharacterProgressionPreview(snapshot, request);
+      return res.json({
+        ok: true,
+        slug: req.params.slug,
+        revision: snapshot.revision,
+        progressionRevision: snapshot.progression.progressionRevision,
+        preview,
+        deferredEffects: ["HIT_POINTS", "HIT_DICE", "RESOURCE_POOLS"],
+      });
+    } catch (error) {
+      const status = Number(error?.statusCode) || 400;
+      const latest = error?.snapshot?.state
+        ? { ...serializeCharacterSnapshot(error.snapshot), revision: error.snapshot.revision }
+        : undefined;
+      return res.status(status).json({
+        code: error?.code ?? "PROGRESSION_PREVIEW_FAILED",
+        error: String(error?.message ?? "Non e stato possibile calcolare l'anteprima."),
+        ...(latest ? { character: latest } : {}),
+      });
+    }
+  });
+
+  app.post("/api/dm/characters/:slug/progression/apply", requireRole("dm"), async (req, res) => {
+    if (!getCharacterProgressionM4Inspection().ready) {
+      return res.status(503).json({
+        code: "PROGRESSION_SCHEMA_NOT_READY",
+        error: "Lo schema M4 della progressione non e ancora disponibile.",
+      });
+    }
+
+    let request;
+    try {
+      request = normalizeProgressionRequest(req.body, {
+        requireRequestId: true,
+        requireExpectedRevisions: true,
+      });
+    } catch (error) {
+      return res.status(Number(error?.statusCode) || 400).json({
+        code: error?.code ?? "VALIDATION_ERROR",
+        error: String(error?.message ?? error),
+      });
+    }
+
+    const slug = req.params.slug;
+    const characterRow = sqlite.prepare(`
+      SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+    `).get(slug);
+    if (!characterRow) {
+      return res.status(404).json({ code: "CHARACTER_NOT_FOUND", error: "Personaggio non trovato." });
+    }
+    const requestSignature = progressionRequestSignature(slug, request, req.user.id);
+    const preliminaryHistory = readCharacterLevelHistoryReceipt(characterRow.id, request.requestId);
+    if (preliminaryHistory) {
+      if (preliminaryHistory.requestSignature !== requestSignature) {
+        return res.status(409).json({
+          code: "REQUEST_ID_REUSED",
+          error: "Questo identificativo richiesta e gia stato usato con un payload diverso.",
+        });
+      }
+      const replay = parseCharacterLevelHistoryResult(preliminaryHistory);
+      if (!replay) {
+        return res.status(500).json({
+          code: "PROGRESSION_HISTORY_INVALID",
+          error: "Lo storico della progressione contiene un risultato non valido.",
+        });
+      }
+      return res.json({ ...replay, replayed: true });
+    }
+
+    try {
+      const mutationResult = await commitCharacterMutation(slug, {
+        authorize: () => {
+          const session = getSessionById(req.sessionId);
+          const user = session?.userId ? getUserById(session.userId) : null;
+          if (!user || user.id !== req.user?.id || user.role !== "dm") {
+            throw createProgressionError("AUTH_REQUIRED", "Sessione non piu valida.", 401);
+          }
+        },
+        mutate: (current, snapshot) => {
+          const history = readCharacterLevelHistoryReceipt(characterRow.id, request.requestId);
+          if (history) {
+            if (history.requestSignature !== requestSignature) {
+              throw createProgressionError(
+                "REQUEST_ID_REUSED",
+                "Questo identificativo richiesta e gia stato usato con un payload diverso.",
+                409,
+                snapshot,
+              );
+            }
+            const replay = parseCharacterLevelHistoryResult(history);
+            if (!replay) {
+              throw createProgressionError(
+                "PROGRESSION_HISTORY_INVALID",
+                "Lo storico della progressione contiene un risultato non valido.",
+                500,
+                snapshot,
+              );
+            }
+            return { write: false, meta: { replay: { ...replay, replayed: true } } };
+          }
+
+          const preview = prepareCharacterProgressionPreview(snapshot, request);
+          if (!preview.canApply) {
+            const error = createProgressionError(
+              preview.status,
+              preview.reason ?? "La progressione non puo essere applicata.",
+              422,
+              snapshot,
+            );
+            error.preview = preview;
+            throw error;
+          }
+
+          const currentClass = snapshot.progression.classes[0];
+          const characterClassRow = sqlite.prepare(`
+            SELECT * FROM "CharacterClass"
+            WHERE characterId = ? AND classKey = ?
+            LIMIT 1
+          `).get(characterRow.id, currentClass.classKey);
+          if (!characterClassRow) {
+            throw createProgressionError(
+              "CHARACTER_CLASS_MISSING",
+              "La classe strutturata del personaggio non e disponibile.",
+              409,
+              snapshot,
+            );
+          }
+          const classRule = sqlite.prepare(`
+            SELECT * FROM "ClassRule" WHERE id = ? AND classKey = ? LIMIT 1
+          `).get(currentClass.classRuleId, currentClass.classKey);
+          if (!classRule) {
+            throw createProgressionError(
+              "CLASS_RULE_MISSING",
+              "La regola persistita della classe non e disponibile.",
+              409,
+              snapshot,
+            );
+          }
+          const classAfter = preview.classesAfter.find((entry) => entry.classKey === currentClass.classKey);
+          const subclassKey = classAfter?.subclassKey ?? null;
+          const subclassRule = subclassKey
+            ? sqlite.prepare(`
+                SELECT * FROM "SubclassRule"
+                WHERE subclassKey = ? AND classRuleId = ? AND archivedAt IS NULL
+                LIMIT 1
+              `).get(subclassKey, classRule.id)
+            : null;
+          if (subclassKey && !subclassRule) {
+            throw createProgressionError(
+              "INVALID_SUBCLASS",
+              "La sottoclasse selezionata non appartiene alla classe o non e disponibile.",
+              422,
+              snapshot,
+            );
+          }
+
+          const primaryLabel = String(classRule.labelIt || classRule.labelEn || currentClass.classKey);
+          const nextState = {
+            ...current,
+            basicInfo: {
+              ...(current.basicInfo ?? {}),
+              class: primaryLabel,
+              level: preview.after.characterLevel,
+            },
+          };
+          return {
+            state: nextState,
+            patch: { basicInfo: { class: primaryLabel, level: preview.after.characterLevel } },
+            meta: {
+              operationId: crypto.randomUUID(),
+              preview,
+              currentClass,
+              characterClassRow,
+              classAfter,
+              classRule,
+              subclassRule,
+              progressionRevisionBefore: snapshot.progression.progressionRevision,
+              characterRevisionBefore: snapshot.revision,
+              appliedAt: new Date().toISOString(),
+            },
+          };
+        },
+        afterWrite: (nextState, mutation, snapshot, characterRevisionAfter) => {
+          const meta = mutation.meta;
+          if (meta.replay) return;
+          const progressionRevisionAfter = meta.progressionRevisionBefore + 1;
+          const classLevelBefore = Number(meta.currentClass.level);
+          const classLevelAfter = Number(meta.classAfter.level);
+          const subclassStatus = meta.subclassRule ? "SELECTED" : "NOT_YET_ELIGIBLE";
+          const classUpdate = sqlite.prepare(`
+            UPDATE "CharacterClass"
+            SET level = ?, subclassRuleId = ?, subclassStatus = ?, source = 'LEVEL_UP',
+                ruleSnapshot = ?, updatedByUserId = ?, updatedAt = ?
+            WHERE id = ? AND characterId = ? AND level = ?
+          `).run(
+            classLevelAfter,
+            meta.subclassRule?.id ?? null,
+            subclassStatus,
+            meta.classRule.ruleSnapshot,
+            req.user.id,
+            meta.appliedAt,
+            meta.characterClassRow.id,
+            characterRow.id,
+            classLevelBefore,
+          );
+          if (classUpdate.changes !== 1) {
+            throw createProgressionError(
+              "PROGRESSION_REVISION_CONFLICT",
+              "La classe del personaggio e stata modificata da un'altra operazione.",
+              409,
+              snapshot,
+            );
+          }
+
+          const legacySnapshot = JSON.stringify({
+            column: {
+              className: nextState.basicInfo.class,
+              level: nextState.basicInfo.level,
+            },
+            basicInfo: {
+              class: nextState.basicInfo.class,
+              level: nextState.basicInfo.level,
+            },
+          });
+          const progressionUpdate = sqlite.prepare(`
+            UPDATE "CharacterProgression"
+            SET revision = ?, backfillStatus = 'BACKFILLED', backfillIssues = '[]',
+                legacySnapshot = ?, updatedAt = ?
+            WHERE characterId = ? AND revision = ?
+          `).run(
+            progressionRevisionAfter,
+            legacySnapshot,
+            meta.appliedAt,
+            characterRow.id,
+            meta.progressionRevisionBefore,
+          );
+          if (progressionUpdate.changes !== 1) {
+            throw createProgressionError(
+              "PROGRESSION_REVISION_CONFLICT",
+              "La progressione del personaggio e stata modificata da un'altra operazione.",
+              409,
+              snapshot,
+            );
+          }
+
+          const afterClass = {
+            ...meta.currentClass,
+            level: classLevelAfter,
+            subclassRuleId: meta.subclassRule?.id ?? null,
+            subclassKey: meta.subclassRule?.subclassKey ?? null,
+            subclassStatus,
+            source: "LEVEL_UP",
+          };
+          const afterProgression = {
+            source: "STRUCTURED",
+            classes: [afterClass],
+            totalLevel: meta.preview.after.characterLevel,
+            progressionRevision: progressionRevisionAfter,
+            diagnostics: [],
+          };
+          const publicCharacter = serializeCharacterSnapshot({
+            state: nextState,
+            revision: characterRevisionAfter,
+            progression: afterProgression,
+          });
+          const operation = {
+            id: meta.operationId,
+            requestId: request.requestId,
+            operationType: "LEVEL_UP",
+            mode: meta.preview.mode,
+            targetClassKey: request.targetClassKey,
+            targetSubclassKey: meta.subclassRule?.subclassKey ?? null,
+            classLevelBefore,
+            classLevelAfter,
+            totalLevelBefore: meta.preview.before.characterLevel,
+            totalLevelAfter: meta.preview.after.characterLevel,
+            appliedAt: meta.appliedAt,
+          };
+          const result = {
+            ok: true,
+            replayed: false,
+            slug,
+            requestId: request.requestId,
+            revision: characterRevisionAfter,
+            progressionRevision: progressionRevisionAfter,
+            preview: meta.preview,
+            operation,
+            character: { ...publicCharacter, revision: characterRevisionAfter },
+            deferredEffects: ["HIT_POINTS", "HIT_DICE", "RESOURCE_POOLS"],
+          };
+          const requestSnapshot = JSON.stringify(request);
+          const beforeSnapshot = JSON.stringify({
+            classes: snapshot.progression.classes,
+            totalLevel: snapshot.progression.totalLevel,
+            progressionRevision: meta.progressionRevisionBefore,
+          });
+          const afterSnapshot = JSON.stringify({
+            classes: afterProgression.classes,
+            totalLevel: afterProgression.totalLevel,
+            progressionRevision: progressionRevisionAfter,
+          });
+          const ruleSnapshot = JSON.stringify({
+            classRule: parseJsonString(meta.classRule.ruleSnapshot, {}),
+            subclassRule: meta.subclassRule ? parseJsonString(meta.subclassRule.ruleSnapshot, {}) : null,
+          });
+          const appliedBySnapshot = JSON.stringify({
+            id: req.user.id,
+            username: req.user.username,
+            displayName: req.user.displayName,
+            role: req.user.role,
+          });
+          const historyColumns = [
+            "id", "characterId", "requestId", "requestSignature", "operationType", "mode",
+            "targetClassKey", "targetClassRuleId", "targetSubclassKey", "targetSubclassRuleId",
+            "classLevelBefore", "classLevelAfter", "totalLevelBefore", "totalLevelAfter",
+            "progressionRevisionBefore", "progressionRevisionAfter", "characterRevisionBefore",
+            "characterRevisionAfter", "rulesetId", "rulesetVersion", "policyVersion",
+            "requestSnapshot", "beforeSnapshot", "afterSnapshot", "ruleSnapshot", "resultSnapshot",
+            "overrideReason", "appliedByUserId", "appliedBySnapshot", "hitDieSize",
+            "hitPointMethod", "hitPointsGained", "constitutionModifier", "appliedAt",
+          ];
+          const historyValues = [
+            meta.operationId, characterRow.id, request.requestId, requestSignature, "LEVEL_UP",
+            meta.preview.mode, request.targetClassKey, meta.classRule.id,
+            meta.subclassRule?.subclassKey ?? null, meta.subclassRule?.id ?? null,
+            classLevelBefore, classLevelAfter, meta.preview.before.characterLevel,
+            meta.preview.after.characterLevel, meta.progressionRevisionBefore,
+            progressionRevisionAfter, meta.characterRevisionBefore, characterRevisionAfter,
+            meta.classRule.rulesetId || CHARACTER_RULESET.id,
+            meta.classRule.rulesetVersion || CHARACTER_RULESET.version,
+            "m4-v1", requestSnapshot,
+            beforeSnapshot, afterSnapshot, ruleSnapshot, JSON.stringify(result), null, req.user.id,
+            appliedBySnapshot, meta.classRule.hitDie ?? null, null, null, null, meta.appliedAt,
+          ];
+          sqlite.prepare(`
+            INSERT INTO "CharacterLevelHistory" (
+              ${historyColumns.map((column) => `"${column}"`).join(", ")}
+            ) VALUES (${historyColumns.map(() => "?").join(", ")})
+          `).run(...historyValues);
+          meta.result = result;
+        },
+      });
+
+      if (!mutationResult.committed && mutationResult.meta?.replay) {
+        return res.json(mutationResult.meta.replay);
+      }
+      const result = mutationResult.meta.result;
+      const statePayload = buildCharacterStatePayload(slug);
+      if (statePayload) io.to(`char:${slug}`).emit("character:state", statePayload);
+      const initiativeState = readInitiativeTrackerState();
+      if (initiativeState.players.some((entry) => entry.slug === slug)) {
+        broadcastInitiativeTrackerState(io);
+      }
+      return res.json(result);
+    } catch (error) {
+      const status = Number(error?.statusCode)
+        || (error?.code === "REVISION_CONFLICT" || error?.code === "PROGRESSION_REVISION_CONFLICT" ? 409 : 500);
+      const latest = error?.snapshot?.state
+        ? { ...serializeCharacterSnapshot(error.snapshot), revision: error.snapshot.revision }
+        : undefined;
+      return res.status(status).json({
+        code: error?.code ?? "PROGRESSION_APPLY_FAILED",
+        error: String(error?.message ?? "Non e stato possibile applicare la progressione."),
+        ...(error?.preview ? { preview: error.preview } : {}),
+        ...(latest ? { character: latest } : {}),
+      });
+    }
+  });
+
   app.get("/api/characters/:slug", requireAuth, (req, res) => {
     const slug = req.params.slug;
     const ownership = readOwnership();
@@ -12980,7 +13727,7 @@ async function start() {
 
     const snapshot = readCharacterSnapshot(slug);
     if (!snapshot) return res.status(404).json({ error: "Character not found" });
-    return res.json({ ...snapshot.state, revision: snapshot.revision });
+    return res.json({ ...serializeCharacterSnapshot(snapshot), revision: snapshot.revision });
   });
 
   app.get("/api/characters/:slug/backstory", requireAuth, (req, res) => {
@@ -13285,7 +14032,11 @@ async function start() {
       ownerUser,
     });
 
-    writeCharacter(slug, character);
+    let progressionInitialization;
+    runInTransaction(() => {
+      writeCharacter(slug, character);
+      progressionInitialization = initializeCreatedCharacterProgression(slug, req.user?.id ?? null);
+    });
 
     if (ownerUserId) {
       const ownership = readOwnership();
@@ -13293,11 +14044,13 @@ async function start() {
       writeOwnership(ownership);
     }
 
+    const snapshot = readCharacterSnapshot(slug);
     return res.status(201).json({
       slug,
       characterType,
       ownerUserId,
-      character,
+      character: snapshot ? serializeCharacterSnapshot(snapshot) : character,
+      progressionInitialization,
     });
   });
 

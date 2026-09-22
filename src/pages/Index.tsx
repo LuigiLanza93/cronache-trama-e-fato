@@ -52,6 +52,7 @@ import {
   getDerivedPassivePerception,
   getDerivedSpellSaveDc,
 } from "@/lib/character-derived-stats";
+import { getCharacterProgressionDisplay } from "@/lib/character-progression";
 
 type CharacterState = Record<string, any>;
 
@@ -374,13 +375,14 @@ function toHomeCharacter(
 ): HomeCharacter | null {
   const slug = typeof state?.slug === "string" ? state.slug : "";
   if (!slug) return null;
+  const progression = getCharacterProgressionDisplay(state);
 
   return {
     slug,
     name: state?.basicInfo?.characterName ?? slug,
     characterType: state?.characterType === "png" ? "png" : "pg",
-    className: state?.basicInfo?.class ?? "",
-    level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
+    className: progression.classSummary,
+    level: progression.totalLevel,
     initiativeBonus: getDerivedInitiativeBonus(state, relationalInventoryItems, itemDefinitionsById),
     armorClass: getDerivedArmorClass(state, relationalInventoryItems, itemDefinitionsById),
     passivePerception: getDerivedPassivePerception(state, relationalInventoryItems, itemDefinitionsById),

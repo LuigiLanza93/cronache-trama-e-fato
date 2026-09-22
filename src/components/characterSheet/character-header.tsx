@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { BookOpen, Check, Home, Pencil, ScrollText, Settings2, X } from "lucide-react";
 import { updateCharacter } from "@/realtime";
 import CampaignLogDialog from "@/components/campaign-log-dialog";
+import { getCharacterProgressionDisplay } from "@/lib/character-progression";
 
 function getInitials(name: string | undefined) {
     return (name ?? "")
@@ -49,6 +50,7 @@ const CharacterHeader = ({
     const [isPortraitOpen, setIsPortraitOpen] = useState(false);
     const [isCampaignLogOpen, setIsCampaignLogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const progressionDisplay = getCharacterProgressionDisplay(characterData);
 
     useEffect(() => {
         setPortraitUrl(characterData.basicInfo.portraitUrl ?? "");
@@ -67,8 +69,6 @@ const CharacterHeader = ({
 
         const patch = {
             characterName: characterData.basicInfo.characterName,
-            class: formData.get("class") as string,
-            level: parseInt(formData.get("level") as string, 10) || 1,
             background: formData.get("background") as string,
             playerName: formData.get("playerName") as string,
             race: formData.get("race") as string,
@@ -291,30 +291,15 @@ const CharacterHeader = ({
                             <div className="grid grid-cols-2">
                                 <div>
                                     <Label className="text-xs text-muted-foreground">Classe</Label>
-                                    {editMode ? (
-                                        <Input
-                                            name="class"
-                                            defaultValue={characterData.basicInfo.class}
-                                        />
-                                    ) : (
-                                        <div className="font-semibold">
-                                            {characterData.basicInfo.class}
-                                        </div>
-                                    )}
+                                    <div className="font-semibold" title={progressionDisplay.classSummary}>
+                                        {progressionDisplay.classSummary || characterData.basicInfo.class}
+                                    </div>
                                 </div>
                                 <div>
                                     <Label className="text-xs text-muted-foreground">Livello</Label>
-                                    {editMode ? (
-                                        <Input
-                                            name="level"
-                                            type="number"
-                                            defaultValue={characterData.basicInfo.level}
-                                        />
-                                    ) : (
-                                        <div className="font-semibold">
-                                            {characterData.basicInfo.level}
-                                        </div>
-                                    )}
+                                    <div className="font-semibold">
+                                        {progressionDisplay.totalLevel ?? characterData.basicInfo.level}
+                                    </div>
                                 </div>
                             </div>
                             <div>

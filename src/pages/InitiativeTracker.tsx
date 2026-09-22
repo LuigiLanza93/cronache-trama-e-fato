@@ -60,6 +60,7 @@ import {
   getDerivedPassivePerception as getCharacterPassivePerception,
   getDerivedSpellSaveDc as getCharacterSpellSaveDc,
 } from "@/lib/character-derived-stats";
+import { getCharacterProgressionDisplay } from "@/lib/character-progression";
 import {
   BookOpen,
   FolderOpen,
@@ -472,12 +473,13 @@ function toCharacterCatalogEntry(
 ): CharacterCatalogEntry | null {
   const slug = state?.slug;
   if (!slug) return null;
+  const progression = getCharacterProgressionDisplay(state);
 
   return {
     slug,
     name: state?.basicInfo?.characterName ?? slug,
-    className: state?.basicInfo?.class ?? "",
-    level: state?.basicInfo?.level ?? 0,
+    className: progression.classSummary,
+    level: progression.totalLevel ?? 0,
     initiativeBonus: getDerivedInitiativeBonus(state, relationalInventoryItems, itemDefinitionsById),
     armorClass: getDerivedArmorClass(state, relationalInventoryItems, itemDefinitionsById),
     passivePerception: getCharacterPassivePerception(state, relationalInventoryItems, itemDefinitionsById),

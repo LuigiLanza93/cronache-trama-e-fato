@@ -73,6 +73,7 @@ import {
   getDerivedPassivePerception,
   getDerivedSpellSaveDc,
 } from "@/lib/character-derived-stats";
+import { getCharacterProgressionDisplay } from "@/lib/character-progression";
 import { toast } from "@/components/ui/sonner";
 
 type CharacterState = Record<string, any>;
@@ -212,6 +213,7 @@ function toPlayerCardData(
 ): PlayerCardData | null {
   const slug = typeof state?.slug === "string" ? state.slug : "";
   if (!slug) return null;
+  const progression = getCharacterProgressionDisplay(state);
 
   return {
     slug,
@@ -219,8 +221,8 @@ function toPlayerCardData(
     characterType: state?.characterType === "png" ? "png" : "pg",
     playerName: state?.basicInfo?.playerName ?? "",
     portraitUrl: state?.basicInfo?.portraitUrl ?? "",
-    className: state?.basicInfo?.class ?? "",
-    level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
+    className: progression.classSummary,
+    level: progression.totalLevel,
     initiativeBonus: getDerivedInitiativeBonus(state, relationalInventoryItems, itemDefinitionsById),
     armorClass: getDerivedArmorClass(state, relationalInventoryItems, itemDefinitionsById),
     passivePerception: getDerivedPassivePerception(state, relationalInventoryItems, itemDefinitionsById),

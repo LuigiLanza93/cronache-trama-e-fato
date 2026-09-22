@@ -1,7 +1,7 @@
 # Progressione del personaggio: level-up guidato e multiclasse
 
-Stato: **M0-M3 completati e consolidati su `dev`; prossimo incremento M4 API di progressione e proiezioni UI**.
-Data: 2026-09-07.
+Stato: **M0-M3 consolidati su `dev`; M4 implementato e collaudato localmente, in attesa della finalizzazione su `dev`**.
+Data: 2026-09-21.
 Perimetro: personaggi giocanti, scheda, progressione, riposi, incantesimi, persistenza e UI DM/player.
 
 ## Esito esecutivo
@@ -16,9 +16,9 @@ Il modello nascera capace di indicare quale classe viene incrementata (`targetCl
 
 I pacchetti P0 e P1 della scheda sono completati, testati, committati e pushati su `dev` (`fc0d5a8`, `f7e1837`): niente piu scritture automatiche di PF, Dadi Vita o slot all'apertura; mutazioni per personaggio seriali, validate e versionate; riposi coordinati con le patch; ACK dopo commit; room, riconnessioni e revoche Socket consolidate. Inventario/equipaggiamento e TS morte aggiornano correttamente le viste realtime; regole centrali di armi, TWF, riposi, skill/percezione e punteggio zero hanno test dedicati.
 
-La verifica fresca del checkpoint M2/M3, eseguita il 2026-09-07, ha confermato 148/148 test P1/Gate, build di produzione, Prisma validate, sintassi server/script, TypeScript della configurazione Vite e dry-run M3 senza scritture. Il controllo corretto del progetto applicativo (`tsc -p tsconfig.app.json`) resta invece rosso per errori distribuiti in componenti e tipi preesistenti al checkpoint e deve essere chiuso come lavoro dedicato. Il DB locale di sviluppo contiene il catalogo versionato e una `CharacterClass` coerente per tutti i 6 personaggi; Railway non e stato modificato. Questo consente di chiudere M2/M3 come fondazione compatibile, ma il Gate 1.8A resta incompleto: API autorevoli, storico dei livelli, PF/Dadi Vita per classe e pool di risorse separati sono ancora da implementare.
+Il checkpoint TypeScript dedicato e stato chiuso il 2026-09-21 in `5d9a1e4`: TypeScript applicazione/node, build, 148/148 test e review finale sono verdi. M4 introduce ora API autorevoli, storico durevole delle operazioni, blocco dei writer legacy classe/livello e proiezioni strutturate REST/realtime/UI. Il DB locale di sviluppo contiene il catalogo versionato e una `CharacterClass` coerente per tutti i 6 personaggi; Railway non e stato modificato. Il Gate 1.8A resta incompleto finche M5 e M6 non normalizzano PF/Dadi Vita e pool di risorse.
 
-M0 e completato. Anche M1 e ora coperto da test SQLite deterministici per FIFO, retry, conflitto, rollback multi-PG, revoca accodata e interazione patch/riposo. Riposi roster e conversione slot usano request ID e receipt durevoli in `AppState`, scritte nello stesso confine transazionale e riutilizzabili dopo restart entro il TTL. Il collaudo browser del 2026-08-14 ha confermato riposi, roster, realtime, persistenza e conversione: quando i PF cambiano mentre il dialog e aperto, la dashboard puo ricevere la revisione live e applicare coerentemente il riposo sui nuovi valori, senza lost update. M2 e completato nel layer puro: contratto condiviso, 12 chiavi classe stabili, prerequisiti, Dadi Vita, profili caster, sottoclassi baseline SRD, tabelle slot Spellcasting/Pact Magic e preview before/after con `targetClassKey`. M3 aggiunge schema e backfill versionati, dual-read shadow conservativo e guardia sull'importatore storico distruttivo; UI, REST e Socket restano invariati. Il prossimo incremento e M4.
+M0 e completato. Anche M1 e ora coperto da test SQLite deterministici per FIFO, retry, conflitto, rollback multi-PG, revoca accodata e interazione patch/riposo. Riposi roster e conversione slot usano request ID e receipt durevoli in `AppState`, scritte nello stesso confine transazionale e riutilizzabili dopo restart entro il TTL. Il collaudo browser del 2026-08-14 ha confermato riposi, roster, realtime, persistenza e conversione: quando i PF cambiano mentre il dialog e aperto, la dashboard puo ricevere la revisione live e applicare coerentemente il riposo sui nuovi valori, senza lost update. M2 e completato nel layer puro: contratto condiviso, 12 chiavi classe stabili, prerequisiti, Dadi Vita, profili caster, sottoclassi baseline SRD, tabelle slot Spellcasting/Pact Magic e preview before/after con `targetClassKey`. M3 aggiunge schema e backfill versionati, dual-read shadow conservativo e guardia sull'importatore storico distruttivo. M4 rende autorevoli preview/apply, storico e proiezioni pubbliche ed e stato collaudato localmente. I prossimi incrementi del Gate sono M5 e M6.
 
 La baseline M0 locale, il decision record confermato, la matrice consumer e i casi attesi sono raccolti in [`multiclass-m0-baseline.md`](./multiclass-m0-baseline.md). D0 usa le regole gia implementate come house rule e SRD 5.1/2014 come fallback per i vuoti. I PF di ogni level-up usano il Dado Vita pieno della classe incrementata + COS; i riposi seguono la house rule storica con due brevi tra lunghi e cura automatica a media fissa.
 
@@ -347,6 +347,8 @@ Fino alla fase multiclasse, il dominio consente al massimo una `CharacterClass` 
 Produzione: nessuna applicazione Railway senza autorizzazione; backup fresco, conteggi e rollback; mai `prisma db push`.
 
 ### M4 - API di progressione e proiezioni UI
+
+**Stato:** implementato e collaudato localmente il 2026-09-22, non committato e non rilasciato. Il contratto DM-only `preview/apply`, lo storico `CharacterLevelHistory`, le proiezioni pubbliche e il writer autorevole hanno superato il collaudo manuale concordato: preview, blocchi di dominio, autorizzazione, apply/realtime, retry durevole dopo restart, riuso request ID, conflitti sulle due revisioni e rollback transazionale con fault injection su copia disposable. Railway non e stato modificato.
 
 **Obiettivo:** introdurre il contratto di progressione e le proiezioni senza abilitare ancora il multiclasse.
 

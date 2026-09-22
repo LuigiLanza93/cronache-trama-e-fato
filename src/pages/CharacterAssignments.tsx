@@ -28,6 +28,7 @@ import {
 } from "@/lib/auth";
 import { toast } from "@/components/ui/sonner";
 import CharacterBackstoryDialog from "@/components/character-backstory-dialog";
+import { getCharacterProgressionDisplay } from "@/lib/character-progression";
 
 type CharacterState = Record<string, any>;
 
@@ -46,12 +47,13 @@ type CharacterRow = {
 function toCharacterRow(state: CharacterState): CharacterRow | null {
   const slug = typeof state?.slug === "string" ? state.slug : "";
   if (!slug) return null;
+  const progression = getCharacterProgressionDisplay(state);
 
   return {
     slug,
     name: state?.basicInfo?.characterName ?? slug,
-    className: state?.basicInfo?.class ?? "",
-    level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
+    className: progression.classSummary,
+    level: progression.totalLevel,
     characterType: state?.characterType === "png" ? "png" : "pg",
     race: state?.basicInfo?.race ?? "",
     background: state?.basicInfo?.background ?? "",

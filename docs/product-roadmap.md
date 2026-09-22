@@ -30,7 +30,7 @@ La roadmap esprime priorita e dipendenze, non scadenze. Le versioni proposte pos
 
 ## P0, pre-1.8 — Stabilizzazione core della scheda personaggio
 
-> Stato verificato al 2026-09-07: P0, P1 e M0-M3 sono completati e consolidati su `dev`. M3 introduce catalogo versionato, backfill monoclasse e dual-read shadow senza cambiare UI o API pubbliche. Il prossimo incremento funzionale e M4, API autorevoli di progressione e proiezioni UI. I dettagli e i limiti residui sono raccolti in [`character-sheet-audit.md`](./character-sheet-audit.md), [`multiclass-roadmap.md`](./multiclass-roadmap.md) e [`character-progression-m3.md`](./character-progression-m3.md).
+> Stato verificato al 2026-09-22: P0, P1 e M0-M3 sono consolidati su `dev`; il debito TypeScript applicativo e chiuso. M4 e implementato e collaudato localmente con API autorevoli, storico durevole, proiezioni UI, conflitti, retry, autorizzazione e rollback transazionale verificati. Resta non committato in attesa della finalizzazione su `dev`; Railway resta invariato. I dettagli sono raccolti in [`multiclass-roadmap.md`](./multiclass-roadmap.md), [`character-progression-m3.md`](./character-progression-m3.md) e [`character-progression-m4.md`](./character-progression-m4.md).
 
 ### Obiettivo
 
@@ -107,12 +107,12 @@ Ogni sezione della scheda ha una valutazione motivata e un percorso dati noto. I
 - `Competenze & Abilità` include un riepilogo read-only delle competenze effettive in armi, armature e scudi, con provenienza da classe, capacità passive o grant espliciti; le armi specifiche restano separate dalle categorie e l'Arma del Patto non viene generalizzata;
 - suite Vitest di non regressione con 148 casi dopo M3, inclusi persistenza concorrente, receipt durevoli, catalogo classi, backfill idempotente, dual-read shadow e ritiro dell'importatore distruttivo; checklist browser in [`p1-manual-test-plan.md`](./p1-manual-test-plan.md);
 - collaudo manuale utente completato; pacchetto committato e pushato su `dev` in `f7e1837`;
-- verifica fresca del 2026-09-07: 148/148 test P1/Gate, Prisma validate, controlli sintassi, TypeScript Vite, build di produzione, dry-run M3 senza scritture e `git diff --check` positivi; il controllo TypeScript applicativo corretto (`tsc -p tsconfig.app.json`) fallisce ancora per errori esterni al diff M2/M3;
+- verifica del 2026-09-21: il checkpoint dedicato ha chiuso il debito TypeScript applicativo; TypeScript app/node, build, 148/148 test P1/Gate e `git diff --check` sono positivi in `5d9a1e4`;
 - migrazione e backfill restano applicati soltanto al DB locale di sviluppo; `main` e Railway sono invariati. Prima di un rilascio servono backup Railway fresco, applicazione controllata della migrazione e verifiche post-deploy.
 
 ### Prontezza per il Gate 1.8A
 
-- `dev` include P0, P1 e M0-M3 consolidati; gli aggiornamenti della configurazione operativa Codex restano separati dal checkpoint funzionale. Questa e la base da cui proseguire con M4;
+- `dev` include P0, P1 e M0-M3 consolidati; M4 e implementato e collaudato nel worktree locale e resta non committato fino alla finalizzazione concordata;
 - M0-M3 sono completati tecnicamente; M3 resta compatibile e invisibile alla UI, mentre M4 rendera autorevole il nuovo writer e introdurra API/proiezioni prima di M5-M6;
 - i P2/P3 dell'audit non bloccano la progressione, salvo che un censimento M0 riveli una dipendenza concreta;
 - il DB locale non contiene `_prisma_migrations`: `prisma migrate status` non puo certificare la cronologia del database storico. Integrita, schema effettivo e backfill M3 sono verificati direttamente con uno script additivo, transazionale, idempotente e restart-safe; prima di ulteriori lavori DB la cronologia e le differenze Prisma vanno riconciliate su copie disposable, senza ricreare il DB;

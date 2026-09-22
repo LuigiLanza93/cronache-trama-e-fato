@@ -13,8 +13,6 @@ describe("validateCharacterPatch", () => {
     const patch = {
       basicInfo: {
         characterName: "Mira",
-        class: "Guerriero",
-        level: 5,
         background: "Soldato",
         playerName: "Giocatrice",
         race: "Umana",
@@ -76,6 +74,13 @@ describe("validateCharacterPatch", () => {
 
   it.each(["slug", "ownerUserId", "characterType"])("rejects server-owned root key %s", (key) => {
     expectInvalid({ [key]: "client-value" }, `patch.${key}: campo sconosciuto`);
+  });
+
+  it.each(["class", "level"])("rejects the legacy progression projection basicInfo.%s", (key) => {
+    expectInvalid(
+      { basicInfo: { [key]: key === "level" ? 6 : "Mago" } },
+      `patch.basicInfo.${key}: campo sconosciuto`,
+    );
   });
 
   it("rejects unknown nested keys", () => {

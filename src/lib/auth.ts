@@ -35,6 +35,38 @@ export type CharacterTransferTarget = {
     characterName: string;
   };
 };
+export type CharacterProgressionPreviewRequest = {
+  targetClassKey: string;
+  targetSubclassKey?: string | null;
+  expectedRevision?: string;
+  expectedProgressionRevision?: number;
+};
+export type CharacterProgressionApplyRequest = CharacterProgressionPreviewRequest & {
+  requestId: string;
+  expectedRevision: string;
+  expectedProgressionRevision: number;
+};
+export type CharacterProgressionApiResponse = {
+  ok: true;
+  slug: string;
+  revision: string;
+  progressionRevision: number;
+  preview: {
+    status: string;
+    canApply: boolean;
+    targetClassKey: string;
+    mode: "INCREMENT_EXISTING" | "ADD_NEW_CLASS";
+    before: Record<string, unknown>;
+    after: Record<string, unknown> | null;
+    classesAfter: Array<Record<string, unknown>> | null;
+    subclassEligibility: Record<string, unknown> | null;
+    reason?: string | null;
+  };
+  deferredEffects: string[];
+  replayed?: boolean;
+  operation?: Record<string, unknown>;
+  character?: Record<string, unknown>;
+};
 export type CurrencyTransactionRequestPayload = {
   operation: "add" | "remove" | "transfer" | "convert";
   currency: keyof CurrencyBalance;
@@ -1078,6 +1110,20 @@ export function applyPartyRestRequest(
   return authFetch<PartyRestResponse>("/api/dm/rests/apply", {
     method: "POST",
     body: JSON.stringify({ type, slugs, requestId, expectedRevisions }),
+  });
+}
+
+export function previewCharacterProgressionRequest(slug: string, payload: CharacterProgressionPreviewRequest) {
+  return authFetch<CharacterProgressionApiResponse>(`/api/dm/characters/${slug}/progression/preview`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function applyCharacterProgressionRequest(slug: string, payload: CharacterProgressionApplyRequest) {
+  return authFetch<CharacterProgressionApiResponse>(`/api/dm/characters/${slug}/progression/apply`, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

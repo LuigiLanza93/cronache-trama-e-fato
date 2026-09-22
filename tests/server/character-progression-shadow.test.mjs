@@ -8,6 +8,7 @@ import {
   buildCharacterStatePayload,
   inspectCharacterProgressionShadowDatabase,
   readCharacterProgressionShadowFromDatabase,
+  serializeCharacterSnapshot,
 } from "../../server.js";
 
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
@@ -257,16 +258,40 @@ describe("M3 character progression shadow", () => {
     ]));
   });
 
-  it("does not expose the internal progression object in realtime state payloads", () => {
+  it("publishes the M4 progression projection without mutating the legacy state", () => {
     const state = { slug: "aros", basicInfo: { class: "Guerriero", level: 5 } };
+    const stateBefore = structuredClone(state);
     const payload = buildCharacterStatePayload("aros", {
       state,
       revision: "revision-1",
-      progression: { source: "STRUCTURED", classes: [{ classKey: "fighter", level: 5 }], totalLevel: 5 },
+      progression: {
+        source: "STRUCTURED",
+        classes: [{
+          classKey: "fighter",
+          label: "Guerriero",
+          level: 5,
+          sortOrder: 0,
+          isPrimary: true,
+          subclassKey: null,
+          subclassStatus: "INCOMPLETE_LEGACY",
+        }],
+        totalLevel: 5,
+        progressionRevision: 2,
+      },
     });
-    expect(payload).toEqual({ slug: "aros", revision: "revision-1", state });
-    expect(payload).not.toHaveProperty("progression");
-    expect(payload.state).not.toHaveProperty("classes");
-    expect(payload.state).not.toHaveProperty("totalLevel");
+    expect(payload).toMatchObject({
+      slug: "aros",
+      revision: "revision-1",
+      state: {
+        classes: [{ classKey: "fighter", label: "Guerriero", level: 5, isPrimary: true }],
+        primaryClass: { classKey: "fighter", level: 5 },
+        totalLevel: 5,
+        progressionRevision: 2,
+        progressionStatus: "INCOMPLETE_LEGACY",
+      },
+    });
+    expect(state).toEqual(stateBefore);
+    expect(serializeCharacterSnapshot({ state, progression: { source: "LEGACY", totalLevel: 5 } }))
+      .toMatchObject({ classes: [], primaryClass: null, totalLevel: 5, progressionStatus: "LEGACY" });
   });
 });
