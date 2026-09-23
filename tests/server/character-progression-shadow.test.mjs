@@ -180,6 +180,50 @@ describe("M3 character progression shadow", () => {
     });
   });
 
+  it("publishes multiple ordered classes while keeping the legacy primary-class projection", () => {
+    const database = openDatabase();
+    createLegacySchema(database);
+    database.exec(MIGRATION_SQL);
+    seedCoherentFighter(database);
+    database.exec('DROP INDEX "CharacterClass_m3_single_class_key"');
+    database.prepare(`
+      INSERT INTO "ClassRule" (
+        id, classKey, labelIt, labelEn, aliases, rulesetId, rulesetVersion, sourceReference,
+        hitDie, casterKind, spellcastingAbility, spellcastingStartLevel, subclassSelectionLevel,
+        isCustom, isManual, ruleSnapshot, catalogHash, createdAt, updatedAt
+      ) VALUES ('srd-5.1@2014:wizard', 'wizard', 'Mago', 'Wizard', '["mago","wizard"]',
+        'srd-5.1', '2014', 'SRD', 6, 'FULL', 'intelligence', 1, 2, 0, 0, '{}', 'hash',
+        '2026-08-15T00:00:00.000Z', '2026-08-15T00:00:00.000Z')
+    `).run();
+    database.prepare(`
+      INSERT INTO "CharacterClass" (
+        id, characterId, classRuleId, subclassRuleId, classKey, level, sortOrder, isPrimary,
+        subclassStatus, source, ruleSnapshot, updatedByUserId, createdAt, updatedAt
+      ) VALUES ('character-class:aros:wizard', 'aros', 'srd-5.1@2014:wizard', NULL,
+        'wizard', 1, 1, 0, 'NOT_YET_ELIGIBLE', 'LEVEL_UP', '{}', NULL,
+        '2026-08-15T00:00:00.000Z', '2026-08-15T00:00:00.000Z')
+    `).run();
+    const data = JSON.stringify({ slug: "aros", basicInfo: { characterName: "Aros", class: "Guerriero", level: 6 } });
+    const legacySnapshot = JSON.stringify({
+      column: { className: "Guerriero", level: 6 },
+      basicInfo: { class: "Guerriero", level: 6 },
+    });
+    database.prepare('UPDATE "Character" SET level = 6, data = ? WHERE id = ?').run(data, "aros");
+    database.prepare('UPDATE "CharacterProgression" SET revision = 1, legacySnapshot = ? WHERE characterId = ?')
+      .run(legacySnapshot, "aros");
+
+    expect(readCharacterProgressionShadowFromDatabase(database, readCharacterRow(database))).toMatchObject({
+      source: "STRUCTURED",
+      classes: [
+        { classKey: "fighter", level: 5, isPrimary: true },
+        { classKey: "wizard", level: 1, isPrimary: false },
+      ],
+      totalLevel: 6,
+      progressionRevision: 1,
+      diagnostics: [],
+    });
+  });
+
   it("rejects an incoherent subclass status instead of trusting the class row", () => {
     const database = openDatabase();
     createLegacySchema(database);
@@ -192,6 +236,18 @@ describe("M3 character progression shadow", () => {
     const shadow = readCharacterProgressionShadowFromDatabase(database, readCharacterRow(database));
     expect(shadow.source).toBe("LEGACY");
     expect(shadow.diagnostics).toContainEqual({ code: "SUBCLASS_SELECTION_MISSING" });
+  });
+
+  it("rejects non-contiguous class ordering before a later insert can collide", () => {
+    const database = openDatabase();
+    createLegacySchema(database);
+    database.exec(MIGRATION_SQL);
+    seedCoherentFighter(database);
+    database.prepare('UPDATE "CharacterClass" SET sortOrder = 2 WHERE characterId = ?').run("aros");
+
+    const shadow = readCharacterProgressionShadowFromDatabase(database, readCharacterRow(database));
+    expect(shadow.source).toBe("LEGACY");
+    expect(shadow.diagnostics).toContainEqual({ code: "M3_CHARACTER_CLASS_ORDER_INVALID" });
   });
 
   it("falls back after a legacy class/level patch and never updates CharacterClass", () => {

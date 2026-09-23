@@ -36,6 +36,7 @@ type ArmorLike = {
 
 type CharacterLike = {
   basicInfo?: { class?: string | null };
+  classes?: Array<{ classKey?: string | null; label?: string | null; isPrimary?: boolean | null }>;
   proficiencies?: { weapons?: unknown };
   features?: unknown;
   capabilities?: unknown;
@@ -142,6 +143,31 @@ const CLASS_ARMOR_PROFICIENCIES: Record<string, ArmorProficiencyCategory[]> = {
   warlock: ["LIGHT"],
   wizard: [],
   mago: [],
+};
+
+const MULTICLASS_GROUP_PROFICIENCIES: Record<string, WeaponProficiencyGroup[]> = {
+  barbarian: ["SIMPLE", "MARTIAL"],
+  fighter: ["SIMPLE", "MARTIAL"],
+  monk: ["SIMPLE"],
+  paladin: ["SIMPLE", "MARTIAL"],
+  ranger: ["SIMPLE", "MARTIAL"],
+  warlock: ["SIMPLE"],
+};
+
+const MULTICLASS_SPECIFIC_WEAPONS: Record<string, string[]> = {
+  monk: ["shortsword", "spada corta"],
+};
+
+const MULTICLASS_ARMOR_PROFICIENCIES: Record<string, ArmorProficiencyCategory[]> = {
+  barbarian: ["LIGHT", "MEDIUM", "SHIELD"],
+  bard: ["LIGHT"],
+  cleric: ["LIGHT", "MEDIUM", "SHIELD"],
+  druid: ["LIGHT", "MEDIUM", "SHIELD"],
+  fighter: ["LIGHT", "MEDIUM", "SHIELD"],
+  paladin: ["LIGHT", "MEDIUM", "SHIELD"],
+  ranger: ["LIGHT", "MEDIUM", "SHIELD"],
+  rogue: ["LIGHT"],
+  warlock: ["LIGHT"],
 };
 
 const CLASS_DISPLAY_LABELS: Record<string, string> = {
@@ -383,17 +409,14 @@ function readLegacyNamedWeaponGrants(value: unknown): Array<{ key: string; label
  * instance-specific effects such as Pact Weapon never become a general group.
  */
 export function resolveCharacterProficiencySummary(characterData: CharacterLike): CharacterProficiencySummary {
-  const className = normalized(characterData?.basicInfo?.class);
-  const classSource = classProficiencySource(className);
-  const classWeaponGroups = CLASS_GROUP_PROFICIENCIES[className] ?? [];
-  const classArmorCategories = CLASS_ARMOR_PROFICIENCIES[className] ?? [];
+  const classProfiles = effectiveClassProfiles(characterData);
   const legacyWeaponGroups = readLegacyWeaponGroupGrants(characterData?.proficiencies?.weapons);
   const legacyNamedWeapons = readLegacyNamedWeaponGrants(characterData?.proficiencies?.weapons);
   const entries: CharacterProficiencySummaryEntry[] = [];
 
   (["SIMPLE", "MARTIAL"] as const).forEach((group) => {
     const sources = [
-      ...(classSource && classWeaponGroups.includes(group) ? [classSource] : []),
+      ...classProfiles.filter((profile) => profile.weaponGroups.includes(group)).map((profile) => profile.source),
       ...(legacyWeaponGroups.has(group) ? ["Competenza esplicita"] : []),
       ...getPassiveProficiencySources(characterData, passiveWeaponTarget(group)),
     ];
@@ -404,7 +427,7 @@ export function resolveCharacterProficiencySummary(characterData: CharacterLike)
 
   (["LIGHT", "MEDIUM", "HEAVY", "SHIELD"] as const).forEach((category) => {
     const sources = [
-      ...(classSource && classArmorCategories.includes(category) ? [classSource] : []),
+      ...classProfiles.filter((profile) => profile.armorCategories.includes(category)).map((profile) => profile.source),
       ...getPassiveProficiencySources(characterData, passiveArmorTarget(category)),
     ];
     if (sources.length > 0) {
@@ -423,7 +446,7 @@ export function resolveCharacterProficiencySummary(characterData: CharacterLike)
     }
     specificWeaponSources.set(key, { label, sources: [source] });
   };
-  (CLASS_SPECIFIC_WEAPON_SUMMARY[className] ?? []).forEach((label) => addSpecificWeapon(label, classSource ?? "Classe"));
+  classProfiles.forEach((profile) => profile.specificWeaponLabels.forEach((label) => addSpecificWeapon(label, profile.source)));
   legacyNamedWeapons.forEach(({ label }) => addSpecificWeapon(label, "Competenza esplicita"));
   const specificWeapons = [...specificWeaponSources.values()].map(({ label, sources }) => ({
     label,
@@ -431,6 +454,29 @@ export function resolveCharacterProficiencySummary(characterData: CharacterLike)
   }));
 
   return { entries, specificWeapons };
+}
+
+function effectiveClassProfiles(characterData: CharacterLike) {
+  const hasStructuredClasses = Array.isArray(characterData?.classes) && characterData.classes.length > 0;
+  const structured = hasStructuredClasses
+    ? characterData.classes.map((entry) => ({
+        key: normalized(entry.classKey ?? entry.label),
+        primary: entry.isPrimary === true,
+      }))
+    : [{ key: normalized(characterData?.basicInfo?.class), primary: true }];
+  return structured.filter((entry) => entry.key && Boolean(CLASS_DISPLAY_LABELS[entry.key])).map(({ key, primary }) => {
+    const source = `${primary ? (hasStructuredClasses ? "Classe iniziale" : "Classe") : "Ingresso multiclasse"}: ${CLASS_DISPLAY_LABELS[key] ?? key}`;
+    const specific = primary ? CLASS_SPECIFIC_WEAPONS[key] ?? [] : MULTICLASS_SPECIFIC_WEAPONS[key] ?? [];
+    const summary = primary ? CLASS_SPECIFIC_WEAPON_SUMMARY[key] ?? [] : specific;
+    return {
+      key,
+      source,
+      weaponGroups: primary ? CLASS_GROUP_PROFICIENCIES[key] ?? [] : MULTICLASS_GROUP_PROFICIENCIES[key] ?? [],
+      armorCategories: primary ? CLASS_ARMOR_PROFICIENCIES[key] ?? [] : MULTICLASS_ARMOR_PROFICIENCIES[key] ?? [],
+      specificWeapons: specific,
+      specificWeaponLabels: summary,
+    };
+  });
 }
 
 function weaponIdentityKeys(weapon: WeaponLike) {
@@ -480,18 +526,15 @@ function readLegacyWeaponGrants(value: unknown): Set<string> {
 
 export function resolveWeaponProficiency(characterData: CharacterLike, weapon: WeaponLike): WeaponProficiencyResolution {
   const group = normalizeGroup(weapon.weaponProficiencyGroup);
-  const className = normalized(characterData?.basicInfo?.class);
+  const classProfiles = effectiveClassProfiles(characterData);
   const legacyGrants = readLegacyWeaponGrants(characterData?.proficiencies?.weapons);
   const identityKeys = weaponIdentityKeys(weapon);
   const hasExplicitGrant = identityKeys.some((key) => legacyGrants.has(key)) || (group !== null && legacyGrants.has(normalized(group)));
-  const classGroups = CLASS_GROUP_PROFICIENCIES[className] ?? [];
-  const specificWeapons = CLASS_SPECIFIC_WEAPONS[className] ?? [];
-  const hasSpecificClassGrant = identityKeys.some((key) => specificWeapons.some((weaponName) => matchesSpecificWeaponName(key, weaponName)));
-  const hasMonkSimpleWeaponGrant =
-    (className === "monk" || className === "monaco") && group === "SIMPLE";
-  const classIsKnown = Boolean(CLASS_GROUP_PROFICIENCIES[className] || CLASS_SPECIFIC_WEAPONS[className] || className === "monk" || className === "monaco");
+  const hasSpecificClassGrant = classProfiles.some((profile) =>
+    identityKeys.some((key) => profile.specificWeapons.some((weaponName) => matchesSpecificWeaponName(key, weaponName))));
+  const classIsKnown = classProfiles.length > 0;
   const hasPactWeaponGrant =
-    className === "warlock" && (
+    classProfiles.some((profile) => profile.key === "warlock") && (
       weapon?.isPactWeapon === true ||
       (typeof characterData?.pactBlade?.bondedCharacterItemId === "string" &&
         characterData.pactBlade.bondedCharacterItemId.length > 0 &&
@@ -519,10 +562,10 @@ export function resolveWeaponProficiency(characterData: CharacterLike, weapon: W
   if (!classIsKnown) {
     return { known: false, proficient: false, group, breakdown: ["Classe senza profilo di competenze arma"] };
   }
-  if (hasSpecificClassGrant || hasMonkSimpleWeaponGrant) {
+  if (hasSpecificClassGrant) {
     return { known: true, proficient: true, group, breakdown: ["Competenza arma specifica della classe"] };
   }
-  if (group && classGroups.includes(group)) {
+  if (group && classProfiles.some((profile) => profile.weaponGroups.includes(group))) {
     return { known: true, proficient: true, group, breakdown: [`Competenza ${group === "SIMPLE" ? "armi semplici" : "armi marziali"}`] };
   }
   return { known: true, proficient: false, group, breakdown: ["Arma non compresa nelle competenze della classe"] };
@@ -553,9 +596,8 @@ export function resolveArmorProficiency(
     };
   }
 
-  const className = normalized(characterData?.basicInfo?.class);
-  const classCategories = CLASS_ARMOR_PROFICIENCIES[className];
-  if (!classCategories) {
+  const classProfiles = effectiveClassProfiles(characterData);
+  if (classProfiles.length === 0) {
     return {
       known: false,
       proficient: false,
@@ -563,7 +605,7 @@ export function resolveArmorProficiency(
       breakdown: ["Classe senza profilo di competenze armatura"],
     };
   }
-  if (classCategories.includes(category)) {
+  if (classProfiles.some((profile) => profile.armorCategories.includes(category))) {
     return {
       known: true,
       proficient: true,

@@ -38,6 +38,7 @@ export type CharacterTransferTarget = {
 export type CharacterProgressionPreviewRequest = {
   targetClassKey: string;
   targetSubclassKey?: string | null;
+  overrideReason?: string;
   expectedRevision?: string;
   expectedProgressionRevision?: number;
 };
@@ -81,6 +82,8 @@ export type CharacterProgressionApiResponse = {
     classesAfter: Array<{ classKey: string; level: number; subclassKey?: string | null }> | null;
     subclassEligibility: { status: string; reason: string | null } | null;
     subclassOptions: Array<{ key: string; label: string; classKey: string }>;
+    classOptions: Array<{ key: string; label: string; mode: "INCREMENT_EXISTING" | "ADD_NEW_CLASS"; currentLevel: number }>;
+    prerequisites?: { status: string; eligible: boolean; failedClassKeys?: string[]; reason: string | null; overridden?: boolean };
     effects?: CharacterProgressionEffectsPayload;
     reason?: string | null;
   };

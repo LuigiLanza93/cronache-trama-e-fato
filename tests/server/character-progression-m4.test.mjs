@@ -6,6 +6,7 @@ import {
   inspectCharacterProgressionM4Database,
   prepareCharacterProgressionPreview,
   progressionRequestSignature,
+  readActiveCharacterClassRule,
 } from "../../server.js";
 
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite");
@@ -30,6 +31,7 @@ function snapshot({
       slug: "mira",
       characterType,
       basicInfo: { characterName: "Mira", class: "Guerriero", level },
+      abilityScores: { strength: 14, dexterity: 12, constitution: 14, intelligence: 14, wisdom: 12, charisma: 10 },
     },
     progression: {
       source: "STRUCTURED",
@@ -145,9 +147,29 @@ describe("M4 progression preview contract", () => {
     expect(result.subclassOptions).not.toContainEqual(expect.objectContaining({ key: "school-of-evocation" }));
   });
 
-  it("blocks multiclass, PNG, stale revisions, and subclass replacement", () => {
-    expect(() => prepareCharacterProgressionPreview(snapshot(), { targetClassKey: "wizard" }))
-      .toThrow(expect.objectContaining({ code: "MULTICLASS_NOT_ENABLED", statusCode: 422 }));
+  it("enables multiclass while still blocking PNG, stale revisions, and subclass replacement", () => {
+    expect(prepareCharacterProgressionPreview(snapshot(), { targetClassKey: "wizard" })).toMatchObject({
+      mode: "ADD_NEW_CLASS",
+      status: "READY",
+      canApply: true,
+      prerequisites: { status: "ELIGIBLE", eligible: true },
+      classesAfter: [{ classKey: "fighter", level: 1 }, { classKey: "wizard", level: 1 }],
+    });
+    const ineligible = snapshot();
+    ineligible.state.abilityScores.intelligence = 8;
+    expect(prepareCharacterProgressionPreview(ineligible, { targetClassKey: "wizard" })).toMatchObject({
+      status: "MULTICLASS_PREREQUISITES_FAILED",
+      canApply: false,
+      prerequisites: { status: "INELIGIBLE", failedClassKeys: ["wizard"] },
+    });
+    expect(prepareCharacterProgressionPreview(ineligible, {
+      targetClassKey: "wizard",
+      overrideReason: "Eccezione narrativa concordata con il tavolo",
+    })).toMatchObject({
+      status: "READY",
+      canApply: true,
+      prerequisites: { status: "INELIGIBLE", overridden: true },
+    });
     expect(() => prepareCharacterProgressionPreview(snapshot({ characterType: "png" }), { targetClassKey: "fighter" }))
       .toThrow(expect.objectContaining({ code: "CHARACTER_TYPE_UNSUPPORTED", statusCode: 422 }));
     expect(() => prepareCharacterProgressionPreview(snapshot(), {
@@ -169,6 +191,17 @@ describe("M4 progression preview contract", () => {
     })).toThrow(expect.objectContaining({ code: "SUBCLASS_CHANGE_NOT_ALLOWED", statusCode: 422 }));
   });
 
+  it("binds the motivated override to the durable idempotency signature", () => {
+    const request = {
+      targetClassKey: "wizard",
+      expectedRevision: "revision-1",
+      expectedProgressionRevision: 0,
+    };
+    expect(progressionRequestSignature("mira", request, "dm")).not.toBe(
+      progressionRequestSignature("mira", { ...request, overrideReason: "Eccezione" }, "dm"),
+    );
+  });
+
   it("rejects legacy or unresolved progression state", () => {
     const legacy = snapshot();
     legacy.progression = {
@@ -184,6 +217,23 @@ describe("M4 progression preview contract", () => {
 });
 
 describe("M4 progression schema capability", () => {
+  it("selects a new class only from the active ruleset version", () => {
+    const database = new DatabaseSync(":memory:");
+    databases.push(database);
+    database.exec(`
+      CREATE TABLE "ClassRule" (
+        id TEXT PRIMARY KEY, classKey TEXT, rulesetId TEXT, rulesetVersion TEXT,
+        isManual INTEGER, updatedAt TEXT
+      );
+      INSERT INTO "ClassRule" VALUES
+        ('active', 'wizard', 'srd-5.1-2014', '5.1', 0, '2026-01-01'),
+        ('other-version', 'wizard', 'srd-5.1-2014', '2024', 0, '2027-01-01'),
+        ('manual', 'wizard', 'srd-5.1-2014', '5.1', 1, '2028-01-01');
+    `);
+    expect(readActiveCharacterClassRule(database, "wizard")?.id).toBe("active");
+    expect(readActiveCharacterClassRule(database, "custom")).toBeNull();
+  });
+
   it("keeps the M4 writer disabled until the complete history table is present", () => {
     const database = new DatabaseSync(":memory:");
     databases.push(database);

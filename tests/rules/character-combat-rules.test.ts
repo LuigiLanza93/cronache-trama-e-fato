@@ -8,6 +8,30 @@ import {
 } from "../../src/lib/character-combat-rules";
 
 describe("resolveWeaponProficiency", () => {
+  it("uses multiclass-entry grants without granting initial-class-only armor", () => {
+    const fighterWizard = {
+      basicInfo: { class: "Mago" },
+      classes: [
+        { classKey: "wizard", label: "Mago", isPrimary: true },
+        { classKey: "fighter", label: "Guerriero", isPrimary: false },
+      ],
+    };
+    expect(resolveWeaponProficiency(fighterWizard, { name: "Spada lunga", weaponProficiencyGroup: "MARTIAL" }))
+      .toMatchObject({ known: true, proficient: true, group: "MARTIAL" });
+    expect(resolveArmorProficiency(fighterWizard, "MEDIUM"))
+      .toMatchObject({ known: true, proficient: true, category: "MEDIUM" });
+    expect(resolveArmorProficiency(fighterWizard, "HEAVY"))
+      .toMatchObject({ known: true, proficient: false, category: "HEAVY" });
+    expect(resolveCharacterProficiencySummary(fighterWizard).entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: "WEAPON_GROUP",
+        target: "MARTIAL",
+        sources: ["Ingresso multiclasse: Guerriero"],
+      }),
+      expect.objectContaining({ kind: "ARMOR_CATEGORY", target: "MEDIUM" }),
+    ]));
+  });
+
   it("applies the current single-class group proficiency without granting every weapon", () => {
     expect(
       resolveWeaponProficiency(

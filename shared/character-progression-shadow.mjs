@@ -29,7 +29,6 @@ export const CHARACTER_PROGRESSION_SCHEMA_OBJECTS = Object.freeze({
     "CharacterClass_characterId_classKey_key",
     "CharacterClass_characterId_sortOrder_key",
     "CharacterClass_one_primary_key",
-    "CharacterClass_m3_single_class_key",
   ]),
   trigger: Object.freeze([
     "CharacterClass_class_key_matches_rule_insert",
@@ -205,8 +204,8 @@ export function resolveCharacterProgressionShadow({
     if (!unchanged) diagnostics.push(diagnostic("LEGACY_PROJECTION_CHANGED_AFTER_BACKFILL"));
   }
 
-  if (!Array.isArray(classRows) || classRows.length !== 1) {
-    diagnostics.push(diagnostic("M3_CHARACTER_CLASS_COUNT_INVALID", {
+  if (!Array.isArray(classRows) || classRows.length < 1) {
+    diagnostics.push(diagnostic("CHARACTER_CLASS_COUNT_INVALID", {
       count: Array.isArray(classRows) ? classRows.length : 0,
     }));
     return fallback();
@@ -214,54 +213,68 @@ export function resolveCharacterProgressionShadow({
 
   const primaryCount = classRows.filter((row) => Number(row.isPrimary) === 1).length;
   if (primaryCount !== 1) diagnostics.push(diagnostic("M3_PRIMARY_CLASS_COUNT_INVALID", { count: primaryCount }));
-  const row = classRows[0];
-  if (row.characterId !== character?.id) diagnostics.push(diagnostic("CHARACTER_CLASS_OWNER_MISMATCH"));
-  if (Number(row.sortOrder) !== 0) diagnostics.push(diagnostic("M3_CHARACTER_CLASS_ORDER_INVALID"));
-  const classLevel = strictLevel(row.level);
-  if (classLevel == null) diagnostics.push(diagnostic("CHARACTER_CLASS_LEVEL_INVALID"));
-  if (!row.ruleId) diagnostics.push(diagnostic("CLASS_RULE_MISSING"));
-  if (row.ruleId && row.classRuleId !== row.ruleId) diagnostics.push(diagnostic("CLASS_RULE_REFERENCE_MISMATCH"));
-  if (row.ruleClassKey && row.classKey !== row.ruleClassKey) diagnostics.push(diagnostic("CLASS_RULE_KEY_MISMATCH"));
+  const primaryRow = classRows.find((row) => Number(row.isPrimary) === 1) ?? classRows[0];
+  const levels = [];
+  const seenOrders = new Set();
+  for (const row of classRows) {
+    if (row.characterId !== character?.id) diagnostics.push(diagnostic("CHARACTER_CLASS_OWNER_MISMATCH"));
+    const sortOrder = Number(row.sortOrder);
+    if (!Number.isInteger(sortOrder) || sortOrder < 0 || seenOrders.has(sortOrder)) {
+      diagnostics.push(diagnostic("M3_CHARACTER_CLASS_ORDER_INVALID"));
+    }
+    seenOrders.add(sortOrder);
+    const classLevel = strictLevel(row.level);
+    levels.push(classLevel);
+    if (classLevel == null) diagnostics.push(diagnostic("CHARACTER_CLASS_LEVEL_INVALID"));
+    if (!row.ruleId) diagnostics.push(diagnostic("CLASS_RULE_MISSING"));
+    if (row.ruleId && row.classRuleId !== row.ruleId) diagnostics.push(diagnostic("CLASS_RULE_REFERENCE_MISMATCH"));
+    if (row.ruleClassKey && row.classKey !== row.ruleClassKey) diagnostics.push(diagnostic("CLASS_RULE_KEY_MISMATCH"));
+    if (row.subclassRuleId) {
+      if (!row.subclassRuleIdResolved) diagnostics.push(diagnostic("SUBCLASS_RULE_MISSING"));
+      if (row.subclassRuleIdResolved && row.subclassRuleClassRuleId !== row.classRuleId) {
+        diagnostics.push(diagnostic("SUBCLASS_RULE_CLASS_MISMATCH"));
+      }
+      if (!["SELECTED", "MANUAL"].includes(String(row.subclassStatus))) {
+        diagnostics.push(diagnostic("SUBCLASS_STATUS_INCOHERENT"));
+      }
+    } else if (String(row.subclassStatus) === "SELECTED") {
+      diagnostics.push(diagnostic("SUBCLASS_SELECTION_MISSING"));
+    }
+  }
+  const orderedValues = [...seenOrders].sort((left, right) => left - right);
+  if (orderedValues.some((value, index) => value !== index)) {
+    diagnostics.push(diagnostic("M3_CHARACTER_CLASS_ORDER_INVALID"));
+  }
 
-  const aliases = row.ruleId ? aliasesForRule(row, diagnostics) : new Set();
+  const aliases = primaryRow?.ruleId ? aliasesForRule(primaryRow, diagnostics) : new Set();
   const columnClassAlias = normalizedAlias(character?.className);
   const jsonClassAlias = normalizedAlias(basicInfo?.class);
   if (!columnClassAlias || !aliases.has(columnClassAlias)) diagnostics.push(diagnostic("LEGACY_COLUMN_CLASS_MISMATCH"));
   if (!jsonClassAlias || !aliases.has(jsonClassAlias)) diagnostics.push(diagnostic("LEGACY_JSON_CLASS_MISMATCH"));
   const columnLevel = strictLevel(character?.level);
   const jsonLevel = strictLevel(basicInfo?.level);
-  if (classLevel == null || columnLevel !== classLevel) diagnostics.push(diagnostic("LEGACY_COLUMN_LEVEL_MISMATCH"));
-  if (classLevel == null || jsonLevel !== classLevel) diagnostics.push(diagnostic("LEGACY_JSON_LEVEL_MISMATCH"));
-
-  if (row.subclassRuleId) {
-    if (!row.subclassRuleIdResolved) diagnostics.push(diagnostic("SUBCLASS_RULE_MISSING"));
-    if (row.subclassRuleIdResolved && row.subclassRuleClassRuleId !== row.classRuleId) {
-      diagnostics.push(diagnostic("SUBCLASS_RULE_CLASS_MISMATCH"));
-    }
-    if (!["SELECTED", "MANUAL"].includes(String(row.subclassStatus))) {
-      diagnostics.push(diagnostic("SUBCLASS_STATUS_INCOHERENT"));
-    }
-  } else if (String(row.subclassStatus) === "SELECTED") {
-    diagnostics.push(diagnostic("SUBCLASS_SELECTION_MISSING"));
-  }
+  const totalLevel = levels.every((level) => level != null) ? levels.reduce((sum, level) => sum + level, 0) : null;
+  if (totalLevel == null || totalLevel > 20) diagnostics.push(diagnostic("CHARACTER_TOTAL_LEVEL_INVALID"));
+  if (totalLevel == null || columnLevel !== totalLevel) diagnostics.push(diagnostic("LEGACY_COLUMN_LEVEL_MISMATCH"));
+  if (totalLevel == null || jsonLevel !== totalLevel) diagnostics.push(diagnostic("LEGACY_JSON_LEVEL_MISMATCH"));
 
   if (diagnostics.length > 0) return fallback();
 
   return {
     source: "STRUCTURED",
-    classes: [{
+    classes: classRows.map((row, index) => ({
       classKey: row.classKey,
       classRuleId: row.classRuleId,
-      level: classLevel,
+      level: levels[index],
       sortOrder: Number(row.sortOrder),
-      isPrimary: true,
+      isPrimary: Number(row.isPrimary) === 1,
       label: row.ruleLabelIt || row.ruleLabelEn || row.classKey,
       subclassRuleId: row.subclassRuleId ?? null,
       subclassKey: row.subclassKey ?? null,
       subclassStatus: row.subclassStatus,
       source: row.classSource,
-    }],
-    totalLevel: classLevel,
+    })),
+    totalLevel,
     progressionRevision,
     diagnostics: [],
   };

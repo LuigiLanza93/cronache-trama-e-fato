@@ -215,6 +215,8 @@ Va costruito dopo il Gate tecnico della progressione. La creazione guidata non e
 
 ## 1.8C — Estensione multiclasse
 
+**Stato:** in sviluppo su `dev`; checkpoint iniziale MC1 implementato il 2026-09-23 e ancora da collaudare. Sono presenti schema plurale, preview/apply, prerequisiti/override, derivati e competenze automatiche armi/armature. Restano aperti i contenuti M8 strutturati per scelte di abilita/strumenti, incantesimi e privilegi/cumulo.
+
 ### Dipendenza
 
 E l'obiettivo operativo prioritario per il prossimo level-up reale. Parte dopo il collaudo della milestone monoclasse, ma appartiene allo stesso percorso di consegna e non introduce un secondo motore: estende la stessa preview/apply scegliendo se incrementare una classe posseduta o prendere il primo livello in una nuova classe.

@@ -23,6 +23,7 @@ import {
   SUBCLASS_RULES,
   normalizeClassKey,
   normalizeSubclassKey,
+  evaluateMulticlassPrerequisites,
   resolveClassAdvancementPreview,
   resolveProgressionSummary,
 } from "./shared/character-class-rules.mjs";
@@ -1522,6 +1523,23 @@ export function inspectCharacterProgressionM4Database(database) {
 
 function getCharacterProgressionM4Inspection() {
   return inspectCharacterProgressionM4Database(sqlite);
+}
+
+export function readActiveCharacterClassRule(database, classKey) {
+  return database.prepare(`
+    SELECT * FROM "ClassRule"
+    WHERE classKey = ? AND rulesetId = ? AND rulesetVersion = ? AND isManual = 0
+    ORDER BY updatedAt DESC LIMIT 1
+  `).get(classKey, CHARACTER_RULESET.id, CHARACTER_RULESET.version) ?? null;
+}
+
+export function inspectCharacterProgressionMc1Database(database) {
+  const legacySingleClassIndex = database.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type = 'index' AND name = 'CharacterClass_m3_single_class_key'
+    LIMIT 1
+  `).get();
+  return { ready: !legacySingleClassIndex, legacySingleClassIndex: Boolean(legacySingleClassIndex) };
 }
 
 const CHARACTER_VITALS_RESOURCES_SCHEMA_COLUMNS = Object.freeze({
@@ -11216,6 +11234,10 @@ function normalizeProgressionRequest(body, {
     expectedProgressionRevision = value;
   }
   const requestId = requireRequestId ? normalizeOperationRequestId(body?.requestId) : undefined;
+  const overrideReason = typeof body?.overrideReason === "string" ? body.overrideReason.trim() : "";
+  if (overrideReason.length > 500) {
+    throw createProgressionError("VALIDATION_ERROR", "La motivazione override non puo superare 500 caratteri.", 400);
+  }
   if (requireRequestId && !requestId) {
     throw createProgressionError("VALIDATION_ERROR", "Identificativo della richiesta non valido.", 400);
   }
@@ -11239,6 +11261,7 @@ function normalizeProgressionRequest(body, {
     ...(expectedRevision !== undefined ? { expectedRevision } : {}),
     ...(expectedProgressionRevision !== undefined ? { expectedProgressionRevision } : {}),
     ...(requestId ? { requestId } : {}),
+    ...(overrideReason ? { overrideReason } : {}),
   };
 }
 
@@ -11310,7 +11333,12 @@ function projectProgressionResourcePools(existingPools, progressionSummary, targ
     ...["SPELLCASTING", "PACT_MAGIC"].map((kind) => byKind.get(kind)).filter(Boolean),
   ].map((pool) => ({
     ...pool,
-    sourceClassKey: targetClassKey,
+    sourceClassKey: pool.kind === "SPELLCASTING"
+      && progressionSummary?.spellcastingSlots?.activeSourceClassKeys?.includes(targetClassKey)
+      ? targetClassKey
+      : pool.kind === "PACT_MAGIC" && targetClassKey === "warlock"
+        ? targetClassKey
+        : null,
   }));
 }
 
@@ -11393,6 +11421,18 @@ function progressionSubclassOptions(classKey) {
     .sort((left, right) => left.key.localeCompare(right.key));
 }
 
+function progressionClassOptions(classes) {
+  const owned = new Set((classes ?? []).map((entry) => entry.classKey));
+  return Object.values(CLASS_RULES)
+    .map((rule) => ({
+      key: rule.key,
+      label: rule.labels?.it ?? rule.labels?.en ?? rule.key,
+      mode: owned.has(rule.key) ? "INCREMENT_EXISTING" : "ADD_NEW_CLASS",
+      currentLevel: classes?.find((entry) => entry.classKey === rule.key)?.level ?? 0,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label, "it"));
+}
+
 export function prepareCharacterProgressionPreview(snapshot, request) {
   if (!snapshot?.state) {
     throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
@@ -11433,28 +11473,12 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
       snapshot,
     );
   }
-  if (progression.classes.length !== 1) {
-    throw createProgressionError(
-      "MULTICLASS_NOT_ENABLED",
-      "M4 consente soltanto la progressione monoclasse.",
-      422,
-      snapshot,
-    );
-  }
-  const currentClass = progression.classes[0];
   const targetClassKey = normalizeClassKey(request.targetClassKey) ?? request.targetClassKey;
-  if (targetClassKey !== currentClass.classKey) {
-    throw createProgressionError(
-      "MULTICLASS_NOT_ENABLED",
-      "M4 consente di incrementare soltanto la classe gia posseduta.",
-      422,
-      snapshot,
-    );
-  }
+  const currentClass = progression.classes.find((entry) => entry.classKey === targetClassKey) ?? null;
   const requestedSubclassKey = request.targetSubclassKey;
   if (
     requestedSubclassKey !== undefined
-    && currentClass.subclassKey
+    && currentClass?.subclassKey
     && requestedSubclassKey !== currentClass.subclassKey
   ) {
     throw createProgressionError(
@@ -11474,9 +11498,13 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
     ? { targetSubclassKey: requestedSubclassKey }
     : {};
   const resolved = resolveClassAdvancementPreview(entries, targetClassKey, options);
+  const classOptions = progressionClassOptions(progression.classes);
+  const prerequisites = resolved.mode === "ADD_NEW_CLASS"
+    ? evaluateMulticlassPrerequisites(entries, targetClassKey, snapshot.state?.abilityScores ?? {})
+    : { status: "NOT_APPLICABLE", eligible: true, failedClassKeys: [], reason: null };
   const targetRule = CLASS_RULES[targetClassKey] ?? null;
   const targetClassAfter = resolved.classesAfter?.find((entry) => entry.classKey === targetClassKey) ?? null;
-  const subclassOptions = !currentClass.subclassKey
+  const subclassOptions = !currentClass?.subclassKey
     && Number.isInteger(targetRule?.subclassLevel)
     && Number(targetClassAfter?.level) >= targetRule.subclassLevel
     ? progressionSubclassOptions(targetClassKey)
@@ -11485,19 +11513,29 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
   if (effects?.status === "VITALS_NOT_READY") {
     return {
       ...resolved,
+      classOptions,
       subclassOptions,
       status: "VITALS_NOT_READY",
       canApply: false,
       reason: "Lo stato strutturato di PF e Dadi Vita non e pronto per la progressione.",
-      prerequisites: { status: "NOT_APPLICABLE", eligible: true, reason: null },
+      prerequisites,
       effects,
     };
   }
+  const overrideAccepted = prerequisites.status === "INELIGIBLE" && Boolean(request.overrideReason);
+  const prerequisiteBlocked = resolved.mode === "ADD_NEW_CLASS"
+    && prerequisites.status !== "ELIGIBLE"
+    && !overrideAccepted;
   return {
     ...resolved,
+    classOptions,
     subclassOptions,
-    canApply: resolved.canAdvance === true,
-    prerequisites: { status: "NOT_APPLICABLE", eligible: true, reason: null },
+    canApply: resolved.canAdvance === true && !prerequisiteBlocked,
+    prerequisites: { ...prerequisites, overridden: overrideAccepted },
+    ...(prerequisiteBlocked ? {
+      status: prerequisites.status === "MANUAL" ? "MULTICLASS_PREREQUISITES_MANUAL" : "MULTICLASS_PREREQUISITES_FAILED",
+      reason: prerequisites.reason,
+    } : {}),
     ...(effects ? { effects } : {}),
   };
 }
@@ -11508,6 +11546,7 @@ export function progressionRequestSignature(slug, request, actorId = null) {
     actorId: actorId == null ? null : String(actorId),
     targetClassKey: request.targetClassKey,
     targetSubclassKey: request.targetSubclassKey === undefined ? "__PRESERVE__" : request.targetSubclassKey,
+    overrideReason: request.overrideReason ?? null,
     expectedRevision: request.expectedRevision ?? null,
     expectedProgressionRevision: request.expectedProgressionRevision ?? null,
   });
@@ -11861,7 +11900,7 @@ function persistResourcePools(characterId, pools, now, { characterClassId = null
         WHERE poolId = ? AND tierKey NOT IN (${placeholders})
       `).run(row.id, ...tierKeys);
     }
-    if (sourceClassKey) {
+    if (sourceClassKey && projected.sourceClassKey === sourceClassKey) {
       sqlite.prepare(`
         INSERT INTO "CharacterResourcePoolSource" (
           id, poolId, characterClassId, sourceKey, sourceKind, ruleSnapshot, createdAt, updatedAt
@@ -14486,6 +14525,14 @@ async function start() {
           }
 
           const preview = prepareCharacterProgressionPreview(snapshot, request);
+          if (preview.mode === "ADD_NEW_CLASS" && !inspectCharacterProgressionMc1Database(sqlite).ready) {
+            throw createProgressionError(
+              "MULTICLASS_SCHEMA_NOT_READY",
+              "Applica prima la migrazione MC1 che abilita piu classi per personaggio.",
+              503,
+              snapshot,
+            );
+          }
           assertProgressionEffectsReady(preview);
           if (!preview.canApply) {
             const error = createProgressionError(
@@ -14498,13 +14545,15 @@ async function start() {
             throw error;
           }
 
-          const currentClass = snapshot.progression.classes[0];
-          const characterClassRow = sqlite.prepare(`
+          const currentClass = snapshot.progression.classes.find(
+            (entry) => entry.classKey === preview.targetClassKey,
+          ) ?? null;
+          const characterClassRow = currentClass ? sqlite.prepare(`
             SELECT * FROM "CharacterClass"
             WHERE characterId = ? AND classKey = ?
             LIMIT 1
-          `).get(characterRow.id, currentClass.classKey);
-          if (!characterClassRow) {
+          `).get(characterRow.id, currentClass.classKey) : null;
+          if (currentClass && !characterClassRow) {
             throw createProgressionError(
               "CHARACTER_CLASS_MISSING",
               "La classe strutturata del personaggio non e disponibile.",
@@ -14512,9 +14561,10 @@ async function start() {
               snapshot,
             );
           }
-          const classRule = sqlite.prepare(`
-            SELECT * FROM "ClassRule" WHERE id = ? AND classKey = ? LIMIT 1
-          `).get(currentClass.classRuleId, currentClass.classKey);
+          const classRule = currentClass
+            ? sqlite.prepare(`SELECT * FROM "ClassRule" WHERE id = ? AND classKey = ? LIMIT 1`)
+                .get(currentClass.classRuleId, currentClass.classKey)
+            : readActiveCharacterClassRule(sqlite, preview.targetClassKey);
           if (!classRule) {
             throw createProgressionError(
               "CLASS_RULE_MISSING",
@@ -14523,7 +14573,7 @@ async function start() {
               snapshot,
             );
           }
-          const classAfter = preview.classesAfter.find((entry) => entry.classKey === currentClass.classKey);
+          const classAfter = preview.classesAfter.find((entry) => entry.classKey === preview.targetClassKey);
           const subclassKey = classAfter?.subclassKey ?? null;
           const subclassRule = subclassKey
             ? sqlite.prepare(`
@@ -14541,7 +14591,10 @@ async function start() {
             );
           }
 
-          const primaryLabel = String(classRule.labelIt || classRule.labelEn || currentClass.classKey);
+          const primaryClass = snapshot.progression.classes.find((entry) => entry.isPrimary)
+            ?? snapshot.progression.classes[0];
+          const primaryLabel = String(primaryClass?.label || CLASS_RULES[primaryClass?.classKey]?.labels?.it
+            || current.basicInfo?.class || primaryClass?.classKey || "");
           let nextState = {
             ...current,
             basicInfo: {
@@ -14565,6 +14618,7 @@ async function start() {
               preview,
               currentClass,
               characterClassRow,
+              characterClassId: characterClassRow?.id ?? crypto.randomUUID(),
               classAfter,
               classRule,
               subclassRule,
@@ -14578,25 +14632,32 @@ async function start() {
           const meta = mutation.meta;
           if (meta.replay) return;
           const progressionRevisionAfter = meta.progressionRevisionBefore + 1;
-          const classLevelBefore = Number(meta.currentClass.level);
+          const classLevelBefore = meta.currentClass ? Number(meta.currentClass.level) : null;
           const classLevelAfter = Number(meta.classAfter.level);
           const subclassStatus = meta.subclassRule ? "SELECTED" : "NOT_YET_ELIGIBLE";
-          const classUpdate = sqlite.prepare(`
-            UPDATE "CharacterClass"
-            SET level = ?, subclassRuleId = ?, subclassStatus = ?, source = 'LEVEL_UP',
-                ruleSnapshot = ?, updatedByUserId = ?, updatedAt = ?
-            WHERE id = ? AND characterId = ? AND level = ?
-          `).run(
-            classLevelAfter,
-            meta.subclassRule?.id ?? null,
-            subclassStatus,
-            meta.classRule.ruleSnapshot,
-            req.user.id,
-            meta.appliedAt,
-            meta.characterClassRow.id,
-            characterRow.id,
-            classLevelBefore,
-          );
+          const classUpdate = meta.characterClassRow
+            ? sqlite.prepare(`
+                UPDATE "CharacterClass"
+                SET level = ?, subclassRuleId = ?, subclassStatus = ?, source = 'LEVEL_UP',
+                    ruleSnapshot = ?, updatedByUserId = ?, updatedAt = ?
+                WHERE id = ? AND characterId = ? AND level = ?
+              `).run(
+                classLevelAfter, meta.subclassRule?.id ?? null, subclassStatus,
+                meta.classRule.ruleSnapshot, req.user.id, meta.appliedAt,
+                meta.characterClassId, characterRow.id, classLevelBefore,
+              )
+            : sqlite.prepare(`
+                INSERT INTO "CharacterClass" (
+                  id, characterId, classRuleId, subclassRuleId, classKey, level, sortOrder,
+                  isPrimary, subclassStatus, source, ruleSnapshot, updatedByUserId, createdAt, updatedAt
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 'LEVEL_UP', ?, ?, ?, ?)
+              `).run(
+                meta.characterClassId, characterRow.id, meta.classRule.id,
+                meta.subclassRule?.id ?? null, meta.preview.targetClassKey, classLevelAfter,
+                Math.max(...snapshot.progression.classes.map((entry) => Number(entry.sortOrder)), -1) + 1,
+                subclassStatus, meta.classRule.ruleSnapshot,
+                req.user.id, meta.appliedAt, meta.appliedAt,
+              );
           if (classUpdate.changes !== 1) {
             throw createProgressionError(
               "PROGRESSION_REVISION_CONFLICT",
@@ -14650,14 +14711,20 @@ async function start() {
             }
             if (effects.resourcePools) {
               persistResourcePools(characterRow.id, effects.resourcePools.after, meta.appliedAt, {
-                characterClassId: meta.characterClassRow.id,
-                sourceClassKey: meta.currentClass.classKey,
+                characterClassId: meta.characterClassId,
+                sourceClassKey: meta.preview.targetClassKey,
               });
             }
           }
 
           const afterClass = {
-            ...meta.currentClass,
+            ...(meta.currentClass ?? {
+              classKey: meta.preview.targetClassKey,
+              classRuleId: meta.classRule.id,
+              sortOrder: Math.max(...snapshot.progression.classes.map((entry) => Number(entry.sortOrder)), -1) + 1,
+              isPrimary: false,
+              label: meta.classRule.labelIt || meta.classRule.labelEn || meta.preview.targetClassKey,
+            }),
             level: classLevelAfter,
             subclassRuleId: meta.subclassRule?.id ?? null,
             subclassKey: meta.subclassRule?.subclassKey ?? null,
@@ -14666,7 +14733,9 @@ async function start() {
           };
           const afterProgression = {
             source: "STRUCTURED",
-            classes: [afterClass],
+            classes: meta.currentClass
+              ? snapshot.progression.classes.map((entry) => entry.classKey === afterClass.classKey ? afterClass : entry)
+              : [...snapshot.progression.classes, afterClass],
             totalLevel: meta.preview.after.characterLevel,
             progressionRevision: progressionRevisionAfter,
             diagnostics: [],
@@ -14751,8 +14820,8 @@ async function start() {
             progressionRevisionAfter, meta.characterRevisionBefore, characterRevisionAfter,
             meta.classRule.rulesetId || CHARACTER_RULESET.id,
             meta.classRule.rulesetVersion || CHARACTER_RULESET.version,
-            meta.preview.effects ? "rest-v1" : "m4-v1", requestSnapshot,
-            beforeSnapshot, afterSnapshot, ruleSnapshot, JSON.stringify(result), null, req.user.id,
+            "mc1-v1", requestSnapshot,
+            beforeSnapshot, afterSnapshot, ruleSnapshot, JSON.stringify(result), request.overrideReason ?? null, req.user.id,
             appliedBySnapshot,
             meta.preview.effects?.hitPoints?.hitDieSize ?? null,
             meta.preview.effects?.hitPoints?.method ?? null,

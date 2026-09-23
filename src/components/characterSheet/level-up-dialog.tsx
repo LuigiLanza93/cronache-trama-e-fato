@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   applyCharacterProgressionRequest,
   previewCharacterProgressionRequest,
@@ -75,6 +76,8 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
   const [open, setOpen] = useState(false);
   const [previewResponse, setPreviewResponse] = useState<CharacterProgressionApiResponse | null>(null);
   const [selectedSubclass, setSelectedSubclass] = useState<string | undefined>(undefined);
+  const [selectedClassKey, setSelectedClassKey] = useState<string>(() => characterData.classes?.find((entry) => entry.isPrimary)?.classKey ?? characterData.classes?.[0]?.classKey ?? "");
+  const [overrideReason, setOverrideReason] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,12 +85,12 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [pendingLevelUp, setPendingLevelUp] = useState<PendingLevelUp | null>(() => readPendingLevelUp(characterData.slug));
   const requestIdRef = useRef<string | null>(null);
+  const previewRequestRef = useRef(0);
 
-  const ownedClass = useMemo(
-    () => characterData.progressionStatus === "READY" && characterData.classes?.length === 1
-      ? characterData.classes[0]
-      : null,
-    [characterData.classes, characterData.progressionStatus],
+  const progressionReady = characterData.progressionStatus === "READY" && Boolean(characterData.classes?.length);
+  const targetClass = useMemo(
+    () => characterData.classes?.find((entry) => entry.classKey === selectedClassKey) ?? null,
+    [characterData.classes, selectedClassKey],
   );
   const preview = previewResponse?.preview ?? null;
   const requiresSubclass = preview?.status === "SUBCLASS_REQUIRED";
@@ -97,6 +100,7 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
   const reset = () => {
     setPreviewResponse(null);
     setSelectedSubclass(undefined);
+    setOverrideReason("");
     setError(null);
     setRefreshRequired(false);
     setRefreshFailed(false);
@@ -110,24 +114,29 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
     const pending = readPendingLevelUp(characterData.slug);
     setOpen(false);
     setPendingLevelUp(pending);
+    setSelectedClassKey(characterData.classes?.find((entry) => entry.isPrimary)?.classKey ?? characterData.classes?.[0]?.classKey ?? "");
     requestIdRef.current = pending?.requestId ?? null;
   }, [characterData.slug]);
 
-  const loadPreview = async (subclassKey?: string) => {
-    if (!ownedClass) return;
+  const loadPreview = async (subclassKey?: string, classKey = selectedClassKey, reason = overrideReason) => {
+    if (!progressionReady || !classKey) return;
+    const previewRequest = ++previewRequestRef.current;
     setLoadingPreview(true);
     setError(null);
     try {
       const response = await previewCharacterProgressionRequest(characterData.slug, {
-        targetClassKey: ownedClass.classKey,
+        targetClassKey: classKey,
         ...(subclassKey !== undefined ? { targetSubclassKey: subclassKey } : {}),
+        ...(reason.trim() ? { overrideReason: reason.trim() } : {}),
         ...(characterData.revision ? { expectedRevision: characterData.revision } : {}),
         ...(Number.isInteger(characterData.progressionRevision) ? { expectedProgressionRevision: characterData.progressionRevision } : {}),
       });
+      if (previewRequest !== previewRequestRef.current) return;
       setPreviewResponse(response);
       setRefreshRequired(false);
       setRefreshFailed(false);
     } catch (caught) {
+      if (previewRequest !== previewRequestRef.current) return;
       setPreviewResponse(null);
       const message = caught instanceof Error ? caught.message : "Impossibile calcolare l'anteprima del level-up.";
       const status = typeof caught === "object" && caught ? (caught as { status?: number }).status : undefined;
@@ -141,7 +150,7 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
           : `${message} Non è stato possibile ricaricare la scheda: ricarica la pagina prima di continuare.`);
       } else setError(message);
     } finally {
-      setLoadingPreview(false);
+      if (previewRequest === previewRequestRef.current) setLoadingPreview(false);
     }
   };
 
@@ -156,11 +165,20 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
     void loadPreview(key);
   };
 
+  const handleClass = (key: string) => {
+    setSelectedClassKey(key);
+    setSelectedSubclass(undefined);
+    setOverrideReason("");
+    requestIdRef.current = null;
+    void loadPreview(undefined, key, "");
+  };
+
   const apply = async () => {
-    if (!ownedClass) return;
+    if (!progressionReady || !selectedClassKey) return;
     const request = pendingLevelUp ?? (previewResponse && preview?.canApply && hasRevisionTokens ? {
-      targetClassKey: ownedClass.classKey,
+      targetClassKey: selectedClassKey,
       ...(selectedSubclass !== undefined ? { targetSubclassKey: selectedSubclass } : {}),
+      ...(overrideReason.trim() ? { overrideReason: overrideReason.trim() } : {}),
       requestId: requestIdRef.current ?? createRequestId(),
       expectedRevision: previewResponse.revision,
       expectedProgressionRevision: previewResponse.progressionRevision,
@@ -213,8 +231,10 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
     }
   };
 
-  const currentSubclass = ownedClass?.subclass?.label ?? ownedClass?.subclass?.subclassKey ?? "Nessuna";
-  const classAfter = Array.isArray(preview?.classesAfter) ? preview.classesAfter[0] : null;
+  const currentSubclass = targetClass?.subclass?.label ?? targetClass?.subclass?.subclassKey ?? "Nessuna";
+  const classAfter = Array.isArray(preview?.classesAfter)
+    ? preview.classesAfter.find((entry) => entry.classKey === preview.targetClassKey) ?? null
+    : null;
   const nextSubclass = preview?.subclassOptions.find((option) => option.key === classAfter?.subclassKey)?.label ?? currentSubclass;
   const effects = preview?.effects;
 
@@ -223,16 +243,17 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
       <ChevronUp className="h-4 w-4" /> Aumenta livello
     </Button>
     <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-      <DialogHeader><DialogTitle>Aumenta livello{ownedClass ? ` — ${ownedClass.label ?? ownedClass.classKey}` : ""}</DialogTitle><DialogDescription>Anteprima autorevole prima della conferma. L'operazione incrementa solo la classe già posseduta.</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>Aumenta livello</DialogTitle><DialogDescription>Scegli se avanzare una classe posseduta o acquisire il primo livello in una nuova classe.</DialogDescription></DialogHeader>
       {loadingPreview ? <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Calcolo dell'anteprima…</div> : null}
       {error ? <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div> : null}
       {pendingLevelUp && !error ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Una conferma precedente ha avuto un esito di rete incerto. Usa “Riprova stessa conferma”: verranno riutilizzati esattamente richiesta e identificativo originali.</div> : null}
-      {!ownedClass ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Level-up guidato L1 non applicabile: la progressione strutturata è assente/incompleta oppure il personaggio non è monoclasse.</div> : null}
+      {!progressionReady ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Level-up guidato non applicabile: la progressione strutturata è assente o incompleta.</div> : null}
+      {progressionReady && !pendingLevelUp ? <div className="space-y-2"><Label htmlFor="level-up-class">Classe da avanzare</Label><Select value={selectedClassKey} onValueChange={handleClass} disabled={loadingPreview || applying}><SelectTrigger id="level-up-class"><SelectValue placeholder="Scegli una classe" /></SelectTrigger><SelectContent>{(preview?.classOptions ?? []).map((option) => <SelectItem key={option.key} value={option.key}>{option.label}{option.mode === "ADD_NEW_CLASS" ? " — nuova classe" : ` — livello ${option.currentLevel}`}</SelectItem>)}</SelectContent></Select></div> : null}
       {preview && !preview.after ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">{preview.reason ?? "Il level-up non è applicabile allo stato corrente."}</div> : null}
       {preview && preview.after ? <div className="space-y-4">
         <div className="rounded-lg border bg-muted/30 p-3">
           <PreviewRow label="Livello totale" before={preview.before.characterLevel} after={preview.after.characterLevel}/>
-          <PreviewRow label="Livello classe" before={ownedClass?.level ?? "—"} after={classAfter?.level ?? "—"}/>
+          <PreviewRow label="Livello classe" before={targetClass?.level ?? 0} after={classAfter?.level ?? "—"}/>
           <PreviewRow label="Bonus competenza" before={`+${preview.before.proficiencyBonus}`} after={`+${preview.after.proficiencyBonus}`}/>
           <PreviewRow label="Dadi Vita" before={diceText(preview.before.hitDicePools)} after={diceText(preview.after.hitDicePools)}/>
           <PreviewRow label="Slot incantesimi" before={slotsText(preview.before.spellcastingSlots.slots)} after={slotsText(preview.after.spellcastingSlots.slots)}/>
@@ -243,12 +264,13 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
         {effects?.resourcePools ? <div className="rounded-lg border p-3 text-sm"><p className="font-medium">Pool risorse</p><p className="text-muted-foreground">{resourceText(effects.resourcePools.before)} → {resourceText(effects.resourcePools.after)}</p></div> : null}
         {hasDeferredEffects ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Level-up bloccato finché M5/M6 non sono pronti: effetti differiti — {previewResponse?.deferredEffects.join(", ")}.</div> : null}
         <div className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Competenze, privilegi e incantesimi non censiti vengono preservati: completali o verificali manualmente dopo il level-up.</div>
+        {preview.mode === "ADD_NEW_CLASS" ? <div className="rounded-lg border p-3 text-sm"><p className="font-medium">Prerequisiti multiclasse</p><p className="text-muted-foreground">{preview.prerequisites?.eligible || preview.prerequisites?.overridden ? "Verificati." : preview.prerequisites?.reason ?? "Verifica manuale richiesta."}</p>{preview.prerequisites?.status === "INELIGIBLE" && !preview.prerequisites.overridden ? <div className="mt-3 space-y-2"><Label htmlFor="level-up-override">Override DM motivato</Label><Textarea id="level-up-override" value={overrideReason} maxLength={500} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Motivazione obbligatoria per ignorare i prerequisiti"/><Button type="button" variant="outline" onClick={() => void loadPreview(selectedSubclass, selectedClassKey, overrideReason)} disabled={!overrideReason.trim() || loadingPreview || applying}>Ricalcola con override</Button></div> : null}</div> : null}
         {requiresSubclass ? <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-50/60 p-3"><Label htmlFor="level-up-subclass">Sottoclasse obbligatoria</Label>{preview.subclassOptions.length ? <Select value={selectedSubclass} onValueChange={handleSubclass} disabled={loadingPreview || applying}><SelectTrigger id="level-up-subclass"><SelectValue placeholder="Scegli una sottoclasse" /></SelectTrigger><SelectContent>{preview.subclassOptions.map((option) => <SelectItem key={option.key} value={option.key}>{option.label}</SelectItem>)}</SelectContent></Select> : <p className="text-sm text-amber-950">Nessuna opzione autorevole disponibile: è richiesto un passaggio manuale.</p>}</div> : null}
         {preview.status === "MANUAL" || preview.subclassEligibility?.status === "MANUAL" ? <div className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Passaggio manuale richiesto: {preview.reason ?? preview.subclassEligibility?.reason ?? "regole non risolte dal contratto."}</div> : null}
         {!preview.canApply && preview.status !== "MANUAL" ? <div className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">{preview.reason ?? "Il level-up non è ancora applicabile."}</div> : null}
       </div> : null}
       {refreshRequired ? <p className="text-sm text-muted-foreground">{refreshFailed ? "Ricarica la pagina prima di creare una nuova anteprima." : "L'anteprima non è più valida. Usa “Aggiorna anteprima” per continuare."}</p> : null}
-      <DialogFooter><Button type="button" variant="outline" onClick={() => void loadPreview(selectedSubclass)} disabled={!ownedClass || refreshFailed || loadingPreview || applying || Boolean(pendingLevelUp)}>Aggiorna anteprima</Button>{pendingLevelUp ? <Button type="button" onClick={() => void apply()} disabled={applying}>{applying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applicazione…</> : "Riprova stessa conferma"}</Button> : <Button type="button" onClick={() => void apply()} disabled={!ownedClass || !preview?.canApply || !hasRevisionTokens || hasDeferredEffects || loadingPreview || applying || refreshRequired}>{applying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applicazione…</> : "Conferma level-up"}</Button>}</DialogFooter>
+      <DialogFooter><Button type="button" variant="outline" onClick={() => void loadPreview(selectedSubclass)} disabled={!progressionReady || !selectedClassKey || refreshFailed || loadingPreview || applying || Boolean(pendingLevelUp)}>Aggiorna anteprima</Button>{pendingLevelUp ? <Button type="button" onClick={() => void apply()} disabled={applying}>{applying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applicazione…</> : "Riprova stessa conferma"}</Button> : <Button type="button" onClick={() => void apply()} disabled={!progressionReady || !preview?.canApply || !hasRevisionTokens || hasDeferredEffects || loadingPreview || applying || refreshRequired}>{applying ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Applicazione…</> : "Conferma level-up"}</Button>}</DialogFooter>
     </DialogContent>
   </Dialog>;
 }
