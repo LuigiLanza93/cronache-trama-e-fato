@@ -105,6 +105,7 @@ import { useAuth } from "@/components/auth-provider";
 import { useGameSession } from "@/components/game-session-provider";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
+import LevelUpDialog from "@/components/characterSheet/level-up-dialog";
 import AbilityScores from "@/components/characterSheet/ability-scores";
 import Proficiencies from "@/components/characterSheet/proficiencies";
 import CombatStats from "@/components/characterSheet/combat-stats";
@@ -289,6 +290,16 @@ interface Character {
       maximum: number;
       used: number;
     }>;
+  }>;
+  revision?: string;
+  progressionRevision?: number;
+  progressionStatus?: string;
+  classes?: Array<{
+    classKey: string;
+    label?: string;
+    level: number;
+    isPrimary?: boolean;
+    subclass?: { subclassKey?: string | null; label?: string | null } | null;
   }>;
   basicInfo: {
     characterName: string;
@@ -2581,6 +2592,19 @@ const CharacterSheet = () => {
           monsterCompendiumHref="/compendium/monsters"
           makeChangeHandler={makeChangeHandler}
           canEdit={canModifyCharacter}
+          levelUpAction={
+            user?.role === "dm" && characterData.characterType === "pg" ? (
+              <LevelUpDialog
+                key={characterData.slug}
+                characterData={characterData}
+                onApplied={async () => {
+                  const slug = characterData.slug;
+                  const refreshed = await fetchCharacter(slug);
+                  setCharacterData((current) => current?.slug === slug ? refreshed as unknown as Character : current);
+                }}
+              />
+            ) : null
+          }
           layoutActions={
             !canModifyCharacter ? null : layoutEditMode ? (
               <div className="flex items-center gap-2">

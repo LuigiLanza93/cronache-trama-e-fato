@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  assertProgressionEffectsReady,
   inspectCharacterProgressionM4Database,
   prepareCharacterProgressionPreview,
   progressionRequestSignature,
@@ -50,6 +51,18 @@ function snapshot({
 }
 
 describe("M4 progression preview contract", () => {
+  it("blocks apply when any M5/M6 derived effect is deferred", () => {
+    expect(() => assertProgressionEffectsReady({ effects: null })).toThrowError(
+      expect.objectContaining({
+        code: "PROGRESSION_EFFECTS_NOT_READY",
+        statusCode: 503,
+      }),
+    );
+    expect(() => assertProgressionEffectsReady({
+      effects: { hitPoints: {}, hitDicePools: {}, resourcePools: {} },
+    })).not.toThrow();
+  });
+
   it("uses the lowercase SHA-256 signature required by the durable history schema", () => {
     const signature = progressionRequestSignature("mira", {
       targetClassKey: "fighter",
@@ -84,6 +97,7 @@ describe("M4 progression preview contract", () => {
       canApply: true,
       mode: "INCREMENT_EXISTING",
       targetClassKey: "fighter",
+      subclassOptions: [],
       before: { characterLevel: 1 },
       after: { characterLevel: 2 },
       prerequisites: { status: "NOT_APPLICABLE", eligible: true },
@@ -93,7 +107,15 @@ describe("M4 progression preview contract", () => {
   it("requires a valid subclass at the class threshold", () => {
     const wizard = snapshot({ classKey: "wizard", level: 1 });
     expect(prepareCharacterProgressionPreview(wizard, { targetClassKey: "wizard" }))
-      .toMatchObject({ status: "SUBCLASS_REQUIRED", canApply: false });
+      .toMatchObject({
+        status: "SUBCLASS_REQUIRED",
+        canApply: false,
+        subclassOptions: [{
+          key: "school-of-evocation",
+          label: "Scuola di Invocazione",
+          classKey: "wizard",
+        }],
+      });
     expect(prepareCharacterProgressionPreview(wizard, {
       targetClassKey: "wizard",
       targetSubclassKey: "school-of-evocation",
@@ -101,7 +123,26 @@ describe("M4 progression preview contract", () => {
       status: "READY",
       canApply: true,
       classesAfter: [{ classKey: "wizard", level: 2, subclassKey: "school-of-evocation" }],
+      subclassOptions: [{
+        key: "school-of-evocation",
+        label: "Scuola di Invocazione",
+        classKey: "wizard",
+      }],
     });
+  });
+
+  it("offers only authoritative subclasses belonging to the target class", () => {
+    const result = prepareCharacterProgressionPreview(snapshot({ classKey: "fighter", level: 2 }), {
+      targetClassKey: "fighter",
+    });
+
+    expect(result).toMatchObject({ status: "SUBCLASS_REQUIRED", canApply: false });
+    expect(result.subclassOptions).toEqual([
+      { key: "champion", label: "Campione", classKey: "fighter" },
+      { key: "eldritch-knight", label: "Cavaliere Mistico", classKey: "fighter" },
+    ]);
+    expect(result.subclassOptions).not.toContainEqual(expect.objectContaining({ classKey: "wizard" }));
+    expect(result.subclassOptions).not.toContainEqual(expect.objectContaining({ key: "school-of-evocation" }));
   });
 
   it("blocks multiclass, PNG, stale revisions, and subclass replacement", () => {

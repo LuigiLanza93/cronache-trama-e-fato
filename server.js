@@ -11369,6 +11369,30 @@ function progressionDeferredEffects(preview) {
   return deferred;
 }
 
+export function assertProgressionEffectsReady(preview) {
+  const deferredEffects = progressionDeferredEffects(preview);
+  if (deferredEffects.length > 0) {
+    throw createProgressionError(
+      "PROGRESSION_EFFECTS_NOT_READY",
+      `Il level-up richiede gli effetti strutturati M5/M6: ${deferredEffects.join(", ")}.`,
+      503,
+    );
+  }
+  return deferredEffects;
+}
+
+function progressionSubclassOptions(classKey) {
+  const canonicalClassKey = normalizeClassKey(classKey) ?? classKey;
+  return Object.values(SUBCLASS_RULES)
+    .filter((rule) => rule?.classKey === canonicalClassKey)
+    .map((rule) => ({
+      key: rule.key,
+      label: rule.labels?.it ?? rule.labels?.en ?? rule.key,
+      classKey: rule.classKey,
+    }))
+    .sort((left, right) => left.key.localeCompare(right.key));
+}
+
 export function prepareCharacterProgressionPreview(snapshot, request) {
   if (!snapshot?.state) {
     throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
@@ -11450,10 +11474,18 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
     ? { targetSubclassKey: requestedSubclassKey }
     : {};
   const resolved = resolveClassAdvancementPreview(entries, targetClassKey, options);
+  const targetRule = CLASS_RULES[targetClassKey] ?? null;
+  const targetClassAfter = resolved.classesAfter?.find((entry) => entry.classKey === targetClassKey) ?? null;
+  const subclassOptions = !currentClass.subclassKey
+    && Number.isInteger(targetRule?.subclassLevel)
+    && Number(targetClassAfter?.level) >= targetRule.subclassLevel
+    ? progressionSubclassOptions(targetClassKey)
+    : [];
   const effects = buildCharacterProgressionEffects(snapshot, resolved);
   if (effects?.status === "VITALS_NOT_READY") {
     return {
       ...resolved,
+      subclassOptions,
       status: "VITALS_NOT_READY",
       canApply: false,
       reason: "Lo stato strutturato di PF e Dadi Vita non e pronto per la progressione.",
@@ -11463,6 +11495,7 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
   }
   return {
     ...resolved,
+    subclassOptions,
     canApply: resolved.canAdvance === true,
     prerequisites: { status: "NOT_APPLICABLE", eligible: true, reason: null },
     ...(effects ? { effects } : {}),
@@ -14453,6 +14486,7 @@ async function start() {
           }
 
           const preview = prepareCharacterProgressionPreview(snapshot, request);
+          assertProgressionEffectsReady(preview);
           if (!preview.canApply) {
             const error = createProgressionError(
               preview.status,

@@ -408,6 +408,8 @@ Interventi:
 
 ### L1 - Level-up guidato monoclasse
 
+**Stato:** completato e collaudato localmente su `dev` il 2026-09-23. M4-M6 forniscono API, transazione, storico e derivati; L1 aggiunge il flusso UI DM, le opzioni autorevoli di sottoclasse, retry idempotente persistente e blocco UI/API quando gli effetti M5/M6 sono differiti. Collaudo end-to-end superato secondo `docs/l1-manual-test-plan.md`. Verifiche automatiche: 182/182 test, build, TypeScript app/node, Prisma validate, sintassi server e diff-check superati. Railway invariato.
+
 **Obiettivo:** rendere utilizzabile e collaudare la progressione prima di abilitare una seconda classe.
 
 UX:

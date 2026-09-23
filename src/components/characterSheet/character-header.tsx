@@ -42,6 +42,7 @@ const CharacterHeader = ({
     setEditMode,
     monsterCompendiumHref,
     layoutActions,
+    levelUpAction,
     canEdit = true,
 }: any) => {
     const [portraitUrl, setPortraitUrl] = useState(characterData.basicInfo.portraitUrl ?? "");
@@ -375,6 +376,11 @@ const CharacterHeader = ({
                 {layoutActions ? (
                     <div className="absolute bottom-4 right-4">
                         {layoutActions}
+                    </div>
+                ) : null}
+                {levelUpAction ? (
+                    <div className="absolute bottom-4 left-4">
+                        {levelUpAction}
                     </div>
                 ) : null}
 

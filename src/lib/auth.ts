@@ -46,6 +46,26 @@ export type CharacterProgressionApplyRequest = CharacterProgressionPreviewReques
   expectedRevision: string;
   expectedProgressionRevision: number;
 };
+export type ProgressionSummaryPayload = {
+  characterLevel: number;
+  proficiencyBonus: number;
+  hitDicePools: Record<string, number>;
+  spellcastingSlots: { slots: Record<string, number> };
+  pactMagicSlots: { slotCount: number; slotLevel: number | null };
+};
+export type ProgressionResourcePoolPayload = {
+  poolKey: string;
+  kind: "SPELLCASTING" | "PACT_MAGIC" | "CLASS_RESOURCE" | "MANUAL";
+  label: string;
+  maximum: Record<string, number>;
+  used: Record<string, number>;
+};
+export type CharacterProgressionEffectsPayload = {
+  status: string;
+  hitPoints?: { before: { maximumHitPoints: number }; after: { maximumHitPoints: number }; gained: number } | null;
+  hitDicePools?: { before: Array<{ dieSize: number; maximum: number; remaining: number }>; after: Array<{ dieSize: number; maximum: number; remaining: number }> } | null;
+  resourcePools?: { before: ProgressionResourcePoolPayload[]; after: ProgressionResourcePoolPayload[] } | null;
+};
 export type CharacterProgressionApiResponse = {
   ok: true;
   slug: string;
@@ -56,13 +76,15 @@ export type CharacterProgressionApiResponse = {
     canApply: boolean;
     targetClassKey: string;
     mode: "INCREMENT_EXISTING" | "ADD_NEW_CLASS";
-    before: Record<string, unknown>;
-    after: Record<string, unknown> | null;
-    classesAfter: Array<Record<string, unknown>> | null;
-    subclassEligibility: Record<string, unknown> | null;
+    before: ProgressionSummaryPayload;
+    after: ProgressionSummaryPayload | null;
+    classesAfter: Array<{ classKey: string; level: number; subclassKey?: string | null }> | null;
+    subclassEligibility: { status: string; reason: string | null } | null;
+    subclassOptions: Array<{ key: string; label: string; classKey: string }>;
+    effects?: CharacterProgressionEffectsPayload;
     reason?: string | null;
   };
-  deferredEffects: string[];
+  deferredEffects?: string[];
   replayed?: boolean;
   operation?: Record<string, unknown>;
   character?: Record<string, unknown>;
