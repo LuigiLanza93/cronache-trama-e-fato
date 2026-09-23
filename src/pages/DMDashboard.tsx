@@ -295,6 +295,8 @@ export default function DMDashboard() {
   const [restDialogType, setRestDialogType] = useState<PartyRestType>("short");
   const [restSelectedSlugs, setRestSelectedSlugs] = useState<string[]>([]);
   const [restPreview, setRestPreview] = useState<PartyRestSummaryEntry[]>([]);
+  const [restPreviewRevisions, setRestPreviewRevisions] = useState<Record<string, string>>({});
+  const [restPreviewRefreshToken, setRestPreviewRefreshToken] = useState(0);
   const [restPreviewLoading, setRestPreviewLoading] = useState(false);
   const restApplyRequestRef = useRef<{
     signature: string;
@@ -736,15 +738,19 @@ export default function DMDashboard() {
     if (!restDialogOpen) return;
     if (restSelectedSlugs.length === 0) {
       setRestPreview([]);
+      setRestPreviewRevisions({});
       return;
     }
 
     let active = true;
     setRestPreviewLoading(true);
+    setRestPreviewRevisions({});
+    restApplyRequestRef.current = null;
     void previewPartyRestRequest(restDialogType, restSelectedSlugs)
       .then((response) => {
         if (!active) return;
         setRestPreview(Array.isArray(response.summaries) ? response.summaries : []);
+        setRestPreviewRevisions(response.expectedRevisions ?? {});
       })
       .catch((error) => {
         if (!active) return;
@@ -757,7 +763,7 @@ export default function DMDashboard() {
     return () => {
       active = false;
     };
-  }, [restDialogOpen, restDialogType, restSelectedSlugs]);
+  }, [restDialogOpen, restDialogType, restSelectedSlugs, restPreviewRefreshToken]);
 
   const getDmConversationForSlug = (slug: string) =>
     Object.values(conversations).find(
@@ -895,6 +901,7 @@ export default function DMDashboard() {
     setRestDialogType(type);
     setRestSelectedSlugs(roster.map((player) => player.slug));
     setRestPreview([]);
+    setRestPreviewRevisions({});
     setRestDialogOpen(true);
   };
 
@@ -924,13 +931,11 @@ export default function DMDashboard() {
       const requestSignature = JSON.stringify({ type, slugs: selectedSlugs });
       if (restApplyRequestRef.current?.signature !== requestSignature) {
         const expectedRevisions = Object.fromEntries(selectedSlugs.flatMap((slug) => {
-          const state = liveStates[slug] ?? baseCharacterStates.find((entry) => entry.slug === slug);
-          return typeof state?.revision === "string" && state.revision.trim()
-            ? [[slug, state.revision.trim()]]
-            : [];
+          const revision = restPreviewRevisions[slug];
+          return typeof revision === "string" && revision.trim() ? [[slug, revision.trim()]] : [];
         }));
         if (Object.keys(expectedRevisions).length !== selectedSlugs.length) {
-          toast.error("Aggiorna il roster prima di applicare il riposo: manca una revisione canonica.");
+          toast.error("Attendi il completamento dell'anteprima prima di applicare il riposo.");
           return;
         }
         restApplyRequestRef.current = {
@@ -973,6 +978,15 @@ export default function DMDashboard() {
       }
       setRestDialogOpen(false);
     } catch (error) {
+      const requestError = error as Error & { status?: number; code?: string };
+      if (requestError.status === 409 && requestError.code === "REVISION_CONFLICT") {
+        restApplyRequestRef.current = null;
+        setRestPreview([]);
+        setRestPreviewRevisions({});
+        setRestPreviewRefreshToken((value) => value + 1);
+        toast.error("Il personaggio è cambiato dopo l'anteprima. Anteprima aggiornata: verifica e conferma di nuovo.");
+        return;
+      }
       toast.error(error instanceof Error ? error.message : `Impossibile applicare il ${label}.`);
     } finally {
       setRestSubmitting(null);

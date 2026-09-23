@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import SectionCard from "@/components/characterSheet/section-card";
 import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { convertSpellSlots, updateCharacter, updateCharacterWithAck } from "@/realtime";
+import { convertSpellSlots, setCharacterResourcePoolTierUsed, updateCharacter, updateCharacterWithAck } from "@/realtime";
 
 const MAX_SPELL_LEVEL = 12;
 const SPELL_SLOT_CONVERSION_COSTS: Record<number, number> = {
@@ -55,6 +55,7 @@ const Features = ({
     const [conversionTargetLevel, setConversionTargetLevel] = useState<number | null>(null);
     const [conversionSelections, setConversionSelections] = useState<Record<number, number>>({});
     const [conversionSubmitting, setConversionSubmitting] = useState(false);
+    const [resourceUpdating, setResourceUpdating] = useState(false);
     const conversionRequestIdRef = useRef<string | null>(null);
     const expectedSlotStateRef = useRef<string | null>(null);
 
@@ -122,13 +123,31 @@ const Features = ({
         return `Livello ${level}`;
     };
     const normalizedClass = (characterData.basicInfo.class ?? "").trim().toLowerCase();
-    const compactSlotRow = ["guerriero", "fighter", "warlock"].includes(normalizedClass);
-    const canConvertSpellSlots = !SLOT_CONVERSION_EXCLUDED_CLASSES.has(normalizedClass);
+    const resourcePools = Array.isArray(characterData.resourcePools) ? characterData.resourcePools : [];
+    const displayedResourcePool = resourcePools.find((pool: any) => pool?.kind === "SPELLCASTING")
+        ?? resourcePools.find((pool: any) => pool?.kind === "PACT_MAGIC")
+        ?? resourcePools.find((pool: any) => ["CLASS_RESOURCE", "MANUAL"].includes(String(pool?.kind ?? "")))
+        ?? null;
+    const displayedResourceKind = String(displayedResourcePool?.kind ?? "");
+    const compactSlotRow = displayedResourceKind
+        ? displayedResourceKind !== "SPELLCASTING"
+        : ["guerriero", "fighter", "warlock"].includes(normalizedClass);
+    const canConvertSpellSlots = displayedResourcePool
+        ? displayedResourceKind === "SPELLCASTING"
+        : !SLOT_CONVERSION_EXCLUDED_CLASSES.has(normalizedClass);
+    const resourceSectionLabel = displayedResourceKind === "PACT_MAGIC"
+        ? "Magia del Patto"
+        : displayedResourceKind === "CLASS_RESOURCE"
+            ? displayedResourcePool?.label || "Risorsa di classe"
+            : displayedResourceKind === "MANUAL"
+                ? displayedResourcePool?.label || "Risorsa manuale"
+                : "Slot Incantesimi";
     const spellSlots = useMemo(
         () => characterData.combatStats.spellSlots ?? {},
         [characterData.combatStats.spellSlots]
     );
     const slotInitializationPreview = useMemo(() => {
+        if (resourcePools.length > 0) return null;
         const charClass = String(characterData?.basicInfo?.class ?? "").trim().toLowerCase();
         const level = characterData?.basicInfo?.level;
         const progression = spellSlotTable?.[charClass];
@@ -142,7 +161,7 @@ const Features = ({
             if (current !== expected) changes.push({ level: spellLevel, current, expected });
         }
         return changes;
-    }, [characterData?.basicInfo?.class, characterData?.basicInfo?.level, spellSlotTable, spellSlots]);
+    }, [characterData?.basicInfo?.class, characterData?.basicInfo?.level, resourcePools.length, spellSlotTable, spellSlots]);
 
     const initializeStandardSpellSlots = async () => {
         if (!canEdit || !slotInitializationPreview?.length) return;
@@ -161,6 +180,23 @@ const Features = ({
             toast.success("Slot standard inizializzati.");
         } catch {
             // The active sheet renders the actionable save/conflict feedback.
+        }
+    };
+    const setStructuredResourceUsed = async (pool: any, tierKey: string, used: number) => {
+        if (!canEdit || resourceUpdating) return;
+        setResourceUpdating(true);
+        try {
+            await setCharacterResourcePoolTierUsed(
+                characterData.slug,
+                String(pool.poolKey),
+                tierKey,
+                used,
+                Number(pool.revision ?? 0)
+            );
+        } catch {
+            // The active sheet renders persistence and conflict feedback.
+        } finally {
+            setResourceUpdating(false);
         }
     };
     const conversionTargets = useMemo(
@@ -395,7 +431,7 @@ const Features = ({
             <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
-                        Slot Incantesimi
+                        {resourceSectionLabel}
                     </span>
                     <div className="flex shrink-0 items-center gap-1.5">
                         {slotInitializationPreview?.length ? (
@@ -425,66 +461,118 @@ const Features = ({
                                 Converti slot
                             </Button>
                         ) : null}
-                        <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
-                            aria-label="Resetta slot incantesimi"
-                            title="Resetta slot incantesimi"
-                            onClick={resetSlots}
-                            disabled={!canEdit}
-                        >
-                            <RotateCcw className="h-4 w-4" />
-                        </Button>
+                        {resourcePools.length === 0 ? (
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 rounded-full border border-border/70 bg-background/70 text-primary transition hover:bg-muted"
+                                aria-label="Resetta slot incantesimi"
+                                title="Resetta slot incantesimi"
+                                onClick={resetSlots}
+                                disabled={!canEdit}
+                            >
+                                <RotateCcw className="h-4 w-4" />
+                            </Button>
+                        ) : null}
                     </div>
                 </div>
-                <div className={cn("gap-3", compactSlotRow ? "flex flex-wrap" : "grid grid-cols-3")}>
-                    {Array.from({ length: MAX_SPELL_LEVEL }).map((_, lvlIdx) => {
-                        const lvl = lvlIdx + 1;
-                        const lvlSlots = characterData.combatStats.spellSlots?.[lvl];
-                        if (!lvlSlots || lvlSlots.length === 0) return null;
-
-                        return (
-                            <div
-                                key={lvl}
-                                className={cn(
-                                    "rounded-lg border border-border/50 bg-background/25 p-2",
-                                    compactSlotRow ? "min-w-fit" : ""
-                                )}
-                            >
-                                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
-                                    {characterData.basicInfo.class === "Guerriero" ? (
-                                        <>
-                                            Manovre
-                                            <br />
-                                            1d{lvl}
-                                        </>
-                                    ) : (
-                                        <>Livello {lvl}</>
-                                    )}
+                {resourcePools.length > 0 ? (
+                    <div className="space-y-3" aria-label="Pool risorse separati">
+                        {resourcePools.map((pool: any) => {
+                            const tierKeys = Object.keys(pool.maximum ?? {}).sort((left, right) => Number(left) - Number(right));
+                            const poolKind = String(pool.kind ?? "");
+                            const compactPool = poolKind !== "SPELLCASTING";
+                            const dieSize = Number(pool.metadata?.dieSize ?? 0);
+                            return (
+                                <div key={pool.poolKey ?? pool.id} className="space-y-2">
+                                    {resourcePools.length > 1 ? (
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
+                                            {pool.label || pool.poolKey}
+                                        </div>
+                                    ) : null}
+                                    <div className={cn("gap-3", compactPool ? "flex flex-wrap" : "grid grid-cols-3")}>
+                                        {tierKeys.map((tierKey) => {
+                                        const maximum = Number(pool.maximum[tierKey] ?? 0);
+                                        const used = Number(pool.used?.[tierKey] ?? 0);
+                                        const tierLabel = poolKind === "CLASS_RESOURCE" && tierKey === "0"
+                                            ? (Number.isInteger(dieSize) && dieSize > 0 ? `Manovre · 1d${dieSize}` : pool.label || "Usi")
+                                            : tierKey === "0" ? "Livello 0" : `Livello ${tierKey}`;
+                                        return (
+                                            <div
+                                                key={tierKey}
+                                                className={cn(
+                                                    "rounded-lg border border-border/50 bg-background/25 p-2",
+                                                    compactPool ? "min-w-fit" : ""
+                                                )}
+                                            >
+                                                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
+                                                    {poolKind === "CLASS_RESOURCE" && tierKey === "0" && Number.isInteger(dieSize) && dieSize > 0 ? (
+                                                        <>Manovre<br />1d{dieSize}</>
+                                                    ) : tierLabel}
+                                                </div>
+                                                <div className={cn("gap-2", compactPool ? "flex flex-nowrap gap-1.5" : "grid grid-cols-2")}>
+                                                    {Array.from({ length: maximum }, (_, index) => {
+                                                        const consumed = index < used;
+                                                        const nextUsed = consumed ? used - 1 : used + 1;
+                                                        return (
+                                                            <button
+                                                                type="button"
+                                                                key={index}
+                                                                onClick={() => void setStructuredResourceUsed(pool, tierKey, nextUsed)}
+                                                                disabled={!canEdit || resourceUpdating}
+                                                                aria-label={`${pool.label || pool.poolKey}, ${tierLabel}, uso ${index + 1}: ${consumed ? "consumato" : "disponibile"}`}
+                                                                aria-pressed={consumed}
+                                                                className={cn(
+                                                                    "flex items-center justify-center rounded border text-[10px] transition focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-60",
+                                                                    compactPool ? "h-6 w-6 shrink-0" : "h-7 w-7",
+                                                                    consumed ? "bg-primary text-primary-foreground" : "bg-background"
+                                                                )}
+                                                            />
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    </div>
                                 </div>
-                                <div className={cn("gap-2", compactSlotRow ? "flex flex-nowrap gap-1.5" : "grid grid-cols-2")}>
-                                    {lvlSlots.map((slot: any, i: number) => (
-                                        <button
-                                            type="button"
-                                            key={i}
-                                            onClick={() => toggleSlot(lvl, i)}
-                                            disabled={!canEdit}
-                                            aria-label={`Slot incantesimo di livello ${lvl}, ${slot.active ? "consumato" : "disponibile"}`}
-                                            aria-pressed={Boolean(slot.active)}
-                                            className={cn(
-                                                "flex items-center justify-center rounded border text-[10px] transition focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-60",
-                                                compactSlotRow ? "h-6 w-6 shrink-0" : "h-7 w-7",
-                                                slot.active ? "bg-primary text-primary-foreground" : "bg-background"
-                                            )}
-                                        />
-                                    ))}
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className={cn("gap-3", compactSlotRow ? "flex flex-wrap" : "grid grid-cols-3")}>
+                        {Array.from({ length: MAX_SPELL_LEVEL }).map((_, lvlIdx) => {
+                            const lvl = lvlIdx + 1;
+                            const lvlSlots = characterData.combatStats.spellSlots?.[lvl];
+                            if (!lvlSlots || lvlSlots.length === 0) return null;
+                            return (
+                                <div key={lvl} className={cn("rounded-lg border border-border/50 bg-background/25 p-2", compactSlotRow ? "min-w-fit" : "")}>
+                                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
+                                        {characterData.basicInfo.class === "Guerriero" ? <>Manovre<br />1d{lvl}</> : <>Livello {lvl}</>}
+                                    </div>
+                                    <div className={cn("gap-2", compactSlotRow ? "flex flex-nowrap gap-1.5" : "grid grid-cols-2")}>
+                                        {lvlSlots.map((slot: any, i: number) => (
+                                            <button
+                                                type="button"
+                                                key={i}
+                                                onClick={() => toggleSlot(lvl, i)}
+                                                disabled={!canEdit}
+                                                aria-label={`Slot incantesimo di livello ${lvl}, ${slot.active ? "consumato" : "disponibile"}`}
+                                                aria-pressed={Boolean(slot.active)}
+                                                className={cn(
+                                                    "flex items-center justify-center rounded border text-[10px] transition focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-60",
+                                                    compactSlotRow ? "h-6 w-6 shrink-0" : "h-7 w-7",
+                                                    slot.active ? "bg-primary text-primary-foreground" : "bg-background"
+                                                )}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                            );
+                        })}
+                    </div>
+                )}
                 {slotInitializationPreview?.length ? (
                     <p className="text-xs text-muted-foreground">
                         La progressione standard propone modifiche a {slotInitializationPreview.map(({ level, current, expected }) => `L${level}: ${current}→${expected}`).join(", ")}. Applica solo con “Inizializza slot”.

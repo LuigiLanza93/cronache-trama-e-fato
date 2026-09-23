@@ -515,6 +515,89 @@ export function updateCharacter(slug: string, patch: Record<string, unknown>) {
   });
 }
 
+export function setCharacterResourcePoolTierUsed(
+  slug: string,
+  poolKey: string,
+  tierKey: string,
+  used: number,
+  expectedPoolRevision: number
+): Promise<Extract<CharacterUpdateAck, { ok: true }>> {
+  if (playerWritesLocked) return Promise.reject(characterUpdateError("La sessione è chiusa. Le modifiche del personaggio sono bloccate."));
+  if (invalidatedCharacterSlugs.has(slug)) return Promise.reject(characterUpdateError("L'accesso a questa scheda è stato revocato.", undefined, "CHARACTER_ACCESS_REVOKED"));
+  startCharacterPersistence(slug);
+  const requestRealtimeGeneration = realtimeGeneration;
+  const requestQueueGeneration = characterQueueGenerations.get(slug) ?? 0;
+  const previous = characterUpdateQueues.get(slug) ?? Promise.resolve();
+  const request = previous.then(() => new Promise<Extract<CharacterUpdateAck, { ok: true }>>((resolve, reject) => {
+    if (
+      requestRealtimeGeneration !== realtimeGeneration ||
+      requestQueueGeneration !== (characterQueueGenerations.get(slug) ?? 0) ||
+      invalidatedCharacterSlugs.has(slug)
+    ) {
+      reject(characterUpdateError("Il salvataggio non è più valido.", undefined, "STALE_CHARACTER_UPDATE"));
+      return;
+    }
+    const pending: PendingCharacterUpdate = { slug, realtimeGeneration: requestRealtimeGeneration, queueGeneration: requestQueueGeneration, reject };
+    pendingCharacterUpdates.add(pending);
+    const complete = (callback: () => void) => {
+      pendingCharacterUpdates.delete(pending);
+      callback();
+    };
+    getSocket().timeout(7_000).emit(
+      "character:update-resource-pool",
+      {
+        slug,
+        poolKey,
+        tierKey,
+        used,
+        expectedPoolRevision,
+        ...(characterRevisions.get(slug) ? { revision: characterRevisions.get(slug) } : {}),
+      },
+      (timeoutError: Error | null, response?: CharacterUpdateAck) => {
+        if (
+          requestRealtimeGeneration !== realtimeGeneration ||
+          requestQueueGeneration !== (characterQueueGenerations.get(slug) ?? 0) ||
+          invalidatedCharacterSlugs.has(slug)
+        ) {
+          complete(() => reject(characterUpdateError("Il salvataggio non è più valido.", undefined, "STALE_CHARACTER_UPDATE")));
+          return;
+        }
+        if (timeoutError || !response) {
+          const error = characterUpdateError("Il server non ha confermato l'aggiornamento della risorsa.");
+          characterUpdateErrorListeners.forEach((listener) => listener(error, slug));
+          complete(() => reject(error));
+          return;
+        }
+        if (response.ok !== true) {
+          const failure = response as Extract<CharacterUpdateAck, { ok: false }>;
+          const error = characterUpdateError(failure.error, failure);
+          if (failure.revision) characterRevisions.set(slug, failure.revision);
+          characterUpdateErrorListeners.forEach((listener) => listener(error, slug));
+          if (["REVISION_CONFLICT", "RESOURCE_REVISION_CONFLICT"].includes(failure.code ?? "")) {
+            invalidateCharacterQueue(slug, error.message, failure.code);
+          }
+          complete(() => reject(error));
+          return;
+        }
+        if (response.revision) characterRevisions.set(slug, response.revision);
+        complete(() => resolve(response));
+      }
+    );
+  }));
+  const trackedRequest = request.then(
+    (response) => {
+      finishCharacterPersistence(slug);
+      return response;
+    },
+    (error: CharacterUpdateError) => {
+      finishCharacterPersistence(slug, error);
+      throw error;
+    }
+  );
+  characterUpdateQueues.set(slug, trackedRequest.then(() => undefined, () => undefined));
+  return trackedRequest;
+}
+
 export function onCharacterUpdateError(listener: (error: CharacterUpdateError, slug: string) => void) {
   characterUpdateErrorListeners.add(listener);
   return () => characterUpdateErrorListeners.delete(listener);

@@ -518,6 +518,13 @@ export type PartyRestResponse = {
   summaries: PartyRestSummaryEntry[];
 };
 
+export type PartyRestPreviewResponse = {
+  ok: true;
+  type: PartyRestType;
+  summaries: PartyRestSummaryEntry[];
+  expectedRevisions: Record<string, string>;
+};
+
 export type ItemDefinitionSummary = {
   id: string;
   slug: string;
@@ -783,22 +790,27 @@ async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     let message = res.status === 401 ? "Unauthorized" : "Request failed";
+    let errorCode: string | undefined;
+    let errorDetails: unknown;
     try {
       const payload = await res.clone().json();
       if (typeof payload?.error === "string" && payload.error.trim()) {
         message = payload.error.trim();
       }
+      if (typeof payload?.code === "string" && payload.code.trim()) {
+        errorCode = payload.code.trim();
+      }
+      errorDetails = payload?.details;
     } catch {}
 
       const error = new Error(message) as Error & {
         status?: number;
+        code?: string;
         details?: unknown;
       };
       error.status = res.status;
-      try {
-        const payload = await res.clone().json();
-        error.details = payload?.details;
-      } catch {}
+      error.code = errorCode;
+      error.details = errorDetails;
       throw error;
     }
 
@@ -1131,7 +1143,7 @@ export function previewPartyRestRequest(
   type: PartyRestType,
   slugs?: string[]
 ) {
-  return authFetch<Omit<PartyRestResponse, "updatedCharacters">>("/api/dm/rests/preview", {
+  return authFetch<PartyRestPreviewResponse>("/api/dm/rests/preview", {
     method: "POST",
     body: JSON.stringify({ type, slugs }),
   });

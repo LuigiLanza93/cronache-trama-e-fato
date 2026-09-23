@@ -24,7 +24,16 @@ import {
   normalizeClassKey,
   normalizeSubclassKey,
   resolveClassAdvancementPreview,
+  resolveProgressionSummary,
 } from "./shared/character-class-rules.mjs";
+import {
+  applyLongRestToHitDicePools,
+  applyShortRestToHitDicePools,
+  convertSpellcastingPool,
+  resetResourcePools,
+  resolveConstitutionModifier,
+  resolveLevelUpHitPoints,
+} from "./shared/character-vitals-resources.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -181,6 +190,7 @@ function getSqliteDbMtimeMs() {
 let sqlite = null;
 let sqliteLastKnownMtimeMs = 0;
 let characterProgressionSchemaInspection = null;
+let characterVitalsResourcesSchemaInspection = null;
 
 function ensureSqliteConnectionFresh() {
   const currentMtimeMs = getSqliteDbMtimeMs();
@@ -197,6 +207,7 @@ function ensureSqliteConnectionFresh() {
   sqlite = createSqliteConnection();
   sqliteLastKnownMtimeMs = currentMtimeMs;
   characterProgressionSchemaInspection = null;
+  characterVitalsResourcesSchemaInspection = null;
 }
 
 const CHARACTER_SHEET_LAYOUT_KEY = "character-sheet";
@@ -1513,6 +1524,175 @@ function getCharacterProgressionM4Inspection() {
   return inspectCharacterProgressionM4Database(sqlite);
 }
 
+const CHARACTER_VITALS_RESOURCES_SCHEMA_COLUMNS = Object.freeze({
+  CharacterHitPointState: Object.freeze([
+    "characterId", "maximumHitPoints", "currentHitPoints", "temporaryHitPoints",
+    "deathSaveSuccesses", "deathSaveFailures", "shortRestsUsedSinceLongRest",
+    "lastShortRestAt", "lastLongRestAt", "revision", "backfillStatus",
+    "backfillIssues", "legacySnapshot", "createdAt", "updatedAt",
+  ]),
+  CharacterHitDiePool: Object.freeze([
+    "id", "characterId", "dieSize", "maximum", "remaining", "source",
+    "legacySnapshot", "createdAt", "updatedAt",
+  ]),
+  CharacterHitPointAdjustment: Object.freeze([
+    "id", "characterId", "requestId", "adjustmentType", "maximumBefore",
+    "maximumAfter", "currentBefore", "currentAfter", "delta",
+    "constitutionModifierBefore", "constitutionModifierAfter", "totalLevel",
+    "reason", "appliedByUserId", "appliedBySnapshot", "detailsSnapshot", "appliedAt",
+  ]),
+  CharacterResourcePool: Object.freeze([
+    "id", "characterId", "poolKey", "kind", "label", "resetPolicy", "revision",
+    "backfillStatus", "backfillIssues", "metadata", "ruleSnapshot", "legacySnapshot",
+    "createdAt", "updatedAt",
+  ]),
+  CharacterResourcePoolSource: Object.freeze([
+    "id", "poolId", "characterClassId", "sourceKey", "sourceKind", "ruleSnapshot",
+    "createdAt", "updatedAt",
+  ]),
+  CharacterResourcePoolTier: Object.freeze([
+    "id", "poolId", "tierKey", "sortOrder", "derivedMaximum", "maximumOverride",
+    "used", "createdAt", "updatedAt",
+  ]),
+});
+
+export function inspectCharacterVitalsResourcesDatabase(database) {
+  const missingTables = [];
+  const missingColumns = {};
+  for (const [tableName, expectedColumns] of Object.entries(CHARACTER_VITALS_RESOURCES_SCHEMA_COLUMNS)) {
+    const exists = !!database
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
+      .get(tableName);
+    if (!exists) {
+      missingTables.push(tableName);
+      continue;
+    }
+    const actualColumns = new Set(
+      database.prepare(`PRAGMA table_info("${tableName}")`).all().map((column) => String(column.name))
+    );
+    const missing = expectedColumns.filter((column) => !actualColumns.has(column));
+    if (missing.length > 0) missingColumns[tableName] = missing;
+  }
+  const tableReady = (tableName) =>
+    !missingTables.includes(tableName) && !Object.prototype.hasOwnProperty.call(missingColumns, tableName);
+  const m5Ready = ["CharacterHitPointState", "CharacterHitDiePool", "CharacterHitPointAdjustment"]
+    .every(tableReady);
+  const m6Ready = ["CharacterResourcePool", "CharacterResourcePoolSource", "CharacterResourcePoolTier"]
+    .every(tableReady);
+  return {
+    ready: m5Ready && m6Ready,
+    m5Ready,
+    m6Ready,
+    missingTables,
+    missingColumns,
+  };
+}
+
+function getCharacterVitalsResourcesSchemaInspection() {
+  if (!characterVitalsResourcesSchemaInspection) {
+    characterVitalsResourcesSchemaInspection = inspectCharacterVitalsResourcesDatabase(sqlite);
+  }
+  return characterVitalsResourcesSchemaInspection;
+}
+
+function effectiveResourceTierMaximum(tier) {
+  const value = tier?.maximumOverride ?? tier?.derivedMaximum;
+  return Number.isInteger(Number(value)) ? Number(value) : 0;
+}
+
+export function readCharacterVitalsResourcesFromDatabase(database, characterId, schemaInspection = null) {
+  const schema = schemaInspection ?? inspectCharacterVitalsResourcesDatabase(database);
+  let hitPointState = null;
+  let hitDicePools = [];
+  let resourcePools = [];
+
+  if (schema.m5Ready) {
+    const row = database.prepare(`
+      SELECT * FROM "CharacterHitPointState" WHERE characterId = ? LIMIT 1
+    `).get(characterId) ?? null;
+    if (row) {
+      hitPointState = {
+        maximumHitPoints: Number(row.maximumHitPoints),
+        currentHitPoints: Number(row.currentHitPoints),
+        temporaryHitPoints: Number(row.temporaryHitPoints),
+        deathSaveSuccesses: Number(row.deathSaveSuccesses),
+        deathSaveFailures: Number(row.deathSaveFailures),
+        shortRestsUsedSinceLongRest: Number(row.shortRestsUsedSinceLongRest),
+        lastShortRestAt: row.lastShortRestAt ?? null,
+        lastLongRestAt: row.lastLongRestAt ?? null,
+        revision: Number(row.revision),
+        backfillStatus: row.backfillStatus,
+        backfillIssues: parseJsonString(row.backfillIssues, []),
+      };
+    }
+    hitDicePools = database.prepare(`
+      SELECT id, dieSize, maximum, remaining, source
+      FROM "CharacterHitDiePool"
+      WHERE characterId = ?
+      ORDER BY dieSize DESC
+    `).all(characterId).map((pool) => ({
+      id: pool.id,
+      dieSize: Number(pool.dieSize),
+      maximum: Number(pool.maximum),
+      remaining: Number(pool.remaining),
+      source: pool.source,
+    }));
+  }
+
+  if (schema.m6Ready) {
+    const poolRows = database.prepare(`
+      SELECT * FROM "CharacterResourcePool"
+      WHERE characterId = ?
+      ORDER BY poolKey COLLATE NOCASE, id
+    `).all(characterId);
+    const readTiers = database.prepare(`
+      SELECT * FROM "CharacterResourcePoolTier"
+      WHERE poolId = ? ORDER BY sortOrder, tierKey COLLATE NOCASE
+    `);
+    const readSources = database.prepare(`
+      SELECT id, characterClassId, sourceKey, sourceKind
+      FROM "CharacterResourcePoolSource"
+      WHERE poolId = ? ORDER BY sourceKey COLLATE NOCASE
+    `);
+    resourcePools = poolRows.map((pool) => {
+      const tiers = readTiers.all(pool.id).map((tier) => ({
+        id: tier.id,
+        tierKey: String(tier.tierKey),
+        sortOrder: Number(tier.sortOrder),
+        derivedMaximum: tier.derivedMaximum == null ? null : Number(tier.derivedMaximum),
+        maximumOverride: tier.maximumOverride == null ? null : Number(tier.maximumOverride),
+        maximum: effectiveResourceTierMaximum(tier),
+        used: Number(tier.used),
+      }));
+      return {
+        id: pool.id,
+        poolKey: pool.poolKey,
+        kind: pool.kind,
+        label: pool.label,
+        resetPolicy: pool.resetPolicy,
+        revision: Number(pool.revision),
+        backfillStatus: pool.backfillStatus,
+        backfillIssues: parseJsonString(pool.backfillIssues, []),
+        metadata: parseJsonString(pool.metadata, {}),
+        maximum: Object.fromEntries(tiers.map((tier) => [tier.tierKey, tier.maximum])),
+        used: Object.fromEntries(tiers.map((tier) => [tier.tierKey, tier.used])),
+        tiers,
+        sources: readSources.all(pool.id),
+      };
+    });
+  }
+
+  return { schema, hitPointState, hitDicePools, resourcePools };
+}
+
+function readCharacterVitalsResources(characterId) {
+  return readCharacterVitalsResourcesFromDatabase(
+    sqlite,
+    characterId,
+    getCharacterVitalsResourcesSchemaInspection(),
+  );
+}
+
 function publicProgressionClass(entry) {
   const subclassRule = entry?.subclassKey ? SUBCLASS_RULES[entry.subclassKey] ?? null : null;
   const subclass = entry?.subclassKey
@@ -1546,6 +1726,9 @@ export function serializeCharacterSnapshot(snapshot) {
   );
   return {
     ...snapshot.state,
+    hitPointState: snapshot.hitPointState ?? null,
+    hitDicePools: Array.isArray(snapshot.hitDicePools) ? snapshot.hitDicePools : [],
+    resourcePools: Array.isArray(snapshot.resourcePools) ? snapshot.resourcePools : [],
     classes,
     primaryClass,
     totalLevel: structured
@@ -1624,6 +1807,113 @@ function initializeCreatedCharacterProgression(slug, updatedByUserId = null) {
     now,
   );
   return { status: subclassStatus === "INCOMPLETE_LEGACY" ? "INCOMPLETE" : "READY", structured: true };
+}
+
+function initializeCreatedCharacterVitalsResources(slug, appliedByUserId = null) {
+  const schema = getCharacterVitalsResourcesSchemaInspection();
+  if (!schema.m5Ready) return { status: "LEGACY_SCHEMA", structured: false };
+  const row = sqlite.prepare(`
+    SELECT c.id, c.data, cc.id AS characterClassId, cc.classKey, cc.level,
+           sr.subclassKey, cr.hitDie
+    FROM "Character" c
+    JOIN "CharacterClass" cc ON cc.characterId = c.id AND cc.isPrimary = 1
+    JOIN "ClassRule" cr ON cr.id = cc.classRuleId
+    LEFT JOIN "SubclassRule" sr ON sr.id = cc.subclassRuleId
+    WHERE c.slug = ?
+    LIMIT 1
+  `).get(slug);
+  if (!row || ![6, 8, 10, 12].includes(Number(row.hitDie))) {
+    return { status: "UNRESOLVED", structured: false };
+  }
+
+  const state = parseJsonString(row.data, {});
+  const constitutionModifier = resolveConstitutionModifier(Number(state?.abilityScores?.constitution ?? 10));
+  const initialHitPoints = resolveLevelUpHitPoints({
+    hitDieSize: Number(row.hitDie),
+    constitutionModifier,
+  });
+  const now = new Date().toISOString();
+  const hitPointState = {
+    maximumHitPoints: initialHitPoints.gained,
+    currentHitPoints: initialHitPoints.gained,
+    temporaryHitPoints: 0,
+    deathSaveSuccesses: 0,
+    deathSaveFailures: 0,
+    shortRestsUsedSinceLongRest: 0,
+    lastShortRestAt: null,
+    lastLongRestAt: null,
+    revision: 0,
+  };
+  const hitDicePools = [{
+    dieSize: Number(row.hitDie),
+    maximum: Number(row.level),
+    remaining: Number(row.level),
+    source: "DERIVED",
+  }];
+
+  sqlite.prepare(`
+    INSERT INTO "CharacterHitPointState" (
+      characterId, maximumHitPoints, currentHitPoints, temporaryHitPoints,
+      deathSaveSuccesses, deathSaveFailures, shortRestsUsedSinceLongRest,
+      lastShortRestAt, lastLongRestAt, revision, backfillStatus, backfillIssues,
+      legacySnapshot, createdAt, updatedAt
+    ) VALUES (?, ?, ?, 0, 0, 0, 0, NULL, NULL, 0, 'BACKFILLED', '[]', '{}', ?, ?)
+  `).run(row.id, hitPointState.maximumHitPoints, hitPointState.currentHitPoints, now, now);
+  persistHitDicePools(row.id, hitDicePools, now);
+  const appliedBy = appliedByUserId ? getUserById(appliedByUserId) : null;
+  sqlite.prepare(`
+    INSERT INTO "CharacterHitPointAdjustment" (
+      id, characterId, requestId, adjustmentType, maximumBefore, maximumAfter,
+      currentBefore, currentAfter, delta, constitutionModifierBefore,
+      constitutionModifierAfter, totalLevel, reason, appliedByUserId,
+      appliedBySnapshot, detailsSnapshot, appliedAt
+    ) VALUES (?, ?, NULL, 'BASELINE', 0, ?, 0, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    crypto.randomUUID(), row.id, initialHitPoints.gained, initialHitPoints.gained,
+    initialHitPoints.gained, constitutionModifier, Number(row.level),
+    "PF iniziali alla creazione del personaggio", appliedBy?.id ?? null,
+    JSON.stringify(appliedBy ? {
+      id: appliedBy.id,
+      username: appliedBy.username,
+      displayName: appliedBy.displayName,
+      role: appliedBy.role,
+    } : { kind: "SYSTEM" }),
+    JSON.stringify({
+      method: initialHitPoints.method,
+      policyVersion: initialHitPoints.policyVersion,
+      hitDieSize: initialHitPoints.hitDieSize,
+    }),
+    now,
+  );
+
+  let resourcePools = [];
+  if (schema.m6Ready) {
+    const entries = [{
+      classKey: row.classKey,
+      level: Number(row.level),
+      ...(row.subclassKey ? { subclassKey: row.subclassKey } : {}),
+      isPrimary: true,
+    }];
+    const summary = resolveProgressionSummary(entries);
+    resourcePools = projectProgressionResourcePools([], summary, row.classKey);
+    persistResourcePools(row.id, resourcePools, now, {
+      characterClassId: row.characterClassId,
+      sourceClassKey: row.classKey,
+    });
+  }
+
+  const nextState = projectStructuredStateToLegacy(state, {
+    hitPointState,
+    hitDicePools,
+    resourcePools,
+  });
+  writeCharacter(slug, nextState);
+  return {
+    status: "READY",
+    structured: true,
+    hitPointMethod: initialHitPoints.method,
+    resourcePoolCount: resourcePools.length,
+  };
 }
 
 function formatSkillLabel(skillName, ability) {
@@ -8309,10 +8599,12 @@ function readCharacterSnapshot(slug) {
     .prepare('SELECT * FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
     .get(slug);
   if (!row) return null;
+  const vitalsResources = readCharacterVitalsResources(row.id);
   return {
     state: normalizeCharacterRow(row),
     revision: String(row.updatedAt ?? ""),
     progression: readCharacterProgressionShadow(row),
+    ...vitalsResources,
   };
 }
 
@@ -10622,6 +10914,198 @@ export function applyCharacterRest(character, restType, now = new Date()) {
   };
 }
 
+function prepareStructuredSpellSlotConversion(snapshot, targetLevel, selections) {
+  const spellcasting = snapshot?.resourcePools?.find((pool) => pool.kind === "SPELLCASTING") ?? null;
+  if (!spellcasting) {
+    return { ok: false, error: "La conversione e consentita solo per il pool Spellcasting." };
+  }
+  try {
+    const converted = convertSpellcastingPool({
+      id: spellcasting.id,
+      kind: spellcasting.kind,
+      resetPolicy: spellcasting.resetPolicy,
+      maximum: spellcasting.maximum,
+      used: spellcasting.used,
+    }, { targetLevel, selections });
+    const resourcePools = snapshot.resourcePools.map((pool) =>
+      pool.id === spellcasting.id ? { ...pool, used: converted.pool.used } : pool
+    );
+    const next = projectStructuredStateToLegacy(snapshot.state, {
+      hitPointState: snapshot.hitPointState,
+      hitDicePools: snapshot.hitDicePools,
+      resourcePools,
+    });
+    return {
+      ok: true,
+      next,
+      patch: { combatStats: { spellSlots: next.combatStats.spellSlots } },
+      resourcePools,
+      targetLevel,
+      selections,
+      cost: converted.cost,
+      pointsSpent: converted.pointsSpent,
+      excess: converted.excess,
+    };
+  } catch (error) {
+    return { ok: false, error: String(error?.message ?? error) };
+  }
+}
+
+export function applyStructuredCharacterRest(snapshot, restType, now = new Date()) {
+  if (!snapshot?.schema?.m5Ready || !snapshot.hitPointState || !Array.isArray(snapshot.hitDicePools)) {
+    const legacy = applyCharacterRest(snapshot?.state, restType, now);
+    return { ...legacy, structured: false };
+  }
+  const state = snapshot.state ?? {};
+  const beforeHp = snapshot.hitPointState;
+  const beforePools = snapshot.hitDicePools.map((pool) => ({ ...pool }));
+  const constitutionModifier = resolveConstitutionModifier(Number(state.abilityScores?.constitution ?? 10));
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const nowIso = new Date(Number.isFinite(nowDate.getTime()) ? nowDate.getTime() : Date.now()).toISOString();
+  let afterHp = { ...beforeHp };
+  let afterPools = beforePools;
+  let healingApplied = 0;
+  let hitDiceSpent = 0;
+  let hitDiceRecovered = 0;
+  let hitDiceSpentBySize = {};
+  let applied = true;
+  let reason = null;
+
+  if (restType === "short") {
+    const rested = applyShortRestToHitDicePools({
+      pools: beforePools,
+      currentHitPoints: beforeHp.currentHitPoints,
+      maximumHitPoints: beforeHp.maximumHitPoints,
+      constitutionModifier,
+      shortRestsUsedSinceLongRest: beforeHp.shortRestsUsedSinceLongRest,
+    });
+    applied = rested.applied;
+    reason = rested.reason === "SHORT_REST_LIMIT_REACHED" ? "Limite di 2 riposi brevi raggiunto." : rested.reason;
+    if (applied) {
+      healingApplied = rested.healingApplied;
+      hitDiceSpent = rested.hitDiceSpent;
+      hitDiceSpentBySize = rested.hitDiceSpentBySize;
+      afterPools = rested.pools.map((pool) => ({
+        ...beforePools.find((entry) => entry.dieSize === pool.dieSize),
+        ...pool,
+      }));
+      afterHp = {
+        ...beforeHp,
+        currentHitPoints: rested.currentHitPoints,
+        deathSaveSuccesses: rested.currentHitPoints > 0 ? 0 : beforeHp.deathSaveSuccesses,
+        deathSaveFailures: rested.currentHitPoints > 0 ? 0 : beforeHp.deathSaveFailures,
+        shortRestsUsedSinceLongRest: rested.shortRestsUsedSinceLongRest,
+        lastShortRestAt: nowIso,
+        revision: beforeHp.revision + 1,
+      };
+    }
+  } else {
+    const rested = applyLongRestToHitDicePools({
+      pools: beforePools,
+      shortRestsUsedSinceLongRest: beforeHp.shortRestsUsedSinceLongRest,
+    });
+    hitDiceRecovered = rested.hitDiceRecovered;
+    afterPools = rested.pools.map((pool) => ({
+      ...beforePools.find((entry) => entry.dieSize === pool.dieSize),
+      ...pool,
+    }));
+    afterHp = {
+      ...beforeHp,
+      currentHitPoints: beforeHp.maximumHitPoints,
+      temporaryHitPoints: 0,
+      deathSaveSuccesses: 0,
+      deathSaveFailures: 0,
+      shortRestsUsedSinceLongRest: 0,
+      lastLongRestAt: nowIso,
+      revision: beforeHp.revision + 1,
+    };
+  }
+
+  if (!applied) {
+    return {
+      character: state,
+      structured: true,
+      hitPointState: beforeHp,
+      hitDicePools: beforePools,
+      resourcePools: snapshot.resourcePools ?? [],
+      summary: {
+        slug: state.slug,
+        name: state.basicInfo?.characterName ?? state.slug,
+        applied: false,
+        reason,
+        currentHitPointsBefore: beforeHp.currentHitPoints,
+        currentHitPointsAfter: beforeHp.currentHitPoints,
+        maxHitPoints: beforeHp.maximumHitPoints,
+        temporaryHitPointsBefore: beforeHp.temporaryHitPoints,
+        temporaryHitPointsAfter: beforeHp.temporaryHitPoints,
+        healingApplied: 0,
+        hitDiceSpent: 0,
+        hitDiceRecovered: 0,
+        hitDiceRemaining: beforePools.reduce((sum, pool) => sum + pool.remaining, 0),
+        hitDiceRemainingAfter: beforePools.reduce((sum, pool) => sum + pool.remaining, 0),
+        maxHitDice: beforePools.reduce((sum, pool) => sum + pool.maximum, 0),
+        shortRestsUsedSinceLongRest: beforeHp.shortRestsUsedSinceLongRest,
+        shortRestsUsedSinceLongRestAfter: beforeHp.shortRestsUsedSinceLongRest,
+      },
+    };
+  }
+
+  const beforeResources = snapshot.resourcePools ?? [];
+  let afterResources = beforeResources;
+  if (snapshot.schema.m6Ready) {
+    const reset = resetResourcePools(
+      beforeResources.map((pool) => ({
+        id: pool.id,
+        kind: pool.kind,
+        resetPolicy: pool.resetPolicy,
+        maximum: pool.maximum,
+        used: pool.used,
+      })),
+      restType === "short" ? "SHORT_REST" : "LONG_REST",
+    );
+    const resetById = new Map(reset.map((pool) => [pool.id, pool]));
+    afterResources = beforeResources.map((pool) => ({
+      ...pool,
+      used: { ...(resetById.get(pool.id)?.used ?? pool.used) },
+    }));
+  }
+  let character = projectStructuredStateToLegacy(state, {
+    hitPointState: afterHp,
+    hitDicePools: afterPools,
+    resourcePools: afterResources,
+  });
+  character = { ...character, capabilities: resetCapabilityUses(state.capabilities, restType) };
+  return {
+    character,
+    structured: true,
+    hitPointState: afterHp,
+    hitDicePools: afterPools,
+    resourcePools: afterResources,
+    summary: {
+      slug: state.slug,
+      name: state.basicInfo?.characterName ?? state.slug,
+      applied: true,
+      currentHitPointsBefore: beforeHp.currentHitPoints,
+      currentHitPointsAfter: afterHp.currentHitPoints,
+      maxHitPoints: afterHp.maximumHitPoints,
+      temporaryHitPointsBefore: beforeHp.temporaryHitPoints,
+      temporaryHitPointsAfter: afterHp.temporaryHitPoints,
+      healingApplied,
+      hitDiceSpent,
+      hitDiceSpentBySize,
+      hitDiceRecovered,
+      hitDiceRemaining: beforePools.reduce((sum, pool) => sum + pool.remaining, 0),
+      hitDiceRemainingAfter: afterPools.reduce((sum, pool) => sum + pool.remaining, 0),
+      maxHitDice: afterPools.reduce((sum, pool) => sum + pool.maximum, 0),
+      shortRestsUsedSinceLongRest: beforeHp.shortRestsUsedSinceLongRest,
+      shortRestsUsedSinceLongRestAfter: afterHp.shortRestsUsedSinceLongRest,
+      resourcePoolsReset: afterResources
+        .filter((pool, index) => JSON.stringify(pool.used) !== JSON.stringify(beforeResources[index]?.used))
+        .map((pool) => pool.poolKey),
+    },
+  };
+}
+
 export function validateRestClientOptions(payload, targetSlugs) {
   const raw = payload?.optionsBySlug;
   if (raw === undefined || raw === null) return;
@@ -10758,6 +11242,133 @@ function normalizeProgressionRequest(body, {
   };
 }
 
+function publicResourcePoolState(pool) {
+  return {
+    id: pool.id ?? pool.poolKey,
+    poolKey: pool.poolKey ?? pool.id,
+    kind: pool.kind,
+    label: pool.label ?? pool.poolKey ?? pool.id,
+    resetPolicy: pool.resetPolicy,
+    revision: Number(pool.revision ?? 0),
+    backfillStatus: pool.backfillStatus ?? "BACKFILLED",
+    maximum: { ...(pool.maximum ?? {}) },
+    used: { ...(pool.used ?? {}) },
+    ...(Array.isArray(pool.sources) ? { sources: pool.sources.map((source) => ({ ...source })) } : {}),
+  };
+}
+
+function projectProgressionResourcePools(existingPools, progressionSummary, targetClassKey) {
+  const pools = (Array.isArray(existingPools) ? existingPools : []).map(publicResourcePoolState);
+  const byKind = new Map(pools.map((pool) => [pool.kind, pool]));
+  const spellMaximum = progressionSummary?.spellcastingSlots?.slots ?? {};
+  if (Object.values(spellMaximum).some((value) => Number(value) > 0)) {
+    const current = byKind.get("SPELLCASTING") ?? {
+      id: "spellcasting",
+      poolKey: "spellcasting",
+      kind: "SPELLCASTING",
+      label: "Slot Incantesimi",
+      resetPolicy: "LONG_REST",
+      revision: 0,
+      backfillStatus: "BACKFILLED",
+      maximum: {},
+      used: {},
+      sources: [],
+    };
+    const maximum = Object.fromEntries(
+      Object.entries(spellMaximum).filter(([, value]) => Number(value) > 0).map(([key, value]) => [key, Number(value)])
+    );
+    const used = Object.fromEntries(Object.keys(maximum).map((key) => [key, Number(current.used?.[key] ?? 0)]));
+    byKind.set("SPELLCASTING", { ...current, maximum, used });
+  }
+
+  const pact = progressionSummary?.pactMagicSlots;
+  if (Number(pact?.slotCount) > 0 && Number(pact?.slotLevel) > 0) {
+    const current = byKind.get("PACT_MAGIC") ?? {
+      id: "pact-magic",
+      poolKey: "pact-magic",
+      kind: "PACT_MAGIC",
+      label: "Magia del Patto",
+      resetPolicy: "SHORT_REST",
+      revision: 0,
+      backfillStatus: "BACKFILLED",
+      maximum: {},
+      used: {},
+      sources: [],
+    };
+    const tierKey = String(pact.slotLevel);
+    const preservedUsed = Object.values(current.used ?? {}).reduce((sum, value) => sum + Number(value ?? 0), 0);
+    byKind.set("PACT_MAGIC", {
+      ...current,
+      maximum: { [tierKey]: Number(pact.slotCount) },
+      used: { [tierKey]: preservedUsed },
+    });
+  }
+
+  const projectedKinds = new Set(["SPELLCASTING", "PACT_MAGIC"]);
+  return [
+    ...pools.filter((pool) => !projectedKinds.has(pool.kind)),
+    ...["SPELLCASTING", "PACT_MAGIC"].map((kind) => byKind.get(kind)).filter(Boolean),
+  ].map((pool) => ({
+    ...pool,
+    sourceClassKey: targetClassKey,
+  }));
+}
+
+export function buildCharacterProgressionEffects(snapshot, resolvedPreview) {
+  const schema = snapshot?.schema;
+  if (!schema?.m5Ready && !schema?.m6Ready) return null;
+  if (!resolvedPreview?.after) return null;
+
+  let hitPoints = null;
+  let hitDicePools = null;
+  if (schema.m5Ready) {
+    if (!snapshot.hitPointState || !Array.isArray(snapshot.hitDicePools)) {
+      return { status: "VITALS_NOT_READY", hitPoints: null, hitDicePools: null, resourcePools: null };
+    }
+    const classRule = CLASS_RULES[resolvedPreview.targetClassKey] ?? null;
+    if (!classRule?.hitDie) {
+      return { status: "VITALS_NOT_READY", hitPoints: null, hitDicePools: null, resourcePools: null };
+    }
+    const constitutionModifier = resolveConstitutionModifier(Number(snapshot.state?.abilityScores?.constitution ?? 10));
+    const gain = resolveLevelUpHitPoints({ hitDieSize: classRule.hitDie, constitutionModifier });
+    const before = { ...snapshot.hitPointState };
+    const after = {
+      ...before,
+      maximumHitPoints: before.maximumHitPoints + gain.gained,
+      currentHitPoints: before.currentHitPoints + gain.gained,
+      revision: before.revision + 1,
+    };
+    hitPoints = { before, after, ...gain };
+    const beforePools = snapshot.hitDicePools.map((pool) => ({ ...pool }));
+    const afterPools = beforePools.map((pool) => ({ ...pool }));
+    let targetPool = afterPools.find((pool) => pool.dieSize === gain.hitDieSize);
+    if (!targetPool) {
+      targetPool = { dieSize: gain.hitDieSize, maximum: 0, remaining: 0, source: "DERIVED" };
+      afterPools.push(targetPool);
+    }
+    targetPool.maximum += 1;
+    targetPool.remaining += 1;
+    afterPools.sort((left, right) => right.dieSize - left.dieSize);
+    hitDicePools = { before: beforePools, after: afterPools, addedDieSize: gain.hitDieSize };
+  }
+
+  let resourcePools = null;
+  if (schema.m6Ready) {
+    const before = (snapshot.resourcePools ?? []).map(publicResourcePoolState);
+    const after = projectProgressionResourcePools(before, resolvedPreview.after, resolvedPreview.targetClassKey);
+    resourcePools = { before, after };
+  }
+  return { status: "READY", hitPoints, hitDicePools, resourcePools };
+}
+
+function progressionDeferredEffects(preview) {
+  const deferred = [];
+  if (!preview?.effects?.hitPoints) deferred.push("HIT_POINTS");
+  if (!preview?.effects?.hitDicePools) deferred.push("HIT_DICE");
+  if (!preview?.effects?.resourcePools) deferred.push("RESOURCE_POOLS");
+  return deferred;
+}
+
 export function prepareCharacterProgressionPreview(snapshot, request) {
   if (!snapshot?.state) {
     throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
@@ -10839,10 +11450,22 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
     ? { targetSubclassKey: requestedSubclassKey }
     : {};
   const resolved = resolveClassAdvancementPreview(entries, targetClassKey, options);
+  const effects = buildCharacterProgressionEffects(snapshot, resolved);
+  if (effects?.status === "VITALS_NOT_READY") {
+    return {
+      ...resolved,
+      status: "VITALS_NOT_READY",
+      canApply: false,
+      reason: "Lo stato strutturato di PF e Dadi Vita non e pronto per la progressione.",
+      prerequisites: { status: "NOT_APPLICABLE", eligible: true, reason: null },
+      effects,
+    };
+  }
   return {
     ...resolved,
     canApply: resolved.canAdvance === true,
     prerequisites: { status: "NOT_APPLICABLE", eligible: true, reason: null },
+    ...(effects ? { effects } : {}),
   };
 }
 
@@ -10869,6 +11492,352 @@ function readCharacterLevelHistoryReceipt(characterId, requestId) {
 function parseCharacterLevelHistoryResult(row) {
   const result = parseJsonString(row?.resultSnapshot, null);
   return result && typeof result === "object" && !Array.isArray(result) ? result : null;
+}
+
+export function legacySpellSlotsFromResourcePools(resourcePools, previousSlots = {}) {
+  const pool = (resourcePools ?? []).find((entry) => entry.kind === "SPELLCASTING")
+    ?? (resourcePools ?? []).find((entry) => entry.kind === "PACT_MAGIC")
+    ?? (resourcePools ?? []).filter((entry) => ["CLASS_RESOURCE", "MANUAL"].includes(entry.kind))[0]
+    ?? null;
+  if (!pool) return previousSlots;
+  const result = {};
+  for (const [tierKey, maximumValue] of Object.entries(pool.maximum ?? {})) {
+    const maximum = Number(maximumValue);
+    const used = Number(pool.used?.[tierKey] ?? 0);
+    const previous = Array.isArray(previousSlots?.[tierKey]) ? previousSlots[tierKey] : [];
+    result[tierKey] = Array.from({ length: maximum }, (_, index) => ({
+      ...(previous[index] ?? { id: `${pool.poolKey ?? pool.id}-${tierKey}-${index + 1}` }),
+      active: index < used,
+    }));
+  }
+  return result;
+}
+
+function projectStructuredStateToLegacy(character, { hitPointState, hitDicePools, resourcePools }) {
+  const combatStats = character?.combatStats ?? {};
+  const totalMaximumDice = (hitDicePools ?? []).reduce((sum, pool) => sum + Number(pool.maximum ?? 0), 0);
+  const totalRemainingDice = (hitDicePools ?? []).reduce((sum, pool) => sum + Number(pool.remaining ?? 0), 0);
+  return {
+    ...character,
+    combatStats: {
+      ...combatStats,
+      ...(hitPointState ? {
+        hitPointMaximum: hitPointState.maximumHitPoints,
+        currentHitPoints: hitPointState.currentHitPoints,
+        temporaryHitPoints: hitPointState.temporaryHitPoints,
+        deathSaves: {
+          successes: hitPointState.deathSaveSuccesses,
+          failures: hitPointState.deathSaveFailures,
+        },
+      } : {}),
+      ...(Array.isArray(hitDicePools) ? {
+        restState: {
+          ...(combatStats.restState ?? {}),
+          maxHitDice: totalMaximumDice,
+          hitDiceRemaining: totalRemainingDice,
+          ...(hitPointState ? {
+            shortRestsUsedSinceLongRest: hitPointState.shortRestsUsedSinceLongRest,
+            lastShortRestAt: hitPointState.lastShortRestAt,
+            lastLongRestAt: hitPointState.lastLongRestAt,
+          } : {}),
+        },
+      } : {}),
+      ...(Array.isArray(resourcePools) ? {
+        spellSlots: legacySpellSlotsFromResourcePools(resourcePools, combatStats.spellSlots),
+      } : {}),
+    },
+  };
+}
+
+export function prepareStructuredLegacyPatchSync(snapshot, next, patch) {
+  const combatPatch = patch?.combatStats && typeof patch.combatStats === "object" && !Array.isArray(patch.combatStats)
+    ? patch.combatStats
+    : null;
+  const sync = {};
+  if (snapshot.schema?.m5Ready) {
+    if (combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "hitPointMaximum")) {
+      throw createCharacterMutationError(
+        "STRUCTURED_HIT_POINT_ADJUSTMENT_REQUIRED",
+        "I PF massimi richiedono il comando dedicato di progressione o rettifica.",
+        snapshot,
+      );
+    }
+    if (combatPatch && (Object.prototype.hasOwnProperty.call(combatPatch, "hitDice") || Object.prototype.hasOwnProperty.call(combatPatch, "restState"))) {
+      throw createCharacterMutationError(
+        "STRUCTURED_REST_REQUIRED",
+        "Dadi Vita e stato dei riposi sono gestiti dal comando dedicato di riposo.",
+        snapshot,
+      );
+    }
+    const touchesHitPoints = ["currentHitPoints", "temporaryHitPoints", "deathSaves"]
+      .some((key) => combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, key));
+    const touchesCurrentHitPoints = Boolean(combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "currentHitPoints"));
+    const touchesTemporaryHitPoints = Boolean(combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "temporaryHitPoints"));
+    const touchesDeathSaves = Boolean(combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "deathSaves"));
+    const changesConstitution = Boolean(
+      patch?.abilityScores &&
+      typeof patch.abilityScores === "object" &&
+      !Array.isArray(patch.abilityScores) &&
+      Object.prototype.hasOwnProperty.call(patch.abilityScores, "constitution") &&
+      Number(snapshot.state?.abilityScores?.constitution ?? 10) !== Number(next?.abilityScores?.constitution ?? 10)
+    );
+    if (touchesHitPoints || changesConstitution) {
+      if (!snapshot.hitPointState) {
+        throw createCharacterMutationError("VITALS_NOT_READY", "Lo stato strutturato dei PF non e disponibile.", snapshot);
+      }
+      const constitutionModifierBefore = resolveConstitutionModifier(Number(snapshot.state?.abilityScores?.constitution ?? 10));
+      const constitutionModifierAfter = resolveConstitutionModifier(Number(next?.abilityScores?.constitution ?? 10));
+      const constitutionDelta = changesConstitution
+        ? (constitutionModifierAfter - constitutionModifierBefore) * Number(snapshot.progression?.totalLevel ?? 0)
+        : 0;
+      sync.hitPointState = {
+        ...snapshot.hitPointState,
+        maximumHitPoints: Math.max(0, snapshot.hitPointState.maximumHitPoints + constitutionDelta),
+        currentHitPoints: touchesCurrentHitPoints
+          ? Number(next.combatStats?.currentHitPoints ?? snapshot.hitPointState.currentHitPoints)
+          : snapshot.hitPointState.currentHitPoints,
+        temporaryHitPoints: touchesTemporaryHitPoints
+          ? Number(next.combatStats?.temporaryHitPoints ?? snapshot.hitPointState.temporaryHitPoints)
+          : snapshot.hitPointState.temporaryHitPoints,
+        deathSaveSuccesses: touchesDeathSaves
+          ? Number(next.combatStats?.deathSaves?.successes ?? snapshot.hitPointState.deathSaveSuccesses)
+          : snapshot.hitPointState.deathSaveSuccesses,
+        deathSaveFailures: touchesDeathSaves
+          ? Number(next.combatStats?.deathSaves?.failures ?? snapshot.hitPointState.deathSaveFailures)
+          : snapshot.hitPointState.deathSaveFailures,
+        revision: snapshot.hitPointState.revision + 1,
+      };
+      if (constitutionDelta !== 0) {
+        sync.hitPointState.currentHitPoints = Math.max(0, sync.hitPointState.currentHitPoints + constitutionDelta);
+        sync.hitPointAdjustment = {
+          adjustmentType: "CONSTITUTION_CHANGE",
+          maximumBefore: snapshot.hitPointState.maximumHitPoints,
+          maximumAfter: sync.hitPointState.maximumHitPoints,
+          currentBefore: snapshot.hitPointState.currentHitPoints,
+          currentAfter: sync.hitPointState.currentHitPoints,
+          delta: constitutionDelta,
+          constitutionModifierBefore,
+          constitutionModifierAfter,
+          totalLevel: Number(snapshot.progression?.totalLevel ?? 0),
+          reason: "Adeguamento automatico dei PF al modificatore di Costituzione",
+        };
+      }
+    }
+  }
+  if (snapshot.schema?.m6Ready && combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "spellSlots")) {
+    const fallbackPools = snapshot.resourcePools.filter((pool) => ["CLASS_RESOURCE", "MANUAL"].includes(pool.kind));
+    const target = snapshot.resourcePools.find((pool) => pool.kind === "SPELLCASTING")
+      ?? snapshot.resourcePools.find((pool) => pool.kind === "PACT_MAGIC")
+      ?? (fallbackPools.length === 1 ? fallbackPools[0] : null);
+    if (!target) {
+      throw createCharacterMutationError(
+        "STRUCTURED_RESOURCE_COMMAND_REQUIRED",
+        fallbackPools.length > 1
+          ? "La modifica e ambigua: seleziona un pool risorsa con il comando dedicato."
+          : "Gli slot richiedono un pool risorsa strutturato.",
+        snapshot,
+      );
+    }
+    const used = {};
+    for (const [tierKey, maximumValue] of Object.entries(target.maximum)) {
+      const slots = next.combatStats?.spellSlots?.[tierKey];
+      if (!Array.isArray(slots) || slots.length !== Number(maximumValue)) {
+        throw createCharacterMutationError(
+          "STRUCTURED_RESOURCE_CAPACITY_READ_ONLY",
+          "La capacita degli slot e derivata dalla progressione e non puo essere modificata direttamente.",
+          snapshot,
+        );
+      }
+      used[tierKey] = slots.filter((slot) => slot?.active === true).length;
+    }
+    sync.resourcePools = snapshot.resourcePools.map((pool) =>
+      pool.id === target.id ? { ...pool, used } : pool
+    );
+  }
+  return Object.keys(sync).length > 0 ? sync : null;
+}
+
+function persistHitPointAdjustment(characterId, adjustment, now, appliedBy = null) {
+  sqlite.prepare(`
+    INSERT INTO "CharacterHitPointAdjustment" (
+      id, characterId, requestId, adjustmentType, maximumBefore, maximumAfter,
+      currentBefore, currentAfter, delta, constitutionModifierBefore,
+      constitutionModifierAfter, totalLevel, reason, appliedByUserId,
+      appliedBySnapshot, detailsSnapshot, appliedAt
+    ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    crypto.randomUUID(), characterId, adjustment.adjustmentType,
+    adjustment.maximumBefore, adjustment.maximumAfter,
+    adjustment.currentBefore, adjustment.currentAfter, adjustment.delta,
+    adjustment.constitutionModifierBefore, adjustment.constitutionModifierAfter,
+    adjustment.totalLevel, adjustment.reason, appliedBy?.id ?? null,
+    JSON.stringify(appliedBy ? {
+      id: appliedBy.id,
+      username: appliedBy.username,
+      displayName: appliedBy.displayName,
+      role: appliedBy.role,
+    } : { kind: "SYSTEM" }),
+    JSON.stringify({ source: "character:update", policyVersion: "m5-v1" }),
+    now,
+  );
+}
+
+function persistResourcePoolUsage(characterId, pool, tierKey, used, now, expectedRevision) {
+  const poolResult = sqlite.prepare(`
+    UPDATE "CharacterResourcePool"
+    SET revision = revision + 1, updatedAt = ?
+    WHERE characterId = ? AND poolKey = ? AND revision = ?
+  `).run(now, characterId, pool.poolKey, expectedRevision);
+  if (poolResult.changes !== 1) {
+    throw createCharacterMutationError("RESOURCE_REVISION_CONFLICT", "Il pool risorsa e stato modificato da un'altra operazione.");
+  }
+  const tierResult = sqlite.prepare(`
+    UPDATE "CharacterResourcePoolTier"
+    SET used = ?, updatedAt = ?
+    WHERE poolId = ? AND tierKey = ?
+  `).run(used, now, pool.id, tierKey);
+  if (tierResult.changes !== 1) {
+    throw createCharacterMutationError("RESOURCE_TIER_NOT_FOUND", "Il livello del pool risorsa non e disponibile.");
+  }
+}
+
+export function prepareStructuredResourcePoolUsage(snapshot, current, { poolKey, tierKey, used, expectedPoolRevision }) {
+  if (!snapshot.schema?.m6Ready) {
+    throw createCharacterMutationError("RESOURCES_NOT_READY", "I pool risorsa strutturati non sono disponibili.", snapshot);
+  }
+  const target = snapshot.resourcePools.find((pool) => pool.poolKey === poolKey);
+  if (!target) {
+    throw createCharacterMutationError("RESOURCE_POOL_NOT_FOUND", "Il pool risorsa non esiste.", snapshot);
+  }
+  if (target.revision !== expectedPoolRevision) {
+    throw createCharacterMutationError("RESOURCE_REVISION_CONFLICT", "Il pool risorsa e stato modificato da un'altra operazione.", snapshot);
+  }
+  const maximum = Number(target.maximum?.[tierKey]);
+  if (!Number.isInteger(maximum) || maximum < 0 || !Number.isInteger(used) || used < 0 || used > maximum) {
+    throw createCharacterMutationError("RESOURCE_USAGE_INVALID", "Il valore usato supera la capacita del pool risorsa.", snapshot);
+  }
+  const updatedPool = {
+    ...target,
+    revision: target.revision + 1,
+    used: { ...target.used, [tierKey]: used },
+  };
+  const resourcePools = snapshot.resourcePools.map((pool) => pool.id === target.id ? updatedPool : pool);
+  const next = projectStructuredStateToLegacy(current, {
+    hitPointState: snapshot.hitPointState,
+    hitDicePools: snapshot.hitDicePools,
+    resourcePools,
+  });
+  return { next, updatedPool, resourcePools };
+}
+
+function persistHitPointState(characterId, state, now, expectedRevision = null) {
+  const result = sqlite.prepare(`
+    UPDATE "CharacterHitPointState"
+    SET maximumHitPoints = ?, currentHitPoints = ?, temporaryHitPoints = ?,
+        deathSaveSuccesses = ?, deathSaveFailures = ?, shortRestsUsedSinceLongRest = ?,
+        lastShortRestAt = ?, lastLongRestAt = ?, revision = ?, updatedAt = ?
+    WHERE characterId = ?${expectedRevision == null ? "" : " AND revision = ?"}
+  `).run(
+    state.maximumHitPoints, state.currentHitPoints, state.temporaryHitPoints,
+    state.deathSaveSuccesses, state.deathSaveFailures, state.shortRestsUsedSinceLongRest,
+    state.lastShortRestAt ?? null, state.lastLongRestAt ?? null, state.revision, now,
+    characterId, ...(expectedRevision == null ? [] : [expectedRevision]),
+  );
+  if (result.changes !== 1) {
+    throw createCharacterMutationError("VITALS_REVISION_CONFLICT", "Lo stato dei PF e stato modificato da un'altra operazione.");
+  }
+}
+
+function persistHitDicePools(characterId, pools, now) {
+  const update = sqlite.prepare(`
+    UPDATE "CharacterHitDiePool"
+    SET maximum = ?, remaining = ?, source = ?, updatedAt = ?
+    WHERE characterId = ? AND dieSize = ?
+  `);
+  const insert = sqlite.prepare(`
+    INSERT INTO "CharacterHitDiePool" (
+      id, characterId, dieSize, maximum, remaining, source, legacySnapshot, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, '{}', ?, ?)
+  `);
+  for (const pool of pools) {
+    const result = update.run(pool.maximum, pool.remaining, pool.source ?? "DERIVED", now, characterId, pool.dieSize);
+    if (result.changes === 0) {
+      insert.run(crypto.randomUUID(), characterId, pool.dieSize, pool.maximum, pool.remaining, pool.source ?? "DERIVED", now, now);
+    }
+  }
+}
+
+function persistResourcePools(characterId, pools, now, { characterClassId = null, sourceClassKey = null } = {}) {
+  for (const projected of pools ?? []) {
+    let row = sqlite.prepare(`
+      SELECT * FROM "CharacterResourcePool" WHERE characterId = ? AND poolKey = ? LIMIT 1
+    `).get(characterId, projected.poolKey);
+    if (!row) {
+      const poolId = crypto.randomUUID();
+      sqlite.prepare(`
+        INSERT INTO "CharacterResourcePool" (
+          id, characterId, poolKey, kind, label, resetPolicy, revision, backfillStatus,
+          backfillIssues, metadata, ruleSnapshot, legacySnapshot, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, 0, 'BACKFILLED', '[]', '{}', '{}', '{}', ?, ?)
+      `).run(poolId, characterId, projected.poolKey, projected.kind, projected.label, projected.resetPolicy, now, now);
+      row = { id: poolId, revision: 0 };
+    } else {
+      sqlite.prepare(`
+        UPDATE "CharacterResourcePool"
+        SET label = ?, resetPolicy = ?, revision = revision + 1, updatedAt = ?
+        WHERE id = ?
+      `).run(projected.label, projected.resetPolicy, now, row.id);
+    }
+
+    const tierKeys = Object.keys(projected.maximum ?? {});
+    const projectedTiers = new Map((projected.tiers ?? []).map((tier) => [String(tier.tierKey), tier]));
+    const currentTiers = new Map(sqlite.prepare(`
+      SELECT tierKey, derivedMaximum, maximumOverride
+      FROM "CharacterResourcePoolTier" WHERE poolId = ?
+    `).all(row.id).map((tier) => [String(tier.tierKey), tier]));
+    const upsertTier = sqlite.prepare(`
+      INSERT INTO "CharacterResourcePoolTier" (
+        id, poolId, tierKey, sortOrder, derivedMaximum, maximumOverride, used, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(poolId, tierKey) DO UPDATE SET
+        sortOrder = excluded.sortOrder,
+        derivedMaximum = excluded.derivedMaximum,
+        maximumOverride = excluded.maximumOverride,
+        used = excluded.used,
+        updatedAt = excluded.updatedAt
+    `);
+    tierKeys.forEach((tierKey, index) => {
+      const projectedTier = projectedTiers.get(tierKey);
+      const currentTier = currentTiers.get(tierKey);
+      const derivedMaximum = projectedTier
+        ? projectedTier.derivedMaximum
+        : Number(projected.maximum[tierKey]);
+      const maximumOverride = projectedTier
+        ? projectedTier.maximumOverride
+        : (currentTier?.maximumOverride ?? null);
+      upsertTier.run(
+        crypto.randomUUID(), row.id, tierKey, index,
+        derivedMaximum == null ? null : Number(derivedMaximum), maximumOverride == null ? null : Number(maximumOverride),
+        Number(projected.used?.[tierKey] ?? 0), now, now,
+      );
+    });
+    if (tierKeys.length > 0 && ["SPELLCASTING", "PACT_MAGIC"].includes(projected.kind)) {
+      const placeholders = tierKeys.map(() => "?").join(", ");
+      sqlite.prepare(`
+        DELETE FROM "CharacterResourcePoolTier"
+        WHERE poolId = ? AND tierKey NOT IN (${placeholders})
+      `).run(row.id, ...tierKeys);
+    }
+    if (sourceClassKey) {
+      sqlite.prepare(`
+        INSERT INTO "CharacterResourcePoolSource" (
+          id, poolId, characterClassId, sourceKey, sourceKind, ruleSnapshot, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, 'CLASS', '{}', ?, ?)
+        ON CONFLICT(poolId, sourceKey) DO UPDATE SET
+          characterClassId = excluded.characterClassId, updatedAt = excluded.updatedAt
+      `).run(crypto.randomUUID(), row.id, characterClassId, sourceClassKey, now, now);
+    }
+  }
 }
 
 // Every mutation of Character.data is committed through one FIFO queue per slug.
@@ -13239,12 +14208,18 @@ async function start() {
                 snapshot
               );
             }
-            const rest = applyCharacterRest(snapshot.state, restType, restNow);
+            const rest = applyStructuredCharacterRest(snapshot, restType, restNow);
             return {
               slug,
               state: rest.character,
               patch: null,
-              meta: { summary: rest.summary },
+              meta: {
+                summary: rest.summary,
+                structured: rest.structured,
+                hitPointState: rest.hitPointState,
+                hitDicePools: rest.hitDicePools,
+                resourcePools: rest.resourcePools,
+              },
               write: rest.summary.applied,
             };
           });
@@ -13255,6 +14230,24 @@ async function start() {
             prepared.filter((entry) => entry.write !== false).map((entry) => entry.slug),
             restType
           );
+          const persistedAt = restNow.toISOString();
+          for (const entry of prepared.filter((candidate) => candidate.write !== false && candidate.meta?.structured)) {
+            const snapshot = _snapshots.get(entry.slug);
+            const characterId = sqlite.prepare(`
+              SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+            `).get(entry.slug)?.id;
+            if (!characterId) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+            persistHitPointState(
+              characterId,
+              entry.meta.hitPointState,
+              persistedAt,
+              snapshot.hitPointState.revision,
+            );
+            persistHitDicePools(characterId, entry.meta.hitDicePools, persistedAt);
+            if (snapshot.schema?.m6Ready) {
+              persistResourcePools(characterId, entry.meta.resourcePools, persistedAt);
+            }
+          }
           restReceiptResult = {
             ok: true,
             requestId,
@@ -13262,7 +14255,15 @@ async function start() {
             changedSlugs: prepared.filter((entry) => entry.write !== false).map((entry) => entry.slug),
             updatedCharacters: prepared
               .filter((entry) => entry.write !== false)
-              .map((entry) => ({ ...entry.state, revision: revisions.get(entry.slug) })),
+              .map((entry) => ({
+                ...entry.state,
+                ...(entry.meta?.structured ? {
+                  hitPointState: entry.meta.hitPointState,
+                  hitDicePools: entry.meta.hitDicePools,
+                  resourcePools: entry.meta.resourcePools,
+                } : {}),
+                revision: revisions.get(entry.slug),
+              })),
             summaries: prepared.map((entry) => entry.meta?.summary).filter(Boolean),
           };
           durableOperationReceipts.save(receiptIdentity, requestSignature, restReceiptResult);
@@ -13319,6 +14320,7 @@ async function start() {
         ok: true,
         type: restType,
         summaries: [],
+        expectedRevisions: {},
       });
     }
 
@@ -13326,12 +14328,12 @@ async function start() {
       const targetSlugs = targetCharacters.map((character) => character.slug);
       validateRestClientOptions(req.body, targetSlugs);
       const restNow = new Date();
+      const snapshots = targetCharacters.map((character) => readCharacterSnapshot(character.slug));
       return res.json({
         ok: true,
         type: restType,
-        summaries: targetCharacters.map((character) =>
-          applyCharacterRest(character, restType, restNow).summary
-        ),
+        expectedRevisions: Object.fromEntries(snapshots.map((snapshot) => [snapshot.state.slug, snapshot.revision])),
+        summaries: snapshots.map((snapshot) => applyStructuredCharacterRest(snapshot, restType, restNow).summary),
       });
     } catch (error) {
       return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
@@ -13349,13 +14351,14 @@ async function start() {
       const request = normalizeProgressionRequest(req.body);
       const snapshot = readCharacterSnapshot(req.params.slug);
       const preview = prepareCharacterProgressionPreview(snapshot, request);
+      const deferredEffects = progressionDeferredEffects(preview);
       return res.json({
         ok: true,
         slug: req.params.slug,
         revision: snapshot.revision,
         progressionRevision: snapshot.progression.progressionRevision,
         preview,
-        deferredEffects: ["HIT_POINTS", "HIT_DICE", "RESOURCE_POOLS"],
+        ...(deferredEffects.length > 0 ? { deferredEffects } : {}),
       });
     } catch (error) {
       const status = Number(error?.statusCode) || 400;
@@ -13505,7 +14508,7 @@ async function start() {
           }
 
           const primaryLabel = String(classRule.labelIt || classRule.labelEn || currentClass.classKey);
-          const nextState = {
+          let nextState = {
             ...current,
             basicInfo: {
               ...(current.basicInfo ?? {}),
@@ -13513,6 +14516,13 @@ async function start() {
               level: preview.after.characterLevel,
             },
           };
+          if (preview.effects?.status === "READY") {
+            nextState = projectStructuredStateToLegacy(nextState, {
+              hitPointState: preview.effects.hitPoints?.after ?? snapshot.hitPointState,
+              hitDicePools: preview.effects.hitDicePools?.after ?? snapshot.hitDicePools,
+              resourcePools: preview.effects.resourcePools?.after ?? snapshot.resourcePools,
+            });
+          }
           return {
             state: nextState,
             patch: { basicInfo: { class: primaryLabel, level: preview.after.characterLevel } },
@@ -13593,6 +14603,25 @@ async function start() {
             );
           }
 
+          if (meta.preview.effects?.status === "READY") {
+            const effects = meta.preview.effects;
+            if (effects.hitPoints) {
+              persistHitPointState(
+                characterRow.id,
+                effects.hitPoints.after,
+                meta.appliedAt,
+                effects.hitPoints.before.revision,
+              );
+              persistHitDicePools(characterRow.id, effects.hitDicePools.after, meta.appliedAt);
+            }
+            if (effects.resourcePools) {
+              persistResourcePools(characterRow.id, effects.resourcePools.after, meta.appliedAt, {
+                characterClassId: meta.characterClassRow.id,
+                sourceClassKey: meta.currentClass.classKey,
+              });
+            }
+          }
+
           const afterClass = {
             ...meta.currentClass,
             level: classLevelAfter,
@@ -13612,6 +14641,9 @@ async function start() {
             state: nextState,
             revision: characterRevisionAfter,
             progression: afterProgression,
+            hitPointState: meta.preview.effects?.hitPoints?.after ?? snapshot.hitPointState,
+            hitDicePools: meta.preview.effects?.hitDicePools?.after ?? snapshot.hitDicePools,
+            resourcePools: meta.preview.effects?.resourcePools?.after ?? snapshot.resourcePools,
           });
           const operation = {
             id: meta.operationId,
@@ -13626,6 +14658,7 @@ async function start() {
             totalLevelAfter: meta.preview.after.characterLevel,
             appliedAt: meta.appliedAt,
           };
+          const deferredEffects = progressionDeferredEffects(meta.preview);
           const result = {
             ok: true,
             replayed: false,
@@ -13636,18 +14669,24 @@ async function start() {
             preview: meta.preview,
             operation,
             character: { ...publicCharacter, revision: characterRevisionAfter },
-            deferredEffects: ["HIT_POINTS", "HIT_DICE", "RESOURCE_POOLS"],
+            ...(deferredEffects.length > 0 ? { deferredEffects } : {}),
           };
           const requestSnapshot = JSON.stringify(request);
           const beforeSnapshot = JSON.stringify({
             classes: snapshot.progression.classes,
             totalLevel: snapshot.progression.totalLevel,
             progressionRevision: meta.progressionRevisionBefore,
+            hitPointState: snapshot.hitPointState ?? null,
+            hitDicePools: snapshot.hitDicePools ?? [],
+            resourcePools: snapshot.resourcePools ?? [],
           });
           const afterSnapshot = JSON.stringify({
             classes: afterProgression.classes,
             totalLevel: afterProgression.totalLevel,
             progressionRevision: progressionRevisionAfter,
+            hitPointState: meta.preview.effects?.hitPoints?.after ?? snapshot.hitPointState ?? null,
+            hitDicePools: meta.preview.effects?.hitDicePools?.after ?? snapshot.hitDicePools ?? [],
+            resourcePools: meta.preview.effects?.resourcePools?.after ?? snapshot.resourcePools ?? [],
           });
           const ruleSnapshot = JSON.stringify({
             classRule: parseJsonString(meta.classRule.ruleSnapshot, {}),
@@ -13678,9 +14717,14 @@ async function start() {
             progressionRevisionAfter, meta.characterRevisionBefore, characterRevisionAfter,
             meta.classRule.rulesetId || CHARACTER_RULESET.id,
             meta.classRule.rulesetVersion || CHARACTER_RULESET.version,
-            "m4-v1", requestSnapshot,
+            meta.preview.effects ? "rest-v1" : "m4-v1", requestSnapshot,
             beforeSnapshot, afterSnapshot, ruleSnapshot, JSON.stringify(result), null, req.user.id,
-            appliedBySnapshot, meta.classRule.hitDie ?? null, null, null, null, meta.appliedAt,
+            appliedBySnapshot,
+            meta.preview.effects?.hitPoints?.hitDieSize ?? null,
+            meta.preview.effects?.hitPoints?.method ?? null,
+            meta.preview.effects?.hitPoints?.gained ?? null,
+            meta.preview.effects?.hitPoints?.constitutionModifier ?? null,
+            meta.appliedAt,
           ];
           sqlite.prepare(`
             INSERT INTO "CharacterLevelHistory" (
@@ -14033,9 +15077,13 @@ async function start() {
     });
 
     let progressionInitialization;
+    let vitalsResourcesInitialization;
     runInTransaction(() => {
       writeCharacter(slug, character);
       progressionInitialization = initializeCreatedCharacterProgression(slug, req.user?.id ?? null);
+      if (progressionInitialization.structured) {
+        vitalsResourcesInitialization = initializeCreatedCharacterVitalsResources(slug, req.user?.id ?? null);
+      }
     });
 
     if (ownerUserId) {
@@ -14051,6 +15099,7 @@ async function start() {
       ownerUserId,
       character: snapshot ? serializeCharacterSnapshot(snapshot) : character,
       progressionInitialization,
+      vitalsResourcesInitialization,
     });
   });
 
@@ -14305,6 +15354,7 @@ async function start() {
       const ack = createSocketAcknowledger(acknowledge);
       const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
       const patch = payload?.patch;
+      let appliedBy = null;
       if (!slug) {
         ack({ ok: false, code: "VALIDATION_ERROR", error: "Personaggio non valido." });
         return;
@@ -14316,6 +15366,7 @@ async function start() {
           authorize: () => {
             const liveUser = requireLiveSocketUser(socket);
             if (!liveUser) throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non valida.");
+            appliedBy = liveUser;
             const ownership = readOwnership();
             if (!canEditCharacter(liveUser, slug, ownership)) {
               throw createCharacterMutationError("FORBIDDEN", "Modifica del personaggio non autorizzata.");
@@ -14374,7 +15425,31 @@ async function start() {
                 snapshot
               );
             }
-            return { state: next, patch };
+            const structuredSync = prepareStructuredLegacyPatchSync(snapshot, next, patch);
+            const synchronizedState = structuredSync
+              ? projectStructuredStateToLegacy(next, {
+                  hitPointState: structuredSync.hitPointState ?? snapshot.hitPointState,
+                  hitDicePools: snapshot.hitDicePools,
+                  resourcePools: structuredSync.resourcePools ?? snapshot.resourcePools,
+                })
+              : next;
+            return { state: synchronizedState, patch, meta: { structuredSync } };
+          },
+          afterWrite: (_next, mutation, snapshot) => {
+            const sync = mutation.meta?.structuredSync;
+            if (!sync) return;
+            const characterId = sqlite.prepare(`
+              SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+            `).get(slug)?.id;
+            if (!characterId) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+            const now = new Date().toISOString();
+            if (sync.hitPointState) {
+              persistHitPointState(characterId, sync.hitPointState, now, snapshot.hitPointState.revision);
+            }
+            if (sync.hitPointAdjustment) {
+              persistHitPointAdjustment(characterId, sync.hitPointAdjustment, now, appliedBy);
+            }
+            if (sync.resourcePools) persistResourcePools(characterId, sync.resourcePools, now);
           },
         });
 
@@ -14404,6 +15479,83 @@ async function start() {
           revision: snapshot?.revision,
           state: snapshot?.state,
           ...(Array.isArray(error?.issues) ? { issues: error.issues } : {}),
+        });
+      }
+    });
+
+    socket.on("character:update-resource-pool", async (payload = {}, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
+      const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
+      const poolKey = typeof payload?.poolKey === "string" ? payload.poolKey.trim() : "";
+      const tierKey = typeof payload?.tierKey === "string" ? payload.tierKey.trim() : "";
+      const used = Number(payload?.used);
+      const expectedPoolRevision = Number(payload?.expectedPoolRevision);
+      if (!slug || !poolKey || !tierKey || !Number.isInteger(used) || used < 0 || !Number.isInteger(expectedPoolRevision) || expectedPoolRevision < 0) {
+        ack({ ok: false, code: "VALIDATION_ERROR", error: "Aggiornamento del pool risorsa non valido." });
+        return;
+      }
+
+      try {
+        const result = await commitCharacterMutation(slug, {
+          expectedRevision: payload?.revision ?? payload?.expectedRevision,
+          authorize: () => {
+            const liveUser = requireLiveSocketUser(socket);
+            if (!liveUser) throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non valida.");
+            const ownership = readOwnership();
+            if (!canEditCharacter(liveUser, slug, ownership)) {
+              throw createCharacterMutationError("FORBIDDEN", "Modifica del personaggio non autorizzata.");
+            }
+            if (!canUserWriteDuringSession(liveUser)) {
+              socket.emit("game-session:state", readGameSessionState());
+              throw createCharacterMutationError("SESSION_CLOSED", "La sessione e chiusa. Le modifiche del personaggio sono bloccate.");
+            }
+          },
+          mutate: (current, snapshot) => {
+            const prepared = prepareStructuredResourcePoolUsage(snapshot, current, {
+              poolKey,
+              tierKey,
+              used,
+              expectedPoolRevision,
+            });
+            return { state: prepared.next, patch: {}, meta: { updatedPool: prepared.updatedPool, tierKey, used } };
+          },
+          afterWrite: (_next, mutation, snapshot) => {
+            const characterId = sqlite.prepare(`
+              SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+            `).get(slug)?.id;
+            if (!characterId) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+            persistResourcePoolUsage(
+              characterId,
+              mutation.meta.updatedPool,
+              mutation.meta.tierKey,
+              mutation.meta.used,
+              new Date().toISOString(),
+              snapshot.resourcePools.find((pool) => pool.id === mutation.meta.updatedPool.id)?.revision,
+            );
+          },
+        });
+
+        const statePayload = buildCharacterStatePayload(slug, result);
+        socket.to(`char:${slug}`).emit("character:state", statePayload);
+        socket.emit("character:state", statePayload);
+        ack({
+          ok: true,
+          slug,
+          revision: statePayload.revision,
+          state: statePayload.state,
+          pool: result.meta.updatedPool,
+        });
+      } catch (error) {
+        const snapshot = error?.snapshot ?? null;
+        const statePayload = snapshot ? buildCharacterStatePayload(slug, snapshot) : null;
+        if (statePayload) socket.emit("character:state", statePayload);
+        ack({
+          ok: false,
+          code: error?.code ?? "PERSIST_FAILED",
+          error: String(error?.message ?? "Non e stato possibile aggiornare il pool risorsa."),
+          slug,
+          revision: snapshot?.revision,
+          state: snapshot?.state,
         });
       }
     });
@@ -14483,12 +15635,21 @@ async function start() {
               snapshot
             );
           }
-          const conversion = prepareSpellSlotConversion(current, payload?.targetLevel, payload?.selections);
+          const conversion = snapshot.schema?.m6Ready
+            ? prepareStructuredSpellSlotConversion(snapshot, payload?.targetLevel, payload?.selections)
+            : prepareSpellSlotConversion(current, payload?.targetLevel, payload?.selections);
           if (!conversion.ok) throw createCharacterMutationError("INVALID_CONVERSION", conversion.error, snapshot);
           return { state: conversion.next, patch: conversion.patch, meta: { conversion } };
         },
         afterWrite: (_next, mutation) => {
           const conversion = mutation.meta.conversion;
+          if (conversion.resourcePools) {
+            const characterId = sqlite.prepare(`
+              SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+            `).get(slug)?.id;
+            if (!characterId) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+            persistResourcePools(characterId, conversion.resourcePools, new Date().toISOString());
+          }
           const receiptResult = {
             ok: true,
             requestId,

@@ -264,6 +264,32 @@ type PactBladeState = {
 interface Character {
   slug: string;
   characterType?: "pg" | "png";
+  hitPointState?: {
+    maximumHitPoints: number;
+    currentHitPoints: number;
+    temporaryHitPoints: number;
+    shortRestsUsedSinceLongRest: number;
+    backfillStatus: string;
+  } | null;
+  hitDicePools?: Array<{
+    dieSize: 6 | 8 | 10 | 12;
+    maximum: number;
+    remaining: number;
+    source: string;
+  }>;
+  resourcePools?: Array<{
+    id: string;
+    poolKey: string;
+    kind: "SPELLCASTING" | "PACT_MAGIC" | "CLASS_RESOURCE" | "MANUAL";
+    label: string;
+    resetPolicy: "SHORT_REST" | "LONG_REST" | "MANUAL" | "NONE";
+    backfillStatus: string;
+    tiers: Array<{
+      tierKey: string;
+      maximum: number;
+      used: number;
+    }>;
+  }>;
   basicInfo: {
     characterName: string;
     class: string;

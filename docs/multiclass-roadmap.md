@@ -369,6 +369,8 @@ La preview deve impedire la conferma del livello che raggiunge o supera la sogli
 
 ### M5 - PF, Dadi Vita e riposi
 
+**Stato:** completato e collaudato localmente su `dev` insieme a M6 il 2026-09-23. TC01-TC05, TC07 e TC08 superati; l'integrazione level-up TC06 resta coperta tecnicamente dalle API/test e ricevera l'azione UI nella milestone L1. Contratto e decisioni operative in `docs/character-progression-m5-m6.md`; Railway invariato.
+
 **Obiettivo:** gestire taglie diverse senza sovrascrivere valori storici.
 
 Interventi:
@@ -386,6 +388,8 @@ Il primo livello usa la regola della classe iniziale; prendere successivamente i
 **Uscita:** d6/d8/d10/d12 distinti; riposo e refresh non alterano dati inattesi; cambio COS segue policy esplicita.
 
 ### M6 - Spellcasting, Pact Magic e risorse
+
+**Stato:** completato e collaudato localmente su `dev` insieme a M5 il 2026-09-23. TC01-TC05, TC07 e TC08 superati; l'integrazione level-up TC06 resta coperta tecnicamente dalle API/test e ricevera l'azione UI nella milestone L1. Contratto e decisioni operative in `docs/character-progression-m5-m6.md`; Railway invariato.
 
 **Obiettivo:** correggere slot e recuperi monoclasse con un modello che non debba essere sostituito dal multiclasse.
 

@@ -97,6 +97,9 @@ const HitPoints = ({
     const [combatToolsOpen, setCombatToolsOpen] = useState(false);
     const normalizedClass = (characterData.basicInfo.class ?? "").trim().toLowerCase();
     const derivedHitDice = HIT_DICE_BY_CLASS[normalizedClass] ?? characterData.combatStats.hitDice;
+    const hitDicePools = Array.isArray(characterData.hitDicePools)
+        ? characterData.hitDicePools.filter((pool: any) => Number(pool?.maximum) > 0)
+        : [];
     const resolvedAbilityData = resolveCharacterAbilityScores(
         characterData,
         passiveCapabilities,
@@ -143,15 +146,18 @@ const HitPoints = ({
         resolvedAbilityData.scores,
     ]);
 
-    const applyCombatStatsUpdate = (nextCombatStats: any) => {
+    const applyCombatStatsUpdate = (combatStatsPatch: any) => {
         if (!canEdit) return;
         setCharacterData((prev: any) => ({
             ...prev,
-            combatStats: nextCombatStats,
+            combatStats: {
+                ...prev.combatStats,
+                ...combatStatsPatch,
+            },
         }));
 
         if (characterData.slug) {
-            updateCharacter(characterData.slug, { combatStats: nextCombatStats });
+            updateCharacter(characterData.slug, { combatStats: combatStatsPatch });
         }
     };
 
@@ -166,13 +172,12 @@ const HitPoints = ({
         const damageToTemp = Math.min(temp, validAmount);
         const remainingDamage = validAmount - damageToTemp;
 
-        const nextCombatStats = {
-            ...characterData.combatStats,
+        const combatStatsPatch = {
             temporaryHitPoints: temp - damageToTemp,
             currentHitPoints: Math.max(0, current - remainingDamage),
         };
 
-        applyCombatStatsUpdate(nextCombatStats);
+        applyCombatStatsUpdate(combatStatsPatch);
         setHpChangeAmount("");
     };
 
@@ -181,34 +186,31 @@ const HitPoints = ({
 
         const current = characterData.combatStats.currentHitPoints ?? 0;
         const max = characterData.combatStats.hitPointMaximum ?? 0;
-        const nextCombatStats = {
-            ...characterData.combatStats,
+        const combatStatsPatch = {
             currentHitPoints: Math.min(max, current + validAmount),
         };
 
-        applyCombatStatsUpdate(nextCombatStats);
+        applyCombatStatsUpdate(combatStatsPatch);
         setHpChangeAmount("");
     };
 
     const setTemporaryHitPoints = () => {
         if (!validAmount) return;
 
-        const nextCombatStats = {
-            ...characterData.combatStats,
+        const combatStatsPatch = {
             temporaryHitPoints: validAmount,
         };
 
-        applyCombatStatsUpdate(nextCombatStats);
+        applyCombatStatsUpdate(combatStatsPatch);
         setHpChangeAmount("");
     };
 
     const clearTemporaryHitPoints = () => {
-        const nextCombatStats = {
-            ...characterData.combatStats,
+        const combatStatsPatch = {
             temporaryHitPoints: 0,
         };
 
-        applyCombatStatsUpdate(nextCombatStats);
+        applyCombatStatsUpdate(combatStatsPatch);
     };
 
     return (
@@ -323,10 +325,24 @@ const HitPoints = ({
                         </div>
                     </CollapsibleContent>
                 </Collapsible>
-                <div className="flex items-center justify-center gap-2 text-sm">
-                    <span className="text-muted-foreground">Dado Vita:</span>
-                    <span className="font-bold text-primary">{derivedHitDice}</span>
-                </div>
+                {hitDicePools.length > 0 ? (
+                    <div className="flex flex-wrap items-center justify-center gap-2 text-sm" aria-label="Pool Dadi Vita">
+                        <span className="text-muted-foreground">Dadi Vita:</span>
+                        {hitDicePools.map((pool: any) => (
+                            <span
+                                key={pool.dieSize}
+                                className="rounded-full border border-border/60 bg-background/40 px-2 py-0.5 font-bold text-primary"
+                            >
+                                {pool.remaining}/{pool.maximum}d{pool.dieSize}
+                            </span>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Dado Vita:</span>
+                        <span className="font-bold text-primary">{derivedHitDice}</span>
+                    </div>
+                )}
             </div>
         </SectionCard>
     )

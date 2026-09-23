@@ -324,6 +324,7 @@ model User {
   shopOffersProposed ShopOffer[] @relation("ShopOfferProposedBy")
   updatedCharacterClasses CharacterClass[] @relation("CharacterClassUpdatedBy")
   appliedCharacterLevelHistory CharacterLevelHistory[] @relation("CharacterLevelHistoryAppliedBy")
+  appliedCharacterHitPointAdjustments CharacterHitPointAdjustment[] @relation("CharacterHitPointAdjustmentAppliedBy")
 
   @@index([role])
 }
@@ -367,6 +368,10 @@ model Character {
   progression CharacterProgression?
   classes CharacterClass[]
   levelHistory CharacterLevelHistory[]
+  hitPointState CharacterHitPointState?
+  hitDiePools CharacterHitDiePool[]
+  hitPointAdjustments CharacterHitPointAdjustment[]
+  resourcePools CharacterResourcePool[]
 
   @@index([characterType])
   @@index([ownerUserId])
@@ -467,6 +472,7 @@ model CharacterClass {
   classRule    ClassRule     @relation(fields: [classRuleId], references: [id], onDelete: Restrict)
   subclassRule SubclassRule? @relation(fields: [subclassRuleId], references: [id], onDelete: Restrict)
   updatedBy    User?         @relation("CharacterClassUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  resourcePoolSources CharacterResourcePoolSource[]
 
   @@unique([characterId, classKey])
   @@unique([characterId, sortOrder])
@@ -522,6 +528,132 @@ model CharacterLevelHistory {
   @@index([targetClassRuleId])
   @@index([targetSubclassRuleId])
   @@index([appliedByUserId])
+}
+
+model CharacterHitPointState {
+  characterId                    String   @id
+  maximumHitPoints               Int
+  currentHitPoints               Int
+  temporaryHitPoints             Int      @default(0)
+  deathSaveSuccesses             Int      @default(0)
+  deathSaveFailures              Int      @default(0)
+  shortRestsUsedSinceLongRest    Int      @default(0)
+  lastShortRestAt                DateTime?
+  lastLongRestAt                 DateTime?
+  revision                       Int      @default(0)
+  backfillStatus                 String   @default("PENDING")
+  backfillIssues                 String   @default("[]")
+  legacySnapshot                 String   @default("{}")
+  createdAt                      DateTime @default(now())
+  updatedAt                      DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([backfillStatus])
+}
+
+model CharacterHitDiePool {
+  id             String   @id
+  characterId    String
+  dieSize        Int
+  maximum        Int
+  remaining      Int
+  source         String
+  legacySnapshot String   @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, dieSize])
+  @@index([characterId])
+}
+
+model CharacterHitPointAdjustment {
+  id                         String   @id
+  characterId                String
+  requestId                  String?
+  adjustmentType             String
+  maximumBefore              Int
+  maximumAfter               Int
+  currentBefore              Int
+  currentAfter               Int
+  delta                      Int
+  constitutionModifierBefore Int?
+  constitutionModifierAfter  Int?
+  totalLevel                 Int
+  reason                     String?
+  appliedByUserId            String?
+  appliedBySnapshot          String
+  detailsSnapshot            String   @default("{}")
+  appliedAt                  DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  appliedBy User? @relation("CharacterHitPointAdjustmentAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, requestId])
+  @@index([characterId, appliedAt])
+  @@index([appliedByUserId])
+}
+
+model CharacterResourcePool {
+  id               String   @id
+  characterId      String
+  poolKey          String
+  kind             String
+  label            String
+  resetPolicy      String
+  revision         Int      @default(0)
+  backfillStatus   String   @default("PENDING")
+  backfillIssues   String   @default("[]")
+  metadata         String   @default("{}")
+  ruleSnapshot     String   @default("{}")
+  legacySnapshot   String   @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  sources CharacterResourcePoolSource[]
+  tiers CharacterResourcePoolTier[]
+
+  @@unique([characterId, poolKey])
+  @@index([characterId])
+  @@index([kind])
+  @@index([backfillStatus])
+}
+
+model CharacterResourcePoolSource {
+  id               String   @id
+  poolId           String
+  characterClassId String?
+  sourceKey        String
+  sourceKind       String
+  ruleSnapshot     String   @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  pool CharacterResourcePool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  characterClass CharacterClass? @relation(fields: [characterClassId], references: [id], onDelete: SetNull)
+
+  @@unique([poolId, sourceKey])
+  @@index([characterClassId])
+}
+
+model CharacterResourcePoolTier {
+  id                String   @id
+  poolId            String
+  tierKey            String
+  sortOrder          Int      @default(0)
+  derivedMaximum     Int?
+  maximumOverride    Int?
+  used               Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  pool CharacterResourcePool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, tierKey])
+  @@index([poolId, sortOrder])
 }
 
 model CharacterBackstory {
