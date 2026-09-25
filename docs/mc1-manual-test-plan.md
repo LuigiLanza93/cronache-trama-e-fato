@@ -1,6 +1,6 @@
 # MC1 — Piano di collaudo manuale
 
-Stato: **checkpoint iniziale implementato, collaudo manuale non ancora eseguito**.
+Stato: **checkpoint iniziale collaudato; MC1 completato nel perimetro catalogo concordato**.
 
 Perimetro del checkpoint:
 
@@ -13,7 +13,7 @@ Perimetro del checkpoint:
 - competenze automatiche in armi/armature dell'ingresso multiclass, con provenienza distinta;
 - retry idempotente, revisioni, realtime e proiezioni plurali invariati.
 
-Restano fuori da questo checkpoint e impediscono di dichiarare completata MC1: scelte strutturate di abilita/strumenti concesse all'ingresso, profili di incantesimi conosciuti/preparati e catalogo persistito dei privilegi con regole di cumulo. La UI li segnala ancora come passaggi manuali; non vengono dedotti dai titoli legacy.
+Restano per M8 le scelte strutturate di abilita/strumenti concesse all'ingresso, i profili di incantesimi conosciuti/preparati e il catalogo persistito dei privilegi con regole di cumulo. La UI li segnala come passaggi manuali; non vengono dedotti dai titoli legacy.
 
 ## Preparazione
 
@@ -50,7 +50,7 @@ Provare full+full, full+half e Warlock+caster. Gli slot Spellcasting devono segu
 
 ### TC07 — Sottoclassi indipendenti
 
-Avanzare due classi fino alle rispettive soglie. Ogni selezione deve offrire soltanto sottoclassi della classe bersaglio e non deve cambiare quella gia scelta per l'altra classe.
+Avanzare due classi fino alle rispettive soglie. Ogni selezione deve offrire soltanto sottoclassi della classe bersaglio e non deve cambiare quella gia scelta per l'altra classe. Verificare anche il catalogo completo del Manuale del Giocatore 5.0: 40 sottoclassi in totale, fra cui 8 scuole del Mago, 7 domini del Chierico e 3 archetipi del Guerriero. Le scelte interne alla sottoclasse, per esempio l'antenato della Discendenza Draconica, restano un passaggio manuale finche non avranno persistenza strutturata.
 
 ### TC08 — Conflitto, retry e rollback
 

@@ -9,6 +9,8 @@ const require = createRequire(import.meta.url);
 const { DatabaseSync } = require("node:sqlite");
 const ROOT = path.resolve(import.meta.dirname, "..", "..");
 const SCRIPT = path.join(ROOT, "scripts", "apply-character-progression-m3.mjs");
+const MC1_SCRIPT = path.join(ROOT, "scripts", "apply-character-progression-mc1.mjs");
+const M4_SCRIPT = path.join(ROOT, "scripts", "apply-character-progression-m4.mjs");
 const MIGRATION = path.join(
   ROOT,
   "prisma",
@@ -84,6 +86,33 @@ function readM3State(databasePath) {
 }
 
 describe("M3 additive character progression schema", () => {
+  it("syncs the handbook catalog after MC1 without changing character progression", () => {
+    const databasePath = temporaryDatabase();
+    const db = createLegacyDatabase(databasePath);
+    addCharacter(db, { id: "catalog-mc1", className: "Guerriero", level: 2 });
+    db.close();
+    expect(run(databasePath, "--apply").status).toBe(0);
+    const m4 = spawnSync(process.execPath, [M4_SCRIPT, "--apply", "--database", databasePath], { cwd: ROOT, encoding: "utf8" });
+    expect(m4.status, `${m4.stdout}\n${m4.stderr}`).toBe(0);
+    const mc1 = spawnSync(process.execPath, [MC1_SCRIPT, "--apply", "--database", databasePath], { cwd: ROOT, encoding: "utf8" });
+    expect(mc1.status, `${mc1.stdout}\n${mc1.stderr}`).toBe(0);
+    const before = readM3State(databasePath);
+    const mutate = new DatabaseSync(databasePath);
+    mutate.prepare('DELETE FROM "SubclassRule" WHERE subclassKey = ?').run("battle-master");
+    mutate.close();
+    const dryRun = run(databasePath, "--catalog-only", "--dry-run");
+    expect(dryRun.status).toBe(0);
+    expect(dryRun.summary.catalog.planned.subclassRulesInserted).toBe(1);
+    const applied = run(databasePath, "--catalog-only", "--apply");
+    expect(applied.status, `${applied.stdout}\n${applied.stderr}`).toBe(0);
+    expect(applied.summary.catalog.applied.subclassRulesInserted).toBe(1);
+    const after = readM3State(databasePath);
+    expect(after.classes).toEqual(before.classes);
+    expect(after.progressions).toEqual(before.progressions);
+    const withoutTimestamps = (rows) => rows.map(({ createdAt, updatedAt, ...row }) => row);
+    expect(withoutTimestamps(after.subclassRules)).toEqual(withoutTimestamps(before.subclassRules));
+  });
+
   it("materializes versioned catalog snapshots and backfills one primary class idempotently", () => {
     const databasePath = temporaryDatabase();
     const db = createLegacyDatabase(databasePath);
@@ -98,11 +127,11 @@ describe("M3 additive character progression schema", () => {
       schema: { presentBefore: false, presentAfter: true },
       catalog: {
         classRules: 12,
-        subclassRules: 14,
+        subclassRules: 40,
         wouldInsertClassRules: 12,
-        wouldInsertSubclassRules: 14,
+        wouldInsertSubclassRules: 40,
         insertedClassRules: 12,
-        insertedSubclassRules: 14,
+        insertedSubclassRules: 40,
       },
       characters: {
         total: 1,
@@ -116,7 +145,7 @@ describe("M3 additive character progression schema", () => {
 
     const stateAfterFirst = readM3State(databasePath);
     expect(stateAfterFirst.classRules).toHaveLength(12);
-    expect(stateAfterFirst.subclassRules).toHaveLength(14);
+    expect(stateAfterFirst.subclassRules).toHaveLength(40);
     expect(stateAfterFirst.classes).toEqual([
       expect.objectContaining({
         characterId: "fighter-alias",
@@ -146,7 +175,7 @@ describe("M3 additive character progression schema", () => {
         updatedClassRules: 0,
         insertedSubclassRules: 0,
         updatedSubclassRules: 0,
-        unchanged: 26,
+        unchanged: 52,
       },
       characters: { insertedCharacterClasses: 0, changedProgressions: 0 },
     });
@@ -168,7 +197,7 @@ describe("M3 additive character progression schema", () => {
       schema: { presentBefore: false, presentAfter: false },
       catalog: {
         wouldInsertClassRules: 12,
-        wouldInsertSubclassRules: 14,
+        wouldInsertSubclassRules: 40,
         insertedClassRules: 0,
         insertedSubclassRules: 0,
       },
@@ -202,7 +231,7 @@ describe("M3 additive character progression schema", () => {
       updatedClassRules: 1,
       insertedSubclassRules: 0,
       updatedSubclassRules: 0,
-      unchanged: 25,
+      unchanged: 51,
     });
     const verify = new DatabaseSync(databasePath, { readOnly: true });
     expect(verify.prepare('SELECT labelIt FROM "ClassRule" WHERE classKey = ?').get("bard").labelIt).toBe("Bardo");

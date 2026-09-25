@@ -435,6 +435,10 @@ Perimetro iniziale:
 
 ### MC1 - Estensione multiclasse del level-up
 
+**Revisione del 2026-09-25:** MC1 e completato per il perimetro concordato: level-up multiclasse gia collaudato e catalogo delle 40 sottoclassi del Manuale del Giocatore 5.0, con gli ID persistiti delle 14 gia censite preservati. Il manuale Markdown e il riferimento per le regole 2014 di questa fase; la house rule gia confermata dei PF pieni a ogni level-up resta esplicita. L'anteprima espone le concessioni e le eccezioni multiclass che richiedono verifica manuale. La persistenza delle scelte interne alle sottoclassi (incluso l'antenato della Discendenza Draconica), i profili degli incantesimi, le competenze e i privilegi strutturati restano nel successivo lavoro M8.
+
+La sincronizzazione del catalogo dopo MC1 usa `npm.cmd run progression:catalog:dry-run` e `npm.cmd run progression:catalog:apply-local` sul DB locale. Le vecchie modalita complete M3 richiedono l'indice monoclasse e non vanno riusate su uno schema MC1. Per un futuro rilascio Railway servono autorizzazione esplicita, backup appena verificato, sincronizzazione del catalogo con `--catalog-only --apply --database /data/migration.db --allow-production --backup-verified` durante la sequenza controllata prima di servire il nuovo codice, e verifica di 40 sottoclassi, foreign key e integrity check. Nessun rilascio e stato eseguito in questa revisione.
+
 **Obiettivo:** aggiungere al flusso collaudato la scelta tra avanzare una classe posseduta e prendere il primo livello in una nuova classe.
 
 Interventi:

@@ -24,6 +24,7 @@ const PROGRESSION_TABLES = ["ClassRule", "SubclassRule", "CharacterProgression",
 
 function parseArguments(argv) {
   const apply = argv.includes("--apply");
+  const catalogOnly = argv.includes("--catalog-only");
   if (apply && argv.includes("--dry-run")) throw new Error("Use either --apply or --dry-run, not both");
   const databaseIndex = argv.indexOf("--database");
   const assignment = argv.find((argument) => argument.startsWith("--database="));
@@ -44,7 +45,7 @@ function parseArguments(argv) {
       throw new Error("Applying to /data/migration.db requires --allow-production and --backup-verified after explicit release authorization");
     }
   }
-  return { apply, databasePath };
+  return { apply, catalogOnly, databasePath };
 }
 
 function tableNames(db) {
@@ -66,7 +67,7 @@ function verifyLegacySchema(db) {
   requireColumns(db, "Character", ["id", "slug", "className", "level", "data"]);
 }
 
-function verifyProgressionSchema(db, { allowAbsent = false, requireTriggers = true } = {}) {
+function verifyProgressionSchema(db, { allowAbsent = false, requireTriggers = true, allowMulticlass = false } = {}) {
   const names = tableNames(db);
   const present = PROGRESSION_TABLES.filter((table) => names.has(table));
   if (present.length === 0 && allowAbsent) return false;
@@ -99,7 +100,7 @@ function verifyProgressionSchema(db, { allowAbsent = false, requireTriggers = tr
     "CharacterClass_characterId_classKey_key",
     "CharacterClass_characterId_sortOrder_key",
     "CharacterClass_one_primary_key",
-    "CharacterClass_m3_single_class_key",
+    ...(!allowMulticlass ? ["CharacterClass_m3_single_class_key"] : []),
   ];
   const indexes = new Set(db.prepare("SELECT name FROM sqlite_schema WHERE type = 'index'").all().map((row) => row.name));
   const missingIndexes = requiredIndexes.filter((name) => !indexes.has(name));
@@ -131,6 +132,9 @@ function subclassRuleId(rule) {
 }
 
 function sourceReference(source, fallback = null) {
+  if (typeof source.reference === "string" && source.reference.trim()) {
+    return source.reference.trim();
+  }
   if (source.rulesetId === CHARACTER_RULESET.id && source.version === CHARACTER_RULESET.version) {
     return CHARACTER_RULESET.source;
   }
@@ -454,7 +458,7 @@ function foreignKeyRows(db) {
 }
 
 function run() {
-  const { apply, databasePath } = parseArguments(process.argv.slice(2));
+  const { apply, catalogOnly, databasePath } = parseArguments(process.argv.slice(2));
   if (!existsSync(databasePath)) throw new Error(`SQLite database does not exist: ${databasePath}`);
   const db = new DatabaseSync(databasePath, { readOnly: !apply });
   let transactionOpen = false;
@@ -466,6 +470,25 @@ function run() {
     const foreignKeysBefore = new Set(foreignKeyRows(db));
     const legacyBefore = JSON.stringify(readCharacters(db));
     const catalog = catalogRows();
+    if (catalogOnly) {
+      verifyProgressionSchema(db, { allowMulticlass: true });
+      const planned = inspectCatalog(db, catalog);
+      let applied = null;
+      if (apply) {
+        db.exec("BEGIN IMMEDIATE;");
+        transactionOpen = true;
+        applied = syncCatalog(db, catalog, new Date().toISOString());
+        if (JSON.stringify(readCharacters(db)) !== legacyBefore) throw new Error("Legacy Character rows changed during catalog sync");
+        const integrityAfter = integrityRows(db);
+        if (integrityAfter.length !== 1 || integrityAfter[0] !== "ok") throw new Error("Post-sync integrity_check failed");
+        const newForeignKeys = foreignKeyRows(db).filter((row) => !foreignKeysBefore.has(row));
+        if (newForeignKeys.length) throw new Error(`${newForeignKeys.length} new foreign-key violations detected`);
+        db.exec("COMMIT;");
+        transactionOpen = false;
+      }
+      console.log(JSON.stringify({ ok: true, mode: apply ? "apply" : "dry-run", catalogOnly: true, databasePath, catalog: { classRules: catalog.classes.length, subclassRules: catalog.subclasses.length, planned, applied } }, null, 2));
+      return;
+    }
     let schemaPresent = verifyProgressionSchema(db, { allowAbsent: true, requireTriggers: false });
     const schemaPresentBefore = schemaPresent;
     const catalogPlan = schemaPresent

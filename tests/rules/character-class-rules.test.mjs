@@ -18,6 +18,7 @@ import {
   resolveSpellcastingProgression,
   resolveSpellcastingSlots,
   resolveSubclassEligibility,
+  normalizeSubclassKey,
 } from "../../shared/character-class-rules.mjs";
 
 describe("character class catalog", () => {
@@ -40,18 +41,33 @@ describe("character class catalog", () => {
     });
   });
 
-  it("records each catalogued caster ability and the associated 2014/SRD subclasses", () => {
+  it("contains all 40 2014 PHB subclasses with coverage for every class", () => {
     expect(CLASS_RULES.wizard.spellcastingAbility).toBe("intelligence");
     expect(CLASS_RULES.warlock.spellcastingAbility).toBe("charisma");
     expect(CLASS_RULES.fighter.spellcastingAbility).toBeNull();
     expect(normalizeClassKey("Ranger")).toBe("ranger");
-    expect(Object.values(SUBCLASS_RULES).map((rule) => rule.classKey)).toEqual(expect.arrayContaining([
-      "barbarian", "bard", "cleric", "druid", "fighter", "monk", "paladin", "ranger", "rogue", "sorcerer", "warlock", "wizard",
-    ]));
+    expect(Object.values(SUBCLASS_RULES)).toHaveLength(40);
+    expect(Object.values(SUBCLASS_RULES).reduce((counts, rule) => {
+      counts[rule.classKey] = (counts[rule.classKey] ?? 0) + 1;
+      return counts;
+    }, {})).toEqual({
+      barbarian: 2, bard: 2, cleric: 7, druid: 2, fighter: 3, monk: 3,
+      paladin: 3, ranger: 2, rogue: 3, sorcerer: 2, warlock: 3, wizard: 8,
+    });
     expect(SUBCLASS_RULES["eldritch-knight"]).toMatchObject({ casterKind: "THIRD", spellcastingAbility: "intelligence" });
     expect(SUBCLASS_RULES["arcane-trickster"]).toMatchObject({ casterKind: "THIRD", spellcastingAbility: "intelligence" });
-    expect(SUBCLASS_RULES["eldritch-knight"].source).toEqual({ rulesetId: "dnd-5e-2014", version: "2014" });
+    expect(SUBCLASS_RULES["eldritch-knight"].source).toEqual({ rulesetId: "dnd-5e-2014", version: "2014", reference: "Manuale del Giocatore 5.0, capitolo 3" });
     expect(SUBCLASS_RULES.champion.source).toEqual({ rulesetId: "srd-5.1-2014", version: "5.1" });
+  });
+
+  it("uses Manuale labels while retaining legacy Italian aliases", () => {
+    expect(SUBCLASS_RULES.berserker.labels.it).toBe("Cammino del Berserker");
+    expect(normalizeSubclassKey("Berserker")).toBe("berserker");
+    expect(normalizeSubclassKey("Cammino del Berserker")).toBe("berserker");
+    expect(normalizeSubclassKey("Collegio della Sapienza")).toBe("college-of-lore");
+    expect(normalizeSubclassKey("Collegio del Sapere")).toBe("college-of-lore");
+    expect(normalizeSubclassKey("Discendenza Draconica")).toBe("draconic-bloodline");
+    expect(normalizeSubclassKey("Stirpe Draconica")).toBe("draconic-bloodline");
   });
 });
 

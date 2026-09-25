@@ -29,7 +29,7 @@ export type ClassRule = {
   /** First class level at which this caster source has Spellcasting slots. */
   spellcastingStartLevel: number | null;
   subclassLevel?: number;
-  source: { rulesetId: string; version: string };
+  source: { rulesetId: string; version: string; reference?: string };
 };
 export type SubclassRule = {
   key: string;
@@ -40,7 +40,7 @@ export type SubclassRule = {
   /** Defined for a subclass only when it overrides the parent caster profile. */
   spellcastingAbility?: AbilityKey;
   spellcastingStartLevel?: number;
-  source: { rulesetId: string; version: string };
+  source: { rulesetId: string; version: string; reference?: string };
 };
 export const CHARACTER_RULESET: Readonly<{ id: string; version: string; source: string }>;
 export const ABILITY_KEYS: readonly AbilityKey[];

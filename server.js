@@ -11433,6 +11433,46 @@ function progressionClassOptions(classes) {
     .sort((left, right) => left.label.localeCompare(right.label, "it"));
 }
 
+const MULTICLASS_ENTRY_CHOICES = Object.freeze({
+  bard: ["Scegli un'abilità e uno strumento musicale."],
+  rogue: ["Scegli un'abilità dalla lista del ladro; ottieni competenza negli arnesi da scasso."],
+  ranger: ["Scegli un'abilità dalla lista del ranger."],
+});
+
+function progressionManualRuleNotes(resolved) {
+  if (!resolved?.after) return [];
+  const notes = [];
+  if (resolved.mode === "ADD_NEW_CLASS") {
+    notes.push("La nuova classe non concede equipaggiamento iniziale.");
+    notes.push(...(MULTICLASS_ENTRY_CHOICES[resolved.targetClassKey] ?? []));
+  }
+  if (resolved.after.spellcastingSlots?.activeSourceClassKeys?.length > 1) {
+    notes.push("Incantesimi conosciuti e preparati si determinano separatamente per ogni classe; gli slot condivisi non ampliano gli incantesimi accessibili.");
+  }
+  const classes = resolved.classesAfter ?? [];
+  const level = (key) => classes.find((entry) => entry.classKey === key)?.level ?? 0;
+  const extraAttackSources = ["barbarian", "fighter", "monk", "paladin", "ranger"].filter((key) => level(key) >= 5);
+  if (classes.some((entry) => entry.classKey === "bard" && entry.level >= 6 && entry.subclassKey === "college-of-valour")) {
+    extraAttackSources.push("bard");
+  }
+  if (extraAttackSources.length > 1) {
+    notes.push("Attacco Extra ottenuto da più classi non si cumula; solo il Guerriero aumenta esplicitamente il numero di attacchi.");
+  }
+  if (level("warlock") >= 5 && extraAttackSources.length > 0) {
+    notes.push("Se possiede la supplica Lama Assetata, questa non aggiunge attacchi al privilegio Attacco Extra.");
+  }
+  if (level("warlock") >= 1 && resolved.after.spellcastingSlots?.activeSourceClassKeys?.length > 0) {
+    notes.push("Gli slot di Magia del Patto e Incantesimi restano separati, ma possono essere usati per lanciare gli incantesimi conosciuti o preparati dell'altra fonte.");
+  }
+  if (level("barbarian") >= 1 && level("monk") >= 1) {
+    notes.push("Difesa Senza Armatura non si ottiene una seconda volta da un'altra classe.");
+  }
+  if (level("cleric") >= 2 && level("paladin") >= 3) {
+    notes.push("Incanalare Divinità offre gli effetti di entrambe le classi, ma i suoi utilizzi non si sommano automaticamente.");
+  }
+  return notes;
+}
+
 export function prepareCharacterProgressionPreview(snapshot, request) {
   if (!snapshot?.state) {
     throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
@@ -11510,11 +11550,13 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
     ? progressionSubclassOptions(targetClassKey)
     : [];
   const effects = buildCharacterProgressionEffects(snapshot, resolved);
+  const manualRuleNotes = progressionManualRuleNotes(resolved);
   if (effects?.status === "VITALS_NOT_READY") {
     return {
       ...resolved,
       classOptions,
       subclassOptions,
+      manualRuleNotes,
       status: "VITALS_NOT_READY",
       canApply: false,
       reason: "Lo stato strutturato di PF e Dadi Vita non e pronto per la progressione.",
@@ -11530,6 +11572,7 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
     ...resolved,
     classOptions,
     subclassOptions,
+    manualRuleNotes,
     canApply: resolved.canAdvance === true && !prerequisiteBlocked,
     prerequisites: { ...prerequisites, overridden: overrideAccepted },
     ...(prerequisiteBlocked ? {

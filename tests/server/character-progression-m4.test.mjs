@@ -53,6 +53,32 @@ function snapshot({
 }
 
 describe("M4 progression preview contract", () => {
+  it("explains manual multiclass grants and non-stacking class features", () => {
+    const bardEntry = prepareCharacterProgressionPreview(snapshot({ classKey: "fighter", level: 5 }), {
+      targetClassKey: "bard",
+      expectedRevision: "revision-1",
+      expectedProgressionRevision: 0,
+    });
+    expect(bardEntry.manualRuleNotes).toEqual(expect.arrayContaining([
+      expect.stringContaining("strumento musicale"),
+      expect.stringContaining("equipaggiamento iniziale"),
+    ]));
+    const monkEntry = prepareCharacterProgressionPreview(snapshot({ classKey: "barbarian", level: 5 }), {
+      targetClassKey: "monk",
+      expectedRevision: "revision-1",
+      expectedProgressionRevision: 0,
+    });
+    expect(monkEntry.manualRuleNotes).toContain("Difesa Senza Armatura non si ottiene una seconda volta da un'altra classe.");
+    const pactAndExtraAttack = snapshot({ classKey: "fighter", level: 5 });
+    pactAndExtraAttack.progression.classes.push({ classKey: "warlock", level: 5, sortOrder: 1, isPrimary: false });
+    pactAndExtraAttack.progression.classes.push({ classKey: "wizard", level: 1, sortOrder: 2, isPrimary: false });
+    const pactPreview = prepareCharacterProgressionPreview(pactAndExtraAttack, { targetClassKey: "fighter" });
+    expect(pactPreview.manualRuleNotes).toEqual(expect.arrayContaining([
+      expect.stringContaining("Lama Assetata"),
+      expect.stringContaining("Magia del Patto"),
+    ]));
+  });
+
   it("blocks apply when any M5/M6 derived effect is deferred", () => {
     expect(() => assertProgressionEffectsReady({ effects: null })).toThrowError(
       expect.objectContaining({
@@ -112,11 +138,11 @@ describe("M4 progression preview contract", () => {
       .toMatchObject({
         status: "SUBCLASS_REQUIRED",
         canApply: false,
-        subclassOptions: [{
+        subclassOptions: expect.arrayContaining([{
           key: "school-of-evocation",
           label: "Scuola di Invocazione",
           classKey: "wizard",
-        }],
+        }]),
       });
     expect(prepareCharacterProgressionPreview(wizard, {
       targetClassKey: "wizard",
@@ -125,11 +151,11 @@ describe("M4 progression preview contract", () => {
       status: "READY",
       canApply: true,
       classesAfter: [{ classKey: "wizard", level: 2, subclassKey: "school-of-evocation" }],
-      subclassOptions: [{
+      subclassOptions: expect.arrayContaining([{
         key: "school-of-evocation",
         label: "Scuola di Invocazione",
         classKey: "wizard",
-      }],
+      }]),
     });
   });
 
@@ -140,6 +166,7 @@ describe("M4 progression preview contract", () => {
 
     expect(result).toMatchObject({ status: "SUBCLASS_REQUIRED", canApply: false });
     expect(result.subclassOptions).toEqual([
+      { key: "battle-master", label: "Maestro di Battaglia", classKey: "fighter" },
       { key: "champion", label: "Campione", classKey: "fighter" },
       { key: "eldritch-knight", label: "Cavaliere Mistico", classKey: "fighter" },
     ]);

@@ -21,6 +21,8 @@ REST, Socket.IO e UI non espongono ancora `classes[]` o `totalLevel`. Anche il w
 
 ## Procedura locale
 
+Aggiornamento MC1 (2026-09-25): su un database dove la guardia monoclasse M3 e gia stata rimossa, i comandi M3 completi sottostanti non sono piu applicabili. Per sincronizzare soltanto il catalogo di classi e sottoclassi usare `npm.cmd run progression:catalog:dry-run` e `npm.cmd run progression:catalog:apply-local`. Questa modalita conserva classi, progressioni e dati legacy; sul DB locale ha portato il catalogo a 40 sottoclassi ed e risultata idempotente. Su Railway resta necessaria una release esplicita con backup verificato e guardie di produzione.
+
 ```powershell
 npm.cmd run progression:m3:dry-run
 npm.cmd run progression:m3:apply-local

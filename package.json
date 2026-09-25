@@ -26,6 +26,8 @@
     "db:import-json": "node scripts/import-json-to-sqlite.mjs",
     "progression:m3:dry-run": "node scripts/apply-character-progression-m3.mjs --dry-run",
     "progression:m3:apply-local": "node scripts/apply-character-progression-m3.mjs --apply",
+    "progression:catalog:dry-run": "node scripts/apply-character-progression-m3.mjs --catalog-only --dry-run",
+    "progression:catalog:apply-local": "node scripts/apply-character-progression-m3.mjs --catalog-only --apply",
     "progression:m4:dry-run": "node scripts/apply-character-progression-m4.mjs --dry-run",
     "progression:m4:apply-local": "node scripts/apply-character-progression-m4.mjs --apply",
     "progression:m5:dry-run": "node scripts/apply-character-progression-m5.mjs --dry-run",
