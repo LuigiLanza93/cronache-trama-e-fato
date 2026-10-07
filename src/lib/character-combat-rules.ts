@@ -7,6 +7,8 @@
  * receives the proficiency bonus.
  */
 
+import { canUsePactBlade } from "../../shared/pact-blade-eligibility.mjs";
+
 export type WeaponProficiencyGroup = "SIMPLE" | "MARTIAL";
 export type ArmorProficiencyCategory = "LIGHT" | "MEDIUM" | "HEAVY" | "SHIELD";
 export type PassiveEffectProficiencyTarget =
@@ -35,11 +37,12 @@ type ArmorLike = {
 };
 
 type CharacterLike = {
-  basicInfo?: { class?: string | null };
-  classes?: Array<{ classKey?: string | null; label?: string | null; isPrimary?: boolean | null }>;
+  basicInfo?: { class?: string | null; level?: number | null };
+  classes?: Array<{ classKey?: string | null; label?: string | null; level?: number | null; isPrimary?: boolean | null }>;
   proficiencies?: { weapons?: unknown };
   features?: unknown;
   capabilities?: unknown;
+  creationCapabilities?: unknown;
   pactBlade?: { bondedCharacterItemId?: string | null } | null;
 };
 
@@ -534,7 +537,7 @@ export function resolveWeaponProficiency(characterData: CharacterLike, weapon: W
     identityKeys.some((key) => profile.specificWeapons.some((weaponName) => matchesSpecificWeaponName(key, weaponName))));
   const classIsKnown = classProfiles.length > 0;
   const hasPactWeaponGrant =
-    classProfiles.some((profile) => profile.key === "warlock") && (
+    canUsePactBlade(characterData) && (
       weapon?.isPactWeapon === true ||
       (typeof characterData?.pactBlade?.bondedCharacterItemId === "string" &&
         characterData.pactBlade.bondedCharacterItemId.length > 0 &&
@@ -634,9 +637,9 @@ function entriesNamed(value: unknown): string[] {
 }
 
 export function hasTwoWeaponFightingStyle(characterData: CharacterLike) {
-  const names = [...entriesNamed(characterData?.features), ...entriesNamed(characterData?.capabilities)];
+  const names = [...entriesNamed(characterData?.features), ...entriesNamed(characterData?.capabilities), ...entriesNamed(characterData?.creationCapabilities)];
   return names.some((name) => {
-    const value = normalized(name);
+    const value = normalized(name).replace(/^stile di combattimento:\s*/, "").replace(/^fighting style:\s*/, "");
     return value === "combattere con due armi" || value === "two-weapon fighting" || value === "two weapon fighting";
   });
 }

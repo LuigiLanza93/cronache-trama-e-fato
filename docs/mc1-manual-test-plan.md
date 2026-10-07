@@ -15,6 +15,8 @@ Perimetro del checkpoint:
 
 Restano per M8 le scelte strutturate di abilita/strumenti concesse all'ingresso, i profili di incantesimi conosciuti/preparati e il catalogo persistito dei privilegi con regole di cumulo. La UI li segnala come passaggi manuali; non vengono dedotti dai titoli legacy.
 
+Aggiornamento della chat al 2026-10-01: la creazione guidata di livello 1 è implementata nella copia locale e gestisce alcune di queste scelte iniziali; ciò non completa le stesse scelte nel percorso MC1 di avanzamento. Prima dell'estensione M8 va censito il manuale per tutte le razze/classi e definito il modello comune. Riferimenti: [stato della creazione](character-creation-level-one.md) e [audit del modello](character-creation-progression-model-audit.md).
+
 ## Preparazione
 
 1. Avviare l'app locale su `dev` con `npm.cmd run dev`.

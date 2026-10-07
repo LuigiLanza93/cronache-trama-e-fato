@@ -1,6 +1,8 @@
 # Progressione personaggio M4: persistenza e storico
 
-Stato: implementazione e migrazione applicate e collaudate sul database locale di sviluppo; modifiche non ancora consolidate su `dev` e mai applicate a Railway.
+Stato della milestone: implementazione e migrazione applicate e collaudate sul database locale di sviluppo durante M4. Il documento conserva quel contratto; i vincoli iniziali monoclasse sono stati successivamente estesi da MC1.
+
+Checkpoint della chat al 2026-10-01: per lo stato di L1/MC1, creazione guidata e lavoro prima di M8 consultare [multiclass-roadmap.md](multiclass-roadmap.md) e [character-creation-level-one.md](character-creation-level-one.md). Le note di consolidamento/rilascio della milestone non attestano lo stato Railway attuale.
 
 ## Scopo
 

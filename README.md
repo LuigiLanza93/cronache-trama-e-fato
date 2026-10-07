@@ -1,5 +1,10 @@
 # Cronache della Trama e del Fato
 
+> Aggiornamento 2026-10-02: preview autorevole, diario delle decisioni e concessioni,
+> background personalizzato e varianti, risorse iniziali integrate. Database locale
+> allineato; nessuna modifica Railway. [Checkpoint corrente](docs/rules-inventory/implementation-step-two.md).
+> Le verifiche datate nei paragrafi precedenti descrivono incrementi storici.
+
 Applicazione web locale/privata per la gestione di campagne di gioco di ruolo con:
 
 - schede personaggio realtime
@@ -15,6 +20,18 @@ Lo stack attuale usa:
 - `Express + Socket.IO` per backend e realtime
 - `SQLite` come database locale
 - `Prisma` come source of truth dello schema
+
+## Creazione e progressione: ultimo incremento
+
+Consolidamento su `dev` autorizzato il **2026-10-07**, incluso l'assetto dei file
+e della configurazione Codex. Collaudo browser ancora aperto; verifiche
+automatiche precedenti e perimetro nel [checkpoint corrente](docs/rules-inventory/implementation-step-two.md).
+
+Catalogo PHB di 361 magie, dettagli nel wizard e nella scheda, validator
+comune e primi eventi dichiarativi. Corrette lingue automatiche, expertise
+e strumento iniziale del Bardo. P1 245/245; build e TypeScript superati.
+Modifiche locali non committate, level up completo ancora aperto.
+[Stato e limiti](docs/rules-inventory/implementation-step-one.md).
 
 ## Stato attuale
 
@@ -42,9 +59,21 @@ Nota importante:
 - le sessioni login sono persistite nel database SQLite
 - la roadmap della migrazione e' in `docs/sqlite-prisma-roadmap.md`
 
+### Creazione e progressione dei personaggi
+
+Al checkpoint del 2026-10-01, la copia di sviluppo su `dev` include la creazione guidata DM di PG di livello 1, con scelte iniziali, point buy, background, equipaggiamento, privilegi di origine e magie raggruppate per livello nella scheda. Le modifiche della creazione restano non committate e il collaudo completo è aperto. L1 e MC1 forniscono già la progressione mono/multiclasse nel perimetro collaudato; tutte le scelte interne ai privilegi e alle magie dei livelli successivi non sono ancora automatizzate.
+
+La priorità concordata è censire le regole di tutte le razze e classi del Manuale del Giocatore e completare la valutazione di un modello comune per creazione e level up prima di aggiungere altre scelte puntuali.
+
+- [Stato della creazione, verifiche e limiti](docs/character-creation-level-one.md).
+- [Audit del modello comune](docs/character-creation-progression-model-audit.md).
+- [Inventario PHB e contratto di decisioni](docs/rules-inventory/README.md).
+- [Piano di collaudo della creazione](docs/level-one-creation-manual-test-plan.md).
+- [Roadmap di prodotto](docs/product-roadmap.md) e [progressione/M8](docs/multiclass-roadmap.md).
+
 ## Requisiti
 
-- Node.js 22+
+- Node.js 22.x
 - npm
 
 Su Windows e' disponibile anche un client SQLite locale gia' incluso:

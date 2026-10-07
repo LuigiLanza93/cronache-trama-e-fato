@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getDerivedAbilityBonuses, getDerivedPassivePerception } from "../../src/lib/character-derived-stats";
+import { getDerivedAbilityBonuses, getDerivedArmorClass, getDerivedPassivePerception, getResolvedCharacterRuntime } from "../../src/lib/character-derived-stats";
 import { calculateSkillValues, getBaseAbilityScores } from "../../src/utils";
 
 describe("resolved ability scores", () => {
@@ -83,5 +83,34 @@ describe("skill ranks and passive perception", () => {
     };
 
     expect(getDerivedPassivePerception(state)).toBe(17);
+  });
+});
+
+describe("guided creation derived defenses", () => {
+  it("uses a monk's unarmored defense in the shared runtime", () => {
+    const state = {
+      abilityScores: { dexterity: 16, wisdom: 16 },
+      creation: { resolved: { identity: { classKey: "monk" } } },
+    };
+    expect(getDerivedArmorClass(state)).toBe(16);
+  });
+
+  it("uses draconic resilience while unarmored", () => {
+    const state = {
+      abilityScores: { dexterity: 16 },
+      creation: { resolved: { identity: { classKey: "sorcerer" }, choices: { "class:sorcerer:origin": ["draconic-bloodline"] } } },
+    };
+    expect(getDerivedArmorClass(state)).toBe(16);
+  });
+
+  it("includes creation passive effects in shared armor calculations", () => {
+    const state = {
+      abilityScores: { dexterity: 16 },
+      creationCapabilities: [{ kind: "passive", passiveEffects: [{ target: "ARMOR_CLASS", valueMode: "FLAT", value: 1, trigger: "WHILE_ARMORED" }] }],
+    };
+    const items = [{ id: "item", isEquipped: true, itemDefinitionId: "armor" }] as any;
+    const definitions = { armor: { id: "armor", category: "ARMOR", armorClassBase: 11, armorClassCalculation: "BASE_PLUS_DEX" } } as any;
+    expect(getResolvedCharacterRuntime(state, items, definitions).passiveCapabilities).toHaveLength(1);
+    expect(getDerivedArmorClass(state, items, definitions)).toBe(15);
   });
 });

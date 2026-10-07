@@ -10,6 +10,7 @@ import {
   type RaceSpeedEntry,
 } from "@/lib/auth";
 import { proficiencyBonus as getProficiencyBonus, resolveCharacterAbilityScores } from "@/utils";
+import { getGuidedInnateArmorClass } from "@/lib/character-creation-derived";
 
 function formatSigned(value: number) {
   return value >= 0 ? `+${value}` : `${value}`;
@@ -388,7 +389,8 @@ const CombatStats = ({
     const hasArmorEquipped = !!equippedArmor;
     const hasShieldEquipped = equippedShields.length > 0;
 
-    const baseArmorClass = getArmorClassBaseFromArmor(equippedArmor, dexModifier);
+    const innateArmorClass = equippedArmor ? null : getGuidedInnateArmorClass(characterData, resolvedAbilityData.scores, hasShieldEquipped);
+    const baseArmorClass = innateArmorClass?.value ?? getArmorClassBaseFromArmor(equippedArmor, dexModifier);
     const shieldBonus = equippedShields.reduce(
       (total, detail) => total + getShieldBonus(detail),
       0
@@ -405,7 +407,7 @@ const CombatStats = ({
     const totalArmorClass = baseArmorClass + shieldBonus + modifierBonus + capabilityBonus;
 
     const breakdown = [
-      getArmorSourceLabel(equippedArmor, dexModifier),
+      innateArmorClass?.label ?? getArmorSourceLabel(equippedArmor, dexModifier),
       shieldBonus !== 0 ? `Scudo ${formatSigned(shieldBonus)}` : null,
       modifierBonus !== 0 ? `Altri bonus ${formatSigned(modifierBonus)}` : null,
       capabilityBonus !== 0 ? `Skill ${formatSigned(capabilityBonus)}` : null,
@@ -417,9 +419,10 @@ const CombatStats = ({
     };
   }, [
     abilityModifier,
+    characterData,
     equippedDetails,
     passiveCapabilities,
-    resolvedAbilityData.scores.dexterity,
+    resolvedAbilityData.scores,
   ]);
 
   const speedData = useMemo(() => {

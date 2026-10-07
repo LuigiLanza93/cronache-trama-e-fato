@@ -21,6 +21,7 @@ import {
   DND5E_RACES,
 } from "@/lib/character-options";
 import { toast } from "@/components/ui/sonner";
+import GuidedCharacter from "@/pages/GuidedCharacter";
 
 export default function NewCharacter() {
   const { user, refresh } = useAuth();
@@ -47,6 +48,8 @@ export default function NewCharacter() {
   if (user.role !== "dm") return <Navigate to="/" replace />;
 
   const effectiveType = user.role === "dm" ? characterType : "pg";
+
+  if (effectiveType === "pg") return <GuidedCharacter onChoosePng={() => setCharacterType("png")} />;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

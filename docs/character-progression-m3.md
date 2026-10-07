@@ -2,6 +2,8 @@
 
 Stato: completato, verificato e consolidato su `dev` il 2026-09-07; applicato soltanto al database locale di sviluppo. Non applicato a Railway.
 
+Questo documento conserva il contratto della milestone M3. Per lo stato successivo a L1/MC1 e alla creazione guidata di livello 1, consultare [multiclass-roadmap.md](multiclass-roadmap.md) e [character-creation-level-one.md](character-creation-level-one.md), aggiornati al checkpoint della chat del 2026-10-01. I limiti monoclasse e le verifiche datate riportati sotto descrivono M3; non attestano il runtime o la produzione attuali.
+
 ## Scopo
 
 M3 introduce il modello persistito delle classi senza cambiare il comportamento visibile dell'applicazione. Le regole canoniche restano versionate in `shared/character-class-rules.mjs`; il database conserva catalogo e snapshot assegnati ai personaggi per rendere le future progressioni verificabili e riproducibili.

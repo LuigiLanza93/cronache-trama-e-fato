@@ -133,6 +133,23 @@ type CapabilityListEntry = {
   source: "character" | "derived";
 };
 
+function groupCapabilityEntries(entries: CapabilityListEntry[]) {
+  const groups = new Map<string, CapabilityListEntry[]>();
+  entries.forEach((entry) => {
+    const category = entry.cap.category?.trim() || "Altre skills";
+    groups.set(category, [...(groups.get(category) ?? []), entry]);
+  });
+  const preferredOrder = ["Razza", "Classe", "Background"];
+  return [...groups.entries()]
+    .sort(([left], [right]) => {
+      const leftIndex = preferredOrder.indexOf(left);
+      const rightIndex = preferredOrder.indexOf(right);
+      if (leftIndex !== -1 || rightIndex !== -1) return (leftIndex === -1 ? preferredOrder.length : leftIndex) - (rightIndex === -1 ? preferredOrder.length : rightIndex);
+      return left.localeCompare(right, "it");
+    })
+    .map(([category, items]) => ({ category, items }));
+}
+
 type CapabilityFormState = {
   name: string;
   category: string;
@@ -427,6 +444,8 @@ export default function Capabilities({
     () => capabilityEntries.filter(({ cap }) => cap.kind === "passive"),
     [capabilityEntries]
   );
+  const activeGroups = useMemo(() => groupCapabilityEntries(activeCapabilities), [activeCapabilities]);
+  const passiveGroups = useMemo(() => groupCapabilityEntries(passiveCapabilities), [passiveCapabilities]);
   const activeUsageSummary = useMemo(() => {
     const allUses = activeCapabilities.flatMap((entry) => entry.cap.usage?.used ?? []);
     const total = allUses.length;
@@ -708,7 +727,9 @@ export default function Capabilities({
           {!activeCollapsed && (activeCapabilities.length === 0 ? (
             <div className="text-sm text-muted-foreground">Nessuna skill attiva censita.</div>
           ) : (
-          activeCapabilities.map((entry) => (
+          activeGroups.map((group) => <div key={`active-group-${group.category}`} className="space-y-2">
+            <h3 className="border-b border-border/60 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.category}</h3>
+            {group.items.map((entry) => (
               <div key={`active-${entry.source}-${entry.index}-${entry.cap.name}`} className="dnd-frame rounded p-3">
                 <div className="flex items-start justify-between gap-3">
                   <button
@@ -752,7 +773,8 @@ export default function Capabilities({
                   </div>
                 </div>
               </div>
-            ))
+            ))}
+          </div>)
           ))}
         </div>
 
@@ -768,7 +790,9 @@ export default function Capabilities({
           {!passiveCollapsed && (passiveCapabilities.length === 0 ? (
             <div className="text-sm text-muted-foreground">Nessuna skill passiva censita.</div>
           ) : (
-            passiveCapabilities.map((entry) => (
+            passiveGroups.map((group) => <div key={`passive-group-${group.category}`} className="space-y-2">
+              <h3 className="border-b border-border/60 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.category}</h3>
+              {group.items.map((entry) => (
               <button
                 key={`passive-${entry.source}-${entry.index}-${entry.cap.name}`}
                 type="button"
@@ -789,7 +813,8 @@ export default function Capabilities({
                   )}
                 </div>
               </button>
-            ))
+              ))}
+            </div>)
           ))}
         </div>
       </div>
@@ -1361,7 +1386,8 @@ export default function Capabilities({
 
               <div className="whitespace-pre-line text-muted-foreground">{detailCapability.shortDescription}</div>
 
-              {detailCapability.description && <div className="whitespace-pre-line">{detailCapability.description}</div>}
+              {detailCapability.sourceLabel && <div className="text-xs text-muted-foreground">Origine: {detailCapability.sourceLabel}</div>}
+              {detailCapability.description && detailCapability.description !== detailCapability.shortDescription && <div className="whitespace-pre-line">{detailCapability.description}</div>}
 
               {detailCapability.kind === "passive" && Array.isArray(detailCapability.passiveEffects) && detailCapability.passiveEffects.length > 0 && (
                 <div className="space-y-2">

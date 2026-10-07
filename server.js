@@ -35,6 +35,40 @@ import {
   resolveConstitutionModifier,
   resolveLevelUpHitPoints,
 } from "./shared/character-vitals-resources.mjs";
+import {
+  BACKGROUNDS as CHARACTER_CREATION_BACKGROUNDS,
+  CHARACTER_CREATION_RULESET,
+  GUIDED_ALIGNMENTS,
+  EQUIPMENT as CHARACTER_CREATION_EQUIPMENT,
+  ADDITIONAL_EQUIPMENT_LABELS as CHARACTER_CREATION_EXTRA_EQUIPMENT_LABELS,
+  BACKGROUND_EQUIPMENT_LABELS as CHARACTER_CREATION_BACKGROUND_EQUIPMENT_LABELS,
+  ARTISAN_TOOL_LABELS as CHARACTER_CREATION_ARTISAN_TOOL_LABELS,
+  WEAPON_LABELS as CHARACTER_CREATION_WEAPON_LABELS,
+  LANGUAGES as CHARACTER_CREATION_LANGUAGES,
+  RACES as CHARACTER_CREATION_RACES,
+  SKILLS as CHARACTER_CREATION_SKILLS,
+  TOOLS as CHARACTER_CREATION_TOOLS,
+  getLevelOneCreationOptions,
+  normalizeLevelOneCreationInput,
+} from "./shared/character-creation-rules.mjs";
+import {
+  buildCreationPreviewHash,
+  resolveLevelOneCreationJournal,
+} from "./shared/character-creation-journal.mjs";
+import {
+  guidedCreationHitPointsPerLevel,
+  isLegacyGuidedCreationFeature,
+  projectGuidedCreationCapabilities,
+} from "./shared/character-creation-capabilities.mjs";
+import { projectGuidedCreationSpells } from "./shared/character-creation-spells.mjs";
+import { reconcileCreationResourcePools } from "./shared/character-creation-resources.mjs";
+import { canUsePactBlade } from "./shared/pact-blade-eligibility.mjs";
+import {
+  inspectCharacterRuleEventSchema,
+  persistCharacterCreationJournal,
+  readCharacterCreationJournal,
+  readCharacterRuleEventReceipt,
+} from "./shared/character-rule-persistence.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -219,6 +253,7 @@ const ALLOWED_CHARACTER_SHEET_CARD_IDS = new Set([
   "combatStats",
   "hitPoints",
   "capabilities",
+  "creationPrivileges",
   "attacksAndEquipment",
   "features",
   "inventory",
@@ -1374,10 +1409,14 @@ const ITEM_USE_EFFECT_TYPE_VALUES = ["HEAL", "DAMAGE", "TEMP_HP", "APPLY_CONDITI
 const ITEM_USE_TARGET_TYPE_VALUES = ["SELF", "CREATURE", "OBJECT", "AREA", "CUSTOM"];
 const ITEM_USE_SUCCESS_OUTCOME_VALUES = ["NONE", "HALF", "NEGATES", "CUSTOM"];
 
-function tableExists(tableName) {
-  return !!sqlite
+function tableExistsInDatabase(database, tableName) {
+  return !!database
     .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
     .get(tableName);
+}
+
+function tableExists(tableName) {
+  return tableExistsInDatabase(sqlite, tableName);
 }
 
 function columnExists(tableName, columnName) {
@@ -1462,6 +1501,59 @@ function readCharacterProgressionShadow(row) {
     sqlite,
     row,
     getCharacterProgressionSchemaInspection(),
+  );
+}
+
+export function readCharacterCreationFromDatabase(database, characterId) {
+  if (!characterId || !tableExistsInDatabase(database, "CharacterCreation")) return null;
+  const columns = new Set(database.prepare('PRAGMA table_info("CharacterCreation")').all().map((column) => column.name));
+  if (!["requestId", "rulesetVersion", "selections", "resolvedSnapshot", "createdAt"].every((column) => columns.has(column))) return null;
+  const row = database.prepare(`
+    SELECT characterId, requestId, rulesetVersion, selections, resolvedSnapshot, createdAt
+    FROM "CharacterCreation"
+    WHERE characterId = ?
+    LIMIT 1
+  `).get(characterId);
+  if (!row) return null;
+  return {
+    rulesetVersion: row.rulesetVersion,
+    requestId: row.requestId ?? null,
+    selections: parseJsonString(row.selections, {}),
+    resolved: parseJsonString(row.resolvedSnapshot, {}),
+    createdAt: row.createdAt ?? null,
+  };
+}
+
+function readCharacterCreation(characterId) {
+  return readCharacterCreationFromDatabase(sqlite, characterId);
+}
+
+export function persistGuidedCharacterCreation(database, {
+  characterId,
+  requestId = null,
+  requestSignature = null,
+  rulesetVersion,
+  selections,
+  resolved,
+  createdAt = new Date().toISOString(),
+}) {
+  if (!tableExistsInDatabase(database, "CharacterCreation")) {
+    const error = new Error("La migrazione per la creazione guidata non e disponibile.");
+    error.code = "GUIDED_CREATION_SCHEMA_NOT_READY";
+    throw error;
+  }
+  database.prepare(`
+    INSERT INTO "CharacterCreation" (
+      characterId, requestId, requestSignature, rulesetVersion, selections, resolvedSnapshot, createdAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    characterId,
+    requestId,
+    requestSignature,
+    rulesetVersion,
+    JSON.stringify(selections),
+    JSON.stringify(resolved),
+    createdAt,
   );
 }
 
@@ -1742,8 +1834,28 @@ export function serializeCharacterSnapshot(snapshot) {
   const hasIncompleteSubclass = structured && progression.classes.some(
     (entry) => entry?.subclassStatus === "INCOMPLETE_LEGACY"
   );
+  const specialLanguage = snapshot.creation?.resolved?.identity?.classKey === "rogue"
+    ? "Gergo Ladresco"
+    : snapshot.creation?.resolved?.identity?.classKey === "druid" ? "Druidico" : null;
+  const languages = snapshot.state.proficiencies?.languages ?? [];
   return {
     ...snapshot.state,
+    creation: snapshot.creation ?? null,
+    creationModelStatus: snapshot.ruleCreation
+      ? "EVENT_V1"
+      : snapshot.creation ? "SNAPSHOT_ONLY" : "LEGACY_UNKNOWN",
+    creationRuleEvent: snapshot.ruleCreation ?? null,
+    creationCapabilities: projectGuidedCreationCapabilities(snapshot.creation?.resolved),
+    creationSpells: projectGuidedCreationSpells(snapshot.creation?.resolved),
+    features: snapshot.creation?.resolved
+      ? (snapshot.state.features ?? []).filter((feature) => !isLegacyGuidedCreationFeature(feature, snapshot.creation.resolved))
+      : snapshot.state.features,
+    ...(specialLanguage && snapshot.state.proficiencies ? {
+      proficiencies: {
+        ...snapshot.state.proficiencies,
+        languages: languages.includes(specialLanguage) ? languages : [...languages, specialLanguage],
+      },
+    } : {}),
     hitPointState: snapshot.hitPointState ?? null,
     hitDicePools: Array.isArray(snapshot.hitDicePools) ? snapshot.hitDicePools : [],
     resourcePools: Array.isArray(snapshot.resourcePools) ? snapshot.resourcePools : [],
@@ -1761,7 +1873,7 @@ export function serializeCharacterSnapshot(snapshot) {
   };
 }
 
-function initializeCreatedCharacterProgression(slug, updatedByUserId = null) {
+function initializeCreatedCharacterProgression(slug, updatedByUserId = null, creationRule = null) {
   if (!getCharacterProgressionSchemaInspection().complete) {
     return { status: "LEGACY_SCHEMA", structured: false };
   }
@@ -1770,7 +1882,9 @@ function initializeCreatedCharacterProgression(slug, updatedByUserId = null) {
   `).get(slug);
   if (!row) throw new Error("Character missing after creation");
   const data = parseJsonString(row.data, {});
-  const classKey = normalizeClassKey(row.className ?? data?.basicInfo?.class);
+  const classKey = creationRule?.classKey
+    ? String(creationRule.classKey)
+    : normalizeClassKey(row.className ?? data?.basicInfo?.class);
   const level = Number(row.level ?? data?.basicInfo?.level);
   const now = new Date().toISOString();
   const legacySnapshot = JSON.stringify({
@@ -1781,10 +1895,31 @@ function initializeCreatedCharacterProgression(slug, updatedByUserId = null) {
     },
   });
   const classRule = classKey
-    ? sqlite.prepare(`
-        SELECT * FROM "ClassRule" WHERE classKey = ? ORDER BY updatedAt DESC LIMIT 1
-      `).get(classKey)
+    ? creationRule?.rulesetId && creationRule?.rulesetVersion
+      ? sqlite.prepare(`
+          SELECT * FROM "ClassRule"
+          WHERE classKey = ? AND rulesetId = ? AND rulesetVersion = ?
+          ORDER BY updatedAt DESC
+          LIMIT 1
+        `).get(classKey, creationRule.rulesetId, creationRule.rulesetVersion)
+      : sqlite.prepare(`
+          SELECT * FROM "ClassRule" WHERE classKey = ? ORDER BY updatedAt DESC LIMIT 1
+        `).get(classKey)
     : null;
+  const requestedSubclassKey = creationRule?.subclassKey ? String(creationRule.subclassKey) : null;
+  const subclassRule = classRule && requestedSubclassKey
+    ? sqlite.prepare(`
+        SELECT * FROM "SubclassRule"
+        WHERE subclassKey = ? AND classRuleId = ? AND archivedAt IS NULL
+        ORDER BY updatedAt DESC
+        LIMIT 1
+      `).get(requestedSubclassKey, classRule.id)
+    : null;
+  if (requestedSubclassKey && !subclassRule) {
+    const error = new Error("La sottoclasse iniziale non e presente nel catalogo strutturato.");
+    error.code = "GUIDED_CREATION_RULES_NOT_READY";
+    throw error;
+  }
   if (!classRule || !Number.isInteger(level) || level < 1 || level > 20) {
     const issues = JSON.stringify([{
       code: classRule ? "CREATED_LEVEL_INVALID" : "CREATED_CLASS_UNRESOLVED",
@@ -1804,18 +1939,21 @@ function initializeCreatedCharacterProgression(slug, updatedByUserId = null) {
       characterId, revision, backfillStatus, backfillIssues, legacySnapshot, createdAt, updatedAt
     ) VALUES (?, 0, 'BACKFILLED', '[]', ?, ?, ?)
   `).run(row.id, legacySnapshot, now, now);
-  const subclassStatus = level >= Number(classRule.subclassSelectionLevel ?? 21)
-    ? "INCOMPLETE_LEGACY"
-    : "NOT_YET_ELIGIBLE";
+  const subclassStatus = subclassRule
+    ? "SELECTED"
+    : level >= Number(classRule.subclassSelectionLevel ?? 21)
+      ? "INCOMPLETE_LEGACY"
+      : "NOT_YET_ELIGIBLE";
   sqlite.prepare(`
     INSERT INTO "CharacterClass" (
       id, characterId, classRuleId, subclassRuleId, classKey, level, sortOrder, isPrimary,
       subclassStatus, source, ruleSnapshot, updatedByUserId, createdAt, updatedAt
-    ) VALUES (?, ?, ?, NULL, ?, ?, 0, 1, ?, 'CHARACTER_CREATION', ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, 0, 1, ?, 'CHARACTER_CREATION', ?, ?, ?, ?)
   `).run(
     crypto.randomUUID(),
     row.id,
     classRule.id,
+    subclassRule?.id ?? null,
     classKey,
     level,
     subclassStatus,
@@ -1827,7 +1965,12 @@ function initializeCreatedCharacterProgression(slug, updatedByUserId = null) {
   return { status: subclassStatus === "INCOMPLETE_LEGACY" ? "INCOMPLETE" : "READY", structured: true };
 }
 
-function initializeCreatedCharacterVitalsResources(slug, appliedByUserId = null) {
+function initializeCreatedCharacterVitalsResources(
+  slug,
+  appliedByUserId = null,
+  creationMaterialized = null,
+  creationResourcePools = [],
+) {
   const schema = getCharacterVitalsResourcesSchemaInspection();
   if (!schema.m5Ready) return { status: "LEGACY_SCHEMA", structured: false };
   const row = sqlite.prepare(`
@@ -1850,10 +1993,12 @@ function initializeCreatedCharacterVitalsResources(slug, appliedByUserId = null)
     hitDieSize: Number(row.hitDie),
     constitutionModifier,
   });
+  const creationHitPointBonus = guidedCreationHitPointsPerLevel(creationMaterialized) * Number(row.level);
+  const initialMaximumHitPoints = initialHitPoints.gained + creationHitPointBonus;
   const now = new Date().toISOString();
   const hitPointState = {
-    maximumHitPoints: initialHitPoints.gained,
-    currentHitPoints: initialHitPoints.gained,
+    maximumHitPoints: initialMaximumHitPoints,
+    currentHitPoints: initialMaximumHitPoints,
     temporaryHitPoints: 0,
     deathSaveSuccesses: 0,
     deathSaveFailures: 0,
@@ -1887,8 +2032,8 @@ function initializeCreatedCharacterVitalsResources(slug, appliedByUserId = null)
       appliedBySnapshot, detailsSnapshot, appliedAt
     ) VALUES (?, ?, NULL, 'BASELINE', 0, ?, 0, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    crypto.randomUUID(), row.id, initialHitPoints.gained, initialHitPoints.gained,
-    initialHitPoints.gained, constitutionModifier, Number(row.level),
+    crypto.randomUUID(), row.id, initialMaximumHitPoints, initialMaximumHitPoints,
+    initialMaximumHitPoints, constitutionModifier, Number(row.level),
     "PF iniziali alla creazione del personaggio", appliedBy?.id ?? null,
     JSON.stringify(appliedBy ? {
       id: appliedBy.id,
@@ -1900,6 +2045,7 @@ function initializeCreatedCharacterVitalsResources(slug, appliedByUserId = null)
       method: initialHitPoints.method,
       policyVersion: initialHitPoints.policyVersion,
       hitDieSize: initialHitPoints.hitDieSize,
+      creationHitPointBonus,
     }),
     now,
   );
@@ -1918,6 +2064,20 @@ function initializeCreatedCharacterVitalsResources(slug, appliedByUserId = null)
       characterClassId: row.characterClassId,
       sourceClassKey: row.classKey,
     });
+    const additionalResourcePools = Array.isArray(creationResourcePools)
+      ? creationResourcePools.filter((pool) => pool?.poolKey)
+      : [];
+    if (additionalResourcePools.length > 0) {
+      persistResourcePools(row.id, additionalResourcePools, now, {
+        characterClassId: row.characterClassId,
+        sourceClassKey: row.classKey,
+      });
+      const additionalPoolKeys = new Set(additionalResourcePools.map((pool) => pool.poolKey));
+      resourcePools = [
+        ...resourcePools.filter((pool) => !additionalPoolKeys.has(pool.poolKey)),
+        ...additionalResourcePools,
+      ];
+    }
   }
 
   const nextState = projectStructuredStateToLegacy(state, {
@@ -8622,6 +8782,8 @@ function readCharacterSnapshot(slug) {
     state: normalizeCharacterRow(row),
     revision: String(row.updatedAt ?? ""),
     progression: readCharacterProgressionShadow(row),
+    creation: readCharacterCreation(row.id),
+    ruleCreation: readCharacterCreationJournal(sqlite, row.id),
     ...vitalsResources,
   };
 }
@@ -9859,6 +10021,136 @@ function createUniqueCharacterSlug(baseSlug) {
   return `${baseSlug}-${index}`;
 }
 
+function findCreationCatalogEntry(collection, key) {
+  if (!key || !collection || typeof collection !== "object") return null;
+  return collection[key] ?? Object.values(collection).find((entry) => entry?.key === key) ?? null;
+}
+
+function creationLabel(entry, fallback = "") {
+  return String(entry?.label?.it ?? entry?.label?.en ?? entry?.label ?? fallback ?? "").trim();
+}
+
+function creationEquipmentLabel(value) {
+  if (typeof value === "string") return CHARACTER_CREATION_EQUIPMENT[value] ?? CHARACTER_CREATION_WEAPON_LABELS[value] ?? CHARACTER_CREATION_EXTRA_EQUIPMENT_LABELS[value] ?? CHARACTER_CREATION_BACKGROUND_EQUIPMENT_LABELS[value] ?? CHARACTER_CREATION_ARTISAN_TOOL_LABELS[value] ?? CHARACTER_CREATION_TOOLS[value] ?? value;
+  if (value && typeof value === "object") {
+    return String(value.label?.it ?? value.label?.en ?? value.label ?? value.name ?? value.key ?? "").trim();
+  }
+  return "";
+}
+
+const STARTING_EQUIPMENT_BUNDLES = Object.freeze({
+  fourJavelins: { item: "javelin", quantity: 4 },
+  fiveJavelins: { item: "javelin", quantity: 5 },
+  twoDaggers: { item: "dagger", quantity: 2 },
+  twoHandaxes: { item: "handaxe", quantity: 2 },
+  twoShortswords: { item: "shortsword", quantity: 2 },
+  tenDarts: { item: "dart", quantity: 10 },
+  "20Arrows": { item: "arrow", quantity: 20 },
+  "20Bolts": { item: "bolt", quantity: 20 },
+  "5Incense": { item: "incense", quantity: 5 },
+});
+
+export function resolveGuidedCreationSubclassKey(materialized) {
+  const slot = (materialized?.choiceSlots ?? []).find((entry) => entry?.kind === "subclass");
+  if (!slot?.id) return null;
+  const selected = materialized?.choices?.[slot.id];
+  return Array.isArray(selected) && selected.length === 1 ? String(selected[0]) : null;
+}
+
+export function projectGuidedLevelOneCharacter({ baseCharacter, materialized, skillDefinitions = [] }) {
+  if (!baseCharacter || !materialized?.ok) {
+    throw new TypeError("A valid guided creation result is required.");
+  }
+  const identity = materialized.identity ?? {};
+  const race = findCreationCatalogEntry(CHARACTER_CREATION_RACES, identity.raceKey);
+  const subrace = findCreationCatalogEntry(race?.subraces, identity.subraceKey);
+  const background = findCreationCatalogEntry(CHARACTER_CREATION_BACKGROUNDS, identity.backgroundKey);
+  const resolvedBackground = materialized.background ?? background;
+  const classRule = CLASS_RULES[identity.classKey] ?? null;
+  const selectedSkills = new Set(materialized.proficiencies?.skills ?? []);
+  const expertiseSkills = new Set([
+    ...(materialized.choices?.["class:rogue:expertise"] ?? []),
+    ...(materialized.choices?.["class:cleric:knowledge:skills"] ?? []),
+  ]);
+  const skillRows = Array.isArray(skillDefinitions) ? skillDefinitions : [];
+  const skills = skillRows.map((skill) => {
+    const key = Object.entries(CHARACTER_CREATION_SKILLS).find(([, label]) => label === skill.name)?.[0]
+      ?? skill.slug
+      ?? skill.id;
+    const proficient = selectedSkills.has(key);
+    return {
+      name: String(skill.name ?? CHARACTER_CREATION_SKILLS[key] ?? key),
+      ability: String(skill.ability ?? ""),
+      value: 0,
+      proficient,
+      rank: expertiseSkills.has(key) ? "expertise" : proficient ? "proficient" : "none",
+    };
+  });
+  const languages = (materialized.proficiencies?.languages ?? []).map(
+    (key) => CHARACTER_CREATION_LANGUAGES[key] ?? key,
+  );
+  if (identity.classKey === "rogue") languages.push("Gergo Ladresco");
+  if (identity.classKey === "druid") languages.push("Druidico");
+  const raceName = creationLabel(subrace) || creationLabel(race, identity.raceKey);
+  const className = classRule?.labels?.it ?? classRule?.labels?.en ?? identity.classKey;
+  const backgroundName = creationLabel(resolvedBackground, identity.backgroundKey);
+  const speedFeet = Number(subrace?.speed ?? race?.speed);
+  const speedMeters = Number.isFinite(speedFeet)
+    ? Math.round(speedFeet * 0.3 * 10) / 10
+    : baseCharacter.combatStats?.speed ?? 9;
+  const abilityModifier = (key) => Math.floor((Number(materialized.abilities?.final?.[key] ?? 10) - 10) / 2);
+  const dexterityModifier = abilityModifier("dexterity");
+  const armorClass = identity.classKey === "monk"
+    ? 10 + dexterityModifier + abilityModifier("wisdom")
+    : identity.classKey === "barbarian"
+      ? 10 + dexterityModifier + abilityModifier("constitution")
+      : (materialized.choices?.["class:sorcerer:origin"] ?? []).includes("draconic-bloodline")
+        ? 13 + dexterityModifier
+        : 10 + dexterityModifier;
+  const equipment = [
+    ...(materialized.startingEquipment?.fixed ?? []),
+    ...(materialized.startingEquipment?.chosen ?? []),
+  ].map(creationEquipmentLabel).filter(Boolean);
+
+  return {
+    ...baseCharacter,
+    basicInfo: {
+      ...baseCharacter.basicInfo,
+      class: className,
+      level: 1,
+      background: backgroundName,
+      race: raceName,
+      experiencePoints: 0,
+    },
+    abilityScores: { ...materialized.abilities.final },
+    combatStats: {
+      ...baseCharacter.combatStats,
+      speed: speedMeters,
+      initiative: dexterityModifier,
+      armorClass,
+    },
+    proficiencies: {
+      ...baseCharacter.proficiencies,
+      proficiencyBonus: 2,
+      savingThrows: [...(materialized.proficiencies?.savingThrows ?? [])],
+      skills,
+      languages,
+      tools: (materialized.proficiencies?.tools ?? []).map((key) => CHARACTER_CREATION_TOOLS[key] ?? key),
+      armor: [...(materialized.proficiencies?.armor ?? [])],
+      weapons: [...(materialized.proficiencies?.weapons ?? [])],
+    },
+    equipment: {
+      ...baseCharacter.equipment,
+      equipment,
+      coins: { ...baseCharacter.equipment.coins, gp: Number(materialized.startingEquipment?.currency?.gp ?? 0) },
+    },
+    features: [],
+    spellcasting: materialized.spellcasting
+      ? { ...materialized.spellcasting, choices: { ...materialized.choices } }
+      : null,
+  };
+}
+
 function createEmptyCharacter({
   slug,
   name,
@@ -10383,7 +10675,11 @@ function validateCharacterPatchPactBlade(value, issues) {
 export function validatePactBladeState(characterState, bondedItem = null) {
   const issues = [];
   const className = String(characterState?.basicInfo?.class ?? "").trim().toLowerCase();
-  if (className !== "warlock") {
+  const classes = Array.isArray(characterState?.classes) ? characterState.classes : [];
+  const hasWarlockClass = classes.length > 0
+    ? classes.some((entry) => String(entry?.classKey ?? "").trim().toLowerCase() === "warlock")
+    : className === "warlock";
+  if (!hasWarlockClass) {
     issues.push("patch.pactBlade: disponibile soltanto per un Warlock");
     return issues;
   }
@@ -10393,6 +10689,11 @@ export function validatePactBladeState(characterState, bondedItem = null) {
   const activeSummon = pactBlade?.activeSummon ?? { mode: null, templateId: null };
   const mode = activeSummon?.mode ?? null;
   const templateId = activeSummon?.templateId ?? null;
+
+  if (!canUsePactBlade(characterState) && (bondedCharacterItemId !== null || mode !== null || templateId !== null)) {
+    issues.push("patch.pactBlade: richiede il Patto della Lama, disponibile dal 3° livello da Warlock");
+    return issues;
+  }
 
   if (bondedCharacterItemId !== null) {
     if (
@@ -11276,6 +11577,7 @@ function publicResourcePoolState(pool) {
     backfillStatus: pool.backfillStatus ?? "BACKFILLED",
     maximum: { ...(pool.maximum ?? {}) },
     used: { ...(pool.used ?? {}) },
+    ...(pool.kind === "CLASS_RESOURCE" && Array.isArray(pool.tiers) ? { tiers: pool.tiers.map((tier) => ({ ...tier })) } : {}),
     ...(Array.isArray(pool.sources) ? { sources: pool.sources.map((source) => ({ ...source })) } : {}),
   };
 }
@@ -11359,14 +11661,16 @@ export function buildCharacterProgressionEffects(snapshot, resolvedPreview) {
     }
     const constitutionModifier = resolveConstitutionModifier(Number(snapshot.state?.abilityScores?.constitution ?? 10));
     const gain = resolveLevelUpHitPoints({ hitDieSize: classRule.hitDie, constitutionModifier });
+    const creationHitPointBonus = guidedCreationHitPointsPerLevel(snapshot.creation?.resolved);
+    const effectiveGain = gain.gained + creationHitPointBonus;
     const before = { ...snapshot.hitPointState };
     const after = {
       ...before,
-      maximumHitPoints: before.maximumHitPoints + gain.gained,
-      currentHitPoints: before.currentHitPoints + gain.gained,
+      maximumHitPoints: before.maximumHitPoints + effectiveGain,
+      currentHitPoints: before.currentHitPoints + effectiveGain,
       revision: before.revision + 1,
     };
-    hitPoints = { before, after, ...gain };
+    hitPoints = { before, after, ...gain, gained: effectiveGain, creationHitPointBonus };
     const beforePools = snapshot.hitDicePools.map((pool) => ({ ...pool }));
     const afterPools = beforePools.map((pool) => ({ ...pool }));
     let targetPool = afterPools.find((pool) => pool.dieSize === gain.hitDieSize);
@@ -11383,7 +11687,11 @@ export function buildCharacterProgressionEffects(snapshot, resolvedPreview) {
   let resourcePools = null;
   if (schema.m6Ready) {
     const before = (snapshot.resourcePools ?? []).map(publicResourcePoolState);
-    const after = projectProgressionResourcePools(before, resolvedPreview.after, resolvedPreview.targetClassKey);
+    const projected = projectProgressionResourcePools(before, resolvedPreview.after, resolvedPreview.targetClassKey);
+    const after = reconcileCreationResourcePools(projected, snapshot.creation?.resolved, {
+      classLevels: Object.fromEntries((resolvedPreview.classesAfter ?? []).map(entry => [entry.classKey, entry.level])),
+      abilities: snapshot.state?.abilityScores,
+    });
     resourcePools = { before, after };
   }
   return { status: "READY", hitPoints, hitDicePools, resourcePools };
@@ -11768,6 +12076,12 @@ export function prepareStructuredLegacyPatchSync(snapshot, next, patch) {
     sync.resourcePools = snapshot.resourcePools.map((pool) =>
       pool.id === target.id ? { ...pool, used } : pool
     );
+  }
+  if (snapshot.schema?.m6Ready && patch?.abilityScores && snapshot.creation?.resolved) {
+    sync.resourcePools = reconcileCreationResourcePools(sync.resourcePools ?? snapshot.resourcePools, snapshot.creation.resolved, {
+      classLevels: Object.fromEntries((snapshot.progression?.classes ?? []).map(entry => [entry.classKey, entry.classLevel ?? entry.level])),
+      abilities: next?.abilityScores,
+    });
   }
   return Object.keys(sync).length > 0 ? sync : null;
 }
@@ -14787,6 +15101,7 @@ async function start() {
             state: nextState,
             revision: characterRevisionAfter,
             progression: afterProgression,
+            creation: snapshot.creation,
             hitPointState: meta.preview.effects?.hitPoints?.after ?? snapshot.hitPointState,
             hitDicePools: meta.preview.effects?.hitDicePools?.after ?? snapshot.hitDicePools,
             resourcePools: meta.preview.effects?.resourcePools?.after ?? snapshot.resourcePools,
@@ -15181,10 +15496,332 @@ async function start() {
     });
   });
 
+  app.get("/api/characters/guided/options", requireAuth, (_req, res) => {
+    return res.json(getLevelOneCreationOptions({}));
+  });
+
+  app.post("/api/characters/guided/preview", requireAuth, (req, res) => {
+    if (rejectIfSessionClosedForPlayer(res, req.user)) return;
+    const name = String(req.body?.name ?? "").trim();
+    const alignment = String(req.body?.alignment ?? "").trim();
+    const journal = resolveLevelOneCreationJournal(req.body?.creation);
+    const issues = [
+      ...(!name || name.length > 120 ? [{
+        path: "name",
+        code: "CREATION_NAME_INVALID",
+        message: "Il nome del personaggio e obbligatorio (massimo 120 caratteri).",
+      }] : []),
+      ...(!GUIDED_ALIGNMENTS.includes(alignment) ? [{
+        path: "alignment",
+        code: "CREATION_ALIGNMENT_INVALID",
+        message: "Scegli un allineamento previsto dal Manuale del Giocatore.",
+      }] : []),
+      ...(journal.issues ?? []),
+    ];
+    if (!journal.ok || issues.length > 0) {
+      return res.json({ ok: false, issues, resolved: null, ruleEvent: null });
+    }
+    return res.json({
+      ok: true,
+      issues: [],
+      resolved: journal.materialized,
+      ruleEvent: {
+        previewHash: buildCreationPreviewHash({ name, alignment }, journal),
+        resolverVersion: journal.resolverVersion,
+        ruleset: journal.ruleset,
+        catalogHash: journal.catalogHash,
+      },
+    });
+  });
+
+  app.post("/api/characters/guided", requireAuth, (req, res) => {
+    if (rejectIfSessionClosedForPlayer(res, req.user)) return;
+    if (!tableExists("CharacterCreation")) {
+      return res.status(503).json({
+        code: "GUIDED_CREATION_SCHEMA_NOT_READY",
+        error: "La migrazione per la creazione guidata non e disponibile.",
+      });
+    }
+    const creationColumns = new Set(sqlite.prepare('PRAGMA table_info("CharacterCreation")').all().map((column) => column.name));
+    if (!creationColumns.has("requestId") || !creationColumns.has("requestSignature")) {
+      return res.status(503).json({ code: "GUIDED_CREATION_SCHEMA_NOT_READY", error: "La migrazione per le richieste di creazione non e disponibile." });
+    }
+
+    const name = String(req.body?.name ?? "").trim();
+    const alignment = String(req.body?.alignment ?? "").trim();
+    const requestId = String(req.body?.requestId ?? "").trim();
+    if (!name || name.length > 120) {
+      return res.status(400).json({ error: "Il nome del personaggio e obbligatorio (massimo 120 caratteri)." });
+    }
+    if (!GUIDED_ALIGNMENTS.includes(alignment)) {
+      return res.status(400).json({ error: "Scegli un allineamento previsto dal Manuale del Giocatore." });
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+      return res.status(400).json({ error: "Identificativo della richiesta di creazione non valido." });
+    }
+
+    const creationInput = req.body?.creation;
+    const requestSignature = crypto.createHash("sha256").update(JSON.stringify({
+      userId: req.user.id, name, alignment, creation: normalizeLevelOneCreationInput(creationInput),
+    })).digest("hex");
+    const ruleEventSchema = inspectCharacterRuleEventSchema(sqlite);
+    const previousEventRequest = ruleEventSchema.ready
+      ? readCharacterRuleEventReceipt(sqlite, requestId)
+      : null;
+    const previousSnapshotRequest = sqlite.prepare(`
+      SELECT cc.characterId, cc.requestSignature, c.createdByUserId, c.slug, c.ownerUserId
+      FROM "CharacterCreation" cc JOIN "Character" c ON c.id = cc.characterId
+      WHERE cc.requestId = ? LIMIT 1
+    `).get(requestId);
+    const previousRequest = previousEventRequest ?? previousSnapshotRequest;
+    if (previousRequest) {
+      if (previousRequest.createdByUserId !== req.user.id || previousRequest.requestSignature !== requestSignature) {
+        return res.status(409).json({ code: "GUIDED_CREATION_REQUEST_CONFLICT", error: "Identificativo di richiesta già usato con dati diversi." });
+      }
+      if (!canAccessCharacter(req.user, previousRequest.slug, readOwnership())) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const previousSnapshot = readCharacterSnapshot(previousRequest.slug);
+      return res.status(200).json({
+        slug: previousRequest.slug,
+        characterType: "pg",
+        ownerUserId: previousRequest.ownerUserId,
+        character: previousSnapshot ? serializeCharacterSnapshot(previousSnapshot) : null,
+        creation: previousSnapshot?.creation ?? null,
+        replayed: true,
+      });
+    }
+    if (!ruleEventSchema.ready) {
+      return res.status(503).json({
+        code: "GUIDED_CREATION_RULE_EVENT_SCHEMA_NOT_READY",
+        error: "La migrazione del registro regole del personaggio non e disponibile.",
+      });
+    }
+    const journal = resolveLevelOneCreationJournal(creationInput);
+    if (!journal.ok) {
+      return res.status(422).json({
+        code: "GUIDED_CREATION_INVALID",
+        error: "Le scelte di creazione non sono valide.",
+        issues: journal.issues ?? [],
+      });
+    }
+    const materialized = journal.materialized;
+    const previewHash = buildCreationPreviewHash({ name, alignment }, journal);
+    const submittedPreviewHash = String(req.body?.previewHash ?? "").trim();
+    if (submittedPreviewHash && submittedPreviewHash !== previewHash) {
+      return res.status(409).json({
+        code: "GUIDED_CREATION_PREVIEW_STALE",
+        error: "L'anteprima non corrisponde piu alle regole correnti.",
+        issues: [],
+        resolved: materialized,
+        ruleEvent: {
+          previewHash,
+          resolverVersion: journal.resolverVersion,
+          ruleset: journal.ruleset,
+          catalogHash: journal.catalogHash,
+        },
+      });
+    }
+
+    const classRule = sqlite.prepare(`
+      SELECT id FROM "ClassRule"
+      WHERE classKey = ? AND rulesetId = ? AND rulesetVersion = ?
+      ORDER BY updatedAt DESC
+      LIMIT 1
+    `).get(materialized.identity.classKey, CHARACTER_RULESET.id, CHARACTER_RULESET.version);
+    const structuredSchemasReady = getCharacterProgressionSchemaInspection().complete
+      && getCharacterVitalsResourcesSchemaInspection().ready;
+    if (!classRule || !structuredSchemasReady) {
+      return res.status(503).json({
+        code: "GUIDED_CREATION_RULES_NOT_READY",
+        error: "Il catalogo strutturato necessario alla creazione guidata non e disponibile.",
+      });
+    }
+
+    const baseSlug = sanitizeSlug(name);
+    const slug = createUniqueCharacterSlug(baseSlug);
+    const ownerUserId = req.user.role === "dm" ? null : req.user.id;
+    const ownerUser = ownerUserId ? getUserById(ownerUserId) : null;
+    const race = findCreationCatalogEntry(CHARACTER_CREATION_RACES, materialized.identity.raceKey);
+    const subrace = findCreationCatalogEntry(race?.subraces, materialized.identity.subraceKey);
+    const background = materialized.background
+      ?? findCreationCatalogEntry(CHARACTER_CREATION_BACKGROUNDS, materialized.identity.backgroundKey);
+    const className = CLASS_RULES[materialized.identity.classKey]?.labels?.it ?? materialized.identity.classKey;
+    const baseCharacter = createEmptyCharacter({
+      slug,
+      name,
+      characterType: "pg",
+      className,
+      race: creationLabel(subrace) || creationLabel(race, materialized.identity.raceKey),
+      alignment,
+      background: creationLabel(background, materialized.identity.backgroundKey),
+      creator: req.user,
+      ownerUser,
+    });
+    baseCharacter.basicInfo.alignment = alignment;
+    const character = projectGuidedLevelOneCharacter({
+      baseCharacter,
+      materialized,
+      skillDefinitions: readSkills().skills ?? [],
+    });
+
+    let progressionInitialization;
+    let vitalsResourcesInitialization;
+    try {
+      runInTransaction(() => {
+        writeCharacter(slug, character);
+        const story = materialized.narrative;
+        const storyMarkdown = [
+          "## Personalità",
+          ...story.personalityTraits.map((trait) => `- ${trait}`),
+          "", `**Ideale:** ${story.ideal}`, `**Legame:** ${story.bond}`, `**Difetto:** ${story.flaw}`,
+          ...(materialized.background?.backgroundDetails ? ["", "## Origine e background", materialized.background.backgroundDetails] : []),
+        ].join("\n");
+        const storyNow = new Date().toISOString();
+        sqlite.prepare(`
+          INSERT INTO "CharacterBackstory" (characterId, contentMarkdown, updatedByUserId, createdAt, updatedAt)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(slug, storyMarkdown, req.user.id, storyNow, storyNow);
+        ensureCharacterCurrencyBalanceForCharacter(slug);
+        sqlite.prepare('UPDATE "CharacterCurrencyBalance" SET gp = ?, updatedAt = ? WHERE characterId = ?').run(
+          Number(materialized.startingEquipment?.currency?.gp ?? 0), new Date().toISOString(), slug,
+        );
+        if (!tableExists("CharacterItem")) {
+          const error = new Error("L'inventario strutturato non e disponibile.");
+          error.code = "GUIDED_CREATION_RULES_NOT_READY";
+          throw error;
+        }
+        const startingItems = [
+          ...(materialized.startingEquipment?.fixed ?? []),
+          ...(materialized.startingEquipment?.chosen ?? []),
+        ];
+        const insertStartingItem = sqlite.prepare(`
+          INSERT INTO "CharacterItem" (
+            id, characterId, itemDefinitionId, nameOverride, quantity, isEquipped,
+            sortOrder, notes, data, createdAt, updatedAt
+          ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, NULL, ?, ?)
+        `);
+        const findDefinition = sqlite.prepare('SELECT id FROM "ItemDefinition" WHERE lower(name) = lower(?) LIMIT 2');
+        const createdAt = new Date().toISOString();
+        startingItems.forEach((item, index) => {
+          const bundle = STARTING_EQUIPMENT_BUNDLES[item];
+          const itemName = creationEquipmentLabel(bundle?.item ?? item);
+          const definitions = findDefinition.all(itemName);
+          insertStartingItem.run(
+            crypto.randomUUID(), slug, definitions.length === 1 ? definitions[0].id : null, itemName, bundle?.quantity ?? 1, index,
+            "Equipaggiamento iniziale (creazione guidata)", createdAt, createdAt,
+          );
+        });
+        if (ownerUserId) {
+          sqlite.prepare('UPDATE "Character" SET ownerUserId = ? WHERE slug = ?').run(ownerUserId, slug);
+        }
+        persistGuidedCharacterCreation(sqlite, {
+          characterId: slug,
+          requestId,
+          requestSignature,
+          rulesetVersion: CHARACTER_CREATION_RULESET.version,
+          selections: journal.normalizedInput,
+          resolved: materialized,
+        });
+        persistCharacterCreationJournal(sqlite, {
+          characterId: slug,
+          requestId,
+          requestSignature,
+          previewHash,
+          journal,
+          appliedBy: req.user,
+        });
+        progressionInitialization = initializeCreatedCharacterProgression(slug, req.user.id, {
+          classKey: materialized.identity.classKey,
+          subclassKey: resolveGuidedCreationSubclassKey(materialized),
+          rulesetId: CHARACTER_RULESET.id,
+          rulesetVersion: CHARACTER_RULESET.version,
+        });
+        if (!progressionInitialization.structured) {
+          const error = new Error("La progressione strutturata non ha accettato la classe iniziale.");
+          error.code = "GUIDED_CREATION_RULES_NOT_READY";
+          throw error;
+        }
+        vitalsResourcesInitialization = initializeCreatedCharacterVitalsResources(
+          slug,
+          req.user.id,
+          materialized,
+          journal.resourcePools,
+        );
+        if (!vitalsResourcesInitialization.structured) {
+          const error = new Error("PF, Dadi Vita o risorse strutturate non sono disponibili.");
+          error.code = "GUIDED_CREATION_RULES_NOT_READY";
+          throw error;
+        }
+      });
+    } catch (error) {
+      if ([
+        "GUIDED_CREATION_SCHEMA_NOT_READY",
+        "GUIDED_CREATION_RULES_NOT_READY",
+        "CHARACTER_RULE_EVENT_SCHEMA_NOT_READY",
+      ].includes(error?.code)) {
+        return res.status(503).json({ code: error.code, error: String(error.message) });
+      }
+      if (/UNIQUE constraint failed: (?:CharacterRuleEvent|CharacterCreation)\.requestId/.test(String(error?.message ?? ""))) {
+        const concurrentRequest = readCharacterRuleEventReceipt(sqlite, requestId)
+          ?? sqlite.prepare(`
+            SELECT cc.characterId, cc.requestSignature, c.createdByUserId, c.slug, c.ownerUserId
+            FROM "CharacterCreation" cc JOIN "Character" c ON c.id = cc.characterId
+            WHERE cc.requestId = ? LIMIT 1
+          `).get(requestId);
+        if (concurrentRequest) {
+          if (concurrentRequest.createdByUserId !== req.user.id || concurrentRequest.requestSignature !== requestSignature) {
+            return res.status(409).json({
+              code: "GUIDED_CREATION_REQUEST_CONFLICT",
+              error: "Identificativo di richiesta gia usato con dati diversi.",
+            });
+          }
+          if (!canAccessCharacter(req.user, concurrentRequest.slug, readOwnership())) {
+            return res.status(403).json({ error: "Forbidden" });
+          }
+          const concurrentSnapshot = readCharacterSnapshot(concurrentRequest.slug);
+          return res.status(200).json({
+            slug: concurrentRequest.slug,
+            characterType: "pg",
+            ownerUserId: concurrentRequest.ownerUserId,
+            character: concurrentSnapshot ? serializeCharacterSnapshot(concurrentSnapshot) : null,
+            creation: concurrentSnapshot?.creation ?? null,
+            replayed: true,
+          });
+        }
+      }
+      console.error("[server] guided character creation failed", error);
+      return res.status(500).json({
+        code: "GUIDED_CREATION_FAILED",
+        error: "Non e stato possibile creare il personaggio.",
+      });
+    }
+
+    const snapshot = readCharacterSnapshot(slug);
+    return res.status(201).json({
+      slug,
+      characterType: "pg",
+      ownerUserId,
+      character: snapshot ? serializeCharacterSnapshot(snapshot) : character,
+      creation: snapshot?.creation ?? null,
+      progressionInitialization,
+      vitalsResourcesInitialization,
+    });
+  });
+
   app.post("/api/characters", requireAuth, (req, res) => {
     if (rejectIfSessionClosedForPlayer(res, req.user)) return;
     const name = String(req.body?.name ?? "").trim();
     const requestedType = req.body?.characterType === "png" ? "png" : "pg";
+    if (requestedType === "pg") {
+      return res.status(409).json({
+        code: "GUIDED_CREATION_REQUIRED",
+        error: "I PG di livello 1 devono essere creati con il percorso guidato.",
+      });
+    }
+    if (req.user.role !== "dm") {
+      return res.status(403).json({ error: "Solo il master può creare PNG." });
+    }
     const className = String(req.body?.className ?? "").trim();
     const race = String(req.body?.race ?? "").trim();
     const alignment = String(req.body?.alignment ?? "").trim();
@@ -15545,7 +16182,10 @@ async function start() {
                 bondedId || next?.pactBlade?.activeSummon?.mode || next?.pactBlade?.activeSummon?.templateId
               );
               const pactBladeIssues = hasPactBladeState
-                ? validatePactBladeState(next, readPactBladeBondedItem(slug, bondedId))
+                ? validatePactBladeState({
+                  ...next,
+                  classes: snapshot.progression?.source === "STRUCTURED" ? snapshot.progression.classes : [],
+                }, readPactBladeBondedItem(slug, bondedId))
                 : [];
               if (pactBladeIssues.length > 0) {
                 const validationError = createCharacterMutationError("VALIDATION_ERROR", pactBladeIssues[0], snapshot);

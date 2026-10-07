@@ -12336,10 +12336,10 @@ Se invece tocca una creatura durante il lancio dell'incantesimo, apprende quali 
 
 ### ILLUSIONE MINORE
 
-Trucchetto di 11/usione Tempo di Lancio: 1 azione Gittata: 9 metri Componenti: S, M (un ciuffo di lana) Durata: 1 minuto L'incantatore crea un suono o un'immagine di un oggetto entro gittata che permane per la durata dell'incantesimo.
+Trucchetto di Illusione Tempo di Lancio: 1 azione Gittata: 9 metri Componenti: S, M (un ciuffo di lana) Durata: 1 minuto L'incantatore crea un suono o un'immagine di un oggetto entro gittata che permane per la durata dell'incantesimo.
 L'illusione termina anche se l'incantatore la interrompe con un'azione o se lancia questo incantesimo di nuovo.
 Se l'incantatore crea un suono, il suo volume può variare da un sussurro a un urlo. Può trattarsi della voce dell'incantatore, della voce di qualcun altro, del ruggito di un leone, di un rullo di tamburi o di un qualsiasi altro suono a sua scelta. Il suono può echeggiare ininterrottamente per tutta la durata, oppure l'incantatore può emettere suoni più discreti in momenti diversi prima che l'incantesimo termini.
-Se l'incantatore crea l'immagine di un oggetto (come per esempio una sedia, una serie di impronte nel fango o uno scrigno), quell'oggetto non deve essere più grande di un cubo con spigolo di 115 metri. L'immagine non può emettere suoni, luci, odori o qualsiasi altro effetto sensoriale. Un'interazione fisica con l'immagine rivela che si tratta di un'illusione, in quanto gli oggetti la attraversano.
+Se l'incantatore crea l'immagine di un oggetto (come per esempio una sedia, una serie di impronte nel fango o uno scrigno), quell'oggetto non deve essere più grande di un cubo con spigolo di 1,5 metri. L'immagine non può emettere suoni, luci, odori o qualsiasi altro effetto sensoriale. Un'interazione fisica con l'immagine rivela che si tratta di un'illusione, in quanto gli oggetti la attraversano.
 Se una creatura usa la sua azione per esaminare il suono o l'immagine, può determinare che si tratta di un'illusione se effettua con successo una prova di Intelligenza (Indagare) contro la CD del tiro salvezza dell'incantesimo.
 Se una creatura discerne l'illusione per ciò che è, l'illusione si attenua per quella creatura.
 
@@ -13341,7 +13341,7 @@ Trasmutazione di 3° livello (rituale) Tempo di Lancio: 1 azione Gittata: 9 metr
 
 ### RESURREZIONE
 
-Ne.cromanzia di '1° livello Tempo di Lancio: 1 ora Gittata: Contatto Componenti: V, S, M (un diamante del valore di almeno 1.000 mo, che l'incantesimo consuma) Durata: Istantanea L'incantatore tocca una creatura morta da non più di un secolo, che non sia morta di vecchiaia e che non sia un non morto. Se la sua anima è libera e consenziente, essa torna in vita con tutti i suoi punti ferita.
+Necromanzia di 7° livello Tempo di Lancio: 1 ora Gittata: Contatto Componenti: V, S, M (un diamante del valore di almeno 1.000 mo, che l'incantesimo consuma) Durata: Istantanea L'incantatore tocca una creatura morta da non più di un secolo, che non sia morta di vecchiaia e che non sia un non morto. Se la sua anima è libera e consenziente, essa torna in vita con tutti i suoi punti ferita.
 Questo incantesimo neutralizza ogni veleno e cura le normali malattie che affliggevano la creatura al momento della morte. Tuttavia non rimuove le malattie magiche, le maledizioni e altre afflizioni analoghet se tali effetti non vengono rimossi prima del lancio dell'incantesimo, il bersaglio ne sarà afflitto quando tornerà in vita.
 Questo incantesimo richiude tutte le ferite mortali e ripristina le eventuali parti del corpo mancanti.
 Il ritorno dalla morte è una vera e propria ordalia. Il bersaglio subisce una penalità di -4 a tutti i tiri per colpire, ai tiri salvezza e alle prove di caratteristica. Ogni volta che il bersaglio completa un riposo lungo, la penalità viene ridotta di 1 finché non sparisce del tutto.

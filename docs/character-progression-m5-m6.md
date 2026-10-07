@@ -1,6 +1,8 @@
 # Progressione personaggio M5/M6: PF, Dadi Vita e risorse
 
-Stato: sviluppo locale su `dev`. Le migrazioni sono additive e non sono state applicate a Railway.
+Stato della milestone: M5/M6 sono stati collaudati localmente nel percorso L1; le migrazioni sono additive. Il documento conserva le decisioni e il contratto delle due milestone, non una verifica della produzione attuale.
+
+Checkpoint della chat al 2026-10-01: L1/MC1 sono descritti nella [roadmap della progressione](multiclass-roadmap.md). La [creazione guidata di livello 1](character-creation-level-one.md) riusa PF, Dadi Vita e pool; il completamento delle scelte di tutti i livelli richiede il censimento del manuale e la valutazione del [modello comune](character-creation-progression-model-audit.md).
 
 ## Decisioni di dominio
 

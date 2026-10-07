@@ -217,12 +217,17 @@ describe("resolveWeaponProficiency", () => {
 
   it("grants Pact Weapon proficiency only to the bound item instance or explicitly marked virtual weapon", () => {
     const warlockWithPactBlade = {
-      basicInfo: { class: "Warlock" },
+      basicInfo: { class: "Warlock", level: 3 },
+      features: [{ name: "Patto della Lama" }],
       pactBlade: { bondedCharacterItemId: "character-item-bound" },
     };
     const battleaxe = { name: "Ascia da battaglia", weaponProficiencyGroup: "MARTIAL" as const };
 
     expect(resolveWeaponProficiency({ basicInfo: { class: "Warlock" } }, battleaxe)).toMatchObject({
+      known: true,
+      proficient: false,
+    });
+    expect(resolveWeaponProficiency({ basicInfo: { class: "Warlock", level: 3 }, pactBlade: warlockWithPactBlade.pactBlade }, { ...battleaxe, characterItemId: "character-item-bound" })).toMatchObject({
       known: true,
       proficient: false,
     });
@@ -414,6 +419,7 @@ describe("hasTwoWeaponFightingStyle", () => {
     { features: ["Combattere con Due Armi"] },
     { capabilities: [{ name: "Two-Weapon Fighting" }] },
     { features: [{ title: "two weapon fighting" }] },
+    { creationCapabilities: [{ name: "Stile di Combattimento: Combattere con Due Armi" }] },
   ])("recognises the persisted TWF labels", (characterData) => {
     expect(hasTwoWeaponFightingStyle(characterData)).toBe(true);
   });

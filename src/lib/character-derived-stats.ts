@@ -1,4 +1,5 @@
 import type { CharacterInventoryItemEntry, ItemDefinitionEntry } from "@/lib/auth";
+import { getGuidedInnateArmorClass } from "@/lib/character-creation-derived";
 import {
   calculateSkillValues,
   isPassiveTriggerActive,
@@ -191,6 +192,7 @@ export function getResolvedCharacterRuntime(
 ) {
   const passiveCapabilities = [
     ...((Array.isArray(state?.capabilities) ? state.capabilities : []) as any[]),
+    ...((Array.isArray(state?.creationCapabilities) ? state.creationCapabilities : []) as any[]),
     ...buildDerivedItemPassiveCapabilities(relationalInventoryItems, itemDefinitionsById),
   ];
   const passiveEffectContext = buildPassiveEffectContext(relationalInventoryItems, itemDefinitionsById);
@@ -220,7 +222,8 @@ export function getDerivedArmorClass(
     .filter((detail): detail is ItemDefinitionEntry => !!detail);
   const equippedArmor = equippedDetails.find((detail) => detail.category === "ARMOR") ?? undefined;
   const equippedShields = equippedDetails.filter((detail) => detail.category === "SHIELD");
-  const baseArmorClass = getArmorClassBaseFromArmor(equippedArmor, dexModifier);
+  const innateArmorClass = equippedArmor ? null : getGuidedInnateArmorClass(state, resolvedAbilityScores, equippedShields.length > 0);
+  const baseArmorClass = innateArmorClass?.value ?? getArmorClassBaseFromArmor(equippedArmor, dexModifier);
   const shieldBonus = equippedShields.reduce((total, detail) => total + getShieldBonus(detail), 0);
   const itemBonus = getFlatEquippedModifiers(relationalInventoryItems, itemDefinitionsById, "ARMOR_CLASS");
   const capabilityBonus = getCapabilityBonus(

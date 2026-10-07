@@ -1,0 +1,1890 @@
+{
+  "bardo": [
+    {
+      "id": "phb2014:spell:amicizia",
+      "name": "Amicizia",
+      "label": "Amicizia",
+      "level": 0,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:beffa-crudele",
+      "name": "Beffa Crudele",
+      "label": "Beffa Crudele",
+      "level": 0,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:colpo-accurato",
+      "name": "Colpo Accurato",
+      "label": "Colpo Accurato",
+      "level": 0,
+      "school": "Divinazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:illusione-minore",
+      "name": "Illusione Minore",
+      "label": "Illusione Minore",
+      "level": 0,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:interdizione-alle-lame",
+      "name": "Interdizione alle Lame",
+      "label": "Interdizione alle Lame",
+      "level": 0,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:luce",
+      "name": "Luce",
+      "label": "Luce",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:luci-danzanti",
+      "name": "Luci Danzanti",
+      "label": "Luci Danzanti",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:mano-magica",
+      "name": "Mano Magica",
+      "label": "Mano Magica",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:messaggio",
+      "name": "Messaggio",
+      "label": "Messaggio",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:prestidigitazione",
+      "name": "Prestidigitazione",
+      "label": "Prestidigitazione",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:riparare",
+      "name": "Riparare",
+      "label": "Riparare",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:amicizia-con-gli-animali",
+      "name": "Amicizia con gli Animali",
+      "label": "Amicizia con gli Animali",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:anatema",
+      "name": "Anatema",
+      "label": "Anatema",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:caduta-morbida",
+      "name": "Caduta Morbida",
+      "label": "Caduta Morbida",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:camuffare-se-stesso",
+      "name": "Camuffare Se Stesso",
+      "label": "Camuffare Se Stesso",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:charme-su-persone",
+      "name": "Charme su Persone",
+      "label": "Charme su Persone",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:comprensione-dei-linguaggi",
+      "name": "Comprensione dei Linguaggi",
+      "label": "Comprensione dei Linguaggi",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:cura-ferite",
+      "name": "Cura Ferite",
+      "label": "Cura Ferite",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:eroismo",
+      "name": "Eroismo",
+      "label": "Eroismo",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:identificare",
+      "name": "Identificare",
+      "label": "Identificare",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:immagine-silenziosa",
+      "name": "Immagine Silenziosa",
+      "label": "Immagine Silenziosa",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-del-magico",
+      "name": "Individuazione del Magico",
+      "label": "Individuazione del Magico",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:luminescenza",
+      "name": "Luminescenza",
+      "label": "Luminescenza",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:onda-tonante",
+      "name": "Onda Tonante",
+      "label": "Onda Tonante",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:parlare-con-gli-animali",
+      "name": "Parlare con gli Animali",
+      "label": "Parlare con gli Animali",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:parola-guaritrice",
+      "name": "Parola Guaritrice",
+      "label": "Parola Guaritrice",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:passo-veloce",
+      "name": "Passo Veloce",
+      "label": "Passo Veloce",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:risata-incontenibile-di-tasha",
+      "name": "Risata Incontenibile",
+      "label": "Risata Incontenibile di Tasha",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:scritto-illusorio",
+      "name": "Scritto Illusorio",
+      "label": "Scritto Illusorio",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:servitore-inosservato",
+      "name": "Servitore Inosservato",
+      "label": "Servitore Inosservato",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:sonno",
+      "name": "Sonno",
+      "label": "Sonno",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:sussurri-dissonanti",
+      "name": "Sussurri Dissonanti",
+      "label": "Sussurri Dissonanti",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    }
+  ],
+  "chierico": [
+    {
+      "id": "phb2014:spell:fiamma-sacra",
+      "name": "Fiamma Sacra",
+      "label": "Fiamma Sacra",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:guida",
+      "name": "Guida",
+      "label": "Guida",
+      "level": 0,
+      "school": "Divinazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:luce",
+      "name": "Luce",
+      "label": "Luce",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:resistenza",
+      "name": "Resistenza",
+      "label": "Resistenza",
+      "level": 0,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:riparare",
+      "name": "Riparare",
+      "label": "Riparare",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:salvare-i-morenti",
+      "name": "Salvare i Morenti",
+      "label": "Salvare i Morenti",
+      "level": 0,
+      "school": "Necromanzia",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:taumaturgia",
+      "name": "Taumaturgia",
+      "label": "Taumaturgia",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:anatema",
+      "name": "Anatema",
+      "label": "Anatema",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:benedizione",
+      "name": "Benedizione",
+      "label": "Benedizione",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:comando",
+      "name": "Comando",
+      "label": "Comando",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:creare-o-distruggere-acqua",
+      "name": "Creare o Distruggere Acqua",
+      "label": "Creare o Distruggere Acqua",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:cura-ferite",
+      "name": "Cura Ferite",
+      "label": "Cura Ferite",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:dardo-tracciante",
+      "name": "Dardo Tracciante",
+      "label": "Dardo Tracciante",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:individuazione-del-bene-e-del-male",
+      "name": "Individuazione del Bene e del Male",
+      "label": "Individuazione del Bene e del Male",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-del-magico",
+      "name": "Individuazione del Magico",
+      "label": "Individuazione del Magico",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-delle-malattie-e-dei-veleni",
+      "name": "Individuazione delle Malattie e dei Veleni",
+      "label": "Individuazione delle Malattie e dei Veleni",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:infliggi-ferite",
+      "name": "Infliggi Ferite",
+      "label": "Infliggi Ferite",
+      "level": 1,
+      "school": "Necromanzia",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:parola-guaritrice",
+      "name": "Parola Guaritrice",
+      "label": "Parola Guaritrice",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:protezione-dal-bene-e-dal-male",
+      "name": "Protezione dal Bene e dal Male",
+      "label": "Protezione dal Bene e dal Male",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:purificare-cibo-e-bevande",
+      "name": "Purificare Cibo e Bevande",
+      "label": "Purificare Cibo e Bevande",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:santuario",
+      "name": "Santuario",
+      "label": "Santuario",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:scudo-della-fede",
+      "name": "Scudo della Fede",
+      "label": "Scudo della Fede",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    }
+  ],
+  "druido": [
+    {
+      "id": "phb2014:spell:artificio-druidico",
+      "name": "Artificio Druidico",
+      "label": "Artificio Druidico",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:frusta-di-spine",
+      "name": "Frusta di Spine",
+      "label": "Frusta di Spine",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:guida",
+      "name": "Guida",
+      "label": "Guida",
+      "level": 0,
+      "school": "Divinazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:produrre-fiamma",
+      "name": "Produrre Fiamma",
+      "label": "Produrre Fiamma",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:randello-incantato",
+      "name": "Randello Incantato",
+      "label": "Randello Incantato",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:resistenza",
+      "name": "Resistenza",
+      "label": "Resistenza",
+      "level": 0,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:riparare",
+      "name": "Riparare",
+      "label": "Riparare",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:spruzzo-velenoso",
+      "name": "Spruzzo Velenoso",
+      "label": "Spruzzo Velenoso",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:amicizia-con-gli-animali",
+      "name": "Amicizia con gli Animali",
+      "label": "Amicizia con gli Animali",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:bacche-benefiche",
+      "name": "Bacche Benefiche",
+      "label": "Bacche Benefiche",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:charme-su-persone",
+      "name": "Charme su Persone",
+      "label": "Charme su Persone",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:creare-o-distruggere-acqua",
+      "name": "Creare o Distruggere Acqua",
+      "label": "Creare o Distruggere Acqua",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:cura-ferite",
+      "name": "Cura Ferite",
+      "label": "Cura Ferite",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-del-magico",
+      "name": "Individuazione del Magico",
+      "label": "Individuazione del Magico",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-delle-malattie-e-dei-veleni",
+      "name": "Individuazione delle Malattie e dei Veleni",
+      "label": "Individuazione delle Malattie e dei Veleni",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:intralciare",
+      "name": "Intralciare",
+      "label": "Intralciare",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:luminescenza",
+      "name": "Luminescenza",
+      "label": "Luminescenza",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:nube-di-nebbia",
+      "name": "Nube di Nebbia",
+      "label": "Nube di Nebbia",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:onda-tonante",
+      "name": "Onda Tonante",
+      "label": "Onda Tonante",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:parlare-con-gli-animali",
+      "name": "Parlare con gli Animali",
+      "label": "Parlare con gli Animali",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:parola-guaritrice",
+      "name": "Parola Guaritrice",
+      "label": "Parola Guaritrice",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:passo-veloce",
+      "name": "Passo Veloce",
+      "label": "Passo Veloce",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:purificare-cibo-e-bevande",
+      "name": "Purificare Cibo e Bevande",
+      "label": "Purificare Cibo e Bevande",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:saltare",
+      "name": "Saltare",
+      "label": "Saltare",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    }
+  ],
+  "mago": [
+    {
+      "id": "phb2014:spell:amicizia",
+      "name": "Amicizia",
+      "label": "Amicizia",
+      "level": 0,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:colpo-accurato",
+      "name": "Colpo Accurato",
+      "label": "Colpo Accurato",
+      "level": 0,
+      "school": "Divinazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:dardo-di-fuoco",
+      "name": "Dardo di Fuoco",
+      "label": "Dardo di Fuoco",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:fiotto-acido",
+      "name": "Fiotto Acido",
+      "label": "Fiotto Acido",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:illusione-minore",
+      "name": "Illusione Minore",
+      "label": "Illusione Minore",
+      "level": 0,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:interdizione-alle-lame",
+      "name": "Interdizione alle Lame",
+      "label": "Interdizione alle Lame",
+      "level": 0,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:luce",
+      "name": "Luce",
+      "label": "Luce",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:luci-danzanti",
+      "name": "Luci Danzanti",
+      "label": "Luci Danzanti",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:mano-magica",
+      "name": "Mano Magica",
+      "label": "Mano Magica",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:messaggio",
+      "name": "Messaggio",
+      "label": "Messaggio",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:prestidigitazione",
+      "name": "Prestidigitazione",
+      "label": "Prestidigitazione",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:raggio-di-gelo",
+      "name": "Raggio di Gelo",
+      "label": "Raggio di Gelo",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:riparare",
+      "name": "Riparare",
+      "label": "Riparare",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:spruzzo-velenoso",
+      "name": "Spruzzo Velenoso",
+      "label": "Spruzzo Velenoso",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:stretta-folgorante",
+      "name": "Stretta Folgorante",
+      "label": "Stretta Folgorante",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:tocco-gelido",
+      "name": "Tocco Gelido",
+      "label": "Tocco Gelido",
+      "level": 0,
+      "school": "Necromanzia",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:allarme",
+      "name": "Allarme",
+      "label": "Allarme",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:armatura-magica",
+      "name": "Armatura Magica",
+      "label": "Armatura Magica",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:caduta-morbida",
+      "name": "Caduta Morbida",
+      "label": "Caduta Morbida",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:camuffare-se-stesso",
+      "name": "Camuffare Se Stesso",
+      "label": "Camuffare Se Stesso",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:charme-su-persone",
+      "name": "Charme su Persone",
+      "label": "Charme su Persone",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:comprensione-dei-linguaggi",
+      "name": "Comprensione dei Linguaggi",
+      "label": "Comprensione dei Linguaggi",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:dardo-incantato",
+      "name": "Dardo Incantato",
+      "label": "Dardo Incantato",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:dardo-stregato",
+      "name": "Dardo Stregato",
+      "label": "Dardo Stregato",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:disco-fluttuante-di-tenser",
+      "name": "Disco Fluttuante",
+      "label": "Disco Fluttuante di Tenser",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:globo-cromatico",
+      "name": "Globo Cromatico",
+      "label": "Globo Cromatico",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:identificare",
+      "name": "Identificare",
+      "label": "Identificare",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:immagine-silenziosa",
+      "name": "Immagine Silenziosa",
+      "label": "Immagine Silenziosa",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-del-magico",
+      "name": "Individuazione del Magico",
+      "label": "Individuazione del Magico",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:mani-brucianti",
+      "name": "Mani Brucianti",
+      "label": "Mani Brucianti",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:nube-di-nebbia",
+      "name": "Nube di Nebbia",
+      "label": "Nube di Nebbia",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:onda-tonante",
+      "name": "Onda Tonante",
+      "label": "Onda Tonante",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:passo-veloce",
+      "name": "Passo Veloce",
+      "label": "Passo Veloce",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:protezione-dal-bene-e-dal-male",
+      "name": "Protezione dal Bene e dal Male",
+      "label": "Protezione dal Bene e dal Male",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:raggio-di-infermita",
+      "name": "Raggio di Infermità",
+      "label": "Raggio di Infermità",
+      "level": 1,
+      "school": "Necromanzia",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:risata-incontenibile-di-tasha",
+      "name": "Risata Incontenibile",
+      "label": "Risata Incontenibile di Tasha",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:ritirata-rapida",
+      "name": "Ritirata Rapida",
+      "label": "Ritirata Rapida",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:saltare",
+      "name": "Saltare",
+      "label": "Saltare",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:scritto-illusorio",
+      "name": "Scritto Illusorio",
+      "label": "Scritto Illusorio",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:scudo",
+      "name": "Scudo",
+      "label": "Scudo",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:servitore-inosservato",
+      "name": "Servitore Inosservato",
+      "label": "Servitore Inosservato",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:sonno",
+      "name": "Sonno",
+      "label": "Sonno",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:spruzzo-colorato",
+      "name": "Spruzzo Colorato",
+      "label": "Spruzzo Colorato",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:trova-famiglio",
+      "name": "Trova Famiglio",
+      "label": "Trova Famiglio",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:unto",
+      "name": "Unto",
+      "label": "Unto",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:vita-falsata",
+      "name": "Vita Falsata",
+      "label": "Vita Falsata",
+      "level": 1,
+      "school": "Necromanzia",
+      "ritual": false,
+      "attack_roll": false
+    }
+  ],
+  "paladino": [
+    {
+      "id": "phb2014:spell:benedizione",
+      "name": "Benedizione",
+      "label": "Benedizione",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:comando",
+      "name": "Comando",
+      "label": "Comando",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:cura-ferite",
+      "name": "Cura Ferite",
+      "label": "Cura Ferite",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:duello-obbligato",
+      "name": "Duello Obbligato",
+      "label": "Duello Obbligato",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:eroismo",
+      "name": "Eroismo",
+      "label": "Eroismo",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:favore-divino",
+      "name": "Favore Divino",
+      "label": "Favore Divino",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-del-bene-e-del-male",
+      "name": "Individuazione del Bene e del Male",
+      "label": "Individuazione del Bene e del Male",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-del-magico",
+      "name": "Individuazione del Magico",
+      "label": "Individuazione del Magico",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-delle-malattie-e-dei-veleni",
+      "name": "Individuazione delle Malattie e dei Veleni",
+      "label": "Individuazione delle Malattie e dei Veleni",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:protezione-dal-bene-e-dal-male",
+      "name": "Protezione dal Bene e dal Male",
+      "label": "Protezione dal Bene e dal Male",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:punizione-collerica",
+      "name": "Punizione Collerica",
+      "label": "Punizione Collerica",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:punizione-incandescente",
+      "name": "Punizione Incandescente",
+      "label": "Punizione Incandescente",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:punizione-tonante",
+      "name": "Punizione Tonante",
+      "label": "Punizione Tonante",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:purificare-cibo-e-bevande",
+      "name": "Purificare Cibo e Bevande",
+      "label": "Purificare Cibo e Bevande",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:scudo-della-fede",
+      "name": "Scudo della Fede",
+      "label": "Scudo della Fede",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    }
+  ],
+  "ranger": [
+    {
+      "id": "phb2014:spell:allarme",
+      "name": "Allarme",
+      "label": "Allarme",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:amicizia-con-gli-animali",
+      "name": "Amicizia con gli Animali",
+      "label": "Amicizia con gli Animali",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:bacche-benefiche",
+      "name": "Bacche Benefiche",
+      "label": "Bacche Benefiche",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:colpo-intrappolante",
+      "name": "Colpo Intrappolante",
+      "label": "Colpo Intrappolante",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:cura-ferite",
+      "name": "Cura Ferite",
+      "label": "Cura Ferite",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-del-magico",
+      "name": "Individuazione del Magico",
+      "label": "Individuazione del Magico",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-delle-malattie-e-dei-veleni",
+      "name": "Individuazione delle Malattie e dei Veleni",
+      "label": "Individuazione delle Malattie e dei Veleni",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:marchio-del-cacciatore",
+      "name": "Marchio del Cacciatore",
+      "label": "Marchio del Cacciatore",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:nube-di-nebbia",
+      "name": "Nube di Nebbia",
+      "label": "Nube di Nebbia",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:parlare-con-gli-animali",
+      "name": "Parlare con gli Animali",
+      "label": "Parlare con gli Animali",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:passo-veloce",
+      "name": "Passo Veloce",
+      "label": "Passo Veloce",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:raffica-di-spine",
+      "name": "Raffica di Spine",
+      "label": "Raffica di Spine",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:saltare",
+      "name": "Saltare",
+      "label": "Saltare",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    }
+  ],
+  "stregone": [
+    {
+      "id": "phb2014:spell:amicizia",
+      "name": "Amicizia",
+      "label": "Amicizia",
+      "level": 0,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:colpo-accurato",
+      "name": "Colpo Accurato",
+      "label": "Colpo Accurato",
+      "level": 0,
+      "school": "Divinazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:dardo-di-fuoco",
+      "name": "Dardo di Fuoco",
+      "label": "Dardo di Fuoco",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:fiotto-acido",
+      "name": "Fiotto Acido",
+      "label": "Fiotto Acido",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:illusione-minore",
+      "name": "Illusione Minore",
+      "label": "Illusione Minore",
+      "level": 0,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:interdizione-alle-lame",
+      "name": "Interdizione alle Lame",
+      "label": "Interdizione alle Lame",
+      "level": 0,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:luce",
+      "name": "Luce",
+      "label": "Luce",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:luci-danzanti",
+      "name": "Luci Danzanti",
+      "label": "Luci Danzanti",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:mano-magica",
+      "name": "Mano Magica",
+      "label": "Mano Magica",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:messaggio",
+      "name": "Messaggio",
+      "label": "Messaggio",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:prestidigitazione",
+      "name": "Prestidigitazione",
+      "label": "Prestidigitazione",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:raggio-di-gelo",
+      "name": "Raggio di Gelo",
+      "label": "Raggio di Gelo",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:riparare",
+      "name": "Riparare",
+      "label": "Riparare",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:spruzzo-velenoso",
+      "name": "Spruzzo Velenoso",
+      "label": "Spruzzo Velenoso",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:stretta-folgorante",
+      "name": "Stretta Folgorante",
+      "label": "Stretta Folgorante",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:tocco-gelido",
+      "name": "Tocco Gelido",
+      "label": "Tocco Gelido",
+      "level": 0,
+      "school": "Necromanzia",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:armatura-magica",
+      "name": "Armatura Magica",
+      "label": "Armatura Magica",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:caduta-morbida",
+      "name": "Caduta Morbida",
+      "label": "Caduta Morbida",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:camuffare-se-stesso",
+      "name": "Camuffare Se Stesso",
+      "label": "Camuffare Se Stesso",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:charme-su-persone",
+      "name": "Charme su Persone",
+      "label": "Charme su Persone",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:comprensione-dei-linguaggi",
+      "name": "Comprensione dei Linguaggi",
+      "label": "Comprensione dei Linguaggi",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:dardo-incantato",
+      "name": "Dardo Incantato",
+      "label": "Dardo Incantato",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:dardo-stregato",
+      "name": "Dardo Stregato",
+      "label": "Dardo Stregato",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:globo-cromatico",
+      "name": "Globo Cromatico",
+      "label": "Globo Cromatico",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:immagine-silenziosa",
+      "name": "Immagine Silenziosa",
+      "label": "Immagine Silenziosa",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:individuazione-del-magico",
+      "name": "Individuazione del Magico",
+      "label": "Individuazione del Magico",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:mani-brucianti",
+      "name": "Mani Brucianti",
+      "label": "Mani Brucianti",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:nube-di-nebbia",
+      "name": "Nube di Nebbia",
+      "label": "Nube di Nebbia",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:onda-tonante",
+      "name": "Onda Tonante",
+      "label": "Onda Tonante",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:raggio-di-infermita",
+      "name": "Raggio di Infermità",
+      "label": "Raggio di Infermità",
+      "level": 1,
+      "school": "Necromanzia",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:ritirata-rapida",
+      "name": "Ritirata Rapida",
+      "label": "Ritirata Rapida",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:saltare",
+      "name": "Saltare",
+      "label": "Saltare",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:scudo",
+      "name": "Scudo",
+      "label": "Scudo",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:sonno",
+      "name": "Sonno",
+      "label": "Sonno",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:spruzzo-colorato",
+      "name": "Spruzzo Colorato",
+      "label": "Spruzzo Colorato",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:vita-falsata",
+      "name": "Vita Falsata",
+      "label": "Vita Falsata",
+      "level": 1,
+      "school": "Necromanzia",
+      "ritual": false,
+      "attack_roll": false
+    }
+  ],
+  "warlock": [
+    {
+      "id": "phb2014:spell:amicizia",
+      "name": "Amicizia",
+      "label": "Amicizia",
+      "level": 0,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:colpo-accurato",
+      "name": "Colpo Accurato",
+      "label": "Colpo Accurato",
+      "level": 0,
+      "school": "Divinazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:deflagrazione-occulta",
+      "name": "Deflagrazione Occulta",
+      "label": "Deflagrazione Occulta",
+      "level": 0,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:illusione-minore",
+      "name": "Illusione Minore",
+      "label": "Illusione Minore",
+      "level": 0,
+      "school": "Illusione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:interdizione-alle-lame",
+      "name": "Interdizione alle Lame",
+      "label": "Interdizione alle Lame",
+      "level": 0,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:mano-magica",
+      "name": "Mano Magica",
+      "label": "Mano Magica",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:prestidigitazione",
+      "name": "Prestidigitazione",
+      "label": "Prestidigitazione",
+      "level": 0,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:spruzzo-velenoso",
+      "name": "Spruzzo Velenoso",
+      "label": "Spruzzo Velenoso",
+      "level": 0,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:tocco-gelido",
+      "name": "Tocco Gelido",
+      "label": "Tocco Gelido",
+      "level": 0,
+      "school": "Necromanzia",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:armatura-di-agathys",
+      "name": "Armatura di Agathys",
+      "label": "Armatura di Agathys",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:braccia-di-hadar",
+      "name": "Braccia di Hadar",
+      "label": "Braccia di Hadar",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:charme-su-persone",
+      "name": "Charme su Persone",
+      "label": "Charme su Persone",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:comprensione-dei-linguaggi",
+      "name": "Comprensione dei Linguaggi",
+      "label": "Comprensione dei Linguaggi",
+      "level": 1,
+      "school": "Divinazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:dardo-stregato",
+      "name": "Dardo Stregato",
+      "label": "Dardo Stregato",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": true
+    },
+    {
+      "id": "phb2014:spell:intimorire-infernale",
+      "name": "Intimorire Infernale",
+      "label": "Intimorire Infernale",
+      "level": 1,
+      "school": "Invocazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:protezione-dal-bene-e-dal-male",
+      "name": "Protezione dal Bene e dal Male",
+      "label": "Protezione dal Bene e dal Male",
+      "level": 1,
+      "school": "Abiurazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:ritirata-rapida",
+      "name": "Ritirata Rapida",
+      "label": "Ritirata Rapida",
+      "level": 1,
+      "school": "Trasmutazione",
+      "ritual": false,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:scritto-illusorio",
+      "name": "Scritto Illusorio",
+      "label": "Scritto Illusorio",
+      "level": 1,
+      "school": "Illusione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:servitore-inosservato",
+      "name": "Servitore Inosservato",
+      "label": "Servitore Inosservato",
+      "level": 1,
+      "school": "Evocazione",
+      "ritual": true,
+      "attack_roll": false
+    },
+    {
+      "id": "phb2014:spell:sortilegio",
+      "name": "Sortilegio",
+      "label": "Sortilegio",
+      "level": 1,
+      "school": "Ammaliamento",
+      "ritual": false,
+      "attack_roll": false
+    }
+  ]
+}

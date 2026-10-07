@@ -12,6 +12,27 @@ import { toast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { convertSpellSlots, setCharacterResourcePoolTierUsed, updateCharacter, updateCharacterWithAck } from "@/realtime";
 
+type CreationSpellRole = "cantrip" | "known" | "spellbook" | "ritualbook" | "prepared" | "domain";
+type CreationSpell = {
+    name: string;
+    level: number;
+    role: CreationSpellRole;
+    source: string;
+    ability?: string | null;
+    usage?: string;
+};
+
+const CREATION_SPELL_ROLE_LABELS: Record<CreationSpellRole, string> = {
+    cantrip: "Trucchetti",
+    known: "Incantesimi conosciuti",
+    spellbook: "Libro degli incantesimi",
+    ritualbook: "Libro dei rituali",
+    prepared: "Preparati alla creazione",
+    domain: "Incantesimi di dominio",
+};
+const spellKey = (name: string, level: number) => `${name.trim().toLocaleLowerCase("it")}|${level}`;
+const CASTING_ABILITIES: Record<string, string> = { intelligence: "Intelligenza", wisdom: "Saggezza", charisma: "Carisma" };
+
 const MAX_SPELL_LEVEL = 12;
 const SPELL_SLOT_CONVERSION_COSTS: Record<number, number> = {
     2: 3,
@@ -42,6 +63,7 @@ const canonicalizeSpellSlotState = (spellSlots: Record<number, unknown>) =>
 
 const Features = ({
     characterData,
+    creationSpells = [],
     stripName,
     parseClassFromFeatureTitle,
     parseLevelFromFeatureTitle,
@@ -338,7 +360,23 @@ const Features = ({
         acc[level].push(entry);
         return acc;
     }, {} as Record<number, typeof spellFeatures>);
-    const spellLevels = Object.keys(spellGroups).map(Number).sort((a, b) => a - b);
+    const guidedSpells: CreationSpell[] = Array.isArray(creationSpells) ? creationSpells : [];
+    const guidedSpellGroups = guidedSpells
+        .filter((spell: CreationSpell) =>
+            typeof spell?.name === "string" &&
+            Number.isInteger(spell.level) &&
+            spell.level >= 0 &&
+            Object.prototype.hasOwnProperty.call(CREATION_SPELL_ROLE_LABELS, spell.role)
+        )
+        .reduce((groups: Record<number, CreationSpell[]>, spell: CreationSpell) => {
+            (groups[spell.level] ??= []).push(spell);
+            return groups;
+        }, {});
+    for (const spells of Object.values(guidedSpellGroups)) {
+        spells.sort((left, right) => left.name.localeCompare(right.name, "it", { sensitivity: "base" }));
+    }
+    const spellLevels = [...new Set([...Object.keys(spellGroups), ...Object.keys(guidedSpellGroups)].map(Number))]
+        .sort((a, b) => a - b);
 
     return (
         <>
@@ -391,10 +429,12 @@ const Features = ({
                 {spellLevels.map((level) => (
                     <div key={level} className="space-y-2">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90">
-                            {spellLevelLabel(level)}
+                            {level === 0 && guidedSpellGroups[0]?.length && characterData.basicInfo.class === "Guerriero"
+                                ? "Trucchetti e manovre"
+                                : spellLevelLabel(level)}
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                            {spellGroups[level].map(({ feature, index, baseName, match }) => (
+                            {(spellGroups[level] ?? []).map(({ feature, index, baseName, match }) => (
                                 <div key={index} className="dnd-frame rounded p-3">
                                     <button
                                         type="button"
@@ -423,6 +463,39 @@ const Features = ({
                                     </button>
                                 </div>
                             ))}
+                            {(guidedSpellGroups[level] ?? []).map((spell: CreationSpell, index: number) => {
+                                const match = findSpell(spell.name, spell.source, spell.level, true);
+                                const detail = {
+                                    name: `${spell.name} (${spell.source}, Lv ${spell.level})`,
+                                    description: [`Incantesimo selezionato durante la creazione.`, `Fonte: ${spell.source}`, spell.ability ? `Caratteristica: ${CASTING_ABILITIES[spell.ability] ?? spell.ability}` : null, spell.usage].filter(Boolean).join("\n"),
+                                    creationSpell: true,
+                                };
+                                return (
+                                    <div key={`guided-${spell.role}-${spellKey(spell.name, spell.level)}-${index}`} className="dnd-frame rounded p-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => openFeatureModal(detail)}
+                                            className="w-full min-w-0 rounded-sm text-left hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                        >
+                                            <div className="min-w-0">
+                                                <div className="line-clamp-2 pr-1 text-sm font-semibold leading-snug text-primary">
+                                                    {spell.name}
+                                                </div>
+                                                <div className="mt-1 text-[11px] leading-tight text-muted-foreground">
+                                                    {match?.school}
+                                                    {match?.concentration ? " · Concentrazione" : ""}
+                                                    {match?.ritual ? " · Rituale" : ""}
+                                                </div>
+                                                <div className="mt-1 truncate text-[11px] text-muted-foreground">
+                                                    {CREATION_SPELL_ROLE_LABELS[spell.role]} · {spell.source}
+                                                </div>
+                                                {spell.ability && <div className="mt-1 text-[11px] text-muted-foreground">{CASTING_ABILITIES[spell.ability] ?? spell.ability}</div>}
+                                                {spell.usage && <p className="mt-1 text-[11px] text-muted-foreground">{spell.usage}</p>}
+                                            </div>
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 ))}

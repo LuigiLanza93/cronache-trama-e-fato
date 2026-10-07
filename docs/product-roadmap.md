@@ -1,8 +1,21 @@
 # Roadmap di prodotto
 
+> Aggiornamento 2026-10-02: preview autorevole, diario delle decisioni e concessioni,
+> background personalizzato e varianti, risorse iniziali integrate. Database locale
+> allineato; nessuna modifica Railway. [Checkpoint corrente](rules-inventory/implementation-step-two.md).
+> Le verifiche datate nei paragrafi precedenti descrivono incrementi storici.
+
+Incremento eseguibile del 2026-10-01: catalogo di 361 magie e motore puro
+collegati alla creazione, liste iniziali riallineate, P1 245/245, build e
+TypeScript superati. Persistenza delle nuove decisioni e scelte 2–20 restano
+aperte. [Stato corrente](rules-inventory/implementation-step-one.md).
+Le lacune magiche descritte nei checkpoint precedenti sono ora storiche.
+
 Appunto vivo per raccogliere, ordinare e affinare le prossime funzionalita di **Cronache della Trama e del Fato**.
 
 La roadmap esprime priorita e dipendenze, non scadenze. Le versioni proposte possono essere spezzate se, durante l'analisi, una funzione risulta troppo ampia per un singolo rilascio.
+
+**Checkpoint della chat al 2026-10-01:** L1 e MC1 sono collaudati nel perimetro documentato; MC1 è consolidato su `dev` con il catalogo delle 40 sottoclassi. La creazione guidata di livello 1 è implementata nella copia locale, con modifiche non committate e collaudo completo ancora aperto. La priorità corrente è il censimento delle regole di tutte le razze/classi e la valutazione del modello comune per creazione e progressione, prima dell'estensione M8. Stato e limiti: [creazione di livello 1](character-creation-level-one.md), [audit del modello](character-creation-progression-model-audit.md). Le date nelle sezioni delle milestone precedenti descrivono checkpoint storici, non lo stato Railway.
 
 ## Principi guida
 
@@ -22,7 +35,7 @@ La roadmap esprime priorita e dipendenze, non scadenze. Le versioni proposte pos
 | 1.8A | Gate tecnico della progressione | Massima/bloccante | Introduce contratti, modello classi, storico, PF/Dadi Vita e pool di risorse compatibili con il multiclasse. |
 | 1.8B | Level-up guidato monoclasse | Massima, milestone interna | Collauda preview/apply atomici e resolver sul caso piu semplice; non e un lungo obiettivo separato dal multiclasse. |
 | 1.8C | Estensione multiclasse | Massima, obiettivo operativo | Deve essere disponibile per il prossimo level-up reale di un giocatore. |
-| Dopo 1.8 | Creazione guidata della scheda | Media | Riusa strutture e componenti della progressione gia collaudati, diventando un'aggiunta piu semplice e meno rischiosa. |
+| Prima dell'estensione M8 | Censimento manuale e modello comune di creazione/progressione | Priorità corrente | La creazione di livello 1 è già implementata su `dev`; servono regole e forme di scelta verificate per tutte le razze/classi prima di completare creazione e level up. |
 | Dopo 1.8 | Gestione del party e idoneita alle interazioni | Media | Resta utile per riservatezza e personaggi inattivi, ma non e propedeutica al prossimo level-up. |
 | Trasversale | Migliorie UI e design system incrementale | Opportunistica | Si interviene mentre si toccano le schermate, senza aprire ora un restyling completo. |
 | Futuro | Fondazioni e gestione multi-campagna | Molto bassa | Non c'e una necessita corrente; una one-shot puo usare temporaneamente un'istanza locale con dati dedicati. |
@@ -30,7 +43,7 @@ La roadmap esprime priorita e dipendenze, non scadenze. Le versioni proposte pos
 
 ## P0, pre-1.8 — Stabilizzazione core della scheda personaggio
 
-> Stato verificato al 2026-09-22: P0, P1 e M0-M3 sono consolidati su `dev`; il debito TypeScript applicativo e chiuso. M4 e implementato e collaudato localmente con API autorevoli, storico durevole, proiezioni UI, conflitti, retry, autorizzazione e rollback transazionale verificati. Resta non committato in attesa della finalizzazione su `dev`; Railway resta invariato. I dettagli sono raccolti in [`multiclass-roadmap.md`](./multiclass-roadmap.md), [`character-progression-m3.md`](./character-progression-m3.md) e [`character-progression-m4.md`](./character-progression-m4.md).
+> Checkpoint storico del 2026-09-22: P0, P1 e M0-M3 sono consolidati su `dev`; il debito TypeScript applicativo e chiuso. M4 e implementato e collaudato localmente con API autorevoli, storico durevole, proiezioni UI, conflitti, retry, autorizzazione e rollback transazionale verificati. A quella data restava non committato in attesa della finalizzazione su `dev`; Railway non era stato modificato da quell'attività. Lo stato successivo è nel checkpoint corrente in apertura; i contratti sono raccolti in [`multiclass-roadmap.md`](./multiclass-roadmap.md), [`character-progression-m3.md`](./character-progression-m3.md) e [`character-progression-m4.md`](./character-progression-m4.md).
 
 ### Obiettivo
 
@@ -158,25 +171,33 @@ L'assegnazione di un PG a un utente e la sua appartenenza al party devono restar
 
 Un PG non attivo non appare come possibile interlocutore o destinatario e non puo essere forzato in un'interazione chiamando direttamente le API. Il DM continua a poterlo amministrare.
 
-## Dopo la progressione — Creazione guidata della scheda
+## Creazione guidata e modello comune di progressione
+
+**Stato al 2026-10-01:** wizard di livello 1 implementato localmente e provato dall'utente su alcuni flussi; collaudo completo e ultime correzioni ancora aperti. L'implementazione disponibile e i limiti sono descritti in [character-creation-level-one.md](character-creation-level-one.md). La fase corrente è l'audit completo del manuale e del contratto delle scelte, non l'aggiunta di nuove eccezioni per una singola classe.
 
 ### Obiettivo
 
-Fornire una procedura a step che riduca errori e lavoro ripetitivo, senza rendere l'app dipendente da contenuti non distribuibili.
+Fornire una creazione completa di livello 1 e i successivi avanzamenti guidati per tutte le razze, sottorazze, classi e sottoclassi del manuale adottato, con background, varianti, talenti e scelte magiche. Il contratto deve supportare concessioni fisse, scelte dipendenti, prerequisiti, sostituzioni e preparazioni riconfigurabili, preservando la provenienza e le schede esistenti.
 
-### Perimetro consigliato
+### Perimetro e lavoro aperto
 
 - identita del personaggio e informazioni narrative;
 - caratteristiche e metodo di assegnazione dei punteggi;
 - specie/razza, classe, background e competenze solo quando disponibili nel catalogo consentito;
 - punti ferita, equipaggiamento iniziale e riepilogo finale;
-- salvataggio in bozza e ripresa successiva;
-- modalita **manuale/personalizzata** sempre disponibile per opzioni non automatizzate;
+- salvataggio in bozza e ripresa successiva come estensione ancora da progettare;
+- modalita **manuale/personalizzata** e varianti del background da censire e progettare; il wizard attuale usa il catalogo supportato;
 - provenienza esplicita dei dati di regola, separata dal motore di calcolo.
 
-### Gate legale e contenutistico
+### Fonte e censimento delle regole
 
-Prima di importare testi o opzioni bisogna verificare puntualmente fonte, licenza, attribuzione e versione. Il wizard deve poter automatizzare solo il catalogo approvato; per il resto puo guidare la struttura della scelta senza incorporarne descrizioni o regole protette.
+Il riferimento corrente è `Manuale_del_Giocatore_5.0.md`, con provenienza, versione e condizioni d'uso da mantenere documentate. L'audit deve censire ogni privilegio e scelta del perimetro, risolvere ambiguità/artefatti OCR e confrontare i cataloghi prima dell'automazione. Le dodici tabelle di classe sono indicizzate su venti livelli; questa verifica strutturale non certifica la prosa dei privilegi. Il catalogo magico presenta differenze già ai livelli 0-1. La proposta di modello e il perimetro ancora da verificare sono nell'[audit](character-creation-progression-model-audit.md).
+
+Avanzamento del 2026-10-01: aggiunto [inventario semantico per famiglie](rules-inventory/README.md)
+con razze, background, 42 talenti, dodici classi e 40 sottoclassi sui livelli
+1–20. Il [contratto proposto](rules-inventory/decision-model.md) distingue
+decisioni, concessioni, preparazioni e risorse. Ambiguità OCR e lacune
+applicative restano esplicite; schema/API e resolver sono il lavoro successivo.
 
 ### Rischi principali
 
@@ -186,7 +207,7 @@ Prima di importare testi o opzioni bisogna verificare puntualmente fonte, licenz
 
 ### Criterio di completamento
 
-Si puo creare e riprendere una bozza, completare un PG usando il catalogo automatizzato oppure opzioni manuali, vedere un riepilogo delle scelte e produrre una scheda coerente senza modifiche nascoste.
+Ogni scelta prevista dal perimetro verificato può essere completata e validata, con riepilogo e concessioni coerenti nella scheda. Creazione e level up usano il medesimo contratto di regole/decisioni, mantenendo distinti livelli del personaggio, livelli di classe, livelli degli incantesimi e degli slot. Le nuove decisioni persistenti hanno strutture dedicate e API esplicite; gli snapshot esistenti restano compatibili. Bozze e opzioni personalizzate saranno dichiarate disponibili solo dopo la relativa implementazione e il collaudo.
 
 ## 1.8B — Level-up guidato monoclasse
 
@@ -194,7 +215,7 @@ Si puo creare e riprendere una bozza, completare un PG usando il catalogo automa
 
 ### Dipendenza
 
-Va costruito dopo il Gate tecnico della progressione. La creazione guidata non e piu un prerequisito: sara aggiunta dopo, riusando il modello di scelte, prerequisiti, anteprima e conferma gia collaudato dal level-up.
+L1 è stato costruito dopo il Gate tecnico ed è collaudato nel perimetro iniziale. La creazione guidata di livello 1 è ora disponibile localmente; per completare tutte le scelte dei livelli successivi, il contratto condiviso va definito dopo il censimento del manuale previsto prima dell'estensione M8.
 
 ### Perimetro consigliato
 
@@ -215,7 +236,7 @@ Va costruito dopo il Gate tecnico della progressione. La creazione guidata non e
 
 ## 1.8C — Estensione multiclasse
 
-**Stato:** in sviluppo su `dev`; checkpoint iniziale MC1 implementato il 2026-09-23 e ancora da collaudare. Sono presenti schema plurale, preview/apply, prerequisiti/override, derivati e competenze automatiche armi/armature. Restano aperti i contenuti M8 strutturati per scelte di abilita/strumenti, incantesimi e privilegi/cumulo.
+**Stato:** MC1 collaudato e completato nel perimetro catalogo concordato il 2026-09-25, consolidato su `dev`. Sono presenti schema plurale, preview/apply, prerequisiti/override, derivati e competenze automatiche armi/armature, con 40 sottoclassi del manuale. Restano aperti i contenuti M8 strutturati per scelte di abilita/strumenti, incantesimi e privilegi/cumulo. Le scelte già gestite dalla creazione di livello 1 non sono ancora tutte disponibili nel level up.
 
 ### Dipendenza
 
@@ -343,7 +364,13 @@ Stabilizzazione P0 e test di regressione
                                 |
                                 +--> Multiclasse (1.8C, obiettivo operativo)
                                             |
-                                            +--> Creazione guidata
+                                            +--> Creazione livello 1 (locale)
+                                                        |
+                                                        v
+                                             Censimento completo manuale
+                                                        |
+                                                        v
+                                             Modello comune -> M8
 
 Party gestito -------------------------------> backlog successivo indipendente
 
@@ -366,7 +393,7 @@ Fondazioni multi-campagna --> Multi-campagna --> Tavolo tattico
 ### Rinviate con le funzioni non prioritarie
 
 1. Visibilita e modifica player dei PG **In preparazione** e distinzione fra fuori party e ritirato.
-2. Autorita e approvazione della futura creazione guidata.
+2. Modalità futura di richiesta/approvazione player della creazione; la creazione attuale è DM.
 3. Direzione di un eventuale restyling completo.
 4. Ruoli per campagna e movimento delle pedine del tavolo tattico.
 

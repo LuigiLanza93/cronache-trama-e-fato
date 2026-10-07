@@ -171,10 +171,11 @@ describe("validateCharacterPatch", () => {
 
 describe("validatePactBladeState", () => {
   const bondedMeleeWeapon = { id: "weapon-1", itemCategory: "WEAPON", hasMeleeAttack: true };
+  const bladeWarlock = { basicInfo: { class: "Warlock", level: 3 }, features: [{ name: "Patto della Lama" }] };
 
   it("accepts a Warlock bound melee weapon and whitelisted virtual template", () => {
     expect(validatePactBladeState({
-      basicInfo: { class: "Warlock" },
+      ...bladeWarlock,
       pactBlade: {
         bondedCharacterItemId: "weapon-1",
         activeSummon: { mode: "template", templateId: "longsword" },
@@ -189,24 +190,52 @@ describe("validatePactBladeState", () => {
     }, bondedMeleeWeapon).join("\n")).toContain("soltanto per un Warlock");
   });
 
+  it("rejects Pact Blade state before level 3 or without the Pact Boon", () => {
+    for (const character of [
+      { basicInfo: { class: "Warlock", level: 1 }, features: [{ name: "Patto della Lama" }] },
+      { basicInfo: { class: "Warlock", level: 3 } },
+    ]) {
+      expect(validatePactBladeState({
+        ...character,
+        pactBlade: { bondedCharacterItemId: "weapon-1", activeSummon: { mode: null, templateId: null } },
+      }, bondedMeleeWeapon).join("\n")).toContain("richiede il Patto della Lama");
+    }
+  });
+
+  it("uses Warlock class levels rather than the total level for multiclass characters", () => {
+    const pactBlade = { bondedCharacterItemId: "weapon-1", activeSummon: { mode: null, templateId: null } };
+    expect(validatePactBladeState({
+      basicInfo: { class: "Ladro", level: 6 },
+      classes: [{ classKey: "rogue", level: 3 }, { classKey: "warlock", level: 3 }],
+      features: [{ name: "Patto della Lama" }],
+      pactBlade,
+    }, bondedMeleeWeapon)).toEqual([]);
+    expect(validatePactBladeState({
+      basicInfo: { class: "Warlock", level: 3 },
+      classes: [{ classKey: "warlock", level: 1 }, { classKey: "fighter", level: 2 }],
+      features: [{ name: "Patto della Lama" }],
+      pactBlade,
+    }, bondedMeleeWeapon).join("\n")).toContain("richiede il Patto della Lama");
+  });
+
   it.each([
     [null, "arma da mischia posseduta"],
     [{ id: "weapon-1", itemCategory: "ARMOR", hasMeleeAttack: false }, "arma da mischia posseduta"],
     [{ id: "different-instance", itemCategory: "WEAPON", hasMeleeAttack: true }, "arma da mischia posseduta"],
   ])("rejects an invalid or foreign bonded item", (bondedItem, issue) => {
     expect(validatePactBladeState({
-      basicInfo: { class: "Warlock" },
+      ...bladeWarlock,
       pactBlade: { bondedCharacterItemId: "weapon-1", activeSummon: { mode: "bonded", templateId: null } },
     }, bondedItem).join("\n")).toContain(issue);
   });
 
   it("rejects unknown templates and inconsistent summon state", () => {
     expect(validatePactBladeState({
-      basicInfo: { class: "Warlock" },
+      ...bladeWarlock,
       pactBlade: { bondedCharacterItemId: null, activeSummon: { mode: "template", templateId: "forged-template" } },
     }).join("\n")).toContain("modello non supportato");
     expect(validatePactBladeState({
-      basicInfo: { class: "Warlock" },
+      ...bladeWarlock,
       pactBlade: { bondedCharacterItemId: null, activeSummon: { mode: "bonded", templateId: null } },
     }).join("\n")).toContain("richiede un'arma legata");
   });

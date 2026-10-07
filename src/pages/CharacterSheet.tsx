@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { getPhbSpellDetails } from "@/lib/phb-spell-details";
 import { useNavigate, useParams } from "react-router-dom";
 import { Check, GripVertical, LayoutTemplate, RotateCcw } from "lucide-react";
 import {
@@ -103,6 +104,7 @@ import { type PassiveEffectSkillTarget } from "@/lib/passive-effect-skills";
 import { toast } from "@/components/ui/sonner";
 import { useAuth } from "@/components/auth-provider";
 import { useGameSession } from "@/components/game-session-provider";
+import { canUsePactBlade } from "../../shared/pact-blade-eligibility.mjs";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
 import LevelUpDialog from "@/components/characterSheet/level-up-dialog";
@@ -111,6 +113,7 @@ import Proficiencies from "@/components/characterSheet/proficiencies";
 import CombatStats from "@/components/characterSheet/combat-stats";
 import HitPoints from "@/components/characterSheet/hit-points";
 import Capabilities from "@/components/characterSheet/capabilities";
+import CreationPrivileges from "@/components/characterSheet/creation-privileges";
 import AttacksAndSpells from "@/components/characterSheet/attacks-and-spells";
 import Features from "@/components/characterSheet/features";
 import Inventory from "@/components/characterSheet/inventory";
@@ -262,6 +265,16 @@ type PactBladeState = {
   };
 };
 
+type CreationSpellRole = "cantrip" | "known" | "spellbook" | "ritualbook" | "prepared" | "domain";
+type CreationSpell = {
+  name: string;
+  level: number;
+  role: CreationSpellRole;
+  source: string;
+  ability?: string | null;
+  usage?: string;
+};
+
 interface Character {
   slug: string;
   characterType?: "pg" | "png";
@@ -359,7 +372,9 @@ interface Character {
   };
   currencyBalance?: Partial<Coins> | null;
   features: Array<{ name: string; description: string; uses?: string }>;
+  creationSpells?: CreationSpell[];
   capabilities?: CapabilityEntry[];
+  creationCapabilities?: CapabilityEntry[];
   pactBlade?: PactBladeState;
 }
 
@@ -500,6 +515,7 @@ type CharacterSheetCardId =
   | "combatStats"
   | "hitPoints"
   | "capabilities"
+  | "creationPrivileges"
   | "attacksAndEquipment"
   | "features"
   | "inventory";
@@ -517,7 +533,8 @@ const DEFAULT_CHARACTER_SHEET_LAYOUT: CharacterSheetLayoutCardEntry[] = [
   { cardId: "combatStats", column: 1, order: 0 },
   { cardId: "hitPoints", column: 1, order: 1 },
   { cardId: "capabilities", column: 1, order: 2 },
-  { cardId: "attacksAndEquipment", column: 1, order: 3 },
+  { cardId: "creationPrivileges", column: 1, order: 3 },
+  { cardId: "attacksAndEquipment", column: 1, order: 4 },
   { cardId: "features", column: 2, order: 0 },
   { cardId: "inventory", column: 2, order: 1 },
 ];
@@ -842,7 +859,7 @@ const CharacterSheet = () => {
     pendingCount: 0,
   });
   const [dragStartLayout, setDragStartLayout] = useState<CharacterSheetLayoutCardEntry[] | null>(null);
-  const [collapsedLayoutCards, setCollapsedLayoutCards] = useState<Record<string, boolean>>({});
+  const [collapsedLayoutCards, setCollapsedLayoutCards] = useState<Record<string, boolean>>({ creationPrivileges: true });
   const [preEditCollapsedCards, setPreEditCollapsedCards] = useState<Record<string, boolean> | null>(null);
   const canModifyCharacter = user?.role === "dm" || !isPlayerReadOnly;
 
@@ -896,10 +913,7 @@ const CharacterSheet = () => {
     setCurrencyHistoryOpen(false);
   }, [canModifyCharacter]);
 
-  const isWarlock = useMemo(
-    () => (characterData?.basicInfo?.class ?? "").trim().toLowerCase() === "warlock",
-    [characterData?.basicInfo?.class]
-  );
+  const showPactBladeSection = useMemo(() => canUsePactBlade(characterData), [characterData]);
 
   const pactBladeState = useMemo<PactBladeState>(
     () => ({
@@ -928,10 +942,10 @@ const CharacterSheet = () => {
 
   const activePactBladeTemplate = useMemo(
     () =>
-      pactBladeState.activeSummon?.mode === "template"
+      showPactBladeSection && pactBladeState.activeSummon?.mode === "template"
         ? getPactBladeTemplate(pactBladeState.activeSummon?.templateId)
         : null,
-    [pactBladeState.activeSummon?.mode, pactBladeState.activeSummon?.templateId]
+    [showPactBladeSection, pactBladeState.activeSummon?.mode, pactBladeState.activeSummon?.templateId]
   );
 
   const runtimePactBladeDefinitions = useMemo(() => {
@@ -1047,7 +1061,9 @@ const CharacterSheet = () => {
     const m = full.match(/Lv\s*(\d+)/i);
     return m ? Number(m[1]) : null;
   };
-  const findSpell = (name: string, maybeClass?: string | null, maybeLevel?: number | null): Spell | null => {
+  const findSpell = (name: string, maybeClass?: string | null, maybeLevel?: number | null, preferPhb = false): Spell | null => {
+    const phb = preferPhb ? getPhbSpellDetails(name) : null;
+    if (phb && (maybeLevel == null || phb.level === maybeLevel)) return phb;
     const lcName = name.toLowerCase();
     if (maybeClass && spells[maybeClass]) {
       const byClass = spells[maybeClass];
@@ -1069,11 +1085,11 @@ const CharacterSheet = () => {
     return null;
   };
 
-  const openFeatureModal = (feature: { name: string; description: string }, index?: number) => {
+  const openFeatureModal = (feature: { name: string; description: string; creationSpell?: boolean }, index?: number) => {
     const baseName = stripName(feature.name);
     const cls = parseClassFromFeatureTitle(feature.name);
     const lvl = parseLevelFromFeatureTitle(feature.name);
-    const found = findSpell(baseName, cls, lvl);
+    const found = findSpell(baseName, cls, lvl, feature.creationSpell === true);
     setModalFeatureIndex(typeof index === "number" ? index : null);
 
     if (found) {
@@ -2015,12 +2031,17 @@ const CharacterSheet = () => {
     });
   }, [allItemDefinitionDetailsById, runtimeRelationalInventoryItems]);
 
+  const derivedCapabilities = useMemo<CapabilityEntry[]>(
+    () => [...(characterData?.creationCapabilities ?? []), ...derivedItemCapabilities],
+    [characterData?.creationCapabilities, derivedItemCapabilities]
+  );
+
   const passiveEffectCapabilities = useMemo<CapabilityEntry[]>(
     () => [
       ...((Array.isArray(characterData?.capabilities) ? characterData.capabilities : []) as CapabilityEntry[]),
-      ...derivedItemCapabilities,
+      ...derivedCapabilities,
     ],
-    [characterData?.capabilities, derivedItemCapabilities]
+    [characterData?.capabilities, derivedCapabilities]
   );
 
   const passiveEffectContext = useMemo(
@@ -2208,6 +2229,10 @@ const CharacterSheet = () => {
             />
           ),
         },
+        creationPrivileges: {
+          label: "Privilegi di origine",
+          render: <CreationPrivileges privileges={characterData?.creationCapabilities ?? []} />,
+        },
         attacksAndEquipment: {
           label: "Attack & Equipment",
           render: (
@@ -2230,6 +2255,7 @@ const CharacterSheet = () => {
           render: (
             <Features
               characterData={characterData}
+              creationSpells={characterData?.creationSpells ?? []}
               stripName={stripName}
               parseClassFromFeatureTitle={parseClassFromFeatureTitle}
               parseLevelFromFeatureTitle={parseLevelFromFeatureTitle}
@@ -2318,7 +2344,7 @@ const CharacterSheet = () => {
               currencyHistoryEntries={currencyHistoryEntries}
               currencyHistoryLoading={currencyHistoryLoading}
               passiveCapabilities={passiveEffectCapabilities}
-              showPactBladeSection={isWarlock}
+              showPactBladeSection={showPactBladeSection}
               pactBladeState={pactBladeState}
               pactBladeBondedWeapon={bondedPactWeapon}
               pactBladeTemplates={PACT_BLADE_WEAPON_TEMPLATES}
@@ -2333,6 +2359,7 @@ const CharacterSheet = () => {
     [
       abilityModifier,
       characterData,
+      characterData?.creationSpells,
       coinFlow,
       coinCounterpartyName,
       coinNote,
@@ -2356,7 +2383,7 @@ const CharacterSheet = () => {
       incrementRelationalConsumable,
       invError,
       invOpen,
-      isWarlock,
+      showPactBladeSection,
       itemAtkBonus,
       itemConsumableSubtype,
       itemDefinitions,
@@ -2434,8 +2461,12 @@ const CharacterSheet = () => {
   );
 
   const layoutColumns = useMemo(
-    () => buildCharacterSheetLayoutColumns(characterSheetLayout),
-    [characterSheetLayout]
+    () => buildCharacterSheetLayoutColumns(characterSheetLayout).map((column) =>
+      column.filter((entry) =>
+        entry.cardId !== "creationPrivileges" || (characterData?.creationCapabilities?.length ?? 0) > 0
+      )
+    ),
+    [characterSheetLayout, characterData?.creationCapabilities?.length]
   );
 
   const layoutSensors = useSensors(

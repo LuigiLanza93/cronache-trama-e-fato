@@ -1,5 +1,9 @@
 # Note di revisione del Manuale del Giocatore 5.0
 
+Aggiornamento mirato 2026-10-02: confronto visivo PDF p242/p270, corretti
+Illusione Minore (scuola Illusione e cubo 1,5 m) e Resurrezione (Necromanzia,
+7° livello). Dettagli nelle [verifiche della fonte](rules-inventory/source-verification.md).
+
 Revisione della trascrizione OCR del [PDF originale](Manuale_del_Giocatore_5.0.pdf), aggiornata il 24 settembre 2026. Il [Markdown corretto](Manuale_del_Giocatore_5.0.md) conserva le 321 pagine e le relative ancore.
 
 **Stato: revisione in corso, non verifica integrale del manuale.** Sono state corrette numerose letture OCR, ma restano refusi anche nelle parole e nei numeri che sembrano leggibili. L'assenza del carattere di sostituzione Unicode non certifica l'esattezza del testo.

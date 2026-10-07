@@ -1,7 +1,17 @@
 # Progressione del personaggio: level-up guidato e multiclasse
 
-Stato: **M0-M3 consolidati su `dev`; M4 implementato e collaudato localmente, in attesa della finalizzazione su `dev`**.
-Data: 2026-09-21.
+> Aggiornamento 2026-10-02: preview autorevole, diario delle decisioni e concessioni,
+> background personalizzato e varianti, risorse iniziali integrate. Database locale
+> allineato; nessuna modifica Railway. [Checkpoint corrente](rules-inventory/implementation-step-two.md).
+> Le verifiche datate nei paragrafi precedenti descrivono incrementi storici.
+
+Primo incremento eseguibile del contratto comune: catalogo di 361 magie e
+motore puro collegati alla creazione; P1 245/245, build e TypeScript superati.
+Persistenza delle nuove decisioni e scelte 2–20 restano aperte.
+[Dettagli aggiornati](rules-inventory/implementation-step-one.md).
+
+Stato al **2026-10-01**: **fondazioni, L1 e MC1 collaudati nel perimetro documentato; catalogo MC1 delle 40 sottoclassi consolidato su `dev`. Creazione guidata di livello 1 implementata localmente e non committata; censimento completo del manuale e valutazione del modello comune sono la priorità prima dell'estensione M8**.
+I checkpoint datati nelle sezioni precedenti restano storici. Stato della creazione, limiti e riscontri utente: [character-creation-level-one.md](character-creation-level-one.md). Proposta tecnica e perimetro ancora da verificare: [character-creation-progression-model-audit.md](character-creation-progression-model-audit.md). Questo aggiornamento non attesta lo stato della produzione Railway.
 Perimetro: personaggi giocanti, scheda, progressione, riposi, incantesimi, persistenza e UI DM/player.
 
 ## Esito esecutivo
@@ -457,7 +467,25 @@ Interventi:
 
 ### M8 - Incantesimi, competenze e privilegi strutturati
 
-Questa fase puo iniziare per il monoclasse prima di MC1, ma gli aspetti specifici dell'ingresso multiclass devono essere completati prima di dichiarare conclusa MC1.
+**Priorità concordata nella chat del 2026-09-28, registrata al 2026-10-01:** prima di estendere M8 va completato il censimento delle regole di creazione e progressione di tutte le razze, sottorazze, classi e sottoclassi del manuale, con background, varianti e talenti. MC1 è concluso nel perimetro catalogo concordato; questo non implica che tutte le decisioni interne ai privilegi siano già guidate.
+
+La creazione attuale usa scelte e snapshot di livello 1. I problemi emersi sui privilegi e sul Warlock mostrano che il lavoro successivo richiede un contratto comune di definizioni di regola e decisioni per evento. La raccomandazione tecnica è documentata nell'[audit del modello](character-creation-progression-model-audit.md); il motore generale non è ancora implementato.
+
+Inventario semantico aggiunto il 2026-10-01: [copertura e lacune](rules-inventory/README.md)
+per tutte le famiglie PHB, con [contratto di decisioni](rules-inventory/decision-model.md).
+Restano verifiche delle righe OCR ambigue, cataloghi da riallineare e
+traduzione delle voci in definizioni eseguibili; il censimento non dichiara
+completa l'automazione M8.
+
+Prerequisiti di contenuto e modello:
+
+1. Censire ogni fonte con ID stabile, riferimento al manuale, trigger, tipo di livello, prerequisiti, concessioni, scelte, sostituzioni e frequenza d'uso.
+2. Verificare le liste e i dettagli magici, inclusi alias e artefatti OCR; il catalogo storico non sostituisce il manuale.
+3. Definire un contratto condiviso per opzioni eleggibili, dipendenze, cardinalità e invalidazione delle scelte.
+4. Progettare strutture persistenti dedicate e API esplicite per le nuove decisioni e preparazioni, riusando le classi e lo storico esistenti. `Character.data` resta legacy.
+5. Definire adattatori per gli snapshot guidati esistenti e gestione esplicita delle scelte mancanti nelle schede manuali.
+
+Implementazione successiva al censimento:
 
 1. Normalizzare incantesimi e profili di lancio.
 2. Distinguere conosciuti, preparati, sempre preparati e manuali.
@@ -467,9 +495,9 @@ Questa fase puo iniziare per il monoclasse prima di MC1, ma gli aspetti specific
 6. Migrazione assistita, mai silenziosa, delle feature testuali.
 7. Estendere preview e storico.
 
-Il censimento include le regole di cumulo: privilegi come Attacco Extra non vanno sommati automaticamente, mentre risorse e scaling possono dipendere da class level, character level o eccezioni.
+Il censimento include le regole di cumulo: privilegi come Attacco Extra non vanno sommati automaticamente, mentre risorse e scaling possono dipendere da class level, character level o eccezioni. Vanno distinti anche acquisizione permanente, sostituzione al level up e preparazione dopo riposo. Patrono, Dono del Patto e Supplica Occulta sono fonti diverse; il caso Warlock è un esempio di questa distinzione applicabile all'intero modello.
 
-**Uscita:** nessun parsing del titolo per determinare la classe; CD/profili e competenze hanno provenienza verificabile.
+**Uscita:** creazione e level up completi nel perimetro verificato, con opzioni e concessioni provenienti dalle stesse definizioni versionate; CD/profili, competenze e privilegi hanno provenienza verificabile senza inferire nuove regole dai titoli legacy. Anteprima, salvataggio atomico e storico includono tutte le decisioni richieste.
 
 ### M9 - Player e automazione avanzata
 
@@ -507,12 +535,21 @@ M1 Stabilita scheda ------> M2 Contratto/resolver
                       |
                       v
               MC1 Multiclasse
-                 /          \
-                v            v
-     M8 Contenuti strutturati  M9 Automazione/player
+                      |
+                      v
+          Creazione livello 1 (locale)
+                      |
+                      v
+          Censimento manuale e modello comune
+                      |
+                      v
+          M8 Contenuti/scelte strutturati
+                      |
+                      v
+          M9 Automazione/player
 ```
 
-M5 e M6 possono procedere in parallelo dopo M4 con responsabilita disgiunte. L1 dipende dal Gate pre-level-up completo. MC1 dipende da L1 collaudato e dalle parti di M8 necessarie a competenze, privilegi e incantesimi del multiclasse.
+M5 e M6 possono procedere in parallelo dopo M4 con responsabilita disgiunte. L1 dipende dal Gate pre-level-up completo. MC1 è collaudato nel perimetro già consegnato; il completamento delle scelte e dei privilegi del multiclasse appartiene a M8, preceduto ora dal censimento del manuale e dalla definizione del modello comune.
 
 ## Migrazione e rilascio
 
@@ -658,7 +695,9 @@ Per ogni release con schema/backfill:
 
 ## Primo incremento consigliato
 
-Il primo sviluppo non deve ancora aggiungere la seconda classe:
+Il primo incremento delle fondazioni, descritto qui sotto, è un piano storico già superato da L1/MC1. **Il prossimo lavoro corrente** è il censimento completo del manuale e il contratto comune di creazione/progressione, secondo M8 e [l'audit](character-creation-progression-model-audit.md).
+
+Piano iniziale delle fondazioni:
 
 1. aggiornare l'audit allo stato attuale;
 2. rimuovere scritture automatiche di PF/Dadi Vita e slot;

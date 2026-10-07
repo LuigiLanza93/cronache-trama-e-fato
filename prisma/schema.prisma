@@ -325,6 +325,7 @@ model User {
   updatedCharacterClasses CharacterClass[] @relation("CharacterClassUpdatedBy")
   appliedCharacterLevelHistory CharacterLevelHistory[] @relation("CharacterLevelHistoryAppliedBy")
   appliedCharacterHitPointAdjustments CharacterHitPointAdjustment[] @relation("CharacterHitPointAdjustmentAppliedBy")
+  appliedCharacterRuleEvents CharacterRuleEvent[] @relation("CharacterRuleEventAppliedBy")
 
   @@index([role])
 }
@@ -366,6 +367,8 @@ model Character {
   shopVisits ShopVisit[]
   shopNegotiations ShopNegotiation[]
   progression CharacterProgression?
+  creation CharacterCreation?
+  ruleEvents CharacterRuleEvent[]
   classes CharacterClass[]
   levelHistory CharacterLevelHistory[]
   hitPointState CharacterHitPointState?
@@ -377,6 +380,89 @@ model Character {
   @@index([ownerUserId])
   @@index([createdByUserId])
   @@index([archivedAt])
+}
+
+model CharacterCreation {
+  characterId     String   @id
+  requestId       String?  @unique
+  requestSignature String?
+  rulesetVersion  String
+  selections      String
+  resolvedSnapshot String
+  createdAt       DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+}
+
+model CharacterRuleEvent {
+  id                String   @id
+  characterId       String
+  sequence          Int
+  eventType         String
+  requestId         String   @unique
+  requestSignature  String
+  previewHash       String
+  previousVersion   Int
+  resultVersion     Int
+  rulesetId         String
+  rulesetVersion    String
+  resolverVersion   String
+  catalogHash       String
+  sourceSnapshot    String
+  resultSnapshot    String
+  appliedByUserId   String?
+  appliedBySnapshot String
+  createdAt         DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  appliedBy User? @relation("CharacterRuleEventAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+  decisions CharacterRuleDecision[]
+  grants CharacterRuleGrant[]
+
+  @@unique([characterId, sequence])
+  @@index([characterId, createdAt])
+  @@index([appliedByUserId])
+}
+
+model CharacterRuleDecision {
+  id                 String   @id
+  eventId            String
+  definitionId       String
+  decisionKind       String
+  operation          String
+  selectedOptions    String
+  ruleId             String
+  ruleVersion        String
+  definitionSnapshot String
+  levelSnapshot      String
+  createdAt          DateTime @default(now())
+
+  event CharacterRuleEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  grants CharacterRuleGrant[]
+
+  @@unique([eventId, definitionId])
+  @@index([definitionId])
+}
+
+model CharacterRuleGrant {
+  id                String   @id
+  eventId           String
+  decisionId        String?
+  grantInstanceKey  String
+  grantKind         String
+  aggregateKey      String
+  payload           String
+  ruleId            String
+  ruleVersion       String
+  sourceSnapshot    String
+  createdAt         DateTime @default(now())
+
+  event CharacterRuleEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  decision CharacterRuleDecision? @relation(fields: [decisionId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, grantInstanceKey])
+  @@index([decisionId])
+  @@index([grantKind, aggregateKey])
 }
 
 model ClassRule {

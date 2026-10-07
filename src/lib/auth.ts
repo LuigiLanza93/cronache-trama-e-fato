@@ -826,7 +826,7 @@ async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
       if (typeof payload?.code === "string" && payload.code.trim()) {
         errorCode = payload.code.trim();
       }
-      errorDetails = payload?.details;
+      errorDetails = payload?.details ?? payload?.issues;
     } catch {}
 
       const error = new Error(message) as Error & {
@@ -1148,6 +1148,43 @@ export function applyPartyRestRequest(
   return authFetch<PartyRestResponse>("/api/dm/rests/apply", {
     method: "POST",
     body: JSON.stringify({ type, slugs, requestId, expectedRevisions }),
+  });
+}
+
+export type GuidedCharacterCreationPayload = {
+  requestId: string;
+  previewHash?: string;
+  name: string;
+  alignment: string;
+  creation: {
+    raceKey: string;
+    subraceKey?: string;
+    classKey: string;
+    backgroundKey: string;
+    customBackground?: { name: string; featureBackgroundKey: string; equipmentBackgroundKey: string; backgroundDetails?: string };
+    abilityScores: Record<"strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma", number>;
+    selections: Record<string, string[]>;
+    narrative: { personalityTraits: [string, string]; ideal: string; bond: string; flaw: string; backgroundDetails?: string };
+  };
+};
+
+export type GuidedCharacterPreview = {
+  ok: boolean;
+  issues: { path: string; code: string; message: string }[];
+  resolved?: Record<string, unknown> | null;
+  ruleEvent?: { previewHash: string; resolverVersion: string; catalogHash: string } | null;
+};
+
+export function previewGuidedCharacterRequest(payload: Omit<GuidedCharacterCreationPayload, "requestId" | "previewHash">) {
+  assertPlayerWritesAllowed();
+  return authFetch<GuidedCharacterPreview>("/api/characters/guided/preview", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function createGuidedCharacterRequest(payload: GuidedCharacterCreationPayload) {
+  assertPlayerWritesAllowed();
+  return authFetch<{ slug: string; characterType: "pg"; ownerUserId: string | null }>("/api/characters/guided", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 
