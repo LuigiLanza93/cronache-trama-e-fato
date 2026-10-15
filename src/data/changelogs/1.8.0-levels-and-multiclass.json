@@ -1,0 +1,34 @@
+{
+  "version": "1.8.0",
+  "releaseName": "Livelli e Multiclasse",
+  "releasedAt": "2026-10-15",
+  "summary": "Avanzamento di livello guidato, personaggi multiclasse e una scheda più chiara, con una gestione più completa di sottoclassi, punti ferita e risorse.",
+  "sections": [
+    {
+      "title": "Livelli e sottoclassi",
+      "items": [
+        "Il DM può aumentare il livello dalla scheda, controllando prima della conferma le variazioni a punti ferita, Dadi Vita e risorse.",
+        "Supporto al multiclasse: si può avanzare una classe posseduta o aggiungerne una nuova, con verifica dei prerequisiti e possibilità di deroga motivata del DM.",
+        "Le classi hanno livelli e sottoclassi ben distinti nella scheda; il livello totale e la composizione del personaggio sono visibili anche nelle altre viste.",
+        "Il DM può impostare o correggere una sottoclasse senza aumentare il livello. Le scelte includono le sottoclassi del Manuale del Giocatore, l'antenato draconico dello Stregone e, per il Warlock, patrono e dono del patto separati."
+      ]
+    },
+    {
+      "title": "Punti ferita, magia e riposi",
+      "items": [
+        "Punti ferita e Dadi Vita seguono la classe avanzata. I Dadi Vita di taglie diverse sono mostrati separatamente e i riposi ne gestiscono il consumo e il recupero.",
+        "Slot incantesimo, Magia del Patto e risorse di classe hanno contatori distinti, anche nei personaggi multiclasse, e recuperano secondo il rispettivo tipo di riposo.",
+        "I bonus passivi ai PF massimi vengono applicati anche al totale effettivo e al limite delle cure, aggiornandosi con i livelli senza essere sommati più volte."
+      ]
+    },
+    {
+      "title": "Una scheda più comoda da usare",
+      "items": [
+        "Calcoli più coerenti per caratteristiche, abilità, tiri salvezza e Percezione passiva. Competenze più complete per armi, armature e scudi, con dettagli dei bonus agli attacchi e supporto al combattimento con due armi.",
+        "Le skill passive possono usare il livello totale o il livello di una classe specifica. Nuova condizione: bonus attivo finché non si indossa un'armatura.",
+        "Comandi di avanzamento e correzione della sottoclasse compatti e visibili solo al DM; livelli più leggibili anche per i personaggi con una sola classe.",
+        "Salvataggi e aggiornamenti tra DM e giocatori più affidabili, con messaggi più chiari quando una modifica non viene salvata o la scheda è cambiata nel frattempo."
+      ]
+    }
+  ]
+}
