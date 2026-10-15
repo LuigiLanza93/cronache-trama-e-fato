@@ -272,6 +272,10 @@ export function resolveCharacterProgressionShadow({
       subclassRuleId: row.subclassRuleId ?? null,
       subclassKey: row.subclassKey ?? null,
       subclassStatus: row.subclassStatus,
+      ...(Object.prototype.hasOwnProperty.call(row, "draconicAncestryKey")
+        ? { draconicAncestryKey: row.draconicAncestryKey ?? null } : {}),
+      ...(Object.prototype.hasOwnProperty.call(row, "pactBoonKey")
+        ? { pactBoonKey: row.pactBoonKey ?? null } : {}),
       source: row.classSource,
     })),
     totalLevel,

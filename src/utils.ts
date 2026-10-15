@@ -1,3 +1,4 @@
+import { getPassiveEffectTotalLevel, resolvePassiveEffectClassLevel } from "@/lib/passive-effect-levels";
 import { matchesSkillPassiveEffectTarget } from "@/lib/passive-effect-skills";
 
 function coerce(value: string, kind: "string" | "int" | "float") {
@@ -87,6 +88,7 @@ type PassiveEffectLike = {
     valueMode?: string;
     value?: number;
     sourceAbility?: string;
+    sourceClassKey?: string;
     multiplierNumerator?: number;
     multiplierDenominator?: number;
     rounding?: string;
@@ -207,6 +209,8 @@ function isPassiveTriggerActive(trigger: string | undefined, context: PassiveEff
             return true;
         case "WHILE_ARMORED":
             return !!context.hasArmorEquipped;
+        case "WHILE_UNARMORED":
+            return !context.hasArmorEquipped;
         case "WHILE_SHIELD_EQUIPPED":
             return !!context.hasShieldEquipped;
         case "WHILE_WIELDING_SINGLE_MELEE_WEAPON":
@@ -260,9 +264,11 @@ function resolvePassiveEffectScalarValue(
         case "ABILITY_SCORE":
             return applyScale(sourceScore);
         case "PROFICIENCY_BONUS":
-            return applyScale(proficiencyBonus(Number(characterData?.basicInfo?.level ?? 1)));
+            return applyScale(proficiencyBonus(getPassiveEffectTotalLevel(characterData)));
         case "CHARACTER_LEVEL":
-            return applyScale(Number(characterData?.basicInfo?.level ?? 1));
+            return applyScale(getPassiveEffectTotalLevel(characterData));
+        case "CLASS_LEVEL":
+            return applyScale(resolvePassiveEffectClassLevel(characterData, effect?.sourceClassKey));
         default:
             return offset;
     }
@@ -302,9 +308,11 @@ function resolvePassiveEffectScalarForAbilityTarget(
 
     switch (mode) {
         case "PROFICIENCY_BONUS":
-            return applyScale(proficiencyBonus(Number(characterData?.basicInfo?.level ?? 1)));
+            return applyScale(proficiencyBonus(getPassiveEffectTotalLevel(characterData)));
         case "CHARACTER_LEVEL":
-            return applyScale(Number(characterData?.basicInfo?.level ?? 1));
+            return applyScale(getPassiveEffectTotalLevel(characterData));
+        case "CLASS_LEVEL":
+            return applyScale(resolvePassiveEffectClassLevel(characterData, effect?.sourceClassKey));
         default:
             return offset;
     }

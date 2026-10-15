@@ -7,6 +7,8 @@
  * receives the proficiency bonus.
  */
 
+import { canUsePactBlade } from "../../shared/warlock-pact-rules.mjs";
+
 export type WeaponProficiencyGroup = "SIMPLE" | "MARTIAL";
 export type ArmorProficiencyCategory = "LIGHT" | "MEDIUM" | "HEAVY" | "SHIELD";
 export type PassiveEffectProficiencyTarget =
@@ -36,7 +38,7 @@ type ArmorLike = {
 
 type CharacterLike = {
   basicInfo?: { class?: string | null };
-  classes?: Array<{ classKey?: string | null; label?: string | null; isPrimary?: boolean | null }>;
+  classes?: Array<{ classKey?: string | null; label?: string | null; isPrimary?: boolean | null; level?: number; pactBoonKey?: string | null }>;
   proficiencies?: { weapons?: unknown };
   features?: unknown;
   capabilities?: unknown;
@@ -534,7 +536,7 @@ export function resolveWeaponProficiency(characterData: CharacterLike, weapon: W
     identityKeys.some((key) => profile.specificWeapons.some((weaponName) => matchesSpecificWeaponName(key, weaponName))));
   const classIsKnown = classProfiles.length > 0;
   const hasPactWeaponGrant =
-    classProfiles.some((profile) => profile.key === "warlock") && (
+    canUsePactBlade(characterData) && (
       weapon?.isPactWeapon === true ||
       (typeof characterData?.pactBlade?.bondedCharacterItemId === "string" &&
         characterData.pactBlade.bondedCharacterItemId.length > 0 &&

@@ -1,4 +1,4 @@
-# Progressione del personaggio: level-up guidato e multiclasse
+﻿# Progressione del personaggio: level-up guidato e multiclasse
 
 Stato: **M0-M3 consolidati su `dev`; M4 implementato e collaudato localmente, in attesa della finalizzazione su `dev`**.
 Data: 2026-09-21.
@@ -435,7 +435,17 @@ Perimetro iniziale:
 
 ### MC1 - Estensione multiclasse del level-up
 
-**Revisione del 2026-09-25:** MC1 e completato per il perimetro concordato: level-up multiclasse gia collaudato e catalogo delle 40 sottoclassi del Manuale del Giocatore 5.0, con gli ID persistiti delle 14 gia censite preservati. Il manuale Markdown e il riferimento per le regole 2014 di questa fase; la house rule gia confermata dei PF pieni a ogni level-up resta esplicita. L'anteprima espone le concessioni e le eccezioni multiclass che richiedono verifica manuale. La persistenza delle scelte interne alle sottoclassi (incluso l'antenato della Discendenza Draconica), i profili degli incantesimi, le competenze e i privilegi strutturati restano nel successivo lavoro M8.
+**Rifiniture locali del 2026-10-15:** registrazione/correzione DM della
+sottoclasse indipendente dal level-up; riepilogo dell'anteprima per tutte le
+classi; scelta strutturata dell'antenato della Discendenza Draconica dello
+Stregone, anche al primo livello multiclass. Le dieci opzioni e i tipi di danno
+sono censiti dal manuale; non si concedono di nuovo gli effetti gia gestiti
+manualmente. Le altre scelte interne delle sottoclassi restano nel perimetro
+successivo. Richieste migrazioni additive dedicate e collaudo prima del rilascio;
+produzione non aggiornata. Dettagli in
+[character-subclass-correction.md](./character-subclass-correction.md).
+
+**Revisione del 2026-09-25:** MC1 e completato per il perimetro concordato: level-up multiclasse gia collaudato e catalogo delle 40 sottoclassi del Manuale del Giocatore 5.0, con gli ID persistiti delle 14 gia censite preservati. Il manuale Markdown e il riferimento per le regole 2014 di questa fase; la house rule gia confermata dei PF pieni a ogni level-up resta esplicita. L'anteprima espone le concessioni e le eccezioni multiclass che richiedono verifica manuale. La persistenza delle altre scelte interne alle sottoclassi, i profili degli incantesimi, le competenze e i privilegi strutturati restano nel successivo lavoro M8. L'antenato della Discendenza Draconica e ora incluso nelle rifiniture locali del 2026-10-15 descritte sopra.
 
 La sincronizzazione del catalogo dopo MC1 usa `npm.cmd run progression:catalog:dry-run` e `npm.cmd run progression:catalog:apply-local` sul DB locale. Le vecchie modalita complete M3 richiedono l'indice monoclasse e non vanno riusate su uno schema MC1. Per un futuro rilascio Railway servono autorizzazione esplicita, backup appena verificato, sincronizzazione del catalogo con `--catalog-only --apply --database /data/migration.db --allow-production --backup-verified` durante la sequenza controllata prima di servire il nuovo codice, e verifica di 40 sottoclassi, foreign key e integrity check. Nessun rilascio e stato eseguito in questa revisione.
 
@@ -515,6 +525,18 @@ M1 Stabilita scheda ------> M2 Contratto/resolver
 M5 e M6 possono procedere in parallelo dopo M4 con responsabilita disgiunte. L1 dipende dal Gate pre-level-up completo. MC1 dipende da L1 collaudato e dalle parti di M8 necessarie a competenze, privilegi e incantesimi del multiclasse.
 
 ## Migrazione e rilascio
+
+La sequenza corrente include anche `20261015_character_passive_hit_points`
+dopo M5 e le migrazioni delle scelte di sottoclasse/antenato/dono. Lo script
+`scripts/apply-character-passive-hit-points.mjs` supporta `--database`,
+`--dry-run` e `--apply`; in locale sono disponibili `passive-hp:dry-run` e
+`passive-hp:apply-local`. Aggiunge soltanto `passiveBonusApplied` allo stato
+PF, inizializzato a zero, senza riscrivere massimo storico, snapshot o audit.
+Il reader calcola il massimo effettivo e i writer salvano la quota inclusa
+insieme ai PF: ricaricare o salvare non deve applicare il bonus due volte.
+La lettura resta compatibile con lo schema precedente; applicare gli effetti
+richiede la nuova migrazione e il riavvio. Verificare il caso TC10 nel piano
+MC1 prima del rilascio controllato con backup Railway fresco.
 
 ### Locale
 

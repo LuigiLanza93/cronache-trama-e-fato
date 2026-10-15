@@ -218,6 +218,7 @@ describe("resolveWeaponProficiency", () => {
   it("grants Pact Weapon proficiency only to the bound item instance or explicitly marked virtual weapon", () => {
     const warlockWithPactBlade = {
       basicInfo: { class: "Warlock" },
+      classes: [{ classKey: "warlock", level: 3, pactBoonKey: "blade" }],
       pactBlade: { bondedCharacterItemId: "character-item-bound" },
     };
     const battleaxe = { name: "Ascia da battaglia", weaponProficiencyGroup: "MARTIAL" as const };
@@ -243,7 +244,7 @@ describe("resolveWeaponProficiency", () => {
       breakdown: ["Competenza concessa da Arma del Patto"],
     });
     expect(resolveWeaponProficiency(
-      { ...warlockWithPactBlade, basicInfo: { class: "Bardo" } },
+      { ...warlockWithPactBlade, classes: [{ classKey: "warlock", level: 3, pactBoonKey: "tome" }] },
       { ...battleaxe, characterItemId: "character-item-bound" }
     )).toMatchObject({ known: true, proficient: false });
   });

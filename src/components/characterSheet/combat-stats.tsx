@@ -1,3 +1,4 @@
+import { getPassiveEffectTotalLevel, resolvePassiveEffectClassLevel } from "@/lib/passive-effect-levels";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, FastForward, Shield, Zap } from "lucide-react";
 
@@ -239,9 +240,11 @@ function resolvePassiveEffectValue(
     case "ABILITY_SCORE":
       return applyScale(resolveAbilityScore(resolvedScores, effect?.sourceAbility));
     case "PROFICIENCY_BONUS":
-      return applyScale(getProficiencyBonus(Number(characterData?.basicInfo?.level ?? 1)));
+      return applyScale(getProficiencyBonus(getPassiveEffectTotalLevel(characterData)));
     case "CHARACTER_LEVEL":
-      return applyScale(Number(characterData?.basicInfo?.level ?? 1));
+      return applyScale(getPassiveEffectTotalLevel(characterData));
+    case "CLASS_LEVEL":
+      return applyScale(resolvePassiveEffectClassLevel(characterData, effect?.sourceClassKey));
     default:
       return offset;
   }
@@ -273,6 +276,8 @@ function getCapabilityBonus(
           return sum + value;
         case "WHILE_ARMORED":
           return conditions.hasArmorEquipped ? sum + value : sum;
+        case "WHILE_UNARMORED":
+          return !conditions.hasArmorEquipped ? sum + value : sum;
         case "WHILE_SHIELD_EQUIPPED":
           return conditions.hasShieldEquipped ? sum + value : sum;
         default:
@@ -419,7 +424,8 @@ const CombatStats = ({
     abilityModifier,
     equippedDetails,
     passiveCapabilities,
-    resolvedAbilityData.scores.dexterity,
+    characterData,
+    resolvedAbilityData.scores,
   ]);
 
   const speedData = useMemo(() => {
@@ -462,7 +468,8 @@ const CombatStats = ({
     };
   }, [
     abilityModifier,
-    characterData?.basicInfo?.race,
+    characterData,
+    resolvedAbilityData.scores,
     equippedDetails,
     passiveCapabilities,
     raceSpeedEntries,
@@ -498,7 +505,8 @@ const CombatStats = ({
     abilityModifier,
     equippedDetails,
     passiveCapabilities,
-    resolvedAbilityData.scores.dexterity,
+    characterData,
+    resolvedAbilityData.scores,
   ]);
 
   return (

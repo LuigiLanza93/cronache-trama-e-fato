@@ -13,13 +13,14 @@ import {
   type ProgressionResourcePoolPayload,
 } from "@/lib/auth";
 import { toast } from "@/components/ui/sonner";
+import { getSubclassPreviewRows, type DraconicAncestryProjection } from "@/lib/character-progression";
 
 type ProgressionCharacter = {
   slug: string;
   revision?: string;
   progressionRevision?: number;
   progressionStatus?: string;
-  classes?: Array<{ classKey: string; label?: string; level: number; isPrimary?: boolean; subclass?: { subclassKey?: string | null; label?: string | null } | null }>;
+  classes?: Array<{ classKey: string; label?: string; level: number; isPrimary?: boolean; subclass?: { subclassKey?: string | null; label?: string | null } | null; draconicAncestry?: DraconicAncestryProjection | null; pactBoonKey?: string | null }>;
 };
 
 type SubclassOption = { key: string; label: string };
@@ -76,6 +77,8 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
   const [open, setOpen] = useState(false);
   const [previewResponse, setPreviewResponse] = useState<CharacterProgressionApiResponse | null>(null);
   const [selectedSubclass, setSelectedSubclass] = useState<string | undefined>(undefined);
+  const [selectedPactBoon, setSelectedPactBoon] = useState("");
+  const [selectedDraconicAncestry, setSelectedDraconicAncestry] = useState("");
   const [selectedClassKey, setSelectedClassKey] = useState<string>(() => characterData.classes?.find((entry) => entry.isPrimary)?.classKey ?? characterData.classes?.[0]?.classKey ?? "");
   const [overrideReason, setOverrideReason] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -87,19 +90,25 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
   const requestIdRef = useRef<string | null>(null);
   const previewRequestRef = useRef(0);
 
-  const progressionReady = characterData.progressionStatus === "READY" && Boolean(characterData.classes?.length);
+  // Historical characters can select their missing subclass in the preview.
+  const progressionReady = ["READY", "INCOMPLETE_LEGACY"].includes(characterData.progressionStatus ?? "")
+    && Boolean(characterData.classes?.length);
   const targetClass = useMemo(
     () => characterData.classes?.find((entry) => entry.classKey === selectedClassKey) ?? null,
     [characterData.classes, selectedClassKey],
   );
   const preview = previewResponse?.preview ?? null;
-  const requiresSubclass = preview?.status === "SUBCLASS_REQUIRED";
+  const requiresSubclass = Boolean(preview?.subclassOptions.length);
   const hasRevisionTokens = Boolean(previewResponse?.revision) && Number.isInteger(previewResponse?.progressionRevision);
   const hasDeferredEffects = Boolean(previewResponse?.deferredEffects?.length);
 
   const reset = () => {
+    previewRequestRef.current += 1;
+    setLoadingPreview(false);
     setPreviewResponse(null);
     setSelectedSubclass(undefined);
+    setSelectedPactBoon("");
+    setSelectedDraconicAncestry("");
     setOverrideReason("");
     setError(null);
     setRefreshRequired(false);
@@ -118,7 +127,7 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
     requestIdRef.current = pending?.requestId ?? null;
   }, [characterData.slug]);
 
-  const loadPreview = async (subclassKey?: string, classKey = selectedClassKey, reason = overrideReason) => {
+  const loadPreview = async (subclassKey?: string, classKey = selectedClassKey, reason = overrideReason, ancestryKey = selectedDraconicAncestry, boonKey = selectedPactBoon) => {
     if (!progressionReady || !classKey) return;
     const previewRequest = ++previewRequestRef.current;
     setLoadingPreview(true);
@@ -127,6 +136,8 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
       const response = await previewCharacterProgressionRequest(characterData.slug, {
         targetClassKey: classKey,
         ...(subclassKey !== undefined ? { targetSubclassKey: subclassKey } : {}),
+        ...(ancestryKey ? { draconicAncestryKey: ancestryKey } : {}),
+        ...(boonKey ? { pactBoonKey: boonKey } : {}),
         ...(reason.trim() ? { overrideReason: reason.trim() } : {}),
         ...(characterData.revision ? { expectedRevision: characterData.revision } : {}),
         ...(Number.isInteger(characterData.progressionRevision) ? { expectedProgressionRevision: characterData.progressionRevision } : {}),
@@ -161,16 +172,19 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
 
   const handleSubclass = (key: string) => {
     setSelectedSubclass(key);
+    setSelectedDraconicAncestry("");
     requestIdRef.current = null;
-    void loadPreview(key);
+    void loadPreview(key, selectedClassKey, overrideReason, "");
   };
 
   const handleClass = (key: string) => {
     setSelectedClassKey(key);
     setSelectedSubclass(undefined);
+    setSelectedPactBoon("");
+    setSelectedDraconicAncestry("");
     setOverrideReason("");
     requestIdRef.current = null;
-    void loadPreview(undefined, key, "");
+    void loadPreview(undefined, key, "", "", "");
   };
 
   const apply = async () => {
@@ -178,6 +192,8 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
     const request = pendingLevelUp ?? (previewResponse && preview?.canApply && hasRevisionTokens ? {
       targetClassKey: selectedClassKey,
       ...(selectedSubclass !== undefined ? { targetSubclassKey: selectedSubclass } : {}),
+      ...(selectedDraconicAncestry ? { draconicAncestryKey: selectedDraconicAncestry } : {}),
+      ...(selectedPactBoon ? { pactBoonKey: selectedPactBoon } : {}),
       ...(overrideReason.trim() ? { overrideReason: overrideReason.trim() } : {}),
       requestId: requestIdRef.current ?? createRequestId(),
       expectedRevision: previewResponse.revision,
@@ -231,23 +247,23 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
     }
   };
 
-  const currentSubclass = targetClass?.subclass?.label ?? targetClass?.subclass?.subclassKey ?? "Nessuna";
   const classAfter = Array.isArray(preview?.classesAfter)
     ? preview.classesAfter.find((entry) => entry.classKey === preview.targetClassKey) ?? null
     : null;
-  const nextSubclass = preview?.subclassOptions.find((option) => option.key === classAfter?.subclassKey)?.label ?? currentSubclass;
+  const subclassRows = getSubclassPreviewRows(characterData.classes ?? [], preview?.classesAfter ?? []);
   const effects = preview?.effects;
 
   return <Dialog open={open} onOpenChange={handleOpen}>
-    <Button type="button" variant="outline" className="gap-2" onClick={() => handleOpen(true)} aria-label="Aumenta livello">
-      <ChevronUp className="h-4 w-4" /> Aumenta livello
+    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent" onClick={() => handleOpen(true)} aria-label="Aumenta livello" title="Aumenta livello">
+      <ChevronUp className="h-4 w-4 text-primary" />
     </Button>
     <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
       <DialogHeader><DialogTitle>Aumenta livello</DialogTitle><DialogDescription>Scegli se avanzare una classe posseduta o acquisire il primo livello in una nuova classe.</DialogDescription></DialogHeader>
       {loadingPreview ? <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Calcolo dell'anteprima…</div> : null}
       {error ? <div role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{error}</div> : null}
       {pendingLevelUp && !error ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Una conferma precedente ha avuto un esito di rete incerto. Usa “Riprova stessa conferma”: verranno riutilizzati esattamente richiesta e identificativo originali.</div> : null}
-      {!progressionReady ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Level-up guidato non applicabile: la progressione strutturata è assente o incompleta.</div> : null}
+      {!progressionReady ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Level-up non disponibile: i dati di classe e livello devono essere verificati e migrati prima di procedere.</div> : null}
+      {progressionReady && characterData.progressionStatus === "INCOMPLETE_LEGACY" ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Una sottoclasse della scheda esistente non è ancora registrata. Avanzando quella classe, seleziona la sottoclasse già posseduta prima di confermare.</div> : null}
       {progressionReady && !pendingLevelUp ? <div className="space-y-2"><Label htmlFor="level-up-class">Classe da avanzare</Label><Select value={selectedClassKey} onValueChange={handleClass} disabled={loadingPreview || applying}><SelectTrigger id="level-up-class"><SelectValue placeholder="Scegli una classe" /></SelectTrigger><SelectContent>{(preview?.classOptions ?? []).map((option) => <SelectItem key={option.key} value={option.key}>{option.label}{option.mode === "ADD_NEW_CLASS" ? " — nuova classe" : ` — livello ${option.currentLevel}`}</SelectItem>)}</SelectContent></Select></div> : null}
       {preview && !preview.after ? <div role="status" className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">{preview.reason ?? "Il level-up non è applicabile allo stato corrente."}</div> : null}
       {preview && preview.after ? <div className="space-y-4">
@@ -258,7 +274,7 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
           <PreviewRow label="Dadi Vita" before={diceText(preview.before.hitDicePools)} after={diceText(preview.after.hitDicePools)}/>
           <PreviewRow label="Slot incantesimi" before={slotsText(preview.before.spellcastingSlots.slots)} after={slotsText(preview.after.spellcastingSlots.slots)}/>
           <PreviewRow label="Magia del Patto" before={pactSummary(preview.before.pactMagicSlots)} after={pactSummary(preview.after.pactMagicSlots)}/>
-          <PreviewRow label="Sottoclasse" before={currentSubclass} after={nextSubclass}/>
+          {subclassRows.map((row) => <PreviewRow key={row.classKey} label={`Sottoclasse · ${row.label}`} before={row.before} after={row.after}/>)}
         </div>
         {effects?.hitPoints || effects?.hitDicePools ? <div className="rounded-lg border p-3 text-sm"><p className="font-medium">PF e Dadi Vita</p><p className="text-muted-foreground">{effects.hitPoints ? <>PF massimi: {effects.hitPoints.before.maximumHitPoints} → {effects.hitPoints.after.maximumHitPoints}; guadagno: +{effects.hitPoints.gained}.</> : "PF non modificati dal contratto."} {effects.hitDicePools ? <>Dadi disponibili: {effects.hitDicePools.before.map((pool) => `d${pool.dieSize}: ${pool.remaining}/${pool.maximum}`).join(", ")} → {effects.hitDicePools.after.map((pool) => `d${pool.dieSize}: ${pool.remaining}/${pool.maximum}`).join(", ")}.</> : null}</p></div> : null}
         {effects?.resourcePools ? <div className="rounded-lg border p-3 text-sm"><p className="font-medium">Pool risorse</p><p className="text-muted-foreground">{resourceText(effects.resourcePools.before)} → {resourceText(effects.resourcePools.after)}</p></div> : null}
@@ -267,6 +283,19 @@ export default function LevelUpDialog({ characterData, onApplied }: { characterD
         {preview.manualRuleNotes?.length ? <div className="rounded-lg border p-3 text-sm"><p className="font-medium">Regole da verificare</p><ul className="mt-2 list-disc space-y-1 pl-5">{preview.manualRuleNotes.map((note) => <li key={note}>{note}</li>)}</ul></div> : null}
         {preview.mode === "ADD_NEW_CLASS" ? <div className="rounded-lg border p-3 text-sm"><p className="font-medium">Prerequisiti multiclasse</p><p className="text-muted-foreground">{preview.prerequisites?.eligible || preview.prerequisites?.overridden ? "Verificati." : preview.prerequisites?.reason ?? "Verifica manuale richiesta."}</p>{preview.prerequisites?.status === "INELIGIBLE" && !preview.prerequisites.overridden ? <div className="mt-3 space-y-2"><Label htmlFor="level-up-override">Override DM motivato</Label><Textarea id="level-up-override" value={overrideReason} maxLength={500} onChange={(event) => setOverrideReason(event.target.value)} placeholder="Motivazione obbligatoria per ignorare i prerequisiti"/><Button type="button" variant="outline" onClick={() => void loadPreview(selectedSubclass, selectedClassKey, overrideReason)} disabled={!overrideReason.trim() || loadingPreview || applying}>Ricalcola con override</Button></div> : null}</div> : null}
         {requiresSubclass ? <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-50/60 p-3"><Label htmlFor="level-up-subclass">Sottoclasse obbligatoria</Label>{preview.subclassOptions.length ? <Select value={selectedSubclass} onValueChange={handleSubclass} disabled={loadingPreview || applying}><SelectTrigger id="level-up-subclass"><SelectValue placeholder="Scegli una sottoclasse" /></SelectTrigger><SelectContent>{preview.subclassOptions.map((option) => <SelectItem key={option.key} value={option.key}>{option.label}</SelectItem>)}</SelectContent></Select> : <p className="text-sm text-amber-950">Nessuna opzione autorevole disponibile: è richiesto un passaggio manuale.</p>}</div> : null}
+        {preview.pactBoonOptions?.length ? <div className="space-y-2"><Label htmlFor="level-up-pact-boon">Dono del patto</Label><Select value={selectedPactBoon || preview.pactBoonKey || ""} onValueChange={(key) => {
+          setSelectedPactBoon(key); requestIdRef.current = null;
+          void loadPreview(selectedSubclass, selectedClassKey, overrideReason, selectedDraconicAncestry, key);
+        }} disabled={loadingPreview || applying || Boolean(pendingLevelUp)}><SelectTrigger id="level-up-pact-boon"><SelectValue placeholder="Scegli il dono del patto" /></SelectTrigger><SelectContent>{preview.pactBoonOptions.map((option) => <SelectItem key={option.key} value={option.key}>{option.label}</SelectItem>)}</SelectContent></Select><p className="text-sm text-muted-foreground">Disponibile dal livello 3 da Warlock, indipendentemente dal livello totale.</p></div> : null}
+        {preview.draconicAncestryOptions?.length ? <div className="space-y-2 rounded-lg border p-3">
+          <Label htmlFor="level-up-dragon">Antenato draconico dello Stregone</Label>
+          {targetClass?.draconicAncestry ? <p className="text-sm">Drago {targetClass.draconicAncestry.label} · {targetClass.draconicAncestry.damageLabel}. La scelta viene conservata.</p> : <Select
+            value={selectedDraconicAncestry || preview.draconicAncestryKey || ""}
+            onValueChange={(key) => { setSelectedDraconicAncestry(key); requestIdRef.current = null; void loadPreview(selectedSubclass, selectedClassKey, overrideReason, key); }}
+            disabled={loadingPreview || applying}
+          ><SelectTrigger id="level-up-dragon"><SelectValue placeholder="Scegli il colore o il tipo di drago" /></SelectTrigger><SelectContent>{preview.draconicAncestryOptions.map((option) => <SelectItem key={option.key} value={option.key}>{option.label} · {option.damageLabel}</SelectItem>)}</SelectContent></Select>}
+          <p className="text-sm text-muted-foreground">Registra la scelta: i privilegi e i bonus già gestiti manualmente restano invariati.</p>
+        </div> : null}
         {preview.status === "MANUAL" || preview.subclassEligibility?.status === "MANUAL" ? <div className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">Passaggio manuale richiesto: {preview.reason ?? preview.subclassEligibility?.reason ?? "regole non risolte dal contratto."}</div> : null}
         {!preview.canApply && preview.status !== "MANUAL" ? <div className="rounded-lg border border-amber-500/40 bg-amber-50/60 p-3 text-sm text-amber-950">{preview.reason ?? "Il level-up non è ancora applicabile."}</div> : null}
       </div> : null}

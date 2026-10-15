@@ -24,6 +24,10 @@ function snapshot({
   subclassStatus = "NOT_YET_ELIGIBLE",
   revision = "revision-1",
   progressionRevision = 0,
+  schema,
+  hitPointState,
+  hitDicePools,
+  resourcePools,
 } = {}) {
   return {
     revision,
@@ -49,6 +53,10 @@ function snapshot({
       progressionRevision,
       diagnostics: [],
     },
+    ...(schema ? { schema } : {}),
+    ...(hitPointState ? { hitPointState } : {}),
+    ...(hitDicePools ? { hitDicePools } : {}),
+    ...(resourcePools ? { resourcePools } : {}),
   };
 }
 
@@ -157,6 +165,89 @@ describe("M4 progression preview contract", () => {
         classKey: "wizard",
       }]),
     });
+  });
+
+  it("lets a backfilled legacy character above the subclass threshold select it during level-up", () => {
+    const legacy = snapshot({
+      classKey: "rogue",
+      level: 5,
+      subclassStatus: "INCOMPLETE_LEGACY",
+      schema: { m5Ready: true, m6Ready: true },
+      hitPointState: {
+        maximumHitPoints: 31,
+        currentHitPoints: 19,
+        temporaryHitPoints: 4,
+        revision: 0,
+        backfillStatus: "LEGACY_MANUAL",
+      },
+      hitDicePools: [{
+        dieSize: 8,
+        maximum: 5,
+        remaining: 2,
+        source: "LEGACY_MANUAL",
+      }],
+      resourcePools: [{
+        id: "legacy-manual",
+        poolKey: "legacy:manual",
+        kind: "MANUAL",
+        label: "Risorse legacy",
+        resetPolicy: "MANUAL",
+        revision: 0,
+        backfillStatus: "LEGACY_MANUAL",
+        maximum: { "0": 3 },
+        used: { "0": 1 },
+      }],
+    });
+
+    expect(prepareCharacterProgressionPreview(legacy, { targetClassKey: "rogue" }))
+      .toMatchObject({
+        status: "SUBCLASS_REQUIRED",
+        canApply: false,
+        subclassOptions: expect.arrayContaining([{
+          key: "thief",
+          label: "Furfante",
+          classKey: "rogue",
+        }]),
+      });
+
+    const preview = prepareCharacterProgressionPreview(legacy, {
+      targetClassKey: "rogue",
+      targetSubclassKey: "thief",
+    });
+
+    expect(preview).toMatchObject({
+      status: "READY",
+      canApply: true,
+      mode: "INCREMENT_EXISTING",
+      classesAfter: [{ classKey: "rogue", level: 6, subclassKey: "thief" }],
+      effects: {
+        status: "READY",
+        hitPoints: {
+          before: {
+            maximumHitPoints: 31,
+            currentHitPoints: 19,
+            temporaryHitPoints: 4,
+            backfillStatus: "LEGACY_MANUAL",
+          },
+          after: {
+            currentHitPoints: 29,
+            maximumHitPoints: 41,
+            temporaryHitPoints: 4,
+            revision: 1,
+            backfillStatus: "LEGACY_MANUAL",
+          },
+        },
+        hitDicePools: {
+          before: [{ dieSize: 8, maximum: 5, remaining: 2, source: "LEGACY_MANUAL" }],
+          after: [{ dieSize: 8, maximum: 6, remaining: 3, source: "LEGACY_MANUAL" }],
+        },
+        resourcePools: {
+          before: [{ poolKey: "legacy:manual", maximum: { "0": 3 }, used: { "0": 1 } }],
+          after: [{ poolKey: "legacy:manual", maximum: { "0": 3 }, used: { "0": 1 } }],
+        },
+      },
+    });
+    expect(() => assertProgressionEffectsReady(preview)).not.toThrow();
   });
 
   it("offers only authoritative subclasses belonging to the target class", () => {

@@ -4,6 +4,13 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import {
+  assertProgressionEffectsReady,
+  prepareCharacterProgressionPreview,
+  readCharacterProgressionShadowFromDatabase,
+  readCharacterVitalsResourcesFromDatabase,
+  serializeCharacterSnapshot,
+} from "../../server.js";
 
 const require = createRequire(import.meta.url);
 const { DatabaseSync } = require("node:sqlite");
@@ -86,6 +93,65 @@ function readM3State(databasePath) {
 }
 
 describe("M3 additive character progression schema", () => {
+  it("makes a historical sheet usable by MC1 after the complete release migration sequence", () => {
+    const databasePath = temporaryDatabase();
+    const original = {
+      slug: "historical-warlock", characterType: "pg",
+      basicInfo: { characterName: "Historical", class: "Warlock", level: 5 },
+      abilityScores: { constitution: 14, charisma: 16 },
+      combatStats: {
+        hitPointMaximum: 37, currentHitPoints: 29, temporaryHitPoints: 3,
+        hitDice: "1d8", restState: { maxHitDice: 5, hitDiceRemaining: 4 },
+        spellSlots: { 3: [{ id: 1, active: true }, { id: 2, active: false }] },
+      },
+      features: [{ name: "Existing manual feature" }],
+    };
+    const fixture = createLegacyDatabase(databasePath);
+    addCharacter(fixture, { id: original.slug, className: "Warlock", level: 5, rawData: JSON.stringify(original) });
+    fixture.close();
+    for (const milestone of ["m3", "m4", "m5", "m6", "mc1"]) {
+      const script = path.join(ROOT, "scripts", `apply-character-progression-${milestone}.mjs`);
+      const applied = spawnSync(process.execPath, [script, "--apply", "--database", databasePath], { cwd: ROOT, encoding: "utf8" });
+      expect(applied.status, `${milestone}: ${applied.stdout}\n${applied.stderr}`).toBe(0);
+    }
+    const db = new DatabaseSync(databasePath, { readOnly: true });
+    try {
+      const row = db.prepare('SELECT * FROM "Character" WHERE id = ?').get(original.slug);
+      expect(JSON.parse(row.data)).toEqual(original);
+      const snapshot = {
+        state: JSON.parse(row.data), revision: String(row.updatedAt),
+        progression: readCharacterProgressionShadowFromDatabase(db, row),
+        ...readCharacterVitalsResourcesFromDatabase(db, row.id),
+      };
+      expect(serializeCharacterSnapshot(snapshot)).toMatchObject({
+        progressionStatus: "INCOMPLETE_LEGACY", totalLevel: 5,
+        classes: [{ classKey: "warlock", level: 5 }],
+      });
+      expect(prepareCharacterProgressionPreview(snapshot, { targetClassKey: "warlock" }))
+        .toMatchObject({ status: "SUBCLASS_REQUIRED", canApply: false });
+      const preview = prepareCharacterProgressionPreview(snapshot, {
+        targetClassKey: "warlock", targetSubclassKey: "the-fiend", pactBoonKey: "chain",
+      });
+      expect(preview).toMatchObject({
+        canApply: true,
+        before: { characterLevel: 5 }, after: { characterLevel: 6 },
+        effects: {
+          hitPoints: {
+            before: { maximumHitPoints: 37, currentHitPoints: 29, temporaryHitPoints: 3 },
+            after: { maximumHitPoints: 47, currentHitPoints: 39, temporaryHitPoints: 3 },
+          },
+          hitDicePools: { after: [{ dieSize: 8, maximum: 6, remaining: 5 }] },
+          resourcePools: { after: expect.arrayContaining([
+            expect.objectContaining({ kind: "PACT_MAGIC", maximum: { 3: 2 }, used: { 3: 1 } }),
+          ]) },
+        },
+      });
+      expect(() => assertProgressionEffectsReady(preview)).not.toThrow();
+      expect(db.prepare('PRAGMA integrity_check').get().integrity_check).toBe("ok");
+      expect(db.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+    } finally { db.close(); }
+  });
+
   it("syncs the handbook catalog after MC1 without changing character progression", () => {
     const databasePath = temporaryDatabase();
     const db = createLegacyDatabase(databasePath);

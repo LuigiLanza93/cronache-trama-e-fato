@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { BookOpen, Check, Home, Pencil, ScrollText, Settings2, X } from "lucide-react";
 import { updateCharacter } from "@/realtime";
 import CampaignLogDialog from "@/components/campaign-log-dialog";
+import { pactBoonSummary } from "../../../shared/warlock-pact-rules.mjs";
 import { getCharacterProgressionDisplay } from "@/lib/character-progression";
 
 function getInitials(name: string | undefined) {
@@ -136,83 +137,6 @@ const CharacterHeader = ({
     return (
         <div className="dnd-frame-thick relative p-6">
             <form onSubmit={handleSubmit}>
-                <div className="absolute right-4 top-4">
-                    {editMode ? (
-                        <div className="flex items-center gap-2">
-                            <Button
-                                type="submit"
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9 rounded-full border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90"
-                                aria-label="Salva modifiche"
-                                title="Salva modifiche"
-                            >
-                                <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-9 w-9 rounded-full"
-                                onClick={handleCancelEdit}
-                                aria-label="Annulla modifiche"
-                                title="Annulla modifiche"
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent">
-                                <a
-                                    href="/"
-                                    aria-label="Torna alla home"
-                                    title="Torna alla home"
-                                >
-                                    <Home className="h-4 w-4 text-primary" />
-                                </a>
-                            </Button>
-                            <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent">
-                                <a
-                                    href={monsterCompendiumHref}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    aria-label="Apri compendio mostri in una nuova scheda"
-                                    title="Apri compendio mostri in una nuova scheda"
-                                >
-                                    <BookOpen className="h-4 w-4 text-primary" />
-                                </a>
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
-                                onClick={() => setIsCampaignLogOpen(true)}
-                                aria-label="Apri diario della campagna"
-                                title="Apri diario della campagna"
-                            >
-                                <ScrollText className="h-4 w-4 text-primary" />
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
-                                onClick={() => {
-                                    if (!canEdit) return;
-                                    setEditMode(true);
-                                }}
-                                aria-label="Modifica intestazione"
-                                title="Modifica intestazione"
-                                disabled={!canEdit}
-                            >
-                                <Settings2 className="h-4 w-4 text-primary" />
-                            </Button>
-                        </div>
-                    )}
-                </div>
-
                 <div className="flex flex-col items-center gap-4 md:flex-row md:items-start md:text-left">
                     <div className="relative rounded-[2rem] border-4 border-primary/30 bg-card/80 p-1 shadow-lg">
                         {portraitPreviewUrl && !editMode ? (
@@ -272,10 +196,90 @@ const CharacterHeader = ({
                         )}
                     </div>
 
-                    <div className="flex-1">
-                        <h1 className="mb-2 text-4xl font-heading font-bold text-primary">
-                            {characterData.basicInfo.characterName}
-                        </h1>
+                    <div className="min-w-0 w-full flex-1">
+                        <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+                            <h1 className="min-w-0 flex-1 basis-48 break-words text-4xl font-heading font-bold text-primary">
+                                {characterData.basicInfo.characterName}
+                            </h1>
+                            <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+                                {editMode ? (
+                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                        <Button
+                                            type="submit"
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-9 w-9 rounded-full border-primary/40 bg-primary text-primary-foreground hover:bg-primary/90"
+                                            aria-label="Salva modifiche"
+                                            title="Salva modifiche"
+                                        >
+                                            <Check className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-9 w-9 rounded-full"
+                                            onClick={handleCancelEdit}
+                                            aria-label="Annulla modifiche"
+                                            title="Annulla modifiche"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                        </div>
+                    ) : (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent">
+                                <a
+                                    href="/"
+                                    aria-label="Torna alla home"
+                                    title="Torna alla home"
+                                >
+                                    <Home className="h-4 w-4 text-primary" />
+                                </a>
+                            </Button>
+                            <Button asChild variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent">
+                                <a
+                                    href={monsterCompendiumHref}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    aria-label="Apri compendio mostri in una nuova scheda"
+                                    title="Apri compendio mostri in una nuova scheda"
+                                >
+                                    <BookOpen className="h-4 w-4 text-primary" />
+                                </a>
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
+                                onClick={() => setIsCampaignLogOpen(true)}
+                                aria-label="Apri diario della campagna"
+                                title="Apri diario della campagna"
+                            >
+                                <ScrollText className="h-4 w-4 text-primary" />
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-full border border-border/70 bg-background/80 shadow-sm hover:bg-accent"
+                                onClick={() => {
+                                    if (!canEdit) return;
+                                    setEditMode(true);
+                                }}
+                                aria-label="Modifica intestazione"
+                                title="Modifica intestazione"
+                                disabled={!canEdit}
+                            >
+                                <Settings2 className="h-4 w-4 text-primary" />
+                            </Button>
+                        </div>
+                    )}
+                    {levelUpAction}
+                    {layoutActions}
+                </div>
+                        </div>
 
                         {editMode && (
                             <div className="mb-4 space-y-2">
@@ -289,19 +293,42 @@ const CharacterHeader = ({
                         )}
 
                         <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
-                            <div className="grid grid-cols-2">
-                                <div>
-                                    <Label className="text-xs text-muted-foreground">Classe</Label>
-                                    <div className="font-semibold" title={progressionDisplay.classSummary}>
-                                        {progressionDisplay.classSummary || characterData.basicInfo.class}
-                                    </div>
+                            <div className="flex min-w-0 items-start gap-4">
+                                <div className="min-w-0 flex-1">
+                                    <Label className="text-xs text-muted-foreground">{progressionDisplay.classes.length > 1 ? "Classi" : "Classe"}</Label>
+                                    {progressionDisplay.classes.length > 0 ? (
+                                        <div className="mt-1 space-y-2">
+                                            {progressionDisplay.classes.map((entry) => (
+                                                <div key={entry.classKey} className="border-l-2 border-primary/30 pl-2">
+                                                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                                        <span className="break-words font-semibold">{entry.label || entry.classKey}</span>
+                                                        <span className="whitespace-nowrap rounded bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">Lv. {entry.level}</span>
+                                                    </div>
+                                                    {entry.subclass ? (
+                                                        <div className="mt-0.5 break-words text-xs text-muted-foreground">
+                                                            {entry.classKey === "warlock" ? "Patrono: " : ""}{entry.subclass.label ?? entry.subclass.subclassKey}
+                                                            {entry.draconicAncestry ? ` · Drago ${entry.draconicAncestry.label} (${entry.draconicAncestry.damageLabel})` : ""}
+                                                        </div>
+                                                    ) : null}
+                                                    {entry.classKey === "warlock" && entry.level >= 3 ? <div className="mt-0.5 text-xs text-muted-foreground">{pactBoonSummary(entry.pactBoonKey)?.label ?? "Dono del patto non registrato"}</div> : null}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="mt-1 border-l-2 border-primary/30 pl-2">
+                                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                                <span className="break-words font-semibold">{progressionDisplay.classSummary || characterData.basicInfo.class}</span>
+                                                <span className="whitespace-nowrap rounded bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">Lv. {progressionDisplay.totalLevel ?? characterData.basicInfo.level}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <div>
-                                    <Label className="text-xs text-muted-foreground">Livello</Label>
+                                {progressionDisplay.classes.length > 1 ? <div className="shrink-0">
+                                    <Label className="text-xs text-muted-foreground">Livello totale</Label>
                                     <div className="font-semibold">
                                         {progressionDisplay.totalLevel ?? characterData.basicInfo.level}
                                     </div>
-                                </div>
+                                </div> : null}
                             </div>
                             <div>
                                 <Label className="text-xs text-muted-foreground">Background</Label>
@@ -372,18 +399,6 @@ const CharacterHeader = ({
                         </div>
                     </div>
                 </div>
-
-                {layoutActions ? (
-                    <div className="absolute bottom-4 right-4">
-                        {layoutActions}
-                    </div>
-                ) : null}
-                {levelUpAction ? (
-                    <div className="absolute bottom-4 left-4">
-                        {levelUpAction}
-                    </div>
-                ) : null}
-
             </form>
 
             <Dialog open={isPortraitOpen} onOpenChange={setIsPortraitOpen}>

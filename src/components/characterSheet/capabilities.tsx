@@ -23,6 +23,7 @@ import {
   PASSIVE_EFFECT_SKILL_TARGET_LABELS,
   type PassiveEffectSkillTarget,
 } from "@/lib/passive-effect-skills";
+import { getPassiveEffectClassOptions } from "@/lib/passive-effect-levels";
 
 type CapabilityKind = "passive" | "active";
 type CapabilityReset = "atWill" | "encounter" | "shortRest" | "longRest" | "custom";
@@ -60,6 +61,7 @@ type PassiveEffectTarget =
 type PassiveEffectTrigger =
   | "ALWAYS"
   | "WHILE_ARMORED"
+  | "WHILE_UNARMORED"
   | "WHILE_SHIELD_EQUIPPED"
   | "WHILE_WIELDING_SINGLE_MELEE_WEAPON"
   | "WHILE_DUAL_WIELDING"
@@ -70,7 +72,8 @@ type PassiveEffectValueMode =
   | "ABILITY_MODIFIER"
   | "ABILITY_SCORE"
   | "PROFICIENCY_BONUS"
-  | "CHARACTER_LEVEL";
+  | "CHARACTER_LEVEL"
+  | "CLASS_LEVEL";
 type PassiveEffectRounding = "FLOOR" | "CEIL";
 type PassiveEffectOperationType = "BONUS" | "SET";
 type PassiveEffectSetMode = "ABSOLUTE" | "MINIMUM_FLOOR";
@@ -87,6 +90,7 @@ type PassiveEffectEntry = {
   category?: PassiveEffectCategory;
   operationType?: PassiveEffectOperationType;
   valueMode?: PassiveEffectValueMode;
+  sourceClassKey?: string;
   value: number | string;
   setMode?: PassiveEffectSetMode;
   setValue?: number | string;
@@ -210,6 +214,7 @@ const PASSIVE_PROFICIENCY_TARGETS: PassiveEffectProficiencyTarget[] = [
 const PASSIVE_TRIGGER_LABELS: Record<PassiveEffectTrigger, string> = {
   ALWAYS: "Sempre attivo",
   WHILE_ARMORED: "Finché indossa un'armatura",
+  WHILE_UNARMORED: "Finché non indossa un'armatura",
   WHILE_SHIELD_EQUIPPED: "Finché usa uno scudo",
   WHILE_WIELDING_SINGLE_MELEE_WEAPON: "Finché impugna una sola arma da mischia",
   WHILE_DUAL_WIELDING: "Finché combatte con due armi",
@@ -222,7 +227,8 @@ const PASSIVE_VALUE_MODE_LABELS: Record<PassiveEffectValueMode, string> = {
   ABILITY_MODIFIER: "Mod. caratteristica",
   ABILITY_SCORE: "Punteggio caratteristica",
   PROFICIENCY_BONUS: "Bonus competenza",
-  CHARACTER_LEVEL: "Livello personaggio",
+  CHARACTER_LEVEL: "Livello totale",
+  CLASS_LEVEL: "Livello classe",
 };
 
 const PASSIVE_SOURCE_ABILITY_LABELS: Record<PassiveEffectSourceAbility, string> = {
@@ -285,6 +291,39 @@ function getAllowedValueModesForTarget(target: PassiveEffectTarget) {
   return Object.entries(PASSIVE_VALUE_MODE_LABELS);
 }
 
+function passiveEffectValueModeOptions(
+  target: PassiveEffectTarget,
+  characterData: Parameters<typeof getPassiveEffectClassOptions>[0],
+  effect: PassiveEffectEntry
+) {
+  const modes = getAllowedValueModesForTarget(target).filter(([value]) => value !== "CLASS_LEVEL");
+  const classOptions = getPassiveEffectClassOptions(characterData).map((classOption) => ({
+    value: `CLASS_LEVEL:${classOption.classKey}`,
+    label: classOption.label,
+  }));
+
+  if (effect.valueMode === "CLASS_LEVEL" && effect.sourceClassKey) {
+    const currentValue = `CLASS_LEVEL:${effect.sourceClassKey}`;
+    if (!classOptions.some((option) => option.value === currentValue)) {
+      classOptions.push({
+        value: currentValue,
+        label: `Classe non disponibile (${effect.sourceClassKey})`,
+      });
+    }
+  }
+
+  return [
+    ...modes.map(([value, label]) => ({ value, label })),
+    ...classOptions,
+  ];
+}
+
+function passiveEffectValueModeSelectValue(effect: PassiveEffectEntry) {
+  return effect.valueMode === "CLASS_LEVEL"
+    ? `CLASS_LEVEL:${effect.sourceClassKey ?? ""}`
+    : effect.valueMode ?? "FLAT";
+}
+
 function isEditableSignedInteger(value: string) {
   return /^-?\d*$/.test(value);
 }
@@ -295,7 +334,7 @@ function normalizeDraftSignedInteger(value: number | string | undefined) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function passiveEffectSummary(effect: SavedPassiveEffectEntry) {
+function passiveEffectSummary(effect: SavedPassiveEffectEntry, characterData: Parameters<typeof getPassiveEffectClassOptions>[0]) {
   const targetLabel =
     effect.target === "CUSTOM"
       ? effect.customTargetLabel?.trim() || "Altro"
@@ -335,8 +374,17 @@ function passiveEffectSummary(effect: SavedPassiveEffectEntry) {
         valueLabel = `B. Comp.${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
         break;
       case "CHARACTER_LEVEL":
-        valueLabel = `Livello${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
+        valueLabel = `Livello totale${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
         break;
+      case "CLASS_LEVEL": {
+        const sourceClassKey = effect.sourceClassKey?.trim();
+        const sourceClass = getPassiveEffectClassOptions(characterData).find(
+          (classOption) => classOption.classKey === sourceClassKey
+        );
+        const classLabel = sourceClass?.label ?? (sourceClassKey ? `Classe non disponibile (${sourceClassKey})` : "Classe non disponibile");
+        valueLabel = `${classLabel}${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
+        break;
+      }
       default:
         break;
     }
@@ -498,21 +546,25 @@ export default function Capabilities({
             };
           }
 
+          const valueMode = effect.valueMode ?? "FLAT";
           return {
-          ...effect,
-          operationType: effect.operationType ?? "BONUS",
-          valueMode: effect.valueMode ?? "FLAT",
-          setMode: effect.setMode ?? "MINIMUM_FLOOR",
-          setValue: normalizeDraftSignedInteger(effect.setValue),
-          capValue: normalizeDraftSignedInteger(effect.capValue),
-          sourceAbility: effect.sourceAbility ?? "DEXTERITY",
-          multiplierNumerator: Number(effect.multiplierNumerator ?? 1) || 1,
-          multiplierDenominator: Math.max(1, Number(effect.multiplierDenominator ?? 1) || 1),
-          rounding: effect.rounding ?? "FLOOR",
-          value: normalizeDraftSignedInteger(effect.value) ?? 0,
-          customTargetLabel: effect.customTargetLabel?.trim() || undefined,
-          customTriggerLabel: effect.customTriggerLabel?.trim() || undefined,
-          notes: effect.notes?.trim() || undefined,
+            ...effect,
+            operationType: effect.operationType ?? "BONUS",
+            valueMode,
+            ...(valueMode === "CLASS_LEVEL" && effect.sourceClassKey?.trim()
+              ? { sourceClassKey: effect.sourceClassKey.trim() }
+              : { sourceClassKey: undefined }),
+            setMode: effect.setMode ?? "MINIMUM_FLOOR",
+            setValue: normalizeDraftSignedInteger(effect.setValue),
+            capValue: normalizeDraftSignedInteger(effect.capValue),
+            sourceAbility: effect.sourceAbility ?? "DEXTERITY",
+            multiplierNumerator: Number(effect.multiplierNumerator ?? 1) || 1,
+            multiplierDenominator: Math.max(1, Number(effect.multiplierDenominator ?? 1) || 1),
+            rounding: effect.rounding ?? "FLOOR",
+            value: normalizeDraftSignedInteger(effect.value) ?? 0,
+            customTargetLabel: effect.customTargetLabel?.trim() || undefined,
+            customTriggerLabel: effect.customTriggerLabel?.trim() || undefined,
+            notes: effect.notes?.trim() || undefined,
           };
         })
         .filter((effect) =>
@@ -553,6 +605,15 @@ export default function Capabilities({
         )
       ) {
         setFormError("Se usi una caratteristica come sorgente, seleziona quale.");
+        return;
+      }
+
+      if (
+        passiveEffects.some(
+          (effect) => effect.category !== "PROFICIENCY" && effect.valueMode === "CLASS_LEVEL" && !effect.sourceClassKey
+        )
+      ) {
+        setFormError("Seleziona la classe sorgente per ogni effetto basato sul livello di classe.");
         return;
       }
 
@@ -943,21 +1004,27 @@ export default function Capabilities({
                         {effect.category !== "PROFICIENCY" && <div>
                           <Label className="mb-1 block">Valore</Label>
                           <select
-                            value={effect.valueMode ?? "FLAT"}
+                            value={passiveEffectValueModeSelectValue(effect)}
                             disabled={(effect.operationType ?? "BONUS") === "SET"}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const selectedValue = e.target.value;
+                              const sourceClassKey = selectedValue.startsWith("CLASS_LEVEL:")
+                                ? selectedValue.slice("CLASS_LEVEL:".length)
+                                : undefined;
                               setForm((prev) => ({
                                 ...prev,
                                 passiveEffects: prev.passiveEffects.map((row, rowIndex) =>
                                   rowIndex === index
-                                    ? { ...row, valueMode: e.target.value as PassiveEffectValueMode }
+                                    ? sourceClassKey !== undefined
+                                      ? { ...row, valueMode: "CLASS_LEVEL", sourceClassKey }
+                                      : { ...row, valueMode: selectedValue as PassiveEffectValueMode, sourceClassKey: undefined }
                                     : row
                                 ),
-                              }))
-                            }
+                              }));
+                            }}
                             className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                           >
-                            {getAllowedValueModesForTarget(effect.target).map(([value, label]) => (
+                            {passiveEffectValueModeOptions(effect.target, characterData, effect).map(({ value, label }) => (
                               <option key={value} value={value}>
                                 {label}
                               </option>
@@ -1369,7 +1436,7 @@ export default function Capabilities({
                   <div className="space-y-2">
                     {detailCapability.passiveEffects.map((effect, index) => (
                       <div key={`detail-passive-effect-${index}`} className="rounded border border-border/70 px-3 py-2 text-muted-foreground">
-                        <div>{passiveEffectSummary(effect)}</div>
+                        <div>{passiveEffectSummary(effect, characterData)}</div>
                         {effect.category !== "PROFICIENCY" && effect.notes && <div className="mt-1 text-xs">{effect.notes}</div>}
                       </div>
                     ))}

@@ -324,6 +324,9 @@ model User {
   shopOffersProposed ShopOffer[] @relation("ShopOfferProposedBy")
   updatedCharacterClasses CharacterClass[] @relation("CharacterClassUpdatedBy")
   appliedCharacterLevelHistory CharacterLevelHistory[] @relation("CharacterLevelHistoryAppliedBy")
+  appliedCharacterSubclassHistory CharacterSubclassHistory[] @relation("CharacterSubclassHistoryAppliedBy")
+  appliedCharacterDraconicAncestryHistory CharacterDraconicAncestryHistory[] @relation("CharacterDraconicAncestryHistoryAppliedBy")
+  appliedCharacterPactBoonHistory CharacterPactBoonHistory[] @relation("CharacterPactBoonHistoryAppliedBy")
   appliedCharacterHitPointAdjustments CharacterHitPointAdjustment[] @relation("CharacterHitPointAdjustmentAppliedBy")
 
   @@index([role])
@@ -368,6 +371,9 @@ model Character {
   progression CharacterProgression?
   classes CharacterClass[]
   levelHistory CharacterLevelHistory[]
+  subclassHistory CharacterSubclassHistory[]
+  draconicAncestryHistory CharacterDraconicAncestryHistory[]
+  pactBoonHistory CharacterPactBoonHistory[]
   hitPointState CharacterHitPointState?
   hitDiePools CharacterHitDiePool[]
   hitPointAdjustments CharacterHitPointAdjustment[]
@@ -403,6 +409,7 @@ model ClassRule {
   subclasses      SubclassRule[]
   characterClasses CharacterClass[]
   levelHistory CharacterLevelHistory[] @relation("CharacterLevelHistoryTargetClassRule")
+  subclassHistory CharacterSubclassHistory[] @relation("CharacterSubclassHistoryTargetClassRule")
 
   @@unique([rulesetId, rulesetVersion, classKey])
   @@index([classKey])
@@ -432,6 +439,8 @@ model SubclassRule {
   classRule       ClassRule        @relation(fields: [classRuleId], references: [id], onDelete: Restrict)
   characterClasses CharacterClass[]
   levelHistory CharacterLevelHistory[] @relation("CharacterLevelHistoryTargetSubclassRule")
+  subclassHistoryBefore CharacterSubclassHistory[] @relation("CharacterSubclassHistoryPreviousSubclassRule")
+  subclassHistoryAfter CharacterSubclassHistory[] @relation("CharacterSubclassHistoryTargetSubclassRule")
 
   @@unique([rulesetId, rulesetVersion, subclassKey])
   @@index([subclassKey])
@@ -462,6 +471,8 @@ model CharacterClass {
   sortOrder        Int
   isPrimary        Boolean
   subclassStatus   String   @default("UNSELECTED")
+  pactBoonKey String?
+  draconicAncestryKey String?
   source            String   @default("LEGACY_BACKFILL")
   ruleSnapshot      String
   updatedByUserId   String?
@@ -479,6 +490,38 @@ model CharacterClass {
   @@index([classRuleId])
   @@index([subclassRuleId])
   @@index([updatedByUserId])
+}
+
+model CharacterDraconicAncestryHistory {
+  id                         String   @id
+  characterId                String
+  requestId                  String
+  requestSignature           String
+  operationType              String
+  targetClassKey             String
+  previousDraconicAncestryKey String?
+  targetDraconicAncestryKey  String?
+  progressionRevisionBefore Int
+  progressionRevisionAfter  Int
+  characterRevisionBefore   String
+  characterRevisionAfter    String
+  reason                     String?
+  policyVersion              String
+  requestSnapshot            String
+  beforeSnapshot             String
+  afterSnapshot              String
+  resultSnapshot             String
+  appliedByUserId            String?
+  appliedBySnapshot          String
+  appliedAt                  DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  appliedBy User? @relation("CharacterDraconicAncestryHistoryAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, operationType, requestId], map: "CharacterDraconicAncestryHistory_characterId_request_key")
+  @@unique([characterId, progressionRevisionAfter])
+  @@index([characterId, appliedAt])
+  @@index([appliedByUserId])
 }
 
 model CharacterLevelHistory {
@@ -530,9 +573,54 @@ model CharacterLevelHistory {
   @@index([appliedByUserId])
 }
 
+model CharacterSubclassHistory {
+  id                         String   @id
+  characterId                String
+  requestId                  String
+  requestSignature           String
+  mode                       String
+  targetClassKey             String
+  targetClassRuleId          String
+  previousSubclassKey        String?
+  previousSubclassRuleId     String?
+  targetSubclassKey          String
+  targetSubclassRuleId       String
+  classLevel                 Int
+  totalLevel                 Int
+  progressionRevisionBefore Int
+  progressionRevisionAfter  Int
+  characterRevisionBefore    String
+  characterRevisionAfter     String
+  reason                     String?
+  policyVersion              String
+  requestSnapshot            String
+  beforeSnapshot             String
+  afterSnapshot              String
+  ruleSnapshot               String
+  resultSnapshot             String
+  appliedByUserId            String?
+  appliedBySnapshot          String
+  appliedAt                  DateTime @default(now())
+
+  character            Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  targetClassRule       ClassRule     @relation("CharacterSubclassHistoryTargetClassRule", fields: [targetClassRuleId], references: [id], onDelete: Restrict)
+  previousSubclassRule  SubclassRule? @relation("CharacterSubclassHistoryPreviousSubclassRule", fields: [previousSubclassRuleId], references: [id], onDelete: Restrict)
+  targetSubclassRule    SubclassRule  @relation("CharacterSubclassHistoryTargetSubclassRule", fields: [targetSubclassRuleId], references: [id], onDelete: Restrict)
+  appliedBy             User?         @relation("CharacterSubclassHistoryAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, requestId])
+  @@unique([characterId, progressionRevisionAfter])
+  @@index([characterId, appliedAt])
+  @@index([targetClassRuleId])
+  @@index([previousSubclassRuleId])
+  @@index([targetSubclassRuleId])
+  @@index([appliedByUserId])
+}
+
 model CharacterHitPointState {
   characterId                    String   @id
   maximumHitPoints               Int
+  passiveBonusApplied            Int      @default(0)
   currentHitPoints               Int
   temporaryHitPoints             Int      @default(0)
   deathSaveSuccesses             Int      @default(0)
@@ -1541,4 +1629,37 @@ model EncounterScenarioEntry {
   @@index([scenarioId, sortOrder])
   @@index([monsterId])
   @@index([entryType])
+}
+
+
+model CharacterPactBoonHistory {
+  id                         String   @id
+  characterId                String
+  requestId                  String
+  requestSignature           String
+  operationType              String
+  targetClassKey             String
+  previousPactBoonKey String?
+  targetPactBoonKey  String?
+  progressionRevisionBefore Int
+  progressionRevisionAfter  Int
+  characterRevisionBefore   String
+  characterRevisionAfter    String
+  reason                     String?
+  policyVersion              String
+  requestSnapshot            String
+  beforeSnapshot             String
+  afterSnapshot              String
+  resultSnapshot             String
+  appliedByUserId            String?
+  appliedBySnapshot          String
+  appliedAt                  DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  appliedBy User? @relation("CharacterPactBoonHistoryAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, operationType, requestId], map: "CharacterPactBoonHistory_characterId_request_key")
+  @@unique([characterId, progressionRevisionAfter])
+  @@index([characterId, appliedAt])
+  @@index([appliedByUserId])
 }

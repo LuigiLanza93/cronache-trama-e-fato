@@ -38,6 +38,8 @@ export type CharacterTransferTarget = {
 export type CharacterProgressionPreviewRequest = {
   targetClassKey: string;
   targetSubclassKey?: string | null;
+  draconicAncestryKey?: string;
+  pactBoonKey?: string;
   overrideReason?: string;
   expectedRevision?: string;
   expectedProgressionRevision?: number;
@@ -67,6 +69,7 @@ export type CharacterProgressionEffectsPayload = {
   hitDicePools?: { before: Array<{ dieSize: number; maximum: number; remaining: number }>; after: Array<{ dieSize: number; maximum: number; remaining: number }> } | null;
   resourcePools?: { before: ProgressionResourcePoolPayload[]; after: ProgressionResourcePoolPayload[] } | null;
 };
+export type DraconicAncestryOption = { key: string; label: string; damageType: string; damageLabel: string };
 export type CharacterProgressionApiResponse = {
   ok: true;
   slug: string;
@@ -79,7 +82,13 @@ export type CharacterProgressionApiResponse = {
     mode: "INCREMENT_EXISTING" | "ADD_NEW_CLASS";
     before: ProgressionSummaryPayload;
     after: ProgressionSummaryPayload | null;
-    classesAfter: Array<{ classKey: string; level: number; subclassKey?: string | null }> | null;
+    classesAfter: Array<{ classKey: string; level: number; subclassKey?: string | null; draconicAncestryKey?: string | null; pactBoonKey?: string | null }> | null;
+    pactBoonOptions?: Array<{ key: string; label: string }>;
+    pactBoonRequired?: boolean;
+    pactBoonKey?: string | null;
+    draconicAncestryOptions?: DraconicAncestryOption[];
+    draconicAncestryRequired?: boolean;
+    draconicAncestryKey?: string | null;
     subclassEligibility: { status: string; reason: string | null } | null;
     subclassOptions: Array<{ key: string; label: string; classKey: string }>;
     classOptions: Array<{ key: string; label: string; mode: "INCREMENT_EXISTING" | "ADD_NEW_CLASS"; currentLevel: number }>;
@@ -92,6 +101,64 @@ export type CharacterProgressionApiResponse = {
   replayed?: boolean;
   operation?: Record<string, unknown>;
   character?: Record<string, unknown>;
+};
+export type CharacterSubclassPreviewRequest = {
+  targetClassKey: string;
+  targetSubclassKey?: string;
+  draconicAncestryKey?: string;
+  pactBoonKey?: string;
+  reason?: string;
+  expectedRevision?: string;
+  expectedProgressionRevision?: number;
+};
+export type CharacterSubclassApplyRequest = Required<Pick<CharacterSubclassPreviewRequest, "targetClassKey" | "targetSubclassKey">> & {
+  reason?: string;
+  draconicAncestryKey?: string;
+  pactBoonKey?: string;
+  requestId: string;
+  expectedRevision: string;
+  expectedProgressionRevision: number;
+};
+export type CharacterSubclassApiResponse = {
+  ok: true;
+  slug: string;
+  revision: string;
+  progressionRevision: number;
+  requestId?: string;
+  replayed?: boolean;
+  character?: Record<string, unknown>;
+  preview: {
+    status: string;
+    canApply: boolean;
+    mode: "ASSIGN" | "CHANGE";
+    targetClassKey: string;
+    targetSubclassKey?: string;
+    classOptions: Array<{ key: string; label: string; level: number; subclassKey: string | null; subclassLabel: string | null }>;
+    subclassOptions: Array<{ key: string; label: string; classKey: string }>;
+    before: { subclassKey: string | null; subclassLabel: string | null; draconicAncestryKey?: string | null; pactBoonKey?: string | null };
+    after: { subclassKey: string | null; subclassLabel: string | null; draconicAncestryKey?: string | null; pactBoonKey?: string | null };
+    pactBoonOptions?: Array<{ key: string; label: string }>;
+    pactBoonRequired?: boolean;
+    pactBoonKey?: string | null;
+    draconicAncestryOptions?: DraconicAncestryOption[];
+    draconicAncestryRequired?: boolean;
+    draconicAncestryKey?: string | null;
+    reasonRequired: boolean;
+    effects: {
+      characterLevel: { before: number; after: number };
+      hitPoints: { before: unknown; after: unknown };
+      classLevels: unknown[];
+      spellSlots: {
+        changed: boolean;
+        maximumDeltas: Array<{ tier: string; before: number; after: number }>;
+        preservedExpended: Array<{ tier: string; before: number; after: number }>;
+        warnings: string[];
+      };
+      manualContentPreserved: boolean;
+    };
+    warnings: string[];
+    reason?: string;
+  };
 };
 export type CurrencyTransactionRequestPayload = {
   operation: "add" | "remove" | "transfer" | "convert";
@@ -1160,6 +1227,20 @@ export function previewCharacterProgressionRequest(slug: string, payload: Charac
 
 export function applyCharacterProgressionRequest(slug: string, payload: CharacterProgressionApplyRequest) {
   return authFetch<CharacterProgressionApiResponse>(`/api/dm/characters/${slug}/progression/apply`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function previewCharacterSubclassRequest(slug: string, payload: CharacterSubclassPreviewRequest) {
+  return authFetch<CharacterSubclassApiResponse>(`/api/dm/characters/${slug}/subclass/preview`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function applyCharacterSubclassRequest(slug: string, payload: CharacterSubclassApplyRequest) {
+  return authFetch<CharacterSubclassApiResponse>(`/api/dm/characters/${slug}/subclass/apply`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

@@ -169,12 +169,24 @@ describe("validateCharacterPatch", () => {
   });
 });
 
+describe("class-level passive effect persistence", () => {
+  const patch = (effect) => ({ capabilities: [{ name: "Bonus di classe", kind: "passive", passiveEffects: [effect] }] });
+  it("accepts a stable class key and preserves legacy total-level effects", () => {
+    expect(validateCharacterPatch(patch({ target: "ARMOR_CLASS", valueMode: "CLASS_LEVEL", sourceClassKey: "rogue", value: 0, trigger: "ALWAYS" }))).toEqual([]);
+    expect(validateCharacterPatch(patch({ target: "ARMOR_CLASS", valueMode: "CHARACTER_LEVEL", value: 0, trigger: "ALWAYS" }))).toEqual([]);
+  });
+  it.each([undefined, "", 1, "classe 1", "../rogue", "not-a-class", "constructor"])("rejects invalid class reference %s", (sourceClassKey) => {
+    expect(validateCharacterPatch(patch({ target: "ARMOR_CLASS", valueMode: "CLASS_LEVEL", sourceClassKey, value: 0, trigger: "ALWAYS" })).join("\n")).toContain("sourceClassKey");
+  });
+});
+
 describe("validatePactBladeState", () => {
   const bondedMeleeWeapon = { id: "weapon-1", itemCategory: "WEAPON", hasMeleeAttack: true };
 
   it("accepts a Warlock bound melee weapon and whitelisted virtual template", () => {
     expect(validatePactBladeState({
       basicInfo: { class: "Warlock" },
+      classes: [{ classKey: "warlock", level: 3, pactBoonKey: "blade" }],
       pactBlade: {
         bondedCharacterItemId: "weapon-1",
         activeSummon: { mode: "template", templateId: "longsword" },
@@ -186,7 +198,7 @@ describe("validatePactBladeState", () => {
     expect(validatePactBladeState({
       basicInfo: { class: "Bardo" },
       pactBlade: { bondedCharacterItemId: "weapon-1", activeSummon: { mode: null, templateId: null } },
-    }, bondedMeleeWeapon).join("\n")).toContain("soltanto per un Warlock");
+    }, bondedMeleeWeapon).join("\n")).toContain("Patto della Lama");
   });
 
   it.each([
@@ -196,6 +208,7 @@ describe("validatePactBladeState", () => {
   ])("rejects an invalid or foreign bonded item", (bondedItem, issue) => {
     expect(validatePactBladeState({
       basicInfo: { class: "Warlock" },
+      classes: [{ classKey: "warlock", level: 3, pactBoonKey: "blade" }],
       pactBlade: { bondedCharacterItemId: "weapon-1", activeSummon: { mode: "bonded", templateId: null } },
     }, bondedItem).join("\n")).toContain(issue);
   });
@@ -203,10 +216,12 @@ describe("validatePactBladeState", () => {
   it("rejects unknown templates and inconsistent summon state", () => {
     expect(validatePactBladeState({
       basicInfo: { class: "Warlock" },
+      classes: [{ classKey: "warlock", level: 3, pactBoonKey: "blade" }],
       pactBlade: { bondedCharacterItemId: null, activeSummon: { mode: "template", templateId: "forged-template" } },
     }).join("\n")).toContain("modello non supportato");
     expect(validatePactBladeState({
       basicInfo: { class: "Warlock" },
+      classes: [{ classKey: "warlock", level: 3, pactBoonKey: "blade" }],
       pactBlade: { bondedCharacterItemId: null, activeSummon: { mode: "bonded", templateId: null } },
     }).join("\n")).toContain("richiede un'arma legata");
   });

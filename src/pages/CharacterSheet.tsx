@@ -1,3 +1,4 @@
+import { canUsePactBlade } from "../../shared/warlock-pact-rules.mjs";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Check, GripVertical, LayoutTemplate, RotateCcw } from "lucide-react";
@@ -106,6 +107,8 @@ import { useGameSession } from "@/components/game-session-provider";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
 import LevelUpDialog from "@/components/characterSheet/level-up-dialog";
+import SubclassDialog from "@/components/characterSheet/subclass-dialog";
+import type { DraconicAncestryProjection } from "@/lib/character-progression";
 import AbilityScores from "@/components/characterSheet/ability-scores";
 import Proficiencies from "@/components/characterSheet/proficiencies";
 import CombatStats from "@/components/characterSheet/combat-stats";
@@ -192,6 +195,7 @@ type PassiveEffectTarget =
 type PassiveEffectTrigger =
   | "ALWAYS"
   | "WHILE_ARMORED"
+  | "WHILE_UNARMORED"
   | "WHILE_SHIELD_EQUIPPED"
   | "WHILE_WIELDING_SINGLE_MELEE_WEAPON"
   | "WHILE_DUAL_WIELDING"
@@ -202,7 +206,8 @@ type PassiveEffectValueMode =
   | "ABILITY_MODIFIER"
   | "ABILITY_SCORE"
   | "PROFICIENCY_BONUS"
-  | "CHARACTER_LEVEL";
+  | "CHARACTER_LEVEL"
+  | "CLASS_LEVEL";
 type PassiveEffectRounding = "FLOOR" | "CEIL";
 type PassiveEffectOperationType = "BONUS" | "SET";
 type PassiveEffectSetMode = "ABSOLUTE" | "MINIMUM_FLOOR";
@@ -223,6 +228,7 @@ type PassiveEffectEntry = {
   setValue?: number;
   capValue?: number;
   sourceAbility?: PassiveEffectSourceAbility;
+  sourceClassKey?: string;
   multiplierNumerator?: number;
   multiplierDenominator?: number;
   rounding?: PassiveEffectRounding;
@@ -267,6 +273,7 @@ interface Character {
   characterType?: "pg" | "png";
   hitPointState?: {
     maximumHitPoints: number;
+    passiveBonusApplied?: number;
     currentHitPoints: number;
     temporaryHitPoints: number;
     shortRestsUsedSinceLongRest: number;
@@ -300,6 +307,8 @@ interface Character {
     level: number;
     isPrimary?: boolean;
     subclass?: { subclassKey?: string | null; label?: string | null } | null;
+    draconicAncestryKey?: string | null;
+    draconicAncestry?: DraconicAncestryProjection | null;
   }>;
   basicInfo: {
     characterName: string;
@@ -897,8 +906,8 @@ const CharacterSheet = () => {
   }, [canModifyCharacter]);
 
   const isWarlock = useMemo(
-    () => (characterData?.basicInfo?.class ?? "").trim().toLowerCase() === "warlock",
-    [characterData?.basicInfo?.class]
+    () => canUsePactBlade(characterData),
+    [characterData?.classes]
   );
 
   const pactBladeState = useMemo<PactBladeState>(
@@ -935,10 +944,10 @@ const CharacterSheet = () => {
   );
 
   const runtimePactBladeDefinitions = useMemo(() => {
-    if (!activePactBladeTemplate) return {};
+    if (!isWarlock || !activePactBladeTemplate) return {};
     const detail = buildPactBladeVirtualDefinition(activePactBladeTemplate);
     return { [detail.id]: detail };
-  }, [activePactBladeTemplate]);
+  }, [activePactBladeTemplate, isWarlock]);
 
   const allItemDefinitionDetailsById = useMemo(
     () => ({
@@ -949,7 +958,7 @@ const CharacterSheet = () => {
   );
 
   const activePactBladeVirtualItem = useMemo(() => {
-    if (!characterData?.slug || !characterData?.basicInfo?.characterName || !activePactBladeTemplate) {
+    if (!isWarlock || !characterData?.slug || !characterData?.basicInfo?.characterName || !activePactBladeTemplate) {
       return null;
     }
     return {
@@ -961,7 +970,7 @@ const CharacterSheet = () => {
       ),
       isVirtualPactBlade: true,
     };
-  }, [activePactBladeTemplate, characterData?.basicInfo?.characterName, characterData?.slug]);
+  }, [activePactBladeTemplate, characterData?.basicInfo?.characterName, characterData?.slug, isWarlock]);
 
   const runtimeRelationalInventoryItems = useMemo(() => {
     const baseItems = Array.isArray(relationalInventoryItems) ? relationalInventoryItems : [];
@@ -2594,15 +2603,26 @@ const CharacterSheet = () => {
           canEdit={canModifyCharacter}
           levelUpAction={
             user?.role === "dm" && characterData.characterType === "pg" ? (
-              <LevelUpDialog
-                key={characterData.slug}
-                characterData={characterData}
-                onApplied={async () => {
-                  const slug = characterData.slug;
-                  const refreshed = await fetchCharacter(slug);
-                  setCharacterData((current) => current?.slug === slug ? refreshed as unknown as Character : current);
-                }}
-              />
+              <div className="flex flex-wrap gap-2">
+                <LevelUpDialog
+                  key={`level-up-${characterData.slug}`}
+                  characterData={characterData}
+                  onApplied={async () => {
+                    const slug = characterData.slug;
+                    const refreshed = await fetchCharacter(slug);
+                    setCharacterData((current) => current?.slug === slug ? refreshed as unknown as Character : current);
+                  }}
+                />
+                <SubclassDialog
+                  key={`subclass-${characterData.slug}`}
+                  characterData={characterData}
+                  onApplied={async () => {
+                    const slug = characterData.slug;
+                    const refreshed = await fetchCharacter(slug);
+                    setCharacterData((current) => current?.slug === slug ? refreshed as unknown as Character : current);
+                  }}
+                />
+              </div>
             ) : null
           }
           layoutActions={

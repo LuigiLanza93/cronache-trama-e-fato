@@ -35,6 +35,19 @@ import {
   resolveConstitutionModifier,
   resolveLevelUpHitPoints,
 } from "./shared/character-vitals-resources.mjs";
+import {
+  reconcilePassiveHitPoints,
+  resolvePassiveHitPointBonus,
+} from "./shared/character-hit-point-effects.mjs";
+import {
+  DRACONIC_ANCESTRY_OPTIONS,
+  draconicAncestrySummary,
+  normalizeDraconicAncestryKey,
+  requiresDraconicAncestry,
+} from "./shared/draconic-ancestry-rules.mjs";
+
+import { PACT_BOON_OPTIONS, normalizePactBoonKey, pactBoonSummary, canUsePactBlade } from "./shared/warlock-pact-rules.mjs";
+import { inspectPactBoonSchema } from "./scripts/apply-character-pact-boon.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1428,6 +1441,9 @@ export function readCharacterProgressionShadowFromDatabase(database, row, schema
     WHERE characterId = ?
     LIMIT 1
   `).get(row.id) ?? null;
+  const hasDraconicAncestry = database.prepare('PRAGMA table_info("CharacterClass")').all()
+    .some((column) => column.name === "draconicAncestryKey");
+  const hasPactBoon = database.prepare('PRAGMA table_info("CharacterClass")').all().some((column) => column.name === "pactBoonKey");
   const classRows = database.prepare(`
     SELECT
       cc.id,
@@ -1439,6 +1455,8 @@ export function readCharacterProgressionShadowFromDatabase(database, row, schema
       cc.sortOrder,
       cc.isPrimary,
       cc.subclassStatus,
+      ${hasDraconicAncestry ? "cc.draconicAncestryKey," : ""}
+      ${hasPactBoon ? "cc.pactBoonKey," : ""}
       cc.source AS classSource,
       cr.id AS ruleId,
       cr.classKey AS ruleClassKey,
@@ -1525,6 +1543,117 @@ function getCharacterProgressionM4Inspection() {
   return inspectCharacterProgressionM4Database(sqlite);
 }
 
+const CHARACTER_SUBCLASS_HISTORY_COLUMNS = Object.freeze([
+  "id", "characterId", "requestId", "requestSignature", "mode", "targetClassKey",
+  "targetClassRuleId", "previousSubclassKey", "previousSubclassRuleId", "targetSubclassKey",
+  "targetSubclassRuleId", "classLevel", "totalLevel", "progressionRevisionBefore",
+  "progressionRevisionAfter", "characterRevisionBefore", "characterRevisionAfter", "reason",
+  "policyVersion", "requestSnapshot", "beforeSnapshot", "afterSnapshot", "ruleSnapshot",
+  "resultSnapshot", "appliedByUserId", "appliedBySnapshot", "appliedAt",
+]);
+const CHARACTER_SUBCLASS_SCHEMA_OBJECTS = Object.freeze({
+  index: Object.freeze([
+    "CharacterSubclassHistory_characterId_requestId_key",
+    "CharacterSubclassHistory_characterId_progressionRevisionAfter_key",
+    "CharacterSubclassHistory_characterId_appliedAt_idx",
+    "CharacterSubclassHistory_targetClassRuleId_idx",
+    "CharacterSubclassHistory_previousSubclassRuleId_idx",
+    "CharacterSubclassHistory_targetSubclassRuleId_idx",
+    "CharacterSubclassHistory_appliedByUserId_idx",
+  ]),
+  trigger: Object.freeze([
+    "CharacterSubclassHistory_class_key_matches_rule_insert",
+    "CharacterSubclassHistory_subclasses_match_class_insert",
+  ]),
+});
+
+export function inspectCharacterSubclassCorrectionDatabase(database) {
+  const table = database.prepare(`
+    SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'CharacterSubclassHistory' LIMIT 1
+  `).get();
+  if (!table) {
+    return { ready: false, missingTable: true, missingColumns: [...CHARACTER_SUBCLASS_HISTORY_COLUMNS], missingObjects: {} };
+  }
+  const actualColumns = new Set(
+    database.prepare('PRAGMA table_info("CharacterSubclassHistory")').all().map((column) => String(column.name)),
+  );
+  const missingColumns = CHARACTER_SUBCLASS_HISTORY_COLUMNS.filter((column) => !actualColumns.has(column));
+  const missingObjects = {};
+  for (const [type, required] of Object.entries(CHARACTER_SUBCLASS_SCHEMA_OBJECTS)) {
+    const actual = new Set(
+      database.prepare("SELECT name FROM sqlite_master WHERE type = ?").all(type).map((entry) => String(entry.name)),
+    );
+    const missing = required.filter((name) => !actual.has(name));
+    if (missing.length) missingObjects[type] = missing;
+  }
+  return {
+    ready: missingColumns.length === 0 && Object.keys(missingObjects).length === 0,
+    missingTable: false,
+    missingColumns,
+    missingObjects,
+  };
+}
+
+function getCharacterSubclassCorrectionInspection() {
+  return inspectCharacterSubclassCorrectionDatabase(sqlite);
+}
+
+const CHARACTER_DRACONIC_ANCESTRY_HISTORY_COLUMNS = Object.freeze([
+  "id", "characterId", "requestId", "requestSignature", "operationType", "targetClassKey",
+  "previousDraconicAncestryKey", "targetDraconicAncestryKey", "progressionRevisionBefore",
+  "progressionRevisionAfter", "characterRevisionBefore", "characterRevisionAfter", "reason",
+  "policyVersion", "requestSnapshot", "beforeSnapshot", "afterSnapshot", "resultSnapshot",
+  "appliedByUserId", "appliedBySnapshot", "appliedAt",
+]);
+const CHARACTER_DRACONIC_ANCESTRY_OBJECTS = Object.freeze({
+  index: Object.freeze([
+    "CharacterDraconicAncestryHistory_characterId_request_key",
+    "CharacterDraconicAncestryHistory_characterId_progressionRevisionAfter_key",
+    "CharacterDraconicAncestryHistory_characterId_appliedAt_idx",
+    "CharacterDraconicAncestryHistory_appliedByUserId_idx",
+  ]),
+  trigger: Object.freeze([
+    "CharacterClass_draconic_ancestry_insert",
+    "CharacterClass_draconic_ancestry_update",
+  ]),
+});
+
+export function inspectCharacterDraconicAncestryDatabase(database) {
+  const classColumns = new Set(
+    database.prepare('PRAGMA table_info("CharacterClass")').all().map((column) => String(column.name)),
+  );
+  const table = database.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type = 'table' AND name = 'CharacterDraconicAncestryHistory'
+    LIMIT 1
+  `).get();
+  const actualColumns = table
+    ? new Set(database.prepare('PRAGMA table_info("CharacterDraconicAncestryHistory")').all().map((column) => String(column.name)))
+    : new Set();
+  const missingColumns = CHARACTER_DRACONIC_ANCESTRY_HISTORY_COLUMNS
+    .filter((column) => !actualColumns.has(column));
+  const missingObjects = {};
+  for (const [type, required] of Object.entries(CHARACTER_DRACONIC_ANCESTRY_OBJECTS)) {
+    const actual = new Set(
+      database.prepare("SELECT name FROM sqlite_master WHERE type = ?").all(type).map((entry) => String(entry.name)),
+    );
+    const missing = required.filter((name) => !actual.has(name));
+    if (missing.length) missingObjects[type] = missing;
+  }
+  return {
+    ready: classColumns.has("draconicAncestryKey") && Boolean(table)
+      && missingColumns.length === 0 && Object.keys(missingObjects).length === 0,
+    missingClassColumn: !classColumns.has("draconicAncestryKey"),
+    missingTable: !table,
+    missingColumns,
+    missingObjects,
+  };
+}
+
+function getCharacterDraconicAncestryInspection() {
+  return inspectCharacterDraconicAncestryDatabase(sqlite);
+}
+
 export function readActiveCharacterClassRule(database, classKey) {
   return database.prepare(`
     SELECT * FROM "ClassRule"
@@ -1595,12 +1724,17 @@ export function inspectCharacterVitalsResourcesDatabase(database) {
     !missingTables.includes(tableName) && !Object.prototype.hasOwnProperty.call(missingColumns, tableName);
   const m5Ready = ["CharacterHitPointState", "CharacterHitDiePool", "CharacterHitPointAdjustment"]
     .every(tableReady);
+  const hitPointStateColumns = missingTables.includes("CharacterHitPointState")
+    ? new Set()
+    : new Set(database.prepare('PRAGMA table_info("CharacterHitPointState")').all().map((column) => String(column.name)));
+  const passiveHitPointBonusReady = m5Ready && hitPointStateColumns.has("passiveBonusApplied");
   const m6Ready = ["CharacterResourcePool", "CharacterResourcePoolSource", "CharacterResourcePoolTier"]
     .every(tableReady);
   return {
     ready: m5Ready && m6Ready,
     m5Ready,
     m6Ready,
+    passiveHitPointBonusReady,
     missingTables,
     missingColumns,
   };
@@ -1641,6 +1775,7 @@ export function readCharacterVitalsResourcesFromDatabase(database, characterId, 
         revision: Number(row.revision),
         backfillStatus: row.backfillStatus,
         backfillIssues: parseJsonString(row.backfillIssues, []),
+        ...(schema.passiveHitPointBonusReady ? { passiveBonusApplied: Number(row.passiveBonusApplied ?? 0) } : {}),
       };
     }
     hitDicePools = database.prepare(`
@@ -1727,6 +1862,10 @@ function publicProgressionClass(entry) {
     sortOrder: Number(entry.sortOrder ?? 0),
     isPrimary: entry.isPrimary === true || Number(entry.isPrimary) === 1,
     subclass,
+    draconicAncestryKey: entry?.draconicAncestryKey ?? null,
+    draconicAncestry: draconicAncestrySummary(entry?.draconicAncestryKey),
+    pactBoonKey: entry?.pactBoonKey ?? null,
+    pactBoon: pactBoonSummary(entry?.pactBoonKey),
   };
 }
 
@@ -7830,7 +7969,8 @@ function buildInitiativeCombatants(state) {
   const normalized = normalizeInitiativeTrackerState(state);
 
   const players = normalized.players.map((entry) => {
-    const character = readCharacter(entry.slug);
+    const snapshot = readCharacterSnapshot(entry.slug);
+    const character = snapshot ? serializeCharacterSnapshot(snapshot) : readCharacter(entry.slug);
     const currentHitPoints = Math.max(0, Number(character?.combatStats?.currentHitPoints ?? 0) || 0);
     const maxHitPoints = Math.max(1, Number(character?.combatStats?.hitPointMaximum ?? 0) || 1);
     const temporaryHitPoints = Math.max(0, Number(character?.combatStats?.temporaryHitPoints ?? 0) || 0);
@@ -8611,6 +8751,104 @@ function readCharacter(slug) {
   return normalizeCharacterRow(row);
 }
 
+function readCharacterPassiveHitPointInputs(character) {
+  const state = character?.state ?? character ?? {};
+  const slug = String(state?.slug ?? "").trim();
+  const characterCapabilities = Array.isArray(state?.capabilities) ? state.capabilities : [];
+  const inventorySchemaReady = sqlite && tableExists("CharacterItem") && tableExists("ItemDefinition") && tableExists("ItemFeature");
+  const inventory = inventorySchemaReady && slug ? (readCharacterInventoryItemsBySlug(slug) ?? []) : [];
+  const equipped = inventory.filter((item) => item?.isEquipped && item?.itemDefinitionId);
+  const definitions = new Map();
+  for (const item of equipped) {
+    if (!definitions.has(item.itemDefinitionId)) {
+      definitions.set(item.itemDefinitionId, readItemDefinition(item.itemDefinitionId));
+    }
+  }
+
+  const itemCapabilities = equipped.flatMap((item) => {
+    const definition = definitions.get(item.itemDefinitionId);
+    return (Array.isArray(definition?.features) ? definition.features : [])
+      .filter((feature) => String(feature?.kind ?? "").toUpperCase() === "PASSIVE")
+      .map((feature) => ({
+        name: feature.name,
+        kind: "passive",
+        passiveEffects: Array.isArray(feature.passiveEffects) ? feature.passiveEffects : [],
+        sourceType: "item",
+        sourceLabel: item.itemName,
+        sourceItemId: item.id,
+        sourceFeatureId: feature.id,
+      }));
+  });
+
+  const hasArmorEquipped = equipped.some((item) => definitions.get(item.itemDefinitionId)?.category === "ARMOR");
+  const hasShieldEquipped = equipped.some((item) => definitions.get(item.itemDefinitionId)?.category === "SHIELD");
+  const weapons = equipped.filter((item) => definitions.get(item.itemDefinitionId)?.category === "WEAPON");
+  const primary = weapons.find((item) => item.equippedSlots?.includes("WEAPON_HAND_RIGHT"));
+  const secondary = weapons.find((item) => item.equippedSlots?.includes("WEAPON_HAND_LEFT"));
+  const hasDualWielding = Boolean(primary?.id && secondary?.id && primary.id !== secondary.id);
+  const hasTwoHandedWeaponEquipped = weapons.some((item) => {
+    const slots = Array.isArray(item.equippedSlots) ? item.equippedSlots : [];
+    const handling = definitions.get(item.itemDefinitionId)?.weaponHandling;
+    return slots.includes("WEAPON_HAND_RIGHT") && slots.includes("WEAPON_HAND_LEFT")
+      && (handling === "TWO_HANDED" || handling === "VERSATILE");
+  });
+  const singleHandWeapon = primary && primary.id === secondary?.id ? null : primary ?? secondary ?? null;
+  const hasSingleMeleeWeaponEquipped = Boolean(
+    weapons.length === 1 && singleHandWeapon && !hasShieldEquipped
+      && definitions.get(singleHandWeapon.itemDefinitionId)?.attacks?.some((attack) => attack.kind === "MELEE_WEAPON")
+  );
+
+  return {
+    capabilities: [...characterCapabilities, ...itemCapabilities],
+    context: {
+      hasArmorEquipped,
+      hasShieldEquipped,
+      hasSingleMeleeWeaponEquipped,
+      hasDualWielding,
+      hasTwoHandedWeaponEquipped,
+    },
+  };
+}
+
+function characterForPassiveHitPointResolution(state, progression, classesOverride = null, totalLevelOverride = null) {
+  const classes = Array.isArray(classesOverride)
+    ? classesOverride
+    : Array.isArray(progression?.classes) ? progression.classes : [];
+  return {
+    ...(state ?? {}),
+    classes,
+    totalLevel: Number.isInteger(Number(totalLevelOverride))
+      ? Number(totalLevelOverride)
+      : Number(progression?.totalLevel ?? state?.totalLevel ?? state?.basicInfo?.level ?? 1),
+  };
+}
+
+function resolveCharacterPassiveHitPointBonus(state, progression, options = {}) {
+  const character = characterForPassiveHitPointResolution(
+    state,
+    progression,
+    options.classes,
+    options.totalLevel,
+  );
+  const inputs = readCharacterPassiveHitPointInputs(character);
+  return resolvePassiveHitPointBonus(character, inputs);
+}
+
+function projectPassiveHitPointSnapshot(snapshot) {
+  if (!snapshot?.schema?.passiveHitPointBonusReady || !snapshot.hitPointState) return snapshot;
+  const desired = resolveCharacterPassiveHitPointBonus(snapshot.state, snapshot.progression).bonusTotal;
+  const hitPointState = reconcilePassiveHitPoints(snapshot.hitPointState, desired);
+  return {
+    ...snapshot,
+    state: projectStructuredStateToLegacy(snapshot.state, {
+      hitPointState,
+      hitDicePools: snapshot.hitDicePools,
+      resourcePools: snapshot.resourcePools,
+    }),
+    hitPointState,
+  };
+}
+
 function readCharacterSnapshot(slug) {
   ensureSqliteConnectionFresh();
   const row = sqlite
@@ -8618,12 +8856,12 @@ function readCharacterSnapshot(slug) {
     .get(slug);
   if (!row) return null;
   const vitalsResources = readCharacterVitalsResources(row.id);
-  return {
+  return projectPassiveHitPointSnapshot({
     state: normalizeCharacterRow(row),
     revision: String(row.updatedAt ?? ""),
     progression: readCharacterProgressionShadow(row),
     ...vitalsResources,
-  };
+  });
 }
 
 function listCharacters() {
@@ -9473,6 +9711,8 @@ function broadcastCharacterInventoryUpdated(io, slug, reason, occurredAt = new D
     occurredAt,
   };
   io.to(`char:${normalizedSlug}`).emit("character:inventory-updated", payload);
+  const statePayload = buildCharacterStatePayload(normalizedSlug);
+  if (statePayload) io.to(`char:${normalizedSlug}`).emit("character:state", statePayload);
   return payload;
 }
 
@@ -10333,7 +10573,7 @@ function validateCharacterPatchCapabilities(value, issues) {
         if (capability.passiveEffects.length > 50) addCharacterPatchIssue(issues, effectsPath, "massimo 50 elementi");
         capability.passiveEffects.forEach((effect, effectIndex) => {
           const effectPath = `${effectsPath}[${effectIndex}]`;
-          const allowedEffect = new Set(["category", "target", "operationType", "valueMode", "value", "setMode", "setValue", "capValue", "sourceAbility", "multiplierNumerator", "multiplierDenominator", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes"]);
+          const allowedEffect = new Set(["category", "target", "operationType", "valueMode", "value", "setMode", "setValue", "capValue", "sourceAbility", "sourceClassKey", "multiplierNumerator", "multiplierDenominator", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes"]);
           if (!validateCharacterPatchKeys(effect, allowedEffect, effectPath, issues)) return;
           const category = effect.category === undefined ? "MODIFIER" : effect.category;
           if (!PASSIVE_EFFECT_CATEGORIES.has(category)) {
@@ -10353,8 +10593,11 @@ function validateCharacterPatchCapabilities(value, issues) {
             }
             return;
           }
-          for (const key of ["target", "operationType", "valueMode", "setMode", "sourceAbility", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes"]) {
+          for (const key of ["target", "operationType", "valueMode", "setMode", "sourceAbility", "sourceClassKey", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes"]) {
             if (Object.prototype.hasOwnProperty.call(effect, key)) validateCharacterPatchString(effect[key], `${effectPath}.${key}`, issues, { maxLength: key === "notes" ? 2_000 : 200 });
+          }
+          if (String(effect.valueMode ?? "").trim().toUpperCase() === "CLASS_LEVEL" && (typeof effect.sourceClassKey !== "string" || !Object.hasOwn(CLASS_RULES, effect.sourceClassKey))) {
+            addCharacterPatchIssue(issues, `${effectPath}.sourceClassKey`, "seleziona una classe valida per il livello di classe");
           }
           for (const key of ["value", "setValue", "capValue", "multiplierNumerator", "multiplierDenominator"]) {
             if (Object.prototype.hasOwnProperty.call(effect, key)) validateCharacterPatchNumber(effect[key], `${effectPath}.${key}`, issues, { min: -1_000_000, max: 1_000_000 });
@@ -10382,9 +10625,9 @@ function validateCharacterPatchPactBlade(value, issues) {
 
 export function validatePactBladeState(characterState, bondedItem = null) {
   const issues = [];
-  const className = String(characterState?.basicInfo?.class ?? "").trim().toLowerCase();
-  if (className !== "warlock") {
-    issues.push("patch.pactBlade: disponibile soltanto per un Warlock");
+  const hasActiveState = characterState?.pactBlade?.bondedCharacterItemId || characterState?.pactBlade?.activeSummon?.mode || characterState?.pactBlade?.activeSummon?.templateId;
+  if (hasActiveState && !canUsePactBlade(characterState)) {
+    issues.push("patch.pactBlade: richiede Warlock di livello 3 con Patto della Lama registrato");
     return issues;
   }
 
@@ -11218,6 +11461,18 @@ function normalizeProgressionRequest(body, {
       throw createProgressionError("VALIDATION_ERROR", "targetSubclassKey non e valida.", 400);
     }
   }
+  let pactBoonKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "pactBoonKey")) {
+    pactBoonKey = normalizePactBoonKey(body.pactBoonKey);
+    if (!pactBoonKey) throw createProgressionError("INVALID_PACT_BOON", "Dono del patto non valido.", 400);
+  }
+  let draconicAncestryKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "draconicAncestryKey")) {
+    draconicAncestryKey = normalizeDraconicAncestryKey(body.draconicAncestryKey);
+    if (!draconicAncestryKey) {
+      throw createProgressionError("INVALID_DRACONIC_ANCESTRY", "draconicAncestryKey non e valida.", 400);
+    }
+  }
   let expectedRevision;
   if (body?.expectedRevision !== undefined && body?.expectedRevision !== null) {
     if (typeof body.expectedRevision !== "string" || !body.expectedRevision.trim()) {
@@ -11258,11 +11513,614 @@ function normalizeProgressionRequest(body, {
   return {
     targetClassKey,
     ...(targetSubclassKey !== undefined ? { targetSubclassKey } : {}),
+    ...(draconicAncestryKey ? { draconicAncestryKey } : {}),
+    ...(pactBoonKey ? { pactBoonKey } : {}),
     ...(expectedRevision !== undefined ? { expectedRevision } : {}),
     ...(expectedProgressionRevision !== undefined ? { expectedProgressionRevision } : {}),
     ...(requestId ? { requestId } : {}),
     ...(overrideReason ? { overrideReason } : {}),
   };
+}
+
+function normalizeSubclassCorrectionRequest(body, {
+  requireRequestId = false,
+  requireExpectedRevisions = false,
+  requireSubclass = false,
+} = {}) {
+  const targetClassValue = typeof body?.targetClassKey === "string" ? body.targetClassKey.trim() : "";
+  if (!targetClassValue) {
+    throw createProgressionError("TARGET_CLASS_KEY_REQUIRED", "targetClassKey e obbligatoria.", 400);
+  }
+  const targetClassKey = normalizeClassKey(targetClassValue) ?? targetClassValue;
+  let targetSubclassKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "targetSubclassKey")) {
+    const value = typeof body.targetSubclassKey === "string" ? body.targetSubclassKey.trim() : "";
+    if (!value) throw createProgressionError("INVALID_SUBCLASS", "targetSubclassKey non e valida.", 400);
+    targetSubclassKey = normalizeSubclassKey(value) ?? value;
+  } else if (requireSubclass) {
+    throw createProgressionError("SUBCLASS_REQUIRED", "Seleziona una sottoclasse.", 400);
+  }
+  let pactBoonKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "pactBoonKey")) {
+    pactBoonKey = normalizePactBoonKey(body.pactBoonKey);
+    if (!pactBoonKey) throw createProgressionError("INVALID_PACT_BOON", "Dono del patto non valido.", 400);
+  }
+  let draconicAncestryKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "draconicAncestryKey")) {
+    draconicAncestryKey = normalizeDraconicAncestryKey(body.draconicAncestryKey);
+    if (!draconicAncestryKey) {
+      throw createProgressionError("INVALID_DRACONIC_ANCESTRY", "draconicAncestryKey non e valida.", 400);
+    }
+  }
+  const reason = typeof body?.reason === "string" ? body.reason.trim() : "";
+  if (reason && (reason.length < 3 || reason.length > 500)) {
+    throw createProgressionError(
+      "INVALID_REASON",
+      "La motivazione deve contenere da 3 a 500 caratteri.",
+      400,
+    );
+  }
+  let expectedRevision;
+  if (body?.expectedRevision !== undefined && body?.expectedRevision !== null) {
+    if (typeof body.expectedRevision !== "string" || !body.expectedRevision.trim()) {
+      throw createProgressionError("VALIDATION_ERROR", "expectedRevision non e valida.", 400);
+    }
+    expectedRevision = body.expectedRevision.trim();
+  }
+  let expectedProgressionRevision;
+  if (body?.expectedProgressionRevision !== undefined && body?.expectedProgressionRevision !== null) {
+    if (!Number.isInteger(body.expectedProgressionRevision) || body.expectedProgressionRevision < 0) {
+      throw createProgressionError("VALIDATION_ERROR", "expectedProgressionRevision non e valida.", 400);
+    }
+    expectedProgressionRevision = body.expectedProgressionRevision;
+  }
+  if (requireExpectedRevisions && expectedRevision === undefined) {
+    throw createProgressionError("VALIDATION_ERROR", "expectedRevision e obbligatoria.", 400);
+  }
+  if (requireExpectedRevisions && expectedProgressionRevision === undefined) {
+    throw createProgressionError("VALIDATION_ERROR", "expectedProgressionRevision e obbligatoria.", 400);
+  }
+  const requestId = requireRequestId ? normalizeOperationRequestId(body?.requestId) : undefined;
+  if (requireRequestId && !requestId) {
+    throw createProgressionError("VALIDATION_ERROR", "Identificativo della richiesta non valido.", 400);
+  }
+  return {
+    targetClassKey,
+    ...(targetSubclassKey ? { targetSubclassKey } : {}),
+    ...(draconicAncestryKey ? { draconicAncestryKey } : {}),
+    ...(pactBoonKey ? { pactBoonKey } : {}),
+    ...(reason ? { reason } : {}),
+    ...(expectedRevision !== undefined ? { expectedRevision } : {}),
+    ...(expectedProgressionRevision !== undefined ? { expectedProgressionRevision } : {}),
+    ...(requestId ? { requestId } : {}),
+  };
+}
+
+function cloneSerializable(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function resourcePoolUsedByTier(pools) {
+  const totals = {};
+  for (const pool of pools ?? []) {
+    for (const [tier, value] of Object.entries(pool.used ?? {})) {
+      totals[tier] = Number(totals[tier] ?? 0) + Number(value ?? 0);
+    }
+  }
+  return totals;
+}
+
+function resourceUsageDeltas(before, after) {
+  const beforeUsed = resourcePoolUsedByTier(before);
+  const afterUsed = resourcePoolUsedByTier(after);
+  return [...new Set([...Object.keys(beforeUsed), ...Object.keys(afterUsed)])]
+    .sort((left, right) => Number(left) - Number(right))
+    .map((tier) => ({ tier, before: Number(beforeUsed[tier] ?? 0), after: Number(afterUsed[tier] ?? 0) }))
+    .filter((entry) => entry.before > 0 || entry.after > 0);
+}
+
+function unchangedSubclassEffects(snapshot) {
+  const resources = cloneSerializable(Array.isArray(snapshot.resourcePools) ? snapshot.resourcePools : []);
+  const totalLevel = Number(snapshot.progression?.totalLevel ?? snapshot.state?.basicInfo?.level ?? 0);
+  return {
+    characterLevel: { before: totalLevel, after: totalLevel },
+    hitPoints: { before: cloneSerializable(snapshot.hitPointState ?? null), after: cloneSerializable(snapshot.hitPointState ?? null) },
+    classLevels: (snapshot.progression?.classes ?? []).map((entry) => ({
+      classKey: entry.classKey,
+      before: Number(entry.level),
+      after: Number(entry.level),
+    })),
+    spellSlots: {
+      before: resources,
+      after: resources,
+      changed: false,
+      strategy: "NONE",
+      desiredMaximum: {},
+      maximumDeltas: [],
+      preservedExpended: resourceUsageDeltas(resources, resources),
+      warnings: [],
+    },
+    manualContentPreserved: true,
+  };
+}
+
+function reconcileSubclassSpellcastingSource(pools, spellcasting, targetClassKey, targetIsActiveSource) {
+  if (!spellcasting) return { after: pools, changed: false, removeSourceClassKey: null };
+  const targetSourceExists = (spellcasting.sources ?? []).some((source) => source.sourceKey === targetClassKey);
+  if (targetIsActiveSource && !targetSourceExists) {
+    return {
+      after: pools.map((pool) => pool === spellcasting ? { ...pool, sourceClassKey: targetClassKey } : pool),
+      changed: true,
+      removeSourceClassKey: null,
+    };
+  }
+  if (!targetIsActiveSource && targetSourceExists) {
+    return {
+      after: pools.map((pool) => pool === spellcasting ? {
+          ...pool,
+          sources: (pool.sources ?? []).filter((source) => source.sourceKey !== targetClassKey),
+          sourceClassKey: null,
+        } : pool),
+      changed: true,
+      removeSourceClassKey: targetClassKey,
+    };
+  }
+  return { after: pools, changed: false, removeSourceClassKey: null };
+}
+
+function subclassResourcePoolPlan(snapshot, classesAfter, targetClassKey) {
+  const before = cloneSerializable(Array.isArray(snapshot.resourcePools) ? snapshot.resourcePools : []);
+  const summary = resolveProgressionSummary(classesAfter);
+  const activeSourceClassKeys = summary?.spellcastingSlots?.activeSourceClassKeys ?? [];
+  const targetIsActiveSource = activeSourceClassKeys.includes(targetClassKey);
+  const desiredMaximum = Object.fromEntries(
+    Object.entries(summary?.spellcastingSlots?.slots ?? {})
+      .filter(([, value]) => Number(value) > 0)
+      .map(([tierKey, value]) => [String(tierKey), Number(value)]),
+  );
+  const desiredKeys = Object.keys(desiredMaximum);
+  const spellcasting = before.find((pool) => pool.kind === "SPELLCASTING") ?? null;
+  const manualSlotPools = before.filter((pool) =>
+    ["MANUAL", "CLASS_RESOURCE"].includes(pool.kind)
+      && Object.keys(pool.maximum ?? {}).some((tierKey) => Number(pool.maximum[tierKey]) > 0),
+  );
+  const warnings = [];
+  if (manualSlotPools.length > 0) {
+    const sourcePlan = reconcileSubclassSpellcastingSource(
+      before,
+      spellcasting,
+      targetClassKey,
+      targetIsActiveSource,
+    );
+    warnings.push(
+      `Slot gia gestiti manualmente (${manualSlotPools.map((pool) => pool.label || pool.poolKey).join(", ")}): valori e consumi preservati; verifica manuale consigliata.`,
+    );
+    return {
+      before,
+      after: sourcePlan.after,
+      changed: sourcePlan.changed,
+      legacySlotsChanged: false,
+      strategy: "PRESERVE_MANUAL",
+      desiredMaximum,
+      maximumDeltas: [],
+      preservedExpended: resourceUsageDeltas(before, sourcePlan.after),
+      removeSourceClassKey: sourcePlan.removeSourceClassKey,
+      warnings,
+    };
+  }
+  if (desiredKeys.length === 0) {
+    const sourcePlan = reconcileSubclassSpellcastingSource(
+      before,
+      spellcasting,
+      targetClassKey,
+      targetIsActiveSource,
+    );
+    if (spellcasting) {
+      warnings.push("Il pool slot esistente e stato preservato integralmente; verifica manualmente la capacita dopo la correzione.");
+    }
+    return {
+      before,
+      after: sourcePlan.after,
+      changed: sourcePlan.changed,
+      legacySlotsChanged: false,
+      strategy: spellcasting ? "PRESERVE_EXISTING" : "NONE",
+      desiredMaximum,
+      maximumDeltas: [],
+      preservedExpended: resourceUsageDeltas(before, sourcePlan.after),
+      removeSourceClassKey: sourcePlan.removeSourceClassKey,
+      warnings,
+    };
+  }
+
+  let projected;
+  if (!spellcasting && !targetIsActiveSource) {
+    warnings.push("Gli slot derivati da altre classi non sono stati ricostruiti durante questa correzione.");
+    return {
+      before,
+      after: before,
+      changed: false,
+      legacySlotsChanged: false,
+      strategy: "PRESERVE_UNRELATED",
+      desiredMaximum,
+      maximumDeltas: [],
+      preservedExpended: resourceUsageDeltas(before, before),
+      warnings,
+    };
+  }
+  if (!spellcasting) {
+    projected = {
+      id: "spellcasting",
+      poolKey: "spellcasting",
+      kind: "SPELLCASTING",
+      label: "Slot Incantesimi",
+      resetPolicy: "LONG_REST",
+      revision: 0,
+      backfillStatus: "BACKFILLED",
+      maximum: { ...desiredMaximum },
+      used: Object.fromEntries(desiredKeys.map((key) => [key, 0])),
+      tiers: desiredKeys.map((tierKey, index) => ({
+        tierKey,
+        sortOrder: index,
+        derivedMaximum: desiredMaximum[tierKey],
+        maximumOverride: null,
+        maximum: desiredMaximum[tierKey],
+        used: 0,
+      })),
+      sources: [],
+      sourceClassKey: targetIsActiveSource ? targetClassKey : null,
+    };
+  } else {
+    const existingTiers = Array.isArray(spellcasting.tiers) && spellcasting.tiers.length
+      ? spellcasting.tiers.map((tier) => ({ ...tier, tierKey: String(tier.tierKey) }))
+      : Object.keys(spellcasting.maximum ?? {}).map((tierKey, index) => ({
+          tierKey,
+          sortOrder: index,
+          derivedMaximum: Number(spellcasting.maximum[tierKey]),
+          maximumOverride: null,
+          maximum: Number(spellcasting.maximum[tierKey]),
+          used: Number(spellcasting.used?.[tierKey] ?? 0),
+        }));
+    const tiersByKey = new Map(existingTiers.map((tier) => [tier.tierKey, tier]));
+    for (const tier of existingTiers) {
+      if (desiredMaximum[tier.tierKey] !== undefined || tier.maximumOverride != null) continue;
+      if (Number(tier.used ?? 0) > 0) {
+        return {
+          before,
+          after: before,
+          changed: false,
+          legacySlotsChanged: false,
+          strategy: "BLOCKED",
+          desiredMaximum,
+          maximumDeltas: [],
+          preservedExpended: resourceUsageDeltas(before, before),
+          warnings,
+          blockedReason: `La riconciliazione eliminerebbe slot consumati di livello ${tier.tierKey}. Ripristina o correggi manualmente il pool prima di procedere.`,
+        };
+      }
+    }
+    const keptKeys = new Set([
+      ...desiredKeys,
+      ...existingTiers.filter((tier) => tier.maximumOverride != null).map((tier) => tier.tierKey),
+    ]);
+    const projectedTiers = [...keptKeys]
+      .sort((left, right) => Number(left) - Number(right))
+      .map((tierKey, index) => {
+        const current = tiersByKey.get(tierKey);
+        const derivedMaximum = desiredMaximum[tierKey] ?? null;
+        const maximumOverride = current?.maximumOverride == null ? null : Number(current.maximumOverride);
+        const effectiveMaximum = maximumOverride ?? Number(derivedMaximum ?? 0);
+        const used = Number(current?.used ?? spellcasting.used?.[tierKey] ?? 0);
+        if (used > effectiveMaximum) {
+          return { blocked: true, tierKey, used, effectiveMaximum };
+        }
+        return {
+          ...(current ?? {}),
+          tierKey,
+          sortOrder: index,
+          derivedMaximum,
+          maximumOverride,
+          maximum: effectiveMaximum,
+          used,
+        };
+      });
+    const blocked = projectedTiers.find((tier) => tier.blocked);
+    if (blocked) {
+      return {
+        before,
+        after: before,
+        changed: false,
+        legacySlotsChanged: false,
+        strategy: "BLOCKED",
+        desiredMaximum,
+        maximumDeltas: [],
+        preservedExpended: resourceUsageDeltas(before, before),
+        warnings,
+        blockedReason: `Gli slot consumati di livello ${blocked.tierKey} (${blocked.used}) superano la nuova capacita (${blocked.effectiveMaximum}).`,
+      };
+    }
+    const removeTargetSource = !targetIsActiveSource
+      && spellcasting.sources?.some((source) => source.sourceKey === targetClassKey);
+    projected = {
+      ...spellcasting,
+      maximum: Object.fromEntries(projectedTiers.map((tier) => [tier.tierKey, tier.maximum])),
+      used: Object.fromEntries(projectedTiers.map((tier) => [tier.tierKey, tier.used])),
+      tiers: projectedTiers,
+      sources: removeTargetSource
+        ? (spellcasting.sources ?? []).filter((source) => source.sourceKey !== targetClassKey)
+        : (spellcasting.sources ?? []),
+      sourceClassKey: targetIsActiveSource ? targetClassKey : null,
+    };
+  }
+  const after = before.map((pool) => pool === spellcasting ? projected : pool);
+  if (!spellcasting) after.push(projected);
+  const beforeMaximum = spellcasting?.maximum ?? {};
+  const allTierKeys = new Set([...Object.keys(beforeMaximum), ...Object.keys(projected.maximum)]);
+  const maximumDeltas = [...allTierKeys]
+    .sort((left, right) => Number(left) - Number(right))
+    .map((tier) => ({ tier, before: Number(beforeMaximum[tier] ?? 0), after: Number(projected.maximum[tier] ?? 0) }))
+    .filter((entry) => entry.before !== entry.after);
+  const existingDerived = new Map((spellcasting?.tiers ?? []).map((tier) => [
+    String(tier.tierKey),
+    tier.derivedMaximum == null ? null : Number(tier.derivedMaximum),
+  ]));
+  const projectedDerived = new Map((projected.tiers ?? []).map((tier) => [
+    String(tier.tierKey),
+    tier.derivedMaximum == null ? null : Number(tier.derivedMaximum),
+  ]));
+  const derivedChanged = JSON.stringify([...existingDerived]) !== JSON.stringify([...projectedDerived]);
+  const targetSourceExists = spellcasting?.sources?.some((source) => source.sourceKey === targetClassKey) === true;
+  const sourceMissing = targetIsActiveSource && !targetSourceExists;
+  const removeSourceClassKey = !targetIsActiveSource && targetSourceExists ? targetClassKey : null;
+  const changed = !spellcasting || maximumDeltas.length > 0 || derivedChanged || sourceMissing || Boolean(removeSourceClassKey);
+  const effectiveAfter = changed ? after : before;
+  return {
+    before,
+    after: effectiveAfter,
+    changed,
+    legacySlotsChanged: !spellcasting || maximumDeltas.length > 0,
+    strategy: changed ? (spellcasting ? "RECONCILE_DERIVED" : "CREATE_DERIVED") : "PRESERVE_EXISTING",
+    desiredMaximum,
+    maximumDeltas,
+    preservedExpended: resourceUsageDeltas(before, effectiveAfter),
+    removeSourceClassKey,
+    warnings,
+  };
+}
+
+export function prepareCharacterSubclassCorrectionPreview(snapshot, request) {
+  if (!snapshot?.state) throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
+  if (snapshot.state.characterType !== "pg") {
+    throw createProgressionError("CHARACTER_TYPE_UNSUPPORTED", "La sottoclasse e disponibile soltanto per i PG.", 422, snapshot);
+  }
+  if (!snapshot.schema?.m5Ready || !snapshot.schema?.m6Ready) {
+    throw createProgressionError(
+      "SUBCLASS_DEPENDENCY_NOT_READY",
+      "La correzione della sottoclasse richiede prima gli schemi strutturati M5 e M6.",
+      503,
+      snapshot,
+    );
+  }
+  if (request.expectedRevision !== undefined && request.expectedRevision !== snapshot.revision) {
+    throw createProgressionError("REVISION_CONFLICT", "Il personaggio e stato modificato da un'altra operazione.", 409, snapshot);
+  }
+  const progression = snapshot.progression;
+  if (progression?.source !== "STRUCTURED" || !Array.isArray(progression.classes)) {
+    throw createProgressionError("PROGRESSION_UNAVAILABLE", "La progressione strutturata non e disponibile.", 409, snapshot);
+  }
+  if (request.expectedProgressionRevision !== undefined
+    && request.expectedProgressionRevision !== progression.progressionRevision) {
+    throw createProgressionError("PROGRESSION_REVISION_CONFLICT", "La progressione e stata modificata.", 409, snapshot);
+  }
+  const targetClassKey = normalizeClassKey(request.targetClassKey) ?? request.targetClassKey;
+  const targetClass = progression.classes.find((entry) => entry.classKey === targetClassKey) ?? null;
+  if (!targetClass) {
+    throw createProgressionError("CLASS_NOT_OWNED", "Il personaggio non possiede la classe selezionata.", 422, snapshot);
+  }
+  const classOptions = progression.classes.map((entry) => ({
+    key: entry.classKey,
+    label: entry.label ?? CLASS_RULES[entry.classKey]?.labels?.it ?? entry.classKey,
+    level: Number(entry.level),
+    subclassKey: entry.subclassKey ?? null,
+    subclassLabel: entry.subclassKey
+      ? SUBCLASS_RULES[entry.subclassKey]?.labels?.it ?? SUBCLASS_RULES[entry.subclassKey]?.labels?.en ?? entry.subclassKey
+      : null,
+    draconicAncestryKey: entry.draconicAncestryKey ?? null,
+  }));
+  const before = {
+    subclassKey: targetClass.subclassKey ?? null,
+    subclassLabel: targetClass.subclassKey
+      ? SUBCLASS_RULES[targetClass.subclassKey]?.labels?.it ?? SUBCLASS_RULES[targetClass.subclassKey]?.labels?.en ?? targetClass.subclassKey
+      : null,
+    draconicAncestryKey: targetClass.draconicAncestryKey ?? null,
+    pactBoonKey: targetClass.pactBoonKey ?? null,
+  };
+  const pactBoonRequired = targetClassKey === "warlock" && Number(targetClass.level) >= 3;
+  if (request.pactBoonKey !== undefined && (!normalizePactBoonKey(request.pactBoonKey) || !pactBoonRequired)) {
+    throw createProgressionError("PACT_BOON_NOT_APPLICABLE", "Il dono del patto richiede almeno 3 livelli da Warlock.", 422, snapshot);
+  }
+  const pactBoonKey = request.pactBoonKey ?? before.pactBoonKey;
+  const pactBoonChanged = before.pactBoonKey !== pactBoonKey;
+  const classRule = CLASS_RULES[targetClassKey] ?? null;
+  const baseEffects = unchangedSubclassEffects(snapshot);
+  const base = {
+    targetClassKey,
+    ...(request.targetSubclassKey ? { targetSubclassKey: request.targetSubclassKey } : {}),
+    classOptions,
+    subclassOptions: [],
+    pactBoonOptions: pactBoonRequired ? PACT_BOON_OPTIONS.map((entry) => ({ ...entry })) : [],
+    pactBoonRequired,
+    pactBoonKey,
+    pactBoonChanged,
+    draconicAncestryOptions: [],
+    draconicAncestryRequired: false,
+    draconicAncestryKey: before.draconicAncestryKey,
+    before,
+  };
+  if (!classRule || !Number.isInteger(classRule.subclassLevel)) {
+    return {
+      ...base,
+      status: "SUBCLASS_UNAVAILABLE",
+      canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN",
+      after: { subclassKey: null, subclassLabel: null, draconicAncestryKey: null },
+      reasonRequired: false,
+      reason: "La classe non dispone di una sottoclasse registrabile.",
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  if (Number(targetClass.level) < classRule.subclassLevel) {
+    return {
+      ...base,
+      status: "LEVEL_REQUIRED",
+      canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN",
+      after: { subclassKey: null, subclassLabel: null, draconicAncestryKey: null },
+      reasonRequired: false,
+      reason: `La sottoclasse richiede il livello ${classRule.subclassLevel} nella classe selezionata.`,
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  base.subclassOptions = progressionSubclassOptions(targetClassKey);
+  if (!request.targetSubclassKey) {
+    return {
+      ...base,
+      status: "SUBCLASS_REQUIRED",
+      canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN",
+      after: { subclassKey: null, subclassLabel: null, draconicAncestryKey: null },
+      reasonRequired: Boolean(before.subclassKey),
+      reason: "Seleziona una sottoclasse.",
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  const subclassRule = SUBCLASS_RULES[request.targetSubclassKey] ?? null;
+  if (!subclassRule || subclassRule.classKey !== targetClassKey) {
+    throw createProgressionError("INVALID_SUBCLASS", "La sottoclasse non appartiene alla classe selezionata.", 422, snapshot);
+  }
+  const draconicAncestryRequired = requiresDraconicAncestry(targetClassKey, request.targetSubclassKey);
+  if (request.draconicAncestryKey && !draconicAncestryRequired) {
+    throw createProgressionError(
+      "DRACONIC_ANCESTRY_NOT_APPLICABLE",
+      "L'antenato draconico e disponibile soltanto per la Discendenza Draconica dello Stregone.",
+      422,
+      snapshot,
+    );
+  }
+  const sameSubclass = before.subclassKey === request.targetSubclassKey;
+  const draconicAncestryKey = draconicAncestryRequired
+    ? request.draconicAncestryKey ?? (sameSubclass ? before.draconicAncestryKey : null)
+    : null;
+  const draconicChoice = {
+    draconicAncestryOptions: draconicAncestryRequired ? DRACONIC_ANCESTRY_OPTIONS.map((entry) => ({ ...entry })) : [],
+    draconicAncestryRequired,
+    draconicAncestryKey,
+  };
+  const after = {
+    subclassKey: request.targetSubclassKey,
+    subclassLabel: subclassRule.labels?.it ?? subclassRule.labels?.en ?? request.targetSubclassKey,
+    draconicAncestryKey,
+    pactBoonKey,
+  };
+  if (draconicAncestryRequired && !draconicAncestryKey) {
+    return {
+      ...base,
+      ...draconicChoice,
+      status: "DRACONIC_ANCESTRY_REQUIRED",
+      canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN",
+      after,
+      reasonRequired: false,
+      reason: "Seleziona l'antenato draconico della Discendenza Draconica.",
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  if (pactBoonRequired && !pactBoonKey) {
+    return { ...base, ...draconicChoice, after, status: "PACT_BOON_REQUIRED", canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN", reasonRequired: false,
+      reason: "Seleziona il dono del patto del Warlock.", effects: baseEffects, warnings: [] };
+  }
+  const ancestryChanged = before.draconicAncestryKey !== draconicAncestryKey;
+  if (sameSubclass && !ancestryChanged && !pactBoonChanged) {
+    return {
+      ...base,
+      ...draconicChoice,
+      status: "ALREADY_SELECTED",
+      canApply: false,
+      mode: "CHANGE",
+      after,
+      reasonRequired: false,
+      reason: "Le scelte selezionate sono gia registrate.",
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  const subclassChanged = !sameSubclass;
+  const mode = before.subclassKey || before.draconicAncestryKey ? "CHANGE" : "ASSIGN";
+  const classesAfter = progression.classes.map((entry) => entry.classKey === targetClassKey
+    ? {
+        ...entry,
+        subclassKey: request.targetSubclassKey,
+        subclassStatus: "SELECTED",
+        draconicAncestryKey,
+        pactBoonKey,
+      }
+    : { ...entry });
+  const resources = subclassChanged
+    ? subclassResourcePoolPlan(snapshot, classesAfter.map((entry) => ({
+        classKey: entry.classKey,
+        level: Number(entry.level),
+        ...(entry.subclassKey ? { subclassKey: entry.subclassKey } : {}),
+        isPrimary: entry.isPrimary,
+      })), targetClassKey)
+    : baseEffects.spellSlots;
+  const reasonRequired = (subclassChanged && Boolean(before.subclassKey))
+    || (ancestryChanged && Boolean(before.draconicAncestryKey))
+    || (pactBoonChanged && Boolean(before.pactBoonKey));
+  const reasonMissing = reasonRequired && !request.reason;
+  const blocked = Boolean(resources.blockedReason);
+  const warnings = [
+    "Privilegi, competenze, incantesimi e altre scelte gestite manualmente restano invariati.",
+  ];
+  return {
+    ...base,
+    ...draconicChoice,
+    status: blocked ? "RESOURCE_CONSUMPTION_CONFLICT" : reasonMissing ? "REASON_REQUIRED" : "READY",
+    canApply: !blocked && !reasonMissing,
+    mode,
+    after,
+    reasonRequired,
+    subclassChanged,
+    ancestryChanged,
+    ...(blocked || reasonMissing ? { reason: resources.blockedReason ?? "Inserisci una motivazione per correggere la scelta registrata." } : {}),
+    effects: {
+      characterLevel: { before: progression.totalLevel, after: progression.totalLevel },
+      hitPoints: { before: cloneSerializable(snapshot.hitPointState ?? null), after: cloneSerializable(snapshot.hitPointState ?? null) },
+      classLevels: progression.classes.map((entry) => ({ classKey: entry.classKey, before: Number(entry.level), after: Number(entry.level) })),
+      spellSlots: resources,
+      manualContentPreserved: true,
+    },
+    warnings,
+    classesAfter,
+  };
+}
+
+export function subclassCorrectionRequestSignature(slug, request, actorId = null) {
+  const canonical = JSON.stringify({
+    slug,
+    actorId: actorId == null ? null : String(actorId),
+    targetClassKey: request.targetClassKey,
+    targetSubclassKey: request.targetSubclassKey,
+    ...(request.draconicAncestryKey !== undefined ? { draconicAncestryKey: request.draconicAncestryKey } : {}),
+    ...(request.pactBoonKey !== undefined ? { pactBoonKey: request.pactBoonKey } : {}),
+    reason: request.reason ?? null,
+    expectedRevision: request.expectedRevision ?? null,
+    expectedProgressionRevision: request.expectedProgressionRevision ?? null,
+  });
+  return crypto.createHash("sha256").update(canonical).digest("hex");
 }
 
 function publicResourcePoolState(pool) {
@@ -11366,7 +12224,16 @@ export function buildCharacterProgressionEffects(snapshot, resolvedPreview) {
       currentHitPoints: before.currentHitPoints + gain.gained,
       revision: before.revision + 1,
     };
-    hitPoints = { before, after, ...gain };
+    const reconciledAfter = schema.passiveHitPointBonusReady
+      ? reconcilePassiveHitPoints(
+          after,
+          resolveCharacterPassiveHitPointBonus(snapshot.state, snapshot.progression, {
+            classes: resolvedPreview.classesAfter,
+            totalLevel: resolvedPreview.after.characterLevel,
+          }).bonusTotal,
+        )
+      : after;
+    hitPoints = { before, after: reconciledAfter, ...gain };
     const beforePools = snapshot.hitDicePools.map((pool) => ({ ...pool }));
     const afterPools = beforePools.map((pool) => ({ ...pool }));
     let targetPool = afterPools.find((pool) => pool.dieSize === gain.hitDieSize);
@@ -11532,18 +12399,66 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
     classKey: entry.classKey,
     level: Number(entry.level),
     ...(entry.subclassKey ? { subclassKey: entry.subclassKey } : {}),
+    ...(entry.draconicAncestryKey ? { draconicAncestryKey: entry.draconicAncestryKey } : {}),
     isPrimary: entry.isPrimary,
   }));
   const options = requestedSubclassKey !== undefined
     ? { targetSubclassKey: requestedSubclassKey }
     : {};
-  const resolved = resolveClassAdvancementPreview(entries, targetClassKey, options);
+  let resolved = resolveClassAdvancementPreview(entries, targetClassKey, options);
   const classOptions = progressionClassOptions(progression.classes);
   const prerequisites = resolved.mode === "ADD_NEW_CLASS"
     ? evaluateMulticlassPrerequisites(entries, targetClassKey, snapshot.state?.abilityScores ?? {})
     : { status: "NOT_APPLICABLE", eligible: true, failedClassKeys: [], reason: null };
   const targetRule = CLASS_RULES[targetClassKey] ?? null;
-  const targetClassAfter = resolved.classesAfter?.find((entry) => entry.classKey === targetClassKey) ?? null;
+  let targetClassAfter = resolved.classesAfter?.find((entry) => entry.classKey === targetClassKey) ?? null;
+  const draconicAncestryRequired = requiresDraconicAncestry(targetClassKey, targetClassAfter?.subclassKey);
+  const currentDraconicAncestryKey = currentClass?.draconicAncestryKey ?? null;
+  if (
+    request.draconicAncestryKey
+    && currentDraconicAncestryKey
+    && request.draconicAncestryKey !== currentDraconicAncestryKey
+  ) {
+    throw createProgressionError(
+      "DRACONIC_ANCESTRY_CHANGE_NOT_ALLOWED",
+      "L'antenato draconico gia registrato puo essere corretto soltanto dall'azione dedicata alla sottoclasse.",
+      422,
+      snapshot,
+    );
+  }
+  if (request.draconicAncestryKey && !draconicAncestryRequired) {
+    throw createProgressionError(
+      "DRACONIC_ANCESTRY_NOT_APPLICABLE",
+      "L'antenato draconico e disponibile soltanto per la Discendenza Draconica dello Stregone.",
+      422,
+      snapshot,
+    );
+  }
+  const draconicAncestryKey = draconicAncestryRequired
+    ? request.draconicAncestryKey ?? currentDraconicAncestryKey ?? targetClassAfter?.draconicAncestryKey ?? null
+    : null;
+  if (resolved.classesAfter) {
+    const classesAfter = resolved.classesAfter.map((entry) => entry.classKey === targetClassKey
+      ? { ...entry, draconicAncestryKey }
+      : { ...entry });
+    resolved = { ...resolved, classesAfter };
+    targetClassAfter = classesAfter.find((entry) => entry.classKey === targetClassKey) ?? null;
+  }
+  const pactBoonRequired = targetClassKey === "warlock" && Number(targetClassAfter?.level) >= 3;
+  const currentPactBoonKey = currentClass?.pactBoonKey ?? null;
+  if (request.pactBoonKey !== undefined && (!normalizePactBoonKey(request.pactBoonKey) || !pactBoonRequired)) {
+    throw createProgressionError("PACT_BOON_NOT_APPLICABLE", "Il dono del patto richiede almeno 3 livelli da Warlock.", 422, snapshot);
+  }
+  if (request.pactBoonKey && currentPactBoonKey && request.pactBoonKey !== currentPactBoonKey) {
+    throw createProgressionError("PACT_BOON_CHANGE_NOT_ALLOWED", "Correggi il dono del patto con l'azione sottoclasse.", 422, snapshot);
+  }
+  const pactBoonKey = pactBoonRequired ? request.pactBoonKey ?? currentPactBoonKey : null;
+  if (resolved.classesAfter) {
+    resolved.classesAfter = resolved.classesAfter.map((entry) => ({ ...entry,
+      pactBoonKey: entry.classKey === targetClassKey ? pactBoonKey
+        : progression.classes.find((previous) => previous.classKey === entry.classKey)?.pactBoonKey ?? null,
+    }));
+  }
   const subclassOptions = !currentClass?.subclassKey
     && Number.isInteger(targetRule?.subclassLevel)
     && Number(targetClassAfter?.level) >= targetRule.subclassLevel
@@ -11551,12 +12466,40 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
     : [];
   const effects = buildCharacterProgressionEffects(snapshot, resolved);
   const manualRuleNotes = progressionManualRuleNotes(resolved);
+  const draconicChoice = {
+    draconicAncestryOptions: draconicAncestryRequired ? DRACONIC_ANCESTRY_OPTIONS.map((entry) => ({ ...entry })) : [],
+    draconicAncestryRequired,
+    draconicAncestryKey,
+    pactBoonOptions: pactBoonRequired && !currentPactBoonKey ? PACT_BOON_OPTIONS.map((entry) => ({ ...entry })) : [],
+    pactBoonRequired,
+    pactBoonKey,
+  };
+  if (draconicAncestryRequired && !draconicAncestryKey) {
+    return {
+      ...resolved,
+      classOptions,
+      subclassOptions,
+      manualRuleNotes,
+      ...draconicChoice,
+      status: "DRACONIC_ANCESTRY_REQUIRED",
+      canApply: false,
+      reason: "Seleziona l'antenato draconico della Discendenza Draconica.",
+      prerequisites,
+      ...(effects ? { effects } : {}),
+    };
+  }
+  if (pactBoonRequired && !pactBoonKey && resolved.canAdvance === true) {
+    return { ...resolved, classOptions, subclassOptions, manualRuleNotes, ...draconicChoice,
+      status: "PACT_BOON_REQUIRED", canApply: false, reason: "Seleziona il dono del patto del Warlock.",
+      prerequisites, ...(effects ? { effects } : {}) };
+  }
   if (effects?.status === "VITALS_NOT_READY") {
     return {
       ...resolved,
       classOptions,
       subclassOptions,
       manualRuleNotes,
+      ...draconicChoice,
       status: "VITALS_NOT_READY",
       canApply: false,
       reason: "Lo stato strutturato di PF e Dadi Vita non e pronto per la progressione.",
@@ -11573,6 +12516,7 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
     classOptions,
     subclassOptions,
     manualRuleNotes,
+    ...draconicChoice,
     canApply: resolved.canAdvance === true && !prerequisiteBlocked,
     prerequisites: { ...prerequisites, overridden: overrideAccepted },
     ...(prerequisiteBlocked ? {
@@ -11589,6 +12533,8 @@ export function progressionRequestSignature(slug, request, actorId = null) {
     actorId: actorId == null ? null : String(actorId),
     targetClassKey: request.targetClassKey,
     targetSubclassKey: request.targetSubclassKey === undefined ? "__PRESERVE__" : request.targetSubclassKey,
+    ...(request.draconicAncestryKey !== undefined ? { draconicAncestryKey: request.draconicAncestryKey } : {}),
+    ...(request.pactBoonKey !== undefined ? { pactBoonKey: request.pactBoonKey } : {}),
     overrideReason: request.overrideReason ?? null,
     expectedRevision: request.expectedRevision ?? null,
     expectedProgressionRevision: request.expectedProgressionRevision ?? null,
@@ -11605,6 +12551,30 @@ function readCharacterLevelHistoryReceipt(characterId, requestId) {
 }
 
 function parseCharacterLevelHistoryResult(row) {
+  const result = parseJsonString(row?.resultSnapshot, null);
+  return result && typeof result === "object" && !Array.isArray(result) ? result : null;
+}
+
+function readCharacterSubclassHistoryReceipt(characterId, requestId) {
+  const subclass = sqlite.prepare(`
+    SELECT * FROM "CharacterSubclassHistory"
+    WHERE characterId = ? AND requestId = ?
+    LIMIT 1
+  `).get(characterId, requestId) ?? null;
+  if (subclass) return subclass;
+  const ancestry = sqlite.prepare(`
+    SELECT * FROM "CharacterDraconicAncestryHistory"
+    WHERE characterId = ? AND operationType = 'SUBCLASS_CORRECTION' AND requestId = ?
+    LIMIT 1
+  `).get(characterId, requestId) ?? null;
+  if (ancestry) return ancestry;
+  if (!inspectPactBoonSchema(sqlite).historyTablePresent) return null;
+  return sqlite.prepare(`SELECT * FROM "CharacterPactBoonHistory"
+    WHERE characterId = ? AND operationType = 'SUBCLASS_CORRECTION' AND requestId = ? LIMIT 1`)
+    .get(characterId, requestId) ?? null;
+}
+
+function parseCharacterSubclassHistoryResult(row) {
   const result = parseJsonString(row?.resultSnapshot, null);
   return result && typeof result === "object" && !Array.isArray(result) ? result : null;
 }
@@ -11738,6 +12708,34 @@ export function prepareStructuredLegacyPatchSync(snapshot, next, patch) {
         };
       }
     }
+
+    const desiredPassiveBonus = resolveCharacterPassiveHitPointBonus(next, snapshot.progression).bonusTotal;
+    if (!snapshot.schema.passiveHitPointBonusReady) {
+      if (desiredPassiveBonus !== 0) {
+        throw createCharacterMutationError(
+          "PASSIVE_HIT_POINTS_NOT_READY",
+          "La persistenza dei bonus passivi ai PF richiede la migrazione dedicata.",
+          snapshot,
+        );
+      }
+    } else {
+      const beforeReconciliation = sync.hitPointState ?? snapshot.hitPointState;
+      if (!beforeReconciliation && desiredPassiveBonus !== 0) {
+        throw createCharacterMutationError("VITALS_NOT_READY", "Lo stato strutturato dei PF non e disponibile.", snapshot);
+      }
+      const reconciled = reconcilePassiveHitPoints(beforeReconciliation, desiredPassiveBonus);
+      const passiveChanged = Boolean(reconciled) && (
+        reconciled.maximumHitPoints !== beforeReconciliation.maximumHitPoints
+        || reconciled.currentHitPoints !== beforeReconciliation.currentHitPoints
+        || reconciled.passiveBonusApplied !== beforeReconciliation.passiveBonusApplied
+      );
+      if (passiveChanged) {
+        sync.hitPointState = {
+          ...reconciled,
+          revision: sync.hitPointState?.revision ?? snapshot.hitPointState.revision + 1,
+        };
+      }
+    }
   }
   if (snapshot.schema?.m6Ready && combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "spellSlots")) {
     const fallbackPools = snapshot.resourcePools.filter((pool) => ["CLASS_RESOURCE", "MANUAL"].includes(pool.kind));
@@ -11846,7 +12844,20 @@ export function prepareStructuredResourcePoolUsage(snapshot, current, { poolKey,
 }
 
 function persistHitPointState(characterId, state, now, expectedRevision = null) {
-  const result = sqlite.prepare(`
+  const passiveBonusReady = getCharacterVitalsResourcesSchemaInspection().passiveHitPointBonusReady;
+  if (!passiveBonusReady && Number(state.passiveBonusApplied ?? 0) !== 0) {
+    throw createCharacterMutationError(
+      "PASSIVE_HIT_POINTS_NOT_READY",
+      "La persistenza dei bonus passivi ai PF richiede la migrazione dedicata.",
+    );
+  }
+  const result = sqlite.prepare(passiveBonusReady ? `
+    UPDATE "CharacterHitPointState"
+    SET maximumHitPoints = ?, currentHitPoints = ?, temporaryHitPoints = ?,
+        deathSaveSuccesses = ?, deathSaveFailures = ?, shortRestsUsedSinceLongRest = ?,
+        lastShortRestAt = ?, lastLongRestAt = ?, revision = ?, passiveBonusApplied = ?, updatedAt = ?
+    WHERE characterId = ?${expectedRevision == null ? "" : " AND revision = ?"}
+  ` : `
     UPDATE "CharacterHitPointState"
     SET maximumHitPoints = ?, currentHitPoints = ?, temporaryHitPoints = ?,
         deathSaveSuccesses = ?, deathSaveFailures = ?, shortRestsUsedSinceLongRest = ?,
@@ -11855,7 +12866,9 @@ function persistHitPointState(characterId, state, now, expectedRevision = null) 
   `).run(
     state.maximumHitPoints, state.currentHitPoints, state.temporaryHitPoints,
     state.deathSaveSuccesses, state.deathSaveFailures, state.shortRestsUsedSinceLongRest,
-    state.lastShortRestAt ?? null, state.lastLongRestAt ?? null, state.revision, now,
+    state.lastShortRestAt ?? null, state.lastLongRestAt ?? null, state.revision,
+    ...(passiveBonusReady ? [Number(state.passiveBonusApplied ?? 0)] : []),
+    now,
     characterId, ...(expectedRevision == null ? [] : [expectedRevision]),
   );
   if (result.changes !== 1) {
@@ -14455,11 +15468,459 @@ async function start() {
     }
   });
 
+  app.post("/api/dm/characters/:slug/subclass/preview", requireRole("dm"), (req, res) => {
+    if (!getCharacterSubclassCorrectionInspection().ready) {
+      return res.status(503).json({
+        code: "SUBCLASS_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per la correzione della sottoclasse.",
+      });
+    }
+    if (!getCharacterDraconicAncestryInspection().ready) {
+      return res.status(503).json({
+        code: "DRACONIC_ANCESTRY_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per l'antenato draconico.",
+      });
+    }
+    try {
+      const request = normalizeSubclassCorrectionRequest(req.body);
+      const snapshot = readCharacterSnapshot(req.params.slug);
+      const preview = prepareCharacterSubclassCorrectionPreview(snapshot, request);
+      return res.json({
+        ok: true,
+        slug: req.params.slug,
+        revision: snapshot.revision,
+        progressionRevision: snapshot.progression.progressionRevision,
+        preview,
+      });
+    } catch (error) {
+      const status = Number(error?.statusCode) || 400;
+      const latest = error?.snapshot?.state
+        ? { ...serializeCharacterSnapshot(error.snapshot), revision: error.snapshot.revision }
+        : undefined;
+      return res.status(status).json({
+        code: error?.code ?? "SUBCLASS_PREVIEW_FAILED",
+        error: String(error?.message ?? "Non e stato possibile preparare la correzione della sottoclasse."),
+        ...(latest ? { character: latest } : {}),
+      });
+    }
+  });
+
+  app.post("/api/dm/characters/:slug/subclass/apply", requireRole("dm"), async (req, res) => {
+    if (!getCharacterSubclassCorrectionInspection().ready) {
+      return res.status(503).json({
+        code: "SUBCLASS_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per la correzione della sottoclasse.",
+      });
+    }
+    if (!getCharacterDraconicAncestryInspection().ready) {
+      return res.status(503).json({
+        code: "DRACONIC_ANCESTRY_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per l'antenato draconico.",
+      });
+    }
+    let request;
+    try {
+      request = normalizeSubclassCorrectionRequest(req.body, {
+        requireRequestId: true,
+        requireExpectedRevisions: true,
+        requireSubclass: true,
+      });
+    } catch (error) {
+      return res.status(Number(error?.statusCode) || 400).json({
+        code: error?.code ?? "VALIDATION_ERROR",
+        error: String(error?.message ?? error),
+      });
+    }
+
+    const slug = req.params.slug;
+    const characterRow = sqlite.prepare(`
+      SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+    `).get(slug);
+    if (!characterRow) {
+      return res.status(404).json({ code: "CHARACTER_NOT_FOUND", error: "Personaggio non trovato." });
+    }
+    const requestSignature = subclassCorrectionRequestSignature(slug, request, req.user.id);
+    const preliminary = readCharacterSubclassHistoryReceipt(characterRow.id, request.requestId);
+    if (preliminary) {
+      if (preliminary.requestSignature !== requestSignature) {
+        return res.status(409).json({
+          code: "REQUEST_ID_REUSED",
+          error: "Questo identificativo richiesta e gia stato usato con un payload diverso.",
+        });
+      }
+      const replay = parseCharacterSubclassHistoryResult(preliminary);
+      if (!replay) {
+        return res.status(500).json({
+          code: "SUBCLASS_HISTORY_INVALID",
+          error: "Lo storico della sottoclasse contiene un risultato non valido.",
+        });
+      }
+      return res.json({ ...replay, replayed: true });
+    }
+
+    try {
+      const mutationResult = await commitCharacterMutation(slug, {
+        authorize: () => {
+          const session = getSessionById(req.sessionId);
+          const user = session?.userId ? getUserById(session.userId) : null;
+          if (!user || user.id !== req.user?.id || user.role !== "dm") {
+            throw createProgressionError("AUTH_REQUIRED", "Sessione non piu valida.", 401);
+          }
+        },
+        mutate: (current, snapshot) => {
+          const history = readCharacterSubclassHistoryReceipt(characterRow.id, request.requestId);
+          if (history) {
+            if (history.requestSignature !== requestSignature) {
+              throw createProgressionError(
+                "REQUEST_ID_REUSED",
+                "Questo identificativo richiesta e gia stato usato con un payload diverso.",
+                409,
+                snapshot,
+              );
+            }
+            const replay = parseCharacterSubclassHistoryResult(history);
+            if (!replay) {
+              throw createProgressionError("SUBCLASS_HISTORY_INVALID", "Storico sottoclasse non valido.", 500, snapshot);
+            }
+            return { write: false, meta: { replay: { ...replay, replayed: true } } };
+          }
+          const preview = prepareCharacterSubclassCorrectionPreview(snapshot, request);
+          if (preview.pactBoonRequired && !inspectPactBoonSchema(sqlite).ready) {
+            throw createProgressionError("PACT_BOON_SCHEMA_NOT_READY", "Applica prima la migrazione del dono del patto.", 503, snapshot);
+          }
+
+          if (!preview.canApply) {
+            const error = createProgressionError(
+              preview.status,
+              preview.reason ?? "La sottoclasse non puo essere registrata.",
+              422,
+              snapshot,
+            );
+            error.preview = preview;
+            throw error;
+          }
+          const classRow = sqlite.prepare(`
+            SELECT cc.*, cr.rulesetId, cr.rulesetVersion, cr.ruleSnapshot AS classRuleSnapshot
+            FROM "CharacterClass" cc
+            JOIN "ClassRule" cr ON cr.id = cc.classRuleId AND cr.classKey = cc.classKey
+            WHERE cc.characterId = ? AND cc.classKey = ?
+            LIMIT 1
+          `).get(characterRow.id, preview.targetClassKey);
+          if (!classRow || Number(classRow.level) !== Number(
+            snapshot.progression.classes.find((entry) => entry.classKey === preview.targetClassKey)?.level,
+          )) {
+            throw createProgressionError("CHARACTER_CLASS_MISSING", "La classe strutturata non e disponibile.", 409, snapshot);
+          }
+          const subclassRow = sqlite.prepare(`
+            SELECT * FROM "SubclassRule"
+            WHERE subclassKey = ? AND classRuleId = ? AND archivedAt IS NULL
+            LIMIT 1
+          `).get(request.targetSubclassKey, classRow.classRuleId);
+          if (!subclassRow) {
+            throw createProgressionError("INVALID_SUBCLASS", "La sottoclasse non appartiene alla classe selezionata.", 422, snapshot);
+          }
+          const previousSubclassRow = classRow.subclassRuleId
+            ? sqlite.prepare(`SELECT * FROM "SubclassRule" WHERE id = ? AND classRuleId = ? LIMIT 1`)
+                .get(classRow.subclassRuleId, classRow.classRuleId)
+            : null;
+          if (classRow.subclassRuleId && !previousSubclassRow) {
+            throw createProgressionError("CURRENT_SUBCLASS_INVALID", "La sottoclasse attuale non e risolvibile.", 409, snapshot);
+          }
+          const resourcesAfter = preview.effects?.spellSlots?.after ?? snapshot.resourcePools;
+          const resourcesChanged = preview.effects?.spellSlots?.changed === true;
+          const legacySlotsChanged = preview.effects?.spellSlots?.legacySlotsChanged === true;
+          const nextState = legacySlotsChanged
+            ? {
+                ...current,
+                combatStats: {
+                  ...(current.combatStats ?? {}),
+                  spellSlots: legacySpellSlotsFromResourcePools(
+                    resourcesAfter,
+                    current.combatStats?.spellSlots ?? {},
+                  ),
+                },
+              }
+            : current;
+          return {
+            state: nextState,
+            patch: legacySlotsChanged ? { combatStats: { spellSlots: nextState.combatStats?.spellSlots ?? {} } } : {},
+            meta: {
+              operationId: crypto.randomUUID(),
+              preview,
+              classRow,
+              subclassRow,
+              previousSubclassRow,
+              progressionRevisionBefore: snapshot.progression.progressionRevision,
+              characterRevisionBefore: snapshot.revision,
+              resourcesChanged,
+              resourcesAfter,
+              appliedAt: new Date().toISOString(),
+            },
+          };
+        },
+        afterWrite: (nextState, mutation, snapshot, characterRevisionAfter) => {
+          const meta = mutation.meta;
+          if (meta.replay) return;
+          const progressionRevisionAfter = meta.progressionRevisionBefore + 1;
+          const classUpdate = sqlite.prepare(`
+            UPDATE "CharacterClass"
+            SET subclassRuleId = ?, subclassStatus = 'SELECTED', draconicAncestryKey = ?,
+                source = 'SUBCLASS_CORRECTION',
+                updatedByUserId = ?, updatedAt = ?
+            WHERE id = ? AND characterId = ? AND subclassRuleId IS ?
+              AND draconicAncestryKey IS ? AND level = ?
+          `).run(
+            meta.subclassRow.id,
+            meta.preview.draconicAncestryKey ?? null,
+            req.user.id,
+            meta.appliedAt,
+            meta.classRow.id,
+            characterRow.id,
+            meta.classRow.subclassRuleId ?? null,
+            meta.classRow.draconicAncestryKey ?? null,
+            Number(meta.classRow.level),
+          );
+          if (classUpdate.changes !== 1) {
+            throw createProgressionError("PROGRESSION_REVISION_CONFLICT", "La classe e stata modificata.", 409, snapshot);
+          }
+          if (meta.preview.pactBoonChanged) {
+            sqlite.prepare('UPDATE "CharacterClass" SET pactBoonKey = ? WHERE id = ? AND characterId = ?')
+              .run(meta.preview.pactBoonKey, meta.classRow.id, characterRow.id);
+          }
+          const progressionUpdate = sqlite.prepare(`
+            UPDATE "CharacterProgression"
+            SET revision = ?, updatedAt = ?
+            WHERE characterId = ? AND revision = ?
+          `).run(
+            progressionRevisionAfter,
+            meta.appliedAt,
+            characterRow.id,
+            meta.progressionRevisionBefore,
+          );
+          if (progressionUpdate.changes !== 1) {
+            throw createProgressionError("PROGRESSION_REVISION_CONFLICT", "La progressione e stata modificata.", 409, snapshot);
+          }
+          if (meta.resourcesChanged) {
+            const changedSpellcastingPool = meta.resourcesAfter.find((pool) => pool.kind === "SPELLCASTING");
+            if (!changedSpellcastingPool) {
+              throw createProgressionError("RESOURCE_POOL_NOT_FOUND", "Il pool slot derivato non e disponibile.", 409, snapshot);
+            }
+            const removeSourceClassKey = meta.preview.effects?.spellSlots?.removeSourceClassKey;
+            if (removeSourceClassKey) {
+              sqlite.prepare(`
+                DELETE FROM "CharacterResourcePoolSource"
+                WHERE poolId = ? AND sourceKey = ?
+              `).run(changedSpellcastingPool.id, removeSourceClassKey);
+            }
+            persistResourcePools(characterRow.id, [changedSpellcastingPool], meta.appliedAt, {
+              characterClassId: meta.classRow.id,
+              sourceClassKey: changedSpellcastingPool.sourceClassKey ?? null,
+            });
+            meta.resourcesAfter = readCharacterVitalsResources(characterRow.id).resourcePools;
+          }
+          const currentClass = snapshot.progression.classes.find(
+            (entry) => entry.classKey === meta.preview.targetClassKey,
+          );
+          const afterClass = {
+            ...currentClass,
+            subclassRuleId: meta.subclassRow.id,
+            subclassKey: meta.subclassRow.subclassKey,
+            subclassStatus: "SELECTED",
+            draconicAncestryKey: meta.preview.draconicAncestryKey ?? null,
+            pactBoonKey: meta.preview.pactBoonKey ?? null,
+            source: "SUBCLASS_CORRECTION",
+          };
+          const afterProgression = {
+            ...snapshot.progression,
+            classes: snapshot.progression.classes.map((entry) =>
+              entry.classKey === afterClass.classKey ? afterClass : entry),
+            progressionRevision: progressionRevisionAfter,
+          };
+          const publicCharacter = serializeCharacterSnapshot({
+            state: nextState,
+            revision: characterRevisionAfter,
+            progression: afterProgression,
+            hitPointState: snapshot.hitPointState,
+            hitDicePools: snapshot.hitDicePools,
+            resourcePools: meta.resourcesAfter,
+          });
+          const operation = {
+            id: meta.operationId,
+            requestId: request.requestId,
+            operationType: "SUBCLASS_CORRECTION",
+            mode: meta.preview.mode,
+            targetClassKey: meta.preview.targetClassKey,
+            previousSubclassKey: meta.previousSubclassRow?.subclassKey ?? null,
+            targetSubclassKey: meta.subclassRow.subclassKey,
+            previousPactBoonKey: meta.classRow.pactBoonKey ?? null,
+            pactBoonKey: meta.preview.pactBoonKey ?? null,
+            previousDraconicAncestryKey: meta.classRow.draconicAncestryKey ?? null,
+            draconicAncestryKey: meta.preview.draconicAncestryKey ?? null,
+            classLevel: Number(meta.classRow.level),
+            totalLevel: Number(snapshot.progression.totalLevel),
+            reason: meta.preview.mode === "CHANGE" ? request.reason : null,
+            appliedAt: meta.appliedAt,
+          };
+          const result = {
+            ok: true,
+            replayed: false,
+            slug,
+            requestId: request.requestId,
+            revision: characterRevisionAfter,
+            progressionRevision: progressionRevisionAfter,
+            preview: meta.preview,
+            operation,
+            character: { ...publicCharacter, revision: characterRevisionAfter },
+          };
+          const beforeSnapshot = JSON.stringify({
+            class: currentClass,
+            totalLevel: snapshot.progression.totalLevel,
+            progressionRevision: meta.progressionRevisionBefore,
+            hitPointState: snapshot.hitPointState ?? null,
+            hitDicePools: snapshot.hitDicePools ?? [],
+            resourcePools: snapshot.resourcePools ?? [],
+            characterData: snapshot.state,
+          });
+          const afterSnapshot = JSON.stringify({
+            class: afterClass,
+            totalLevel: snapshot.progression.totalLevel,
+            progressionRevision: progressionRevisionAfter,
+            hitPointState: snapshot.hitPointState ?? null,
+            hitDicePools: snapshot.hitDicePools ?? [],
+            resourcePools: meta.resourcesAfter,
+            characterData: nextState,
+          });
+          const appliedBySnapshot = JSON.stringify({
+            id: req.user.id,
+            username: req.user.username,
+            displayName: req.user.displayName,
+            role: req.user.role,
+          });
+          if (meta.preview.subclassChanged) sqlite.prepare(`
+            INSERT INTO "CharacterSubclassHistory" (
+              id, characterId, requestId, requestSignature, mode, targetClassKey,
+              targetClassRuleId, previousSubclassKey, previousSubclassRuleId,
+              targetSubclassKey, targetSubclassRuleId, classLevel, totalLevel,
+              progressionRevisionBefore, progressionRevisionAfter,
+              characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+              requestSnapshot, beforeSnapshot, afterSnapshot, ruleSnapshot, resultSnapshot,
+              appliedByUserId, appliedBySnapshot, appliedAt
+            ) VALUES (${Array.from({ length: 27 }, () => "?").join(", ")})
+          `).run(
+            meta.operationId,
+            characterRow.id,
+            request.requestId,
+            requestSignature,
+            meta.preview.mode,
+            meta.preview.targetClassKey,
+            meta.classRow.classRuleId,
+            meta.previousSubclassRow?.subclassKey ?? null,
+            meta.previousSubclassRow?.id ?? null,
+            meta.subclassRow.subclassKey,
+            meta.subclassRow.id,
+            Number(meta.classRow.level),
+            Number(snapshot.progression.totalLevel),
+            meta.progressionRevisionBefore,
+            progressionRevisionAfter,
+            meta.characterRevisionBefore,
+            characterRevisionAfter,
+            meta.preview.mode === "CHANGE" ? request.reason : null,
+            "subclass-correction-v1",
+            JSON.stringify(request),
+            beforeSnapshot,
+            afterSnapshot,
+            JSON.stringify({
+              classRule: parseJsonString(meta.classRow.classRuleSnapshot, {}),
+              previousSubclassRule: meta.previousSubclassRow ? parseJsonString(meta.previousSubclassRow.ruleSnapshot, {}) : null,
+              targetSubclassRule: parseJsonString(meta.subclassRow.ruleSnapshot, {}),
+            }),
+            JSON.stringify(result),
+            req.user.id,
+            appliedBySnapshot,
+            meta.appliedAt,
+          );
+          if (meta.preview.ancestryChanged) {
+            sqlite.prepare(`
+              INSERT INTO "CharacterDraconicAncestryHistory" (
+                id, characterId, requestId, requestSignature, operationType, targetClassKey,
+                previousDraconicAncestryKey, targetDraconicAncestryKey,
+                progressionRevisionBefore, progressionRevisionAfter,
+                characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+                requestSnapshot, beforeSnapshot, afterSnapshot, resultSnapshot,
+                appliedByUserId, appliedBySnapshot, appliedAt
+              ) VALUES (${Array.from({ length: 21 }, () => "?").join(", ")})
+            `).run(
+              meta.preview.subclassChanged ? crypto.randomUUID() : meta.operationId,
+              characterRow.id, request.requestId, requestSignature, "SUBCLASS_CORRECTION",
+              meta.preview.targetClassKey, meta.classRow.draconicAncestryKey ?? null,
+              meta.preview.draconicAncestryKey ?? null, meta.progressionRevisionBefore,
+              progressionRevisionAfter, meta.characterRevisionBefore, characterRevisionAfter,
+              meta.classRow.draconicAncestryKey ? request.reason : null,
+              "draconic-ancestry-v1", JSON.stringify(request), beforeSnapshot, afterSnapshot,
+              JSON.stringify(result), req.user.id, appliedBySnapshot, meta.appliedAt,
+            );
+          }
+          if (meta.preview.pactBoonChanged) {
+            sqlite.prepare(`
+              INSERT INTO "CharacterPactBoonHistory" (
+                id, characterId, requestId, requestSignature, operationType, targetClassKey,
+                previousPactBoonKey, targetPactBoonKey,
+                progressionRevisionBefore, progressionRevisionAfter,
+                characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+                requestSnapshot, beforeSnapshot, afterSnapshot, resultSnapshot,
+                appliedByUserId, appliedBySnapshot, appliedAt
+              ) VALUES (${Array.from({ length: 21 }, () => "?").join(", ")})
+            `).run(
+              meta.preview.subclassChanged ? crypto.randomUUID() : meta.operationId,
+              characterRow.id, request.requestId, requestSignature, "SUBCLASS_CORRECTION",
+              meta.preview.targetClassKey, meta.classRow.pactBoonKey ?? null,
+              meta.preview.pactBoonKey ?? null, meta.progressionRevisionBefore,
+              progressionRevisionAfter, meta.characterRevisionBefore, characterRevisionAfter,
+              meta.classRow.pactBoonKey ? request.reason : null,
+              "pact-boon-v1", JSON.stringify(request), beforeSnapshot, afterSnapshot,
+              JSON.stringify(result), req.user.id, appliedBySnapshot, meta.appliedAt,
+            );
+          }
+          meta.result = result;
+        },
+      });
+      if (!mutationResult.committed && mutationResult.meta?.replay) {
+        return res.json(mutationResult.meta.replay);
+      }
+      const result = mutationResult.meta.result;
+      const statePayload = buildCharacterStatePayload(slug);
+      if (statePayload) io.to(`char:${slug}`).emit("character:state", statePayload);
+      const initiativeState = readInitiativeTrackerState();
+      if (initiativeState.players.some((entry) => entry.slug === slug)) {
+        broadcastInitiativeTrackerState(io);
+      }
+      return res.json(result);
+    } catch (error) {
+      const status = Number(error?.statusCode)
+        || (["REVISION_CONFLICT", "PROGRESSION_REVISION_CONFLICT", "REQUEST_ID_REUSED"].includes(error?.code) ? 409 : 500);
+      const latest = error?.snapshot?.state
+        ? { ...serializeCharacterSnapshot(error.snapshot), revision: error.snapshot.revision }
+        : undefined;
+      return res.status(status).json({
+        code: error?.code ?? "SUBCLASS_APPLY_FAILED",
+        error: String(error?.message ?? "Non e stato possibile registrare la sottoclasse."),
+        ...(error?.preview ? { preview: error.preview } : {}),
+        ...(latest ? { character: latest } : {}),
+      });
+    }
+  });
+
   app.post("/api/dm/characters/:slug/progression/preview", requireRole("dm"), (req, res) => {
     if (!getCharacterProgressionM4Inspection().ready) {
       return res.status(503).json({
         code: "PROGRESSION_SCHEMA_NOT_READY",
         error: "Lo schema M4 della progressione non e ancora disponibile.",
+      });
+    }
+    if (!getCharacterDraconicAncestryInspection().ready) {
+      return res.status(503).json({
+        code: "DRACONIC_ANCESTRY_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per l'antenato draconico.",
       });
     }
     try {
@@ -14493,6 +15954,12 @@ async function start() {
       return res.status(503).json({
         code: "PROGRESSION_SCHEMA_NOT_READY",
         error: "Lo schema M4 della progressione non e ancora disponibile.",
+      });
+    }
+    if (!getCharacterDraconicAncestryInspection().ready) {
+      return res.status(503).json({
+        code: "DRACONIC_ANCESTRY_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per l'antenato draconico.",
       });
     }
 
@@ -14568,6 +16035,10 @@ async function start() {
           }
 
           const preview = prepareCharacterProgressionPreview(snapshot, request);
+          if (preview.pactBoonRequired && !inspectPactBoonSchema(sqlite).ready) {
+            throw createProgressionError("PACT_BOON_SCHEMA_NOT_READY", "Applica prima la migrazione del dono del patto.", 503, snapshot);
+          }
+
           if (preview.mode === "ADD_NEW_CLASS" && !inspectCharacterProgressionMc1Database(sqlite).ready) {
             throw createProgressionError(
               "MULTICLASS_SCHEMA_NOT_READY",
@@ -14678,27 +16149,29 @@ async function start() {
           const classLevelBefore = meta.currentClass ? Number(meta.currentClass.level) : null;
           const classLevelAfter = Number(meta.classAfter.level);
           const subclassStatus = meta.subclassRule ? "SELECTED" : "NOT_YET_ELIGIBLE";
+          const draconicAncestryKey = meta.classAfter?.draconicAncestryKey ?? null;
           const classUpdate = meta.characterClassRow
             ? sqlite.prepare(`
                 UPDATE "CharacterClass"
-                SET level = ?, subclassRuleId = ?, subclassStatus = ?, source = 'LEVEL_UP',
+                SET level = ?, subclassRuleId = ?, subclassStatus = ?, draconicAncestryKey = ?, source = 'LEVEL_UP',
                     ruleSnapshot = ?, updatedByUserId = ?, updatedAt = ?
                 WHERE id = ? AND characterId = ? AND level = ?
               `).run(
-                classLevelAfter, meta.subclassRule?.id ?? null, subclassStatus,
+                classLevelAfter, meta.subclassRule?.id ?? null, subclassStatus, draconicAncestryKey,
                 meta.classRule.ruleSnapshot, req.user.id, meta.appliedAt,
                 meta.characterClassId, characterRow.id, classLevelBefore,
               )
             : sqlite.prepare(`
                 INSERT INTO "CharacterClass" (
                   id, characterId, classRuleId, subclassRuleId, classKey, level, sortOrder,
-                  isPrimary, subclassStatus, source, ruleSnapshot, updatedByUserId, createdAt, updatedAt
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 'LEVEL_UP', ?, ?, ?, ?)
+                  isPrimary, subclassStatus, draconicAncestryKey, source, ruleSnapshot,
+                  updatedByUserId, createdAt, updatedAt
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 'LEVEL_UP', ?, ?, ?, ?)
               `).run(
                 meta.characterClassId, characterRow.id, meta.classRule.id,
                 meta.subclassRule?.id ?? null, meta.preview.targetClassKey, classLevelAfter,
                 Math.max(...snapshot.progression.classes.map((entry) => Number(entry.sortOrder)), -1) + 1,
-                subclassStatus, meta.classRule.ruleSnapshot,
+                subclassStatus, draconicAncestryKey, meta.classRule.ruleSnapshot,
                 req.user.id, meta.appliedAt, meta.appliedAt,
               );
           if (classUpdate.changes !== 1) {
@@ -14710,6 +16183,10 @@ async function start() {
             );
           }
 
+          if ((meta.currentClass?.pactBoonKey ?? null) !== (meta.classAfter?.pactBoonKey ?? null)) {
+            sqlite.prepare('UPDATE "CharacterClass" SET pactBoonKey = ? WHERE id = ? AND characterId = ?')
+              .run(meta.classAfter.pactBoonKey, meta.characterClassId, characterRow.id);
+          }
           const legacySnapshot = JSON.stringify({
             column: {
               className: nextState.basicInfo.class,
@@ -14772,6 +16249,8 @@ async function start() {
             subclassRuleId: meta.subclassRule?.id ?? null,
             subclassKey: meta.subclassRule?.subclassKey ?? null,
             subclassStatus,
+            draconicAncestryKey,
+            pactBoonKey: meta.classAfter?.pactBoonKey ?? null,
             source: "LEVEL_UP",
           };
           const afterProgression = {
@@ -14798,6 +16277,7 @@ async function start() {
             mode: meta.preview.mode,
             targetClassKey: request.targetClassKey,
             targetSubclassKey: meta.subclassRule?.subclassKey ?? null,
+            draconicAncestryKey,
             classLevelBefore,
             classLevelAfter,
             totalLevelBefore: meta.preview.before.characterLevel,
@@ -14877,6 +16357,47 @@ async function start() {
               ${historyColumns.map((column) => `"${column}"`).join(", ")}
             ) VALUES (${historyColumns.map(() => "?").join(", ")})
           `).run(...historyValues);
+          const previousDraconicAncestryKey = meta.currentClass?.draconicAncestryKey ?? null;
+          if (previousDraconicAncestryKey !== draconicAncestryKey) {
+            sqlite.prepare(`
+              INSERT INTO "CharacterDraconicAncestryHistory" (
+                id, characterId, requestId, requestSignature, operationType, targetClassKey,
+                previousDraconicAncestryKey, targetDraconicAncestryKey,
+                progressionRevisionBefore, progressionRevisionAfter,
+                characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+                requestSnapshot, beforeSnapshot, afterSnapshot, resultSnapshot,
+                appliedByUserId, appliedBySnapshot, appliedAt
+              ) VALUES (${Array.from({ length: 21 }, () => "?").join(", ")})
+            `).run(
+              crypto.randomUUID(), characterRow.id, request.requestId, requestSignature,
+              "LEVEL_UP", meta.preview.targetClassKey, previousDraconicAncestryKey,
+              draconicAncestryKey, meta.progressionRevisionBefore, progressionRevisionAfter,
+              meta.characterRevisionBefore, characterRevisionAfter, null,
+              "draconic-ancestry-v1", requestSnapshot, beforeSnapshot, afterSnapshot,
+              JSON.stringify(result), req.user.id, appliedBySnapshot, meta.appliedAt,
+            );
+          }
+          const pactBoonKey = meta.classAfter?.pactBoonKey ?? null;
+          const previousPactBoonKey = meta.currentClass?.pactBoonKey ?? null;
+          if (previousPactBoonKey !== pactBoonKey) {
+            sqlite.prepare(`
+              INSERT INTO "CharacterPactBoonHistory" (
+                id, characterId, requestId, requestSignature, operationType, targetClassKey,
+                previousPactBoonKey, targetPactBoonKey,
+                progressionRevisionBefore, progressionRevisionAfter,
+                characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+                requestSnapshot, beforeSnapshot, afterSnapshot, resultSnapshot,
+                appliedByUserId, appliedBySnapshot, appliedAt
+              ) VALUES (${Array.from({ length: 21 }, () => "?").join(", ")})
+            `).run(
+              crypto.randomUUID(), characterRow.id, request.requestId, requestSignature,
+              "LEVEL_UP", meta.preview.targetClassKey, previousPactBoonKey,
+              pactBoonKey, meta.progressionRevisionBefore, progressionRevisionAfter,
+              meta.characterRevisionBefore, characterRevisionAfter, null,
+              "pact-boon-v1", requestSnapshot, beforeSnapshot, afterSnapshot,
+              JSON.stringify(result), req.user.id, appliedBySnapshot, meta.appliedAt,
+            );
+          }
           meta.result = result;
         },
       });
@@ -15539,13 +17060,13 @@ async function start() {
               typeof patch.basicInfo === "object" &&
               !Array.isArray(patch.basicInfo) &&
               Object.prototype.hasOwnProperty.call(patch.basicInfo, "class");
-            if (Object.prototype.hasOwnProperty.call(patch, "pactBlade") || changesClass) {
+            if (Object.prototype.hasOwnProperty.call(patch, "pactBlade")) {
               const bondedId = next?.pactBlade?.bondedCharacterItemId ?? null;
               const hasPactBladeState = Boolean(
                 bondedId || next?.pactBlade?.activeSummon?.mode || next?.pactBlade?.activeSummon?.templateId
               );
               const pactBladeIssues = hasPactBladeState
-                ? validatePactBladeState(next, readPactBladeBondedItem(slug, bondedId))
+                ? validatePactBladeState({ ...next, classes: snapshot.progression?.classes ?? [] }, readPactBladeBondedItem(slug, bondedId))
                 : [];
               if (pactBladeIssues.length > 0) {
                 const validationError = createCharacterMutationError("VALIDATION_ERROR", pactBladeIssues[0], snapshot);
