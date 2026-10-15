@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Home, Pencil, Plus, Save, Shield, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, Home, Pencil, Plus, Save, Shield, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import {
 const CATEGORY_OPTIONS = ["WEAPON", "ARMOR", "SHIELD", "WONDROUS_ITEM", "RING", "AMULET", "ROD", "STAFF", "WAND", "TOOL", "CONSUMABLE", "AMMUNITION", "GEAR", "QUEST", "OTHER"];
 const RARITY_OPTIONS = ["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY", "ARTIFACT", "UNIQUE"];
 const WEAPON_HANDLING_OPTIONS = ["ONE_HANDED", "TWO_HANDED", "VERSATILE"];
+const WEAPON_PROFICIENCY_OPTIONS = ["SIMPLE", "MARTIAL"] as const;
 const GLOVE_MODE_OPTIONS = ["SINGLE", "PAIR"];
 const ARMOR_CATEGORY_OPTIONS = ["LIGHT", "MEDIUM", "HEAVY", "SHIELD"];
 const ARMOR_CALC_OPTIONS = ["BASE_PLUS_DEX", "BASE_PLUS_DEX_MAX_2", "BASE_ONLY", "BONUS_ONLY"];
@@ -75,13 +76,15 @@ const PASSIVE_EFFECT_TARGET_OPTIONS = [
   ...PASSIVE_EFFECT_SKILL_TARGETS.map((entry) => entry.target),
   "CUSTOM",
 ] as const;
-const PASSIVE_EFFECT_TRIGGER_OPTIONS = ["ALWAYS", "WHILE_ARMORED", "WHILE_SHIELD_EQUIPPED", "WHILE_WIELDING_SINGLE_MELEE_WEAPON", "WHILE_DUAL_WIELDING", "WHILE_WIELDING_TWO_HANDED_WEAPON", "CUSTOM"];
+const PASSIVE_EFFECT_TRIGGER_OPTIONS = ["ALWAYS", "WHILE_ARMORED", "WHILE_UNARMORED", "WHILE_SHIELD_EQUIPPED", "WHILE_WIELDING_SINGLE_MELEE_WEAPON", "WHILE_DUAL_WIELDING", "WHILE_WIELDING_TWO_HANDED_WEAPON", "CUSTOM"];
 const PASSIVE_EFFECT_VALUE_MODE_OPTIONS = ["FLAT", "ABILITY_MODIFIER", "ABILITY_SCORE", "PROFICIENCY_BONUS", "CHARACTER_LEVEL"];
 const PASSIVE_EFFECT_ROUNDING_OPTIONS = ["FLOOR", "CEIL"];
 const PASSIVE_EFFECT_OPERATION_OPTIONS = ["BONUS", "SET"];
 const PASSIVE_EFFECT_SET_MODE_OPTIONS = ["ABSOLUTE", "MINIMUM_FLOOR"];
 const ABILITY_SCORE_TARGET_OPTIONS = ["STRENGTH_SCORE", "DEXTERITY_SCORE", "CONSTITUTION_SCORE", "INTELLIGENCE_SCORE", "WISDOM_SCORE", "CHARISMA_SCORE"];
-const PASSIVE_EFFECT_TARGET_LABELS: Record<(typeof PASSIVE_EFFECT_TARGET_OPTIONS)[number], string> = {
+const PASSIVE_EFFECT_CATEGORY_OPTIONS = ["MODIFIER", "PROFICIENCY"] as const;
+const PASSIVE_PROFICIENCY_TARGET_OPTIONS = ["WEAPON_SIMPLE", "WEAPON_MARTIAL", "ARMOR_LIGHT", "ARMOR_MEDIUM", "ARMOR_HEAVY", "SHIELD"] as const;
+const PASSIVE_EFFECT_TARGET_LABELS: Record<PassiveEffectTarget, string> = {
   ARMOR_CLASS: "Classe Armatura",
   INITIATIVE: "Iniziativa",
   SPEED: "Velocita",
@@ -101,6 +104,12 @@ const PASSIVE_EFFECT_TARGET_LABELS: Record<(typeof PASSIVE_EFFECT_TARGET_OPTIONS
   UNARMED_ATTACK_ROLL: "Tiri per colpire senz'armi",
   UNARMED_DAMAGE_ROLL: "Danni senz'armi",
   OFF_HAND_DAMAGE_ROLL: "Danni mano secondaria",
+  WEAPON_SIMPLE: "Armi semplici",
+  WEAPON_MARTIAL: "Armi da guerra",
+  ARMOR_LIGHT: "Armature leggere",
+  ARMOR_MEDIUM: "Armature medie",
+  ARMOR_HEAVY: "Armature pesanti",
+  SHIELD: "Scudi",
   ...PASSIVE_EFFECT_SKILL_TARGET_LABELS,
   CUSTOM: "Altro",
 };
@@ -126,10 +135,12 @@ type PassiveEffectTarget =
   | "UNARMED_DAMAGE_ROLL"
   | "OFF_HAND_DAMAGE_ROLL"
   | PassiveEffectSkillTarget
+  | (typeof PASSIVE_PROFICIENCY_TARGET_OPTIONS)[number]
   | "CUSTOM";
 type PassiveEffectTrigger =
   | "ALWAYS"
   | "WHILE_ARMORED"
+  | "WHILE_UNARMORED"
   | "WHILE_SHIELD_EQUIPPED"
   | "WHILE_WIELDING_SINGLE_MELEE_WEAPON"
   | "WHILE_DUAL_WIELDING"
@@ -154,6 +165,7 @@ type PassiveEffectSourceAbility =
 
 type PassiveEffectEntry = {
   target: PassiveEffectTarget;
+  category?: "MODIFIER" | "PROFICIENCY";
   operationType?: PassiveEffectOperationType;
   valueMode?: PassiveEffectValueMode;
   value: number | string;
@@ -171,7 +183,11 @@ type PassiveEffectEntry = {
 };
 
 function cloneItem(item: ItemDefinitionEntry) {
-  return structuredClone(item);
+  return structuredClone({
+    ...item,
+    weaponProficiencyGroup: item.weaponProficiencyGroup ?? null,
+    isLightWeapon: !!item.isLightWeapon,
+  });
 }
 
 function newSlotRule(): ItemSlotRuleEntry {
@@ -255,6 +271,10 @@ function normalizeDraftSignedInteger(value: number | string | undefined) {
 }
 
 function normalizePassiveEffectForSave(effect: any) {
+  if (effect.category === "PROFICIENCY") {
+    return { category: "PROFICIENCY", target: effect.target };
+  }
+
   return {
     ...effect,
     operationType: effect.operationType ?? "BONUS",
@@ -344,6 +364,7 @@ export default function ItemManagement() {
   const [newItemName, setNewItemName] = useState("");
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("__all__");
+  const [proficiencyAuditFilter, setProficiencyAuditFilter] = useState("__all__");
 
   useEffect(() => {
     document.title = "Gestione Oggetti | Cronache della Trama e del Fato";
@@ -365,10 +386,18 @@ export default function ItemManagement() {
     const q = query.trim().toLowerCase();
     return items.filter((item) => {
       if (categoryFilter !== "__all__" && item.category !== categoryFilter) return false;
+      if (proficiencyAuditFilter === "__missing_weapon_proficiency__" && (
+        item.category !== "WEAPON" || item.weaponProficiencyGroup !== null
+      )) return false;
       if (!q) return true;
       return item.name.toLowerCase().includes(q) || item.slug.toLowerCase().includes(q);
     });
-  }, [categoryFilter, items, query]);
+  }, [categoryFilter, items, proficiencyAuditFilter, query]);
+
+  const uncategorizedWeaponCount = useMemo(
+    () => items.filter((item) => item.category === "WEAPON" && item.weaponProficiencyGroup === null).length,
+    [items]
+  );
 
   const openItem = async (itemId: string) => {
     setSelectedItemId(itemId);
@@ -394,6 +423,8 @@ export default function ItemManagement() {
         slug: created.slug,
         name: created.name,
         category: created.category,
+        weaponProficiencyGroup: created.weaponProficiencyGroup,
+        isLightWeapon: created.isLightWeapon,
         rarity: created.rarity,
         description: created.description,
         playerVisible: created.playerVisible,
@@ -401,6 +432,7 @@ export default function ItemManagement() {
         equippable: created.equippable,
         valueCurrency: created.valueCurrency,
         valueAmount: created.valueAmount,
+        assignedCharacterItemCount: 0,
         attackCount: created.attacks.length,
         slotRuleCount: created.slotRules.length,
         updatedAt: created.updatedAt,
@@ -428,6 +460,8 @@ export default function ItemManagement() {
         slug: saved.slug,
         name: saved.name,
         category: saved.category,
+        weaponProficiencyGroup: saved.weaponProficiencyGroup,
+        isLightWeapon: saved.isLightWeapon,
         rarity: saved.rarity,
         description: saved.description,
         playerVisible: saved.playerVisible,
@@ -435,6 +469,7 @@ export default function ItemManagement() {
         equippable: saved.equippable,
         valueCurrency: saved.valueCurrency,
         valueAmount: saved.valueAmount,
+        assignedCharacterItemCount: entry.assignedCharacterItemCount,
         attackCount: saved.attacks.length,
         slotRuleCount: saved.slotRules.length,
         updatedAt: saved.updatedAt,
@@ -499,6 +534,26 @@ export default function ItemManagement() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>Controllo competenze</Label>
+                <Select value={proficiencyAuditFilter} onValueChange={setProficiencyAuditFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Tutti gli oggetti</SelectItem>
+                    <SelectItem value="__missing_weapon_proficiency__">
+                      Armi da censire ({uncategorizedWeaponCount})
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {uncategorizedWeaponCount > 0 && (
+                  <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>{uncategorizedWeaponCount} {uncategorizedWeaponCount === 1 ? "arma richiede" : "armi richiedono"} una categoria di competenza.</span>
+                  </p>
+                )}
+              </div>
             </div>
 
             <ScrollArea className="h-[65vh] rounded-2xl border border-border/60 bg-background/45">
@@ -512,6 +567,12 @@ export default function ItemManagement() {
                   >
                     <div className="font-medium text-primary">{item.name}</div>
                     <div className="mt-1 text-xs text-muted-foreground">{item.category} / {item.slug}</div>
+                    {item.category === "WEAPON" && item.weaponProficiencyGroup === null && (
+                      <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+                        <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                        Categoria competenza mancante
+                      </div>
+                    )}
                     <div className="mt-1 text-xs text-muted-foreground">
                       {item.playerVisible ? "visibile ai player" : "nascosto ai player"}
                       {item.rarity === "UNIQUE" ? " / unico" : ""}
@@ -554,7 +615,11 @@ export default function ItemManagement() {
                     <TextRow label="Slug" value={draftItem.slug} onChange={(value) => setDraftItem({ ...draftItem, slug: value })} />
                     <div className="space-y-2">
                       <Label>Categoria</Label>
-                      <Select value={draftItem.category} onValueChange={(value) => setDraftItem({ ...draftItem, category: value })}>
+                      <Select value={draftItem.category} onValueChange={(value) => setDraftItem({
+                        ...draftItem,
+                        category: value,
+                        ...(value === "WEAPON" ? {} : { weaponProficiencyGroup: null, isLightWeapon: false }),
+                      })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>{CATEGORY_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                       </Select>
@@ -637,7 +702,7 @@ export default function ItemManagement() {
                   </section>
 
                   <section className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-2">
+                    {draftItem.category === "WEAPON" ? <div className="space-y-2">
                       <Label>Weapon handling</Label>
                       <Select value={draftItem.weaponHandling ?? "__none__"} onValueChange={(value) => setDraftItem({ ...draftItem, weaponHandling: value === "__none__" ? null : value })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -646,7 +711,29 @@ export default function ItemManagement() {
                           {WEAPON_HANDLING_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </div> : null}
+                    {draftItem.category === "WEAPON" ? <>
+                      <div className="space-y-2">
+                        <Label>Gruppo competenza</Label>
+                        <Select
+                          value={draftItem.weaponProficiencyGroup ?? "__none__"}
+                          onValueChange={(value) => setDraftItem({
+                            ...draftItem,
+                            weaponProficiencyGroup: value === "__none__" ? null : value as (typeof WEAPON_PROFICIENCY_OPTIONS)[number],
+                          })}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Nessuna / non definita</SelectItem>
+                            <SelectItem value="SIMPLE">Arma semplice</SelectItem>
+                            <SelectItem value="MARTIAL">Arma da guerra</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end pb-2">
+                        <ToggleRow label="Arma leggera" checked={!!draftItem.isLightWeapon} onChange={(value) => setDraftItem({ ...draftItem, isLightWeapon: value })} />
+                      </div>
+                    </> : null}
                     <div className="space-y-2">
                       <Label>Glove wear mode</Label>
                       <Select value={draftItem.gloveWearMode ?? "__none__"} onValueChange={(value) => setDraftItem({ ...draftItem, gloveWearMode: value === "__none__" ? null : value })}>
@@ -1244,6 +1331,38 @@ export default function ItemManagement() {
                                 <div key={`${entry.id}-effect-${effectIndex}`} className="space-y-3 rounded-2xl border border-border/60 bg-background/45 p-3">
                                   <div className="grid gap-3 md:grid-cols-3">
                                     <div className="space-y-2">
+                                      <Label>Categoria</Label>
+                                      <Select
+                                        value={effect.category ?? "MODIFIER"}
+                                        onValueChange={(value) =>
+                                          setDraftItem({
+                                            ...draftItem,
+                                            features: draftItem.features.map((row, rowIndex) =>
+                                              rowIndex === index
+                                                ? {
+                                                    ...row,
+                                                    passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
+                                                      currentIndex !== effectIndex
+                                                        ? currentEffect
+                                                        : value === "PROFICIENCY"
+                                                          ? { category: "PROFICIENCY", target: "WEAPON_SIMPLE" }
+                                                          : newPassiveEffect()
+                                                    ),
+                                                  }
+                                                : row
+                                            ),
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {PASSIVE_EFFECT_CATEGORY_OPTIONS.map((option) => (
+                                            <SelectItem key={option} value={option}>{option === "MODIFIER" ? "Modificatore" : "Competenza"}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-2">
                                       <Label>Bersaglio</Label>
                                       <Select
                                         value={effect.target}
@@ -1255,7 +1374,7 @@ export default function ItemManagement() {
                                                 ? {
                                                     ...row,
                                                     passiveEffects: (row.passiveEffects ?? []).map((currentEffect: any, currentIndex: number) =>
-                                                      currentIndex === effectIndex ? { ...currentEffect, target: value } : currentEffect
+                                                      currentIndex === effectIndex ? { ...currentEffect, target: value as PassiveEffectTarget } : currentEffect
                                                     ),
                                                   }
                                                 : row
@@ -1265,7 +1384,10 @@ export default function ItemManagement() {
                                       >
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
-                                          {PASSIVE_EFFECT_TARGET_OPTIONS.map((option) => (
+                                          {(effect.category === "PROFICIENCY"
+                                            ? PASSIVE_PROFICIENCY_TARGET_OPTIONS
+                                            : PASSIVE_EFFECT_TARGET_OPTIONS.filter((option) => !PASSIVE_PROFICIENCY_TARGET_OPTIONS.includes(option as (typeof PASSIVE_PROFICIENCY_TARGET_OPTIONS)[number]))
+                                          ).map((option) => (
                                             <SelectItem key={option} value={option}>
                                               {PASSIVE_EFFECT_TARGET_LABELS[option]}
                                             </SelectItem>
@@ -1273,7 +1395,7 @@ export default function ItemManagement() {
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                    <div className="space-y-2">
+                                    {effect.category !== "PROFICIENCY" && <div className="space-y-2">
                                       <Label>Operazione</Label>
                                       <Select
                                         value={effect.operationType ?? "BONUS"}
@@ -1298,8 +1420,8 @@ export default function ItemManagement() {
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>{PASSIVE_EFFECT_OPERATION_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                                       </Select>
-                                    </div>
-                                    <div className="space-y-2">
+                                    </div>}
+                                    {effect.category !== "PROFICIENCY" && <div className="space-y-2">
                                       <Label>Valore</Label>
                                       <Select
                                         disabled={(effect.operationType ?? "BONUS") === "SET"}
@@ -1321,13 +1443,13 @@ export default function ItemManagement() {
                                         }
                                       >
                                         <SelectTrigger><SelectValue /></SelectTrigger>
-                                        <SelectContent>{getAllowedValueModeOptions(effect.target).map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                                        <SelectContent>{getAllowedValueModeOptions(effect.target as PassiveEffectTarget).map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                                       </Select>
-                                    </div>
-                                    <div className="space-y-2">
+                                    </div>}
+                                    {effect.category !== "PROFICIENCY" && <div className="space-y-2">
                                       <Label>Trigger</Label>
                                       <Select
-                                        value={effect.trigger}
+                                        value={effect.trigger ?? "ALWAYS"}
                                         onValueChange={(value) =>
                                           setDraftItem({
                                             ...draftItem,
@@ -1347,10 +1469,10 @@ export default function ItemManagement() {
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>{PASSIVE_EFFECT_TRIGGER_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                                       </Select>
-                                    </div>
+                                    </div>}
                                   </div>
 
-                                  {(effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE") ? (
+                                  {effect.category !== "PROFICIENCY" && (effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE") ? (
                                     <div className="space-y-2">
                                       <Label>Caratteristica sorgente</Label>
                                       <Select
@@ -1377,7 +1499,7 @@ export default function ItemManagement() {
                                     </div>
                                   ) : null}
 
-                                  {(effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode ?? "FLAT") !== "FLAT" ? (
+                                  {effect.category !== "PROFICIENCY" && (effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode ?? "FLAT") !== "FLAT" ? (
                                     <div className="grid gap-3 md:grid-cols-3">
                                       <TextRow
                                         label="Rapporto num."
@@ -1446,7 +1568,7 @@ export default function ItemManagement() {
                                     </div>
                                   ) : null}
 
-                                  {(effect.operationType ?? "BONUS") === "SET" ? (
+                                  {effect.category !== "PROFICIENCY" && ((effect.operationType ?? "BONUS") === "SET" ? (
                                     <div className="grid gap-3 md:grid-cols-2">
                                       <div className="space-y-2">
                                         <Label>Modalita set</Label>
@@ -1536,9 +1658,9 @@ export default function ItemManagement() {
                                         placeholder="Opzionale"
                                       />
                                     </div>
-                                  )}
+                                  ))}
 
-                                  {effect.target === "CUSTOM" ? (
+                                  {effect.category !== "PROFICIENCY" && effect.target === "CUSTOM" ? (
                                     <TextRow
                                       label="Etichetta bersaglio"
                                       value={effect.customTargetLabel ?? ""}
@@ -1560,7 +1682,7 @@ export default function ItemManagement() {
                                     />
                                   ) : null}
 
-                                  {effect.trigger === "CUSTOM" ? (
+                                  {effect.category !== "PROFICIENCY" && effect.trigger === "CUSTOM" ? (
                                     <TextRow
                                       label="Etichetta trigger"
                                       value={effect.customTriggerLabel ?? ""}
@@ -1582,7 +1704,7 @@ export default function ItemManagement() {
                                     />
                                   ) : null}
 
-                                  <div className="space-y-2">
+                                  {effect.category !== "PROFICIENCY" && <div className="space-y-2">
                                     <Label>Note</Label>
                                     <Textarea
                                       rows={2}
@@ -1603,7 +1725,7 @@ export default function ItemManagement() {
                                         })
                                       }
                                     />
-                                  </div>
+                                  </div>}
 
                                   <div className="flex justify-end">
                                     <Button

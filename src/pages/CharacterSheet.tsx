@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { canUsePactBlade } from "../../shared/warlock-pact-rules.mjs";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Check, GripVertical, LayoutTemplate, RotateCcw } from "lucide-react";
 import {
   DndContext,
@@ -44,14 +45,20 @@ import {
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import {
   joinCharacterRoom,
+  leaveCharacterRoom,
   fetchCharacter,
   onCharacterState,
   onCharacterPatch,
+  onCharacterInventoryUpdated,
   onInitiativeTurnStart,
   updateCharacter,
   applyPatch,
   announceEnter,
   announceLeave,
+  onCharacterUpdateError,
+  onCharacterPersistenceChange,
+  type CharacterPersistenceState,
+  onCharacterAccessRevoked,
 } from "@/realtime";
 import {
   coerce,
@@ -99,6 +106,9 @@ import { useAuth } from "@/components/auth-provider";
 import { useGameSession } from "@/components/game-session-provider";
 
 import CharacterHeader from "@/components/characterSheet/character-header";
+import LevelUpDialog from "@/components/characterSheet/level-up-dialog";
+import SubclassDialog from "@/components/characterSheet/subclass-dialog";
+import type { DraconicAncestryProjection } from "@/lib/character-progression";
 import AbilityScores from "@/components/characterSheet/ability-scores";
 import Proficiencies from "@/components/characterSheet/proficiencies";
 import CombatStats from "@/components/characterSheet/combat-stats";
@@ -114,6 +124,7 @@ import { SheetCardStateProvider } from "@/components/characterSheet/sheet-card-s
 
 type InputEl = HTMLInputElement | HTMLTextAreaElement;
 type Coins = { cp: number; sp: number; ep: number; gp: number };
+type LegacyCoins = Partial<Coins> & { pp?: number };
 
 /** === Nuovi tipi per skills categorizzate === */
 type SkillType = "volonta" | "incontro" | "riposoBreve" | "riposoLungo";
@@ -150,6 +161,14 @@ type InventoryEditTarget =
   | { kind: "legacyObject"; index: number };
 type CapabilityKind = "passive" | "active";
 type CapabilityReset = "atWill" | "encounter" | "shortRest" | "longRest" | "custom";
+type PassiveEffectCategory = "MODIFIER" | "PROFICIENCY";
+type PassiveEffectProficiencyTarget =
+  | "WEAPON_SIMPLE"
+  | "WEAPON_MARTIAL"
+  | "ARMOR_LIGHT"
+  | "ARMOR_MEDIUM"
+  | "ARMOR_HEAVY"
+  | "SHIELD";
 type PassiveEffectTarget =
   | "ARMOR_CLASS"
   | "INITIATIVE"
@@ -171,10 +190,12 @@ type PassiveEffectTarget =
   | "UNARMED_DAMAGE_ROLL"
   | "OFF_HAND_DAMAGE_ROLL"
   | PassiveEffectSkillTarget
+  | PassiveEffectProficiencyTarget
   | "CUSTOM";
 type PassiveEffectTrigger =
   | "ALWAYS"
   | "WHILE_ARMORED"
+  | "WHILE_UNARMORED"
   | "WHILE_SHIELD_EQUIPPED"
   | "WHILE_WIELDING_SINGLE_MELEE_WEAPON"
   | "WHILE_DUAL_WIELDING"
@@ -185,7 +206,8 @@ type PassiveEffectValueMode =
   | "ABILITY_MODIFIER"
   | "ABILITY_SCORE"
   | "PROFICIENCY_BONUS"
-  | "CHARACTER_LEVEL";
+  | "CHARACTER_LEVEL"
+  | "CLASS_LEVEL";
 type PassiveEffectRounding = "FLOOR" | "CEIL";
 type PassiveEffectOperationType = "BONUS" | "SET";
 type PassiveEffectSetMode = "ABSOLUTE" | "MINIMUM_FLOOR";
@@ -198,6 +220,7 @@ type PassiveEffectSourceAbility =
   | "CHARISMA";
 type PassiveEffectEntry = {
   target: PassiveEffectTarget;
+  category?: PassiveEffectCategory;
   operationType?: PassiveEffectOperationType;
   valueMode?: PassiveEffectValueMode;
   value: number;
@@ -205,6 +228,7 @@ type PassiveEffectEntry = {
   setValue?: number;
   capValue?: number;
   sourceAbility?: PassiveEffectSourceAbility;
+  sourceClassKey?: string;
   multiplierNumerator?: number;
   multiplierDenominator?: number;
   rounding?: PassiveEffectRounding;
@@ -246,6 +270,46 @@ type PactBladeState = {
 
 interface Character {
   slug: string;
+  characterType?: "pg" | "png";
+  hitPointState?: {
+    maximumHitPoints: number;
+    passiveBonusApplied?: number;
+    currentHitPoints: number;
+    temporaryHitPoints: number;
+    shortRestsUsedSinceLongRest: number;
+    backfillStatus: string;
+  } | null;
+  hitDicePools?: Array<{
+    dieSize: 6 | 8 | 10 | 12;
+    maximum: number;
+    remaining: number;
+    source: string;
+  }>;
+  resourcePools?: Array<{
+    id: string;
+    poolKey: string;
+    kind: "SPELLCASTING" | "PACT_MAGIC" | "CLASS_RESOURCE" | "MANUAL";
+    label: string;
+    resetPolicy: "SHORT_REST" | "LONG_REST" | "MANUAL" | "NONE";
+    backfillStatus: string;
+    tiers: Array<{
+      tierKey: string;
+      maximum: number;
+      used: number;
+    }>;
+  }>;
+  revision?: string;
+  progressionRevision?: number;
+  progressionStatus?: string;
+  classes?: Array<{
+    classKey: string;
+    label?: string;
+    level: number;
+    isPrimary?: boolean;
+    subclass?: { subclassKey?: string | null; label?: string | null } | null;
+    draconicAncestryKey?: string | null;
+    draconicAncestry?: DraconicAncestryProjection | null;
+  }>;
   basicInfo: {
     characterName: string;
     class: string;
@@ -268,6 +332,10 @@ interface Character {
     currentHitPoints: number;
     temporaryHitPoints: number;
     hitDice: string;
+    deathSaves?: {
+      successes?: number;
+      failures?: number;
+    };
     // opzionale: struttura slot, usata anche per manovre
     spellSlots?: Record<number, Array<{ active: boolean }>>;
   };
@@ -302,6 +370,18 @@ interface Character {
   features: Array<{ name: string; description: string; uses?: string }>;
   capabilities?: CapabilityEntry[];
   pactBlade?: PactBladeState;
+}
+
+type DeathSavesUiState = { success: boolean[]; fail: boolean[] };
+type InventoryRefreshRequest = { promise: Promise<CharacterInventoryItemEntry[]>; dirty: boolean };
+
+function toDeathSavesUiState(deathSaves: Character["combatStats"]["deathSaves"]): DeathSavesUiState {
+  const successes = Math.max(0, Math.min(3, Number(deathSaves?.successes) || 0));
+  const failures = Math.max(0, Math.min(3, Number(deathSaves?.failures) || 0));
+  return {
+    success: Array.from({ length: 3 }, (_, index) => index < successes),
+    fail: Array.from({ length: 3 }, (_, index) => index < failures),
+  };
 }
 
 type Spell = SpellFromApi;
@@ -340,7 +420,7 @@ function coinsToCopper(coins: Partial<Coins> | undefined): number {
   );
 }
 
-function normalizeCoinsShape(coins: Partial<Coins> | (Partial<Coins> & { pp?: number }) | undefined): Coins {
+function normalizeCoinsShape(coins: LegacyCoins | undefined): Coins {
   const platinumAsGold = (coins?.pp ?? 0) * 10;
   return {
     cp: coins?.cp ?? 0,
@@ -683,6 +763,7 @@ function SortableLayoutCard({
 
 const CharacterSheet = () => {
   const { character } = useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { sessionState, isPlayerReadOnly } = useGameSession();
   const [characterData, setCharacterData] = useState<Character | null>(null);
@@ -691,8 +772,7 @@ const CharacterSheet = () => {
   const [editMode, setEditMode] = useState(false);
   const [turnAlertActive, setTurnAlertActive] = useState(false);
 
-  // death saves state (local only)
-  const [deathSaves, setDeathSaves] = useState<{ success: boolean[]; fail: boolean[] }>({
+  const [deathSaves, setDeathSaves] = useState<DeathSavesUiState>({
     success: [false, false, false],
     fail: [false, false, false],
   });
@@ -756,6 +836,8 @@ const CharacterSheet = () => {
   const [skillsCatalog, setSkillsCatalog] = useState<SkillCatalogEntry[]>([]);
   const [spellSlotTable, setSpellSlotTable] = useState<SpellSlotTable>({});
   const [relationalInventoryItems, setRelationalInventoryItems] = useState<CharacterInventoryItemEntry[]>([]);
+  const currentCharacterSlugRef = useRef<string | undefined>(character);
+  const inventoryRefreshInFlightRef = useRef(new Map<string, InventoryRefreshRequest>());
   const [itemDefinitions, setItemDefinitions] = useState<ItemDefinitionSummary[]>([]);
   const [itemDefinitionDetailsById, setItemDefinitionDetailsById] = useState<Record<string, ItemDefinitionEntry>>({});
   const [transferTargets, setTransferTargets] = useState<TransferTarget[]>([]);
@@ -764,17 +846,54 @@ const CharacterSheet = () => {
     DEFAULT_CHARACTER_SHEET_LAYOUT
   );
   const [draggedCardId, setDraggedCardId] = useState<CharacterSheetCardId | null>(null);
+  const [characterPersistence, setCharacterPersistence] = useState<CharacterPersistenceState>({
+    status: "idle",
+    pendingCount: 0,
+  });
   const [dragStartLayout, setDragStartLayout] = useState<CharacterSheetLayoutCardEntry[] | null>(null);
   const [collapsedLayoutCards, setCollapsedLayoutCards] = useState<Record<string, boolean>>({});
   const [preEditCollapsedCards, setPreEditCollapsedCards] = useState<Record<string, boolean> | null>(null);
   const canModifyCharacter = user?.role === "dm" || !isPlayerReadOnly;
 
   const refreshRelationalInventory = useCallback(async (slug: string) => {
-    const items = await fetchCharacterInventoryItems(slug);
-    const normalized = Array.isArray(items) ? items : [];
-    setRelationalInventoryItems(normalized);
-    return normalized;
+    const existing = inventoryRefreshInFlightRef.current.get(slug);
+    if (existing) return existing.promise;
+
+    const request: InventoryRefreshRequest = { promise: Promise.resolve([]), dirty: false };
+    request.promise = (async () => {
+      let normalized: CharacterInventoryItemEntry[] = [];
+      do {
+        request.dirty = false;
+        const items = await fetchCharacterInventoryItems(slug);
+        normalized = Array.isArray(items) ? items : [];
+        if (currentCharacterSlugRef.current === slug) setRelationalInventoryItems(normalized);
+      } while (request.dirty);
+      return normalized;
+    })().finally(() => {
+      if (inventoryRefreshInFlightRef.current.get(slug) === request) {
+        inventoryRefreshInFlightRef.current.delete(slug);
+      }
+    });
+    inventoryRefreshInFlightRef.current.set(slug, request);
+    return request.promise;
   }, []);
+
+  const invalidateRelationalInventory = useCallback((slug: string) => {
+    const existing = inventoryRefreshInFlightRef.current.get(slug);
+    if (existing) {
+      existing.dirty = true;
+      return existing.promise;
+    }
+    return refreshRelationalInventory(slug);
+  }, [refreshRelationalInventory]);
+
+  useEffect(() => {
+    setDeathSaves(toDeathSavesUiState(characterData?.combatStats?.deathSaves));
+  }, [characterData?.combatStats?.deathSaves?.failures, characterData?.combatStats?.deathSaves?.successes]);
+
+  useEffect(() => {
+    currentCharacterSlugRef.current = character;
+  }, [character]);
 
   useEffect(() => {
     if (canModifyCharacter) return;
@@ -787,8 +906,8 @@ const CharacterSheet = () => {
   }, [canModifyCharacter]);
 
   const isWarlock = useMemo(
-    () => (characterData?.basicInfo?.class ?? "").trim().toLowerCase() === "warlock",
-    [characterData?.basicInfo?.class]
+    () => canUsePactBlade(characterData),
+    [characterData?.classes]
   );
 
   const pactBladeState = useMemo<PactBladeState>(
@@ -825,10 +944,10 @@ const CharacterSheet = () => {
   );
 
   const runtimePactBladeDefinitions = useMemo(() => {
-    if (!activePactBladeTemplate) return {};
+    if (!isWarlock || !activePactBladeTemplate) return {};
     const detail = buildPactBladeVirtualDefinition(activePactBladeTemplate);
     return { [detail.id]: detail };
-  }, [activePactBladeTemplate]);
+  }, [activePactBladeTemplate, isWarlock]);
 
   const allItemDefinitionDetailsById = useMemo(
     () => ({
@@ -839,7 +958,7 @@ const CharacterSheet = () => {
   );
 
   const activePactBladeVirtualItem = useMemo(() => {
-    if (!characterData?.slug || !characterData?.basicInfo?.characterName || !activePactBladeTemplate) {
+    if (!isWarlock || !characterData?.slug || !characterData?.basicInfo?.characterName || !activePactBladeTemplate) {
       return null;
     }
     return {
@@ -851,7 +970,7 @@ const CharacterSheet = () => {
       ),
       isVirtualPactBlade: true,
     };
-  }, [activePactBladeTemplate, characterData?.basicInfo?.characterName, characterData?.slug]);
+  }, [activePactBladeTemplate, characterData?.basicInfo?.characterName, characterData?.slug, isWarlock]);
 
   const runtimeRelationalInventoryItems = useMemo(() => {
     const baseItems = Array.isArray(relationalInventoryItems) ? relationalInventoryItems : [];
@@ -1534,9 +1653,7 @@ const CharacterSheet = () => {
 
       const nextCoins =
         coinFlow === "add"
-          ? compactCoinsOnAdd
-            ? compactCoinsAtTier({ ...coins, [stdKey]: coins[stdKey] + qty }, stdKey)
-            : { ...coins, [stdKey]: coins[stdKey] + qty }
+          ? compactCoinsAtTier({ ...coins, [stdKey]: coins[stdKey] + qty }, stdKey)
           : removeCoinsWithChange(coins, stdKey, qty);
 
       if (!nextCoins) {
@@ -1665,21 +1782,66 @@ const CharacterSheet = () => {
       } finally {
         if (active) setLoading(false);
       }
-      joinCharacterRoom(slug);
-      unsubState = onCharacterState((state) => setCharacterData(state));
+      if (!active) return;
+      unsubState = onCharacterState(({ slug: stateSlug, state }) => {
+        if (stateSlug !== slug) return;
+        setCharacterData(state as unknown as Character);
+      });
       unsubPatch = onCharacterPatch(({ slug: patchedSlug, patch }) => {
         if (patchedSlug !== slug) return;
         setCharacterData((prev) => (prev ? applyPatch(prev, patch) : prev));
       });
+      joinCharacterRoom(slug);
     })();
     announceEnter(character);
     return () => {
       active = false;
       try { unsubState?.(); } catch {}
       try { unsubPatch?.(); } catch {}
+      try { leaveCharacterRoom(slug); } catch {}
       try { announceLeave(); } catch {}
     };
   }, [character]);
+
+  useEffect(() => {
+    const offPersistence = onCharacterPersistenceChange((state, slug) => {
+      if (slug === character) setCharacterPersistence(state);
+    });
+    return () => { offPersistence(); };
+  }, [character]);
+
+  useEffect(() => {
+    const offUpdateError = onCharacterUpdateError((error, slug) => {
+      if (slug !== character) return;
+      if (
+        (error.code === "REVISION_CONFLICT" || error.code === "DEATH_SAVES_REQUIRE_ZERO_HP") &&
+        error.state
+      ) {
+        setCharacterData(error.state as unknown as Character);
+      } else {
+        void fetchCharacter(slug)
+          .then((state) => setCharacterData(state as unknown as Character))
+          .catch(() => {
+            // Keep the current optimistic view visible; the error feedback remains actionable.
+          });
+      }
+      toast.error(error.code === "REVISION_CONFLICT"
+        ? "La scheda è stata aggiornata altrove: ho ricaricato l'ultima versione."
+        : error.message);
+    });
+    return () => { offUpdateError(); };
+  }, [character]);
+
+  useEffect(() => {
+    const offAccessRevoked = onCharacterAccessRevoked((slug) => {
+      if (slug !== character) return;
+      setCharacterData(null);
+      setLoadError("L'accesso a questa scheda è stato revocato.");
+      toast.error("L'accesso alla scheda è stato revocato.");
+      navigate("/", { replace: true });
+    });
+    return () => { offAccessRevoked(); };
+  }, [character, navigate]);
 
   useEffect(() => {
     const slug = character;
@@ -1699,6 +1861,20 @@ const CharacterSheet = () => {
   }, [character, refreshRelationalInventory]);
 
   useEffect(() => {
+    const slug = character;
+    if (!slug) return;
+
+    const offInventoryUpdated = onCharacterInventoryUpdated(({ slug: updatedSlug }) => {
+      if (updatedSlug !== slug) return;
+      void invalidateRelationalInventory(slug).catch(() => {
+        // Keep the last known inventory visible if a realtime invalidation cannot be refreshed.
+      });
+    });
+
+    return offInventoryUpdated;
+  }, [character, invalidateRelationalInventory]);
+
+  useEffect(() => {
     let active = true;
     (async () => {
       try {
@@ -1714,7 +1890,7 @@ const CharacterSheet = () => {
           setSpellSlotTable(nextSpellSlots ?? {});
           setTransferTargets(
             (Array.isArray(nextCharacters) ? nextCharacters : [])
-              .filter((entry) => entry?.characterType !== "png" && entry?.slug !== character)
+              .filter((entry) => entry?.slug !== character)
               .map((entry) => ({
                 slug: entry.slug,
                 name: entry?.basicInfo?.characterName ?? entry.slug,
@@ -2150,6 +2326,7 @@ const CharacterSheet = () => {
               setCurrencyHistoryOpen={setCurrencyHistoryOpen}
               currencyHistoryEntries={currencyHistoryEntries}
               currencyHistoryLoading={currencyHistoryLoading}
+              passiveCapabilities={passiveEffectCapabilities}
               showPactBladeSection={isWarlock}
               pactBladeState={pactBladeState}
               pactBladeBondedWeapon={bondedPactWeapon}
@@ -2403,6 +2580,15 @@ const CharacterSheet = () => {
   return (
     <div className="min-h-screen parchment p-6">
       <div className={`max-w-5xl mx-auto space-y-6 rounded-[1.75rem] transition-all ${turnAlertActive ? "turn-highlight-active" : ""}`}>
+        <div className="flex min-h-5 justify-end" aria-live="polite" aria-atomic="true">
+          {characterPersistence.status === "saving" ? (
+            <span className="text-xs text-muted-foreground">Salvataggio...</span>
+          ) : characterPersistence.status === "saved" ? (
+            <span className="text-xs text-muted-foreground">Salvato</span>
+          ) : characterPersistence.status === "error" ? (
+            <span className="text-xs text-destructive">Salvataggio non riuscito: verifica i dati e riprova.</span>
+          ) : null}
+        </div>
         {sessionState?.isOpen === false && user?.role === "player" ? (
           <div className="rounded-2xl border border-amber-500/30 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 shadow-sm">
             Sessione chiusa: la scheda è in sola lettura. Le modifiche dei giocatori sono temporaneamente bloccate.
@@ -2415,6 +2601,30 @@ const CharacterSheet = () => {
           monsterCompendiumHref="/compendium/monsters"
           makeChangeHandler={makeChangeHandler}
           canEdit={canModifyCharacter}
+          levelUpAction={
+            user?.role === "dm" && characterData.characterType === "pg" ? (
+              <div className="flex flex-wrap gap-2">
+                <LevelUpDialog
+                  key={`level-up-${characterData.slug}`}
+                  characterData={characterData}
+                  onApplied={async () => {
+                    const slug = characterData.slug;
+                    const refreshed = await fetchCharacter(slug);
+                    setCharacterData((current) => current?.slug === slug ? refreshed as unknown as Character : current);
+                  }}
+                />
+                <SubclassDialog
+                  key={`subclass-${characterData.slug}`}
+                  characterData={characterData}
+                  onApplied={async () => {
+                    const slug = characterData.slug;
+                    const refreshed = await fetchCharacter(slug);
+                    setCharacterData((current) => current?.slug === slug ? refreshed as unknown as Character : current);
+                  }}
+                />
+              </div>
+            ) : null
+          }
           layoutActions={
             !canModifyCharacter ? null : layoutEditMode ? (
               <div className="flex items-center gap-2">

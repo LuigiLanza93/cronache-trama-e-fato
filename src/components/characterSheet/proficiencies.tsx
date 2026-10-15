@@ -4,10 +4,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { updateCharacter } from "@/realtime";
-import { Check, Eye, Settings2, X } from "lucide-react";
+import { Check, ChevronDown, Eye, Settings2, X } from "lucide-react";
 import SectionCard from "@/components/characterSheet/section-card";
-import { resolveCharacterAbilityScores } from "@/utils";
+import { normalizeSkillRank, resolveCharacterAbilityScores } from "@/utils";
+import { resolveCharacterProficiencySummary } from "@/lib/character-combat-rules";
 
 const SAVING_THROW_ORDER = [
     { key: "strength", short: "For", matches: ["strength", "forza", "for"] },
@@ -19,6 +22,41 @@ const SAVING_THROW_ORDER = [
 ] as const;
 
 const SECTION_LABEL_CLASS = "text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/90";
+
+type ProficiencySummaryDisplayEntry = {
+    kind: "WEAPON_GROUP" | "ARMOR_CATEGORY" | "SPECIFIC_WEAPON";
+    target: string;
+    label: string;
+    sources: string[];
+};
+
+type ProficiencySourceGroup = {
+    source: string;
+    weapons: string[];
+    armor: string[];
+};
+
+function capitalizeLabel(value: string) {
+    const trimmed = value.trim();
+    return trimmed ? `${trimmed.charAt(0).toLocaleUpperCase("it-IT")}${trimmed.slice(1)}` : trimmed;
+}
+
+function groupProficienciesBySource(entries: ProficiencySummaryDisplayEntry[]): ProficiencySourceGroup[] {
+    const groups = new Map<string, ProficiencySourceGroup>();
+
+    entries.forEach((entry) => {
+        entry.sources.forEach((rawSource) => {
+            const source = rawSource.trim() || "Fonte non specificata";
+            const group = groups.get(source) ?? { source, weapons: [], armor: [] };
+            const collection = entry.kind === "ARMOR_CATEGORY" ? group.armor : group.weapons;
+            const label = capitalizeLabel(entry.label);
+            if (!collection.includes(label)) collection.push(label);
+            groups.set(source, group);
+        });
+    });
+
+    return [...groups.values()];
+}
 
 const Proficiencies = ({
     characterData,
@@ -32,14 +70,25 @@ const Proficiencies = ({
     passiveEffectContext = {},
     canEdit = true,
 }: any) => {
+    const isAtZeroHitPoints = Number(characterData?.combatStats?.currentHitPoints) === 0;
+    const canEditDeathSaves = canEdit && isAtZeroHitPoints;
+    const deathSavesBlockedByHitPoints = canEdit && !isAtZeroHitPoints;
+
     // ===== Edit mode per le ABILITA' =====
     const [editingSkills, setEditingSkills] = useState(false);
 
-    // Mappa persistita: { nomeSkill -> proficient:boolean }
+    // Mappa persistita: rank esplicito, con compatibilita' per il vecchio booleano.
+    const persistedSkillsByName = useMemo(() => {
+        const m: Record<string, any> = {};
+        (characterData?.proficiencies?.skills ?? []).forEach((skill: any) => {
+            if (skill?.name) m[skill.name] = skill;
+        });
+        return m;
+    }, [characterData?.proficiencies?.skills]);
     const persistedProfsMap = useMemo(() => {
         const m: Record<string, boolean> = {};
         (characterData?.proficiencies?.skills ?? []).forEach((s: any) => {
-            if (s?.name) m[s.name] = !!s.proficient;
+            if (s?.name) m[s.name] = normalizeSkillRank(s) !== "none";
         });
         return m;
     }, [characterData?.proficiencies?.skills]);
@@ -63,11 +112,15 @@ const Proficiencies = ({
         const calcSkills: Array<{ name: string; ability: string; value: number }> =
             calculateSkillValues(characterData, skillsCatalog) || [];
 
-        // Persisto solo name, ability, proficient (niente value)
+        // Persisto solo rank/proficient, mai il valore derivato. Un rank legacy
+        // esplicito viene preservato finche' l'utente non disattiva la skill.
         const nextSkills = calcSkills.map((s) => ({
             name: s.name,
             ability: s.ability,
             proficient: !!draftProfs[s.name],
+            ...(persistedSkillsByName[s.name]?.rank
+                ? { rank: draftProfs[s.name] ? normalizeSkillRank(persistedSkillsByName[s.name]) : "none" }
+                : {}),
         }));
 
         updateCharacter(characterData.slug, {
@@ -129,10 +182,7 @@ const Proficiencies = ({
             typeof s?.name === "string" &&
             ["percezione", "perception"].includes(s.name.toLowerCase())
     );
-    const wisMod = perceptionSkill?.value ?? 0;
-    // Usa la mappa persistita (non il draft) per il calcolo ufficiale
-    const isPerceptionProficient = !!persistedProfsMap[perceptionSkill?.name ?? "Percezione"];
-    const passivePerception = 10 + wisMod + (isPerceptionProficient ? profBonus : 0);
+    const passivePerception = 10 + Number(perceptionSkill?.value ?? 0);
     const savingThrowProficiencies = (characterData?.proficiencies?.savingThrows ?? []).map((save: string) =>
         typeof save === "string" ? save.trim().toLowerCase() : ""
     );
@@ -148,6 +198,22 @@ const Proficiencies = ({
             total,
         };
     });
+    const proficiencySummary = useMemo(
+        () => resolveCharacterProficiencySummary({ ...characterData, capabilities: passiveCapabilities }),
+        [characterData, passiveCapabilities]
+    );
+    const proficiencyEntries: ProficiencySummaryDisplayEntry[] = [
+        ...proficiencySummary.entries
+            .map((entry) => ({ ...entry, sources: entry.sources })),
+        ...proficiencySummary.specificWeapons.map((entry, index) => ({
+            kind: "SPECIFIC_WEAPON" as const,
+            target: `specific-${index}-${entry.label}`,
+            label: entry.label,
+            sources: entry.source.split(" · ").filter(Boolean),
+        })),
+    ];
+    const proficiencyGroups = groupProficienciesBySource(proficiencyEntries);
+    const hasProficiencySummary = proficiencySummary.entries.length > 0 || proficiencySummary.specificWeapons.length > 0;
 
     return (
         <SectionCard cardId="proficiencies" title="Competenze & Abilità">
@@ -217,40 +283,46 @@ const Proficiencies = ({
                             <Label className={`${SECTION_LABEL_CLASS} mb-1`}>Riuscita</Label>
                             <div className="flex gap-3">
                                 {deathSaves.success.map((checked: boolean, i: number) => (
-                                    <label
-                                        key={`success-${i}`}
-                                        className={`flex flex-col items-center cursor-pointer ${checked ? "opacity-100" : "opacity-70"}`}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={checked}
-                                            disabled={!canEdit || (i > 0 && !deathSaves.success[i - 1])}
-                                            onChange={() => {
-                                                if (!canEdit) return;
-                                                const next = [...deathSaves.success];
-                                                next[i] = !next[i];
-                                                if (!next[i]) {
-                                                    for (let j = i + 1; j < next.length; j++) next[j] = false;
-                                                }
-                                                const successes = next.filter(Boolean).length;
-                                                setDeathSaves({ ...deathSaves, success: next });
+                                    <Tooltip key={`success-${i}`}>
+                                        <TooltipTrigger asChild>
+                                            <span className="inline-flex">
+                                                <label
+                                                    className={`flex flex-col items-center ${canEditDeathSaves ? "cursor-pointer" : "cursor-not-allowed"} ${checked ? "opacity-100" : "opacity-70"}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        disabled={!canEditDeathSaves || (i > 0 && !deathSaves.success[i - 1])}
+                                                        onChange={() => {
+                                                            if (!canEditDeathSaves) return;
+                                                            const next = [...deathSaves.success];
+                                                            next[i] = !next[i];
+                                                            if (!next[i]) {
+                                                                for (let j = i + 1; j < next.length; j++) next[j] = false;
+                                                            }
+                                                            const successes = next.filter(Boolean).length;
+                                                            setDeathSaves({ ...deathSaves, success: next });
 
-                                                if (characterData.slug) {
-                                                    updateCharacter(characterData.slug, {
-                                                        combatStats: {
-                                                            ...characterData.combatStats,
-                                                            deathSaves: {
-                                                                ...characterData.combatStats.deathSaves,
-                                                                successes,
-                                                            },
-                                                        },
-                                                    });
-                                                }
-                                            }}
-                                            aria-label={`Riuscita ${i + 1}`}
-                                            className="w-5 h-5 accent-green-600 rounded border-2 border-green-400"
-                                        />
-                                    </label>
+                                                            if (characterData.slug) {
+                                                                updateCharacter(characterData.slug, {
+                                                                    combatStats: {
+                                                                        deathSaves: {
+                                                                            successes,
+                                                                        },
+                                                                    },
+                                                                });
+                                                            }
+                                                        }}
+                                                        aria-label={`Riuscita ${i + 1}`}
+                                                        className="w-5 h-5 accent-green-600 rounded border-2 border-green-400"
+                                                    />
+                                                </label>
+                                            </span>
+                                        </TooltipTrigger>
+                                        {deathSavesBlockedByHitPoints && (
+                                            <TooltipContent>Modificabile solo quando il personaggio è a 0 PF.</TooltipContent>
+                                        )}
+                                    </Tooltip>
                                 ))}
                             </div>
                         </div>
@@ -258,40 +330,46 @@ const Proficiencies = ({
                             <Label className={`${SECTION_LABEL_CLASS} mb-1`}>Fallimento</Label>
                             <div className="flex gap-3">
                                 {deathSaves.fail.map((checked: boolean, i: number) => (
-                                    <label
-                                        key={`fail-${i}`}
-                                        className={`flex flex-col items-center cursor-pointer ${checked ? "opacity-100" : "opacity-70"}`}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={checked}
-                                            disabled={!canEdit || (i > 0 && !deathSaves.fail[i - 1])}
-                                            onChange={() => {
-                                                if (!canEdit) return;
-                                                const next = [...deathSaves.fail];
-                                                next[i] = !next[i];
-                                                if (!next[i]) {
-                                                    for (let j = i + 1; j < next.length; j++) next[j] = false;
-                                                }
-                                                const failures = next.filter(Boolean).length;
-                                                setDeathSaves({ ...deathSaves, fail: next });
+                                    <Tooltip key={`fail-${i}`}>
+                                        <TooltipTrigger asChild>
+                                            <span className="inline-flex">
+                                                <label
+                                                    className={`flex flex-col items-center ${canEditDeathSaves ? "cursor-pointer" : "cursor-not-allowed"} ${checked ? "opacity-100" : "opacity-70"}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        disabled={!canEditDeathSaves || (i > 0 && !deathSaves.fail[i - 1])}
+                                                        onChange={() => {
+                                                            if (!canEditDeathSaves) return;
+                                                            const next = [...deathSaves.fail];
+                                                            next[i] = !next[i];
+                                                            if (!next[i]) {
+                                                                for (let j = i + 1; j < next.length; j++) next[j] = false;
+                                                            }
+                                                            const failures = next.filter(Boolean).length;
+                                                            setDeathSaves({ ...deathSaves, fail: next });
 
-                                                if (characterData.slug) {
-                                                    updateCharacter(characterData.slug, {
-                                                        combatStats: {
-                                                            ...characterData.combatStats,
-                                                            deathSaves: {
-                                                                ...characterData.combatStats.deathSaves,
-                                                                failures,
-                                                            },
-                                                        },
-                                                    });
-                                                }
-                                            }}
-                                            aria-label={`Fallimento ${i + 1}`}
-                                            className="deathsave-checkbox w-5 h-5 accent-red-600 rounded border-2 border-red-400"
-                                        />
-                                    </label>
+                                                            if (characterData.slug) {
+                                                                updateCharacter(characterData.slug, {
+                                                                    combatStats: {
+                                                                        deathSaves: {
+                                                                            failures,
+                                                                        },
+                                                                    },
+                                                                });
+                                                            }
+                                                        }}
+                                                        aria-label={`Fallimento ${i + 1}`}
+                                                        className="deathsave-checkbox w-5 h-5 accent-red-600 rounded border-2 border-red-400"
+                                                    />
+                                                </label>
+                                            </span>
+                                        </TooltipTrigger>
+                                        {deathSavesBlockedByHitPoints && (
+                                            <TooltipContent>Modificabile solo quando il personaggio è a 0 PF.</TooltipContent>
+                                        )}
+                                    </Tooltip>
                                 ))}
                             </div>
                         </div>
@@ -354,14 +432,11 @@ const Proficiencies = ({
                             // Stato mostrato: draft se in editing, altrimenti persistito
                             const isProficient = editingSkills
                                 ? !!draftProfs[name]
-                                : !!persistedProfsMap[name];
+                                : skill.rank !== "none";
 
-                            const resolvedSkillAbilityKey = String(skill.ability ?? "").trim().toLowerCase();
-                            const baseAbilitySkillValue = abilityModifier(
-                                resolvedAbilityScores[resolvedSkillAbilityKey] ?? 10
-                            );
-                            const passiveSkillBonus = skill.value - baseAbilitySkillValue;
-                            const total = skill.value + (isProficient ? profBonus : 0);
+                            const baseAbilitySkillValue = Number(skill.abilityModifier ?? 0);
+                            const passiveSkillBonus = Number(skill.passiveContribution ?? 0);
+                            const total = Number(skill.value ?? 0);
                             const totalStr = total >= 0 ? `+${total}` : `${total}`;
                             const breakdownParts = [
                                 baseAbilitySkillValue >= 0 ? `+${baseAbilitySkillValue}` : `${baseAbilitySkillValue}`,
@@ -371,8 +446,9 @@ const Proficiencies = ({
                                     passiveSkillBonus >= 0 ? `+${passiveSkillBonus}` : `${passiveSkillBonus}`
                                 );
                             }
-                            if (isProficient) {
-                                breakdownParts.push(`+${profBonus}`);
+                            if (Number(skill.proficiencyContribution ?? 0) !== 0) {
+                                const contribution = Number(skill.proficiencyContribution);
+                                breakdownParts.push(contribution >= 0 ? `+${contribution}` : `${contribution}`);
                             }
 
                             const rowClass = `flex items-start justify-between rounded px-2 py-1 ${
@@ -411,10 +487,76 @@ const Proficiencies = ({
                         })}
                     </div>
                 </div>
+
+                <Separator />
+
+                <Collapsible className="!mt-6 rounded-md border border-border/70 bg-muted/10">
+                    <CollapsibleTrigger asChild>
+                        <button
+                            type="button"
+                            className="group flex w-full items-center justify-between gap-3 rounded-md px-3 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            aria-label="Mostra o nascondi il riepilogo delle competenze"
+                        >
+                            <span>
+                                <span className={SECTION_LABEL_CLASS}>Competenze</span>
+                                <span className="mt-0.5 block text-xs text-muted-foreground">
+                                    {hasProficiencySummary
+                                        ? `${proficiencyGroups.length} ${proficiencyGroups.length === 1 ? "fonte" : "fonti"}`
+                                        : "Nessuna competenza disponibile"}
+                                </span>
+                            </span>
+                            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" />
+                        </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                        <div className="border-t border-border/70 p-3">
+                            {!hasProficiencySummary ? (
+                                <p className="text-sm text-muted-foreground">
+                                    Nessuna competenza di armi, armature o scudi disponibile.
+                                </p>
+                            ) : (
+                                <div className="grid gap-3">
+                                    {proficiencyGroups.map((group) => (
+                                        <ProficiencySourceCard key={group.source} group={group} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </CollapsibleContent>
+                </Collapsible>
             </div>
         </SectionCard>
     );
 };
+
+function ProficiencySourceCard({ group }: { group: ProficiencySourceGroup }) {
+    return (
+        <div className="rounded-md border border-border/70 bg-muted/20 p-3">
+            <div className="text-sm font-semibold text-foreground">{capitalizeLabel(group.source)}</div>
+            <div className="mt-3 space-y-3">
+                {group.weapons.length > 0 && <ProficiencyBadges label="Armi" values={group.weapons} />}
+                {group.armor.length > 0 && <ProficiencyBadges label="Armature e scudi" values={group.armor} />}
+            </div>
+        </div>
+    );
+}
+
+function ProficiencyBadges({ label, values }: { label: string; values: string[] }) {
+    return (
+        <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+            <ul className="mt-1.5 flex flex-wrap gap-1.5" aria-label={`${label} da questa fonte`}>
+                {values.map((value) => (
+                    <li key={value}>
+                        <Badge variant="outline" className="whitespace-normal text-left leading-normal">
+                            {value}
+                        </Badge>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
 
 export default Proficiencies;
 

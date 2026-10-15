@@ -5,13 +5,49 @@ import { fileURLToPath } from "node:url";
 import os from "node:os";
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { DatabaseSync } from "node:sqlite";
 import express from "express";
 import compression from "compression";
 import { createServer as createViteServer } from "vite";
 import { Server as SocketIOServer } from "socket.io";
 import { normalizeMonsterTypeFields } from "./shared/monster-type-normalization.mjs";
 import { computeMonsterRarity } from "./shared/monster-rarity-rules.mjs";
+import {
+  CHARACTER_PROGRESSION_SCHEMA_COLUMNS,
+  CHARACTER_PROGRESSION_SCHEMA_OBJECTS,
+  inspectCharacterProgressionSchema,
+  resolveCharacterProgressionShadow,
+} from "./shared/character-progression-shadow.mjs";
+import {
+  CHARACTER_RULESET,
+  CLASS_RULES,
+  SUBCLASS_RULES,
+  normalizeClassKey,
+  normalizeSubclassKey,
+  evaluateMulticlassPrerequisites,
+  resolveClassAdvancementPreview,
+  resolveProgressionSummary,
+} from "./shared/character-class-rules.mjs";
+import {
+  applyLongRestToHitDicePools,
+  applyShortRestToHitDicePools,
+  convertSpellcastingPool,
+  resetResourcePools,
+  resolveConstitutionModifier,
+  resolveLevelUpHitPoints,
+} from "./shared/character-vitals-resources.mjs";
+import {
+  reconcilePassiveHitPoints,
+  resolvePassiveHitPointBonus,
+} from "./shared/character-hit-point-effects.mjs";
+import {
+  DRACONIC_ANCESTRY_OPTIONS,
+  draconicAncestrySummary,
+  normalizeDraconicAncestryKey,
+  requiresDraconicAncestry,
+} from "./shared/draconic-ancestry-rules.mjs";
+
+import { PACT_BOON_OPTIONS, normalizePactBoonKey, pactBoonSummary, canUsePactBlade } from "./shared/warlock-pact-rules.mjs";
+import { inspectPactBoonSchema } from "./scripts/apply-character-pact-boon.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +76,9 @@ const CAMPAIGN_DOCUMENT_DIR = process.env.CAMPAIGN_DOCUMENT_DIR
     : DEFAULT_CAMPAIGN_DOCUMENT_DIR;
 const INITIATIVE_TRACKER_FILE = path.resolve(DATA_DIR, "initiative-tracker.json");
 const INITIATIVE_TRACKER_STATE_KEY = "initiative-tracker";
+const OPERATION_RECEIPT_KEY_PREFIX = "m1-operation-receipt:";
+const OPERATION_RECEIPT_TTL_MS = 10 * 60 * 1000;
+const OPERATION_RECEIPT_LIMIT = 1_000;
 const SESSION_COOKIE = "ctf_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const SQLITE_DB_FILE = resolveSqliteDbFile();
@@ -63,6 +102,12 @@ const REQUEST_LOG_PATHS = new Set([
 ]);
 const loginAttempts = new Map();
 const backupAttempts = new Map();
+let DatabaseSync = null;
+const PACT_BLADE_TEMPLATE_IDS = new Set([
+  "club", "dagger", "greatclub", "handaxe", "javelin", "light-hammer", "mace", "quarterstaff", "sickle", "spear",
+  "battleaxe", "flail", "glaive", "greataxe", "greatsword", "halberd", "lance", "longsword", "maul", "morningstar",
+  "pike", "rapier", "scimitar", "shortsword", "trident", "war-pick", "warhammer", "whip",
+]);
 
 function resolveSqliteDbFile() {
   const raw = String(process.env.SQLITE_DB_FILE || process.env.DATABASE_PATH || process.env.DATABASE_URL || "").trim();
@@ -156,10 +201,10 @@ function getSqliteDbMtimeMs() {
   }
 }
 
-bootstrapPersistentStorage();
-
-let sqlite = createSqliteConnection();
-let sqliteLastKnownMtimeMs = getSqliteDbMtimeMs();
+let sqlite = null;
+let sqliteLastKnownMtimeMs = 0;
+let characterProgressionSchemaInspection = null;
+let characterVitalsResourcesSchemaInspection = null;
 
 function ensureSqliteConnectionFresh() {
   const currentMtimeMs = getSqliteDbMtimeMs();
@@ -175,6 +220,8 @@ function ensureSqliteConnectionFresh() {
 
   sqlite = createSqliteConnection();
   sqliteLastKnownMtimeMs = currentMtimeMs;
+  characterProgressionSchemaInspection = null;
+  characterVitalsResourcesSchemaInspection = null;
 }
 
 const CHARACTER_SHEET_LAYOUT_KEY = "character-sheet";
@@ -1132,24 +1179,6 @@ function runInTransaction(work) {
   }
 }
 
-ensureRaceSpeedReferenceTable();
-ensureUserLayoutPreferenceTable();
-ensureAppStateTable();
-ensureCharacterBackstoryTable();
-ensureCampaignSessionStateTable();
-ensureCampaignEventTables();
-ensureCampaignDocumentTables();
-ensureGameSessionStateTable();
-ensureCharacterCurrencyBalanceTable();
-ensureCurrencyTransactionTable();
-ensureChatConversationTables();
-ensureCampaignSessionStateRow();
-ensureGameSessionStateRow();
-ensureInitiativeTrackerStateMigrated();
-ensureCharacterCurrencyBalanceRows();
-ensureLegacyCharacterCurrencyBalancesMigrated();
-ensureLegacyCharacterChatConversationsMigrated();
-
 function normalizeUserRow(row) {
   if (!row) return null;
   return {
@@ -1369,6 +1398,679 @@ function columnExists(tableName, columnName) {
     .prepare(`PRAGMA table_info("${tableName}")`)
     .all()
     .some((column) => String(column.name) === columnName);
+}
+
+export function inspectCharacterProgressionShadowDatabase(database) {
+  const tableColumns = {};
+  for (const tableName of Object.keys(CHARACTER_PROGRESSION_SCHEMA_COLUMNS)) {
+    const exists = !!database
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
+      .get(tableName);
+    if (!exists) continue;
+    tableColumns[tableName] = database
+      .prepare(`PRAGMA table_info("${tableName}")`)
+      .all()
+      .map((column) => String(column.name));
+  }
+  const schemaObjects = {};
+  for (const type of Object.keys(CHARACTER_PROGRESSION_SCHEMA_OBJECTS)) {
+    schemaObjects[type] = database
+      .prepare("SELECT name FROM sqlite_master WHERE type = ?")
+      .all(type)
+      .map((entry) => String(entry.name));
+  }
+  return inspectCharacterProgressionSchema(tableColumns, schemaObjects);
+}
+
+function getCharacterProgressionSchemaInspection() {
+  if (!characterProgressionSchemaInspection) {
+    characterProgressionSchemaInspection = inspectCharacterProgressionShadowDatabase(sqlite);
+  }
+  return characterProgressionSchemaInspection;
+}
+
+export function readCharacterProgressionShadowFromDatabase(database, row, schemaInspection = null) {
+  const schema = schemaInspection ?? inspectCharacterProgressionShadowDatabase(database);
+  if (!schema.complete) {
+    return resolveCharacterProgressionShadow({ schema, character: row });
+  }
+
+  const progression = database.prepare(`
+    SELECT characterId, revision, backfillStatus, backfillIssues, legacySnapshot
+    FROM "CharacterProgression"
+    WHERE characterId = ?
+    LIMIT 1
+  `).get(row.id) ?? null;
+  const hasDraconicAncestry = database.prepare('PRAGMA table_info("CharacterClass")').all()
+    .some((column) => column.name === "draconicAncestryKey");
+  const hasPactBoon = database.prepare('PRAGMA table_info("CharacterClass")').all().some((column) => column.name === "pactBoonKey");
+  const classRows = database.prepare(`
+    SELECT
+      cc.id,
+      cc.characterId,
+      cc.classRuleId,
+      cc.subclassRuleId,
+      cc.classKey,
+      cc.level,
+      cc.sortOrder,
+      cc.isPrimary,
+      cc.subclassStatus,
+      ${hasDraconicAncestry ? "cc.draconicAncestryKey," : ""}
+      ${hasPactBoon ? "cc.pactBoonKey," : ""}
+      cc.source AS classSource,
+      cr.id AS ruleId,
+      cr.classKey AS ruleClassKey,
+      cr.labelIt AS ruleLabelIt,
+      cr.labelEn AS ruleLabelEn,
+      cr.aliases AS ruleAliases,
+      sr.id AS subclassRuleIdResolved,
+      sr.subclassKey,
+      sr.classRuleId AS subclassRuleClassRuleId
+    FROM "CharacterClass" cc
+    LEFT JOIN "ClassRule" cr ON cr.id = cc.classRuleId
+    LEFT JOIN "SubclassRule" sr ON sr.id = cc.subclassRuleId
+    WHERE cc.characterId = ?
+    ORDER BY cc.sortOrder, cc.id
+  `).all(row.id);
+  return resolveCharacterProgressionShadow({ schema, character: row, progression, classRows });
+}
+
+function readCharacterProgressionShadow(row) {
+  return readCharacterProgressionShadowFromDatabase(
+    sqlite,
+    row,
+    getCharacterProgressionSchemaInspection(),
+  );
+}
+
+const CHARACTER_LEVEL_HISTORY_COLUMNS = Object.freeze([
+  "id", "characterId", "requestId", "requestSignature", "operationType", "mode",
+  "targetClassKey", "targetClassRuleId", "targetSubclassKey", "targetSubclassRuleId",
+  "classLevelBefore", "classLevelAfter", "totalLevelBefore", "totalLevelAfter",
+  "progressionRevisionBefore", "progressionRevisionAfter", "characterRevisionBefore",
+  "characterRevisionAfter", "rulesetId", "rulesetVersion", "policyVersion",
+  "requestSnapshot", "beforeSnapshot", "afterSnapshot", "ruleSnapshot", "resultSnapshot",
+  "overrideReason", "appliedByUserId", "appliedBySnapshot", "hitDieSize",
+  "hitPointMethod", "hitPointsGained", "constitutionModifier", "appliedAt",
+]);
+const CHARACTER_PROGRESSION_M4_SCHEMA_OBJECTS = Object.freeze({
+  index: Object.freeze([
+    "CharacterLevelHistory_characterId_requestId_key",
+    "CharacterLevelHistory_characterId_progressionRevisionAfter_key",
+    "CharacterLevelHistory_characterId_appliedAt_idx",
+    "CharacterLevelHistory_targetClassRuleId_idx",
+    "CharacterLevelHistory_targetSubclassRuleId_idx",
+    "CharacterLevelHistory_appliedByUserId_idx",
+  ]),
+  trigger: Object.freeze([
+    "CharacterLevelHistory_class_key_matches_rule_insert",
+    "CharacterLevelHistory_class_key_matches_rule_update",
+    "CharacterLevelHistory_subclass_matches_class_insert",
+    "CharacterLevelHistory_subclass_matches_class_update",
+    "CharacterClass_total_level_limit_insert",
+    "CharacterClass_total_level_limit_update",
+  ]),
+});
+
+export function inspectCharacterProgressionM4Database(database) {
+  const table = database
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'CharacterLevelHistory' LIMIT 1")
+    .get();
+  if (!table) {
+    return { ready: false, missingTable: true, missingColumns: [...CHARACTER_LEVEL_HISTORY_COLUMNS] };
+  }
+  const actualColumns = new Set(
+    database.prepare('PRAGMA table_info("CharacterLevelHistory")').all().map((column) => String(column.name))
+  );
+  const missingColumns = CHARACTER_LEVEL_HISTORY_COLUMNS.filter((column) => !actualColumns.has(column));
+  const missingObjects = {};
+  for (const [type, expectedNames] of Object.entries(CHARACTER_PROGRESSION_M4_SCHEMA_OBJECTS)) {
+    const actualNames = new Set(
+      database.prepare("SELECT name FROM sqlite_master WHERE type = ?").all(type).map((entry) => String(entry.name))
+    );
+    const missing = expectedNames.filter((name) => !actualNames.has(name));
+    if (missing.length > 0) missingObjects[type] = missing;
+  }
+  return {
+    ready: missingColumns.length === 0 && Object.keys(missingObjects).length === 0,
+    missingTable: false,
+    missingColumns,
+    missingObjects,
+  };
+}
+
+function getCharacterProgressionM4Inspection() {
+  return inspectCharacterProgressionM4Database(sqlite);
+}
+
+const CHARACTER_SUBCLASS_HISTORY_COLUMNS = Object.freeze([
+  "id", "characterId", "requestId", "requestSignature", "mode", "targetClassKey",
+  "targetClassRuleId", "previousSubclassKey", "previousSubclassRuleId", "targetSubclassKey",
+  "targetSubclassRuleId", "classLevel", "totalLevel", "progressionRevisionBefore",
+  "progressionRevisionAfter", "characterRevisionBefore", "characterRevisionAfter", "reason",
+  "policyVersion", "requestSnapshot", "beforeSnapshot", "afterSnapshot", "ruleSnapshot",
+  "resultSnapshot", "appliedByUserId", "appliedBySnapshot", "appliedAt",
+]);
+const CHARACTER_SUBCLASS_SCHEMA_OBJECTS = Object.freeze({
+  index: Object.freeze([
+    "CharacterSubclassHistory_characterId_requestId_key",
+    "CharacterSubclassHistory_characterId_progressionRevisionAfter_key",
+    "CharacterSubclassHistory_characterId_appliedAt_idx",
+    "CharacterSubclassHistory_targetClassRuleId_idx",
+    "CharacterSubclassHistory_previousSubclassRuleId_idx",
+    "CharacterSubclassHistory_targetSubclassRuleId_idx",
+    "CharacterSubclassHistory_appliedByUserId_idx",
+  ]),
+  trigger: Object.freeze([
+    "CharacterSubclassHistory_class_key_matches_rule_insert",
+    "CharacterSubclassHistory_subclasses_match_class_insert",
+  ]),
+});
+
+export function inspectCharacterSubclassCorrectionDatabase(database) {
+  const table = database.prepare(`
+    SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'CharacterSubclassHistory' LIMIT 1
+  `).get();
+  if (!table) {
+    return { ready: false, missingTable: true, missingColumns: [...CHARACTER_SUBCLASS_HISTORY_COLUMNS], missingObjects: {} };
+  }
+  const actualColumns = new Set(
+    database.prepare('PRAGMA table_info("CharacterSubclassHistory")').all().map((column) => String(column.name)),
+  );
+  const missingColumns = CHARACTER_SUBCLASS_HISTORY_COLUMNS.filter((column) => !actualColumns.has(column));
+  const missingObjects = {};
+  for (const [type, required] of Object.entries(CHARACTER_SUBCLASS_SCHEMA_OBJECTS)) {
+    const actual = new Set(
+      database.prepare("SELECT name FROM sqlite_master WHERE type = ?").all(type).map((entry) => String(entry.name)),
+    );
+    const missing = required.filter((name) => !actual.has(name));
+    if (missing.length) missingObjects[type] = missing;
+  }
+  return {
+    ready: missingColumns.length === 0 && Object.keys(missingObjects).length === 0,
+    missingTable: false,
+    missingColumns,
+    missingObjects,
+  };
+}
+
+function getCharacterSubclassCorrectionInspection() {
+  return inspectCharacterSubclassCorrectionDatabase(sqlite);
+}
+
+const CHARACTER_DRACONIC_ANCESTRY_HISTORY_COLUMNS = Object.freeze([
+  "id", "characterId", "requestId", "requestSignature", "operationType", "targetClassKey",
+  "previousDraconicAncestryKey", "targetDraconicAncestryKey", "progressionRevisionBefore",
+  "progressionRevisionAfter", "characterRevisionBefore", "characterRevisionAfter", "reason",
+  "policyVersion", "requestSnapshot", "beforeSnapshot", "afterSnapshot", "resultSnapshot",
+  "appliedByUserId", "appliedBySnapshot", "appliedAt",
+]);
+const CHARACTER_DRACONIC_ANCESTRY_OBJECTS = Object.freeze({
+  index: Object.freeze([
+    "CharacterDraconicAncestryHistory_characterId_request_key",
+    "CharacterDraconicAncestryHistory_characterId_progressionRevisionAfter_key",
+    "CharacterDraconicAncestryHistory_characterId_appliedAt_idx",
+    "CharacterDraconicAncestryHistory_appliedByUserId_idx",
+  ]),
+  trigger: Object.freeze([
+    "CharacterClass_draconic_ancestry_insert",
+    "CharacterClass_draconic_ancestry_update",
+  ]),
+});
+
+export function inspectCharacterDraconicAncestryDatabase(database) {
+  const classColumns = new Set(
+    database.prepare('PRAGMA table_info("CharacterClass")').all().map((column) => String(column.name)),
+  );
+  const table = database.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type = 'table' AND name = 'CharacterDraconicAncestryHistory'
+    LIMIT 1
+  `).get();
+  const actualColumns = table
+    ? new Set(database.prepare('PRAGMA table_info("CharacterDraconicAncestryHistory")').all().map((column) => String(column.name)))
+    : new Set();
+  const missingColumns = CHARACTER_DRACONIC_ANCESTRY_HISTORY_COLUMNS
+    .filter((column) => !actualColumns.has(column));
+  const missingObjects = {};
+  for (const [type, required] of Object.entries(CHARACTER_DRACONIC_ANCESTRY_OBJECTS)) {
+    const actual = new Set(
+      database.prepare("SELECT name FROM sqlite_master WHERE type = ?").all(type).map((entry) => String(entry.name)),
+    );
+    const missing = required.filter((name) => !actual.has(name));
+    if (missing.length) missingObjects[type] = missing;
+  }
+  return {
+    ready: classColumns.has("draconicAncestryKey") && Boolean(table)
+      && missingColumns.length === 0 && Object.keys(missingObjects).length === 0,
+    missingClassColumn: !classColumns.has("draconicAncestryKey"),
+    missingTable: !table,
+    missingColumns,
+    missingObjects,
+  };
+}
+
+function getCharacterDraconicAncestryInspection() {
+  return inspectCharacterDraconicAncestryDatabase(sqlite);
+}
+
+export function readActiveCharacterClassRule(database, classKey) {
+  return database.prepare(`
+    SELECT * FROM "ClassRule"
+    WHERE classKey = ? AND rulesetId = ? AND rulesetVersion = ? AND isManual = 0
+    ORDER BY updatedAt DESC LIMIT 1
+  `).get(classKey, CHARACTER_RULESET.id, CHARACTER_RULESET.version) ?? null;
+}
+
+export function inspectCharacterProgressionMc1Database(database) {
+  const legacySingleClassIndex = database.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type = 'index' AND name = 'CharacterClass_m3_single_class_key'
+    LIMIT 1
+  `).get();
+  return { ready: !legacySingleClassIndex, legacySingleClassIndex: Boolean(legacySingleClassIndex) };
+}
+
+const CHARACTER_VITALS_RESOURCES_SCHEMA_COLUMNS = Object.freeze({
+  CharacterHitPointState: Object.freeze([
+    "characterId", "maximumHitPoints", "currentHitPoints", "temporaryHitPoints",
+    "deathSaveSuccesses", "deathSaveFailures", "shortRestsUsedSinceLongRest",
+    "lastShortRestAt", "lastLongRestAt", "revision", "backfillStatus",
+    "backfillIssues", "legacySnapshot", "createdAt", "updatedAt",
+  ]),
+  CharacterHitDiePool: Object.freeze([
+    "id", "characterId", "dieSize", "maximum", "remaining", "source",
+    "legacySnapshot", "createdAt", "updatedAt",
+  ]),
+  CharacterHitPointAdjustment: Object.freeze([
+    "id", "characterId", "requestId", "adjustmentType", "maximumBefore",
+    "maximumAfter", "currentBefore", "currentAfter", "delta",
+    "constitutionModifierBefore", "constitutionModifierAfter", "totalLevel",
+    "reason", "appliedByUserId", "appliedBySnapshot", "detailsSnapshot", "appliedAt",
+  ]),
+  CharacterResourcePool: Object.freeze([
+    "id", "characterId", "poolKey", "kind", "label", "resetPolicy", "revision",
+    "backfillStatus", "backfillIssues", "metadata", "ruleSnapshot", "legacySnapshot",
+    "createdAt", "updatedAt",
+  ]),
+  CharacterResourcePoolSource: Object.freeze([
+    "id", "poolId", "characterClassId", "sourceKey", "sourceKind", "ruleSnapshot",
+    "createdAt", "updatedAt",
+  ]),
+  CharacterResourcePoolTier: Object.freeze([
+    "id", "poolId", "tierKey", "sortOrder", "derivedMaximum", "maximumOverride",
+    "used", "createdAt", "updatedAt",
+  ]),
+});
+
+export function inspectCharacterVitalsResourcesDatabase(database) {
+  const missingTables = [];
+  const missingColumns = {};
+  for (const [tableName, expectedColumns] of Object.entries(CHARACTER_VITALS_RESOURCES_SCHEMA_COLUMNS)) {
+    const exists = !!database
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
+      .get(tableName);
+    if (!exists) {
+      missingTables.push(tableName);
+      continue;
+    }
+    const actualColumns = new Set(
+      database.prepare(`PRAGMA table_info("${tableName}")`).all().map((column) => String(column.name))
+    );
+    const missing = expectedColumns.filter((column) => !actualColumns.has(column));
+    if (missing.length > 0) missingColumns[tableName] = missing;
+  }
+  const tableReady = (tableName) =>
+    !missingTables.includes(tableName) && !Object.prototype.hasOwnProperty.call(missingColumns, tableName);
+  const m5Ready = ["CharacterHitPointState", "CharacterHitDiePool", "CharacterHitPointAdjustment"]
+    .every(tableReady);
+  const hitPointStateColumns = missingTables.includes("CharacterHitPointState")
+    ? new Set()
+    : new Set(database.prepare('PRAGMA table_info("CharacterHitPointState")').all().map((column) => String(column.name)));
+  const passiveHitPointBonusReady = m5Ready && hitPointStateColumns.has("passiveBonusApplied");
+  const m6Ready = ["CharacterResourcePool", "CharacterResourcePoolSource", "CharacterResourcePoolTier"]
+    .every(tableReady);
+  return {
+    ready: m5Ready && m6Ready,
+    m5Ready,
+    m6Ready,
+    passiveHitPointBonusReady,
+    missingTables,
+    missingColumns,
+  };
+}
+
+function getCharacterVitalsResourcesSchemaInspection() {
+  if (!characterVitalsResourcesSchemaInspection) {
+    characterVitalsResourcesSchemaInspection = inspectCharacterVitalsResourcesDatabase(sqlite);
+  }
+  return characterVitalsResourcesSchemaInspection;
+}
+
+function effectiveResourceTierMaximum(tier) {
+  const value = tier?.maximumOverride ?? tier?.derivedMaximum;
+  return Number.isInteger(Number(value)) ? Number(value) : 0;
+}
+
+export function readCharacterVitalsResourcesFromDatabase(database, characterId, schemaInspection = null) {
+  const schema = schemaInspection ?? inspectCharacterVitalsResourcesDatabase(database);
+  let hitPointState = null;
+  let hitDicePools = [];
+  let resourcePools = [];
+
+  if (schema.m5Ready) {
+    const row = database.prepare(`
+      SELECT * FROM "CharacterHitPointState" WHERE characterId = ? LIMIT 1
+    `).get(characterId) ?? null;
+    if (row) {
+      hitPointState = {
+        maximumHitPoints: Number(row.maximumHitPoints),
+        currentHitPoints: Number(row.currentHitPoints),
+        temporaryHitPoints: Number(row.temporaryHitPoints),
+        deathSaveSuccesses: Number(row.deathSaveSuccesses),
+        deathSaveFailures: Number(row.deathSaveFailures),
+        shortRestsUsedSinceLongRest: Number(row.shortRestsUsedSinceLongRest),
+        lastShortRestAt: row.lastShortRestAt ?? null,
+        lastLongRestAt: row.lastLongRestAt ?? null,
+        revision: Number(row.revision),
+        backfillStatus: row.backfillStatus,
+        backfillIssues: parseJsonString(row.backfillIssues, []),
+        ...(schema.passiveHitPointBonusReady ? { passiveBonusApplied: Number(row.passiveBonusApplied ?? 0) } : {}),
+      };
+    }
+    hitDicePools = database.prepare(`
+      SELECT id, dieSize, maximum, remaining, source
+      FROM "CharacterHitDiePool"
+      WHERE characterId = ?
+      ORDER BY dieSize DESC
+    `).all(characterId).map((pool) => ({
+      id: pool.id,
+      dieSize: Number(pool.dieSize),
+      maximum: Number(pool.maximum),
+      remaining: Number(pool.remaining),
+      source: pool.source,
+    }));
+  }
+
+  if (schema.m6Ready) {
+    const poolRows = database.prepare(`
+      SELECT * FROM "CharacterResourcePool"
+      WHERE characterId = ?
+      ORDER BY poolKey COLLATE NOCASE, id
+    `).all(characterId);
+    const readTiers = database.prepare(`
+      SELECT * FROM "CharacterResourcePoolTier"
+      WHERE poolId = ? ORDER BY sortOrder, tierKey COLLATE NOCASE
+    `);
+    const readSources = database.prepare(`
+      SELECT id, characterClassId, sourceKey, sourceKind
+      FROM "CharacterResourcePoolSource"
+      WHERE poolId = ? ORDER BY sourceKey COLLATE NOCASE
+    `);
+    resourcePools = poolRows.map((pool) => {
+      const tiers = readTiers.all(pool.id).map((tier) => ({
+        id: tier.id,
+        tierKey: String(tier.tierKey),
+        sortOrder: Number(tier.sortOrder),
+        derivedMaximum: tier.derivedMaximum == null ? null : Number(tier.derivedMaximum),
+        maximumOverride: tier.maximumOverride == null ? null : Number(tier.maximumOverride),
+        maximum: effectiveResourceTierMaximum(tier),
+        used: Number(tier.used),
+      }));
+      return {
+        id: pool.id,
+        poolKey: pool.poolKey,
+        kind: pool.kind,
+        label: pool.label,
+        resetPolicy: pool.resetPolicy,
+        revision: Number(pool.revision),
+        backfillStatus: pool.backfillStatus,
+        backfillIssues: parseJsonString(pool.backfillIssues, []),
+        metadata: parseJsonString(pool.metadata, {}),
+        maximum: Object.fromEntries(tiers.map((tier) => [tier.tierKey, tier.maximum])),
+        used: Object.fromEntries(tiers.map((tier) => [tier.tierKey, tier.used])),
+        tiers,
+        sources: readSources.all(pool.id),
+      };
+    });
+  }
+
+  return { schema, hitPointState, hitDicePools, resourcePools };
+}
+
+function readCharacterVitalsResources(characterId) {
+  return readCharacterVitalsResourcesFromDatabase(
+    sqlite,
+    characterId,
+    getCharacterVitalsResourcesSchemaInspection(),
+  );
+}
+
+function publicProgressionClass(entry) {
+  const subclassRule = entry?.subclassKey ? SUBCLASS_RULES[entry.subclassKey] ?? null : null;
+  const subclass = entry?.subclassKey
+    ? {
+        subclassKey: entry.subclassKey,
+        label: subclassRule?.labels?.it ?? subclassRule?.labels?.en ?? entry.subclassKey,
+        status: entry?.subclassStatus ?? "UNSELECTED",
+      }
+    : null;
+  return {
+    classKey: entry.classKey,
+    label: entry.label ?? CLASS_RULES[entry.classKey]?.labels?.it ?? entry.classKey,
+    level: Number(entry.level),
+    sortOrder: Number(entry.sortOrder ?? 0),
+    isPrimary: entry.isPrimary === true || Number(entry.isPrimary) === 1,
+    subclass,
+    draconicAncestryKey: entry?.draconicAncestryKey ?? null,
+    draconicAncestry: draconicAncestrySummary(entry?.draconicAncestryKey),
+    pactBoonKey: entry?.pactBoonKey ?? null,
+    pactBoon: pactBoonSummary(entry?.pactBoonKey),
+  };
+}
+
+export function serializeCharacterSnapshot(snapshot) {
+  if (!snapshot?.state) return null;
+  const progression = snapshot.progression;
+  const structured = progression?.source === "STRUCTURED";
+  const classes = structured && Array.isArray(progression.classes)
+    ? progression.classes.map(publicProgressionClass)
+    : [];
+  const primaryClass = classes.find((entry) => entry.isPrimary) ?? null;
+  const legacyLevel = Number(snapshot.state?.basicInfo?.level);
+  const hasIncompleteSubclass = structured && progression.classes.some(
+    (entry) => entry?.subclassStatus === "INCOMPLETE_LEGACY"
+  );
+  return {
+    ...snapshot.state,
+    hitPointState: snapshot.hitPointState ?? null,
+    hitDicePools: Array.isArray(snapshot.hitDicePools) ? snapshot.hitDicePools : [],
+    resourcePools: Array.isArray(snapshot.resourcePools) ? snapshot.resourcePools : [],
+    classes,
+    primaryClass,
+    totalLevel: structured
+      ? Number(progression.totalLevel)
+      : Number.isFinite(legacyLevel) ? legacyLevel : progression?.totalLevel ?? null,
+    progressionRevision: Number.isInteger(progression?.progressionRevision)
+      ? progression.progressionRevision
+      : null,
+    progressionStatus: structured
+      ? hasIncompleteSubclass ? "INCOMPLETE_LEGACY" : "READY"
+      : "LEGACY",
+  };
+}
+
+function initializeCreatedCharacterProgression(slug, updatedByUserId = null) {
+  if (!getCharacterProgressionSchemaInspection().complete) {
+    return { status: "LEGACY_SCHEMA", structured: false };
+  }
+  const row = sqlite.prepare(`
+    SELECT id, slug, className, level, data FROM "Character" WHERE slug = ? LIMIT 1
+  `).get(slug);
+  if (!row) throw new Error("Character missing after creation");
+  const data = parseJsonString(row.data, {});
+  const classKey = normalizeClassKey(row.className ?? data?.basicInfo?.class);
+  const level = Number(row.level ?? data?.basicInfo?.level);
+  const now = new Date().toISOString();
+  const legacySnapshot = JSON.stringify({
+    column: { className: row.className ?? null, level: row.level ?? null },
+    basicInfo: {
+      class: data?.basicInfo?.class ?? null,
+      level: data?.basicInfo?.level ?? null,
+    },
+  });
+  const classRule = classKey
+    ? sqlite.prepare(`
+        SELECT * FROM "ClassRule" WHERE classKey = ? ORDER BY updatedAt DESC LIMIT 1
+      `).get(classKey)
+    : null;
+  if (!classRule || !Number.isInteger(level) || level < 1 || level > 20) {
+    const issues = JSON.stringify([{
+      code: classRule ? "CREATED_LEVEL_INVALID" : "CREATED_CLASS_UNRESOLVED",
+      className: row.className ?? null,
+      level: row.level ?? null,
+    }]);
+    sqlite.prepare(`
+      INSERT INTO "CharacterProgression" (
+        characterId, revision, backfillStatus, backfillIssues, legacySnapshot, createdAt, updatedAt
+      ) VALUES (?, 0, 'UNRESOLVED', ?, ?, ?, ?)
+    `).run(row.id, issues, legacySnapshot, now, now);
+    return { status: "MANUAL", structured: false };
+  }
+
+  sqlite.prepare(`
+    INSERT INTO "CharacterProgression" (
+      characterId, revision, backfillStatus, backfillIssues, legacySnapshot, createdAt, updatedAt
+    ) VALUES (?, 0, 'BACKFILLED', '[]', ?, ?, ?)
+  `).run(row.id, legacySnapshot, now, now);
+  const subclassStatus = level >= Number(classRule.subclassSelectionLevel ?? 21)
+    ? "INCOMPLETE_LEGACY"
+    : "NOT_YET_ELIGIBLE";
+  sqlite.prepare(`
+    INSERT INTO "CharacterClass" (
+      id, characterId, classRuleId, subclassRuleId, classKey, level, sortOrder, isPrimary,
+      subclassStatus, source, ruleSnapshot, updatedByUserId, createdAt, updatedAt
+    ) VALUES (?, ?, ?, NULL, ?, ?, 0, 1, ?, 'CHARACTER_CREATION', ?, ?, ?, ?)
+  `).run(
+    crypto.randomUUID(),
+    row.id,
+    classRule.id,
+    classKey,
+    level,
+    subclassStatus,
+    classRule.ruleSnapshot,
+    updatedByUserId,
+    now,
+    now,
+  );
+  return { status: subclassStatus === "INCOMPLETE_LEGACY" ? "INCOMPLETE" : "READY", structured: true };
+}
+
+function initializeCreatedCharacterVitalsResources(slug, appliedByUserId = null) {
+  const schema = getCharacterVitalsResourcesSchemaInspection();
+  if (!schema.m5Ready) return { status: "LEGACY_SCHEMA", structured: false };
+  const row = sqlite.prepare(`
+    SELECT c.id, c.data, cc.id AS characterClassId, cc.classKey, cc.level,
+           sr.subclassKey, cr.hitDie
+    FROM "Character" c
+    JOIN "CharacterClass" cc ON cc.characterId = c.id AND cc.isPrimary = 1
+    JOIN "ClassRule" cr ON cr.id = cc.classRuleId
+    LEFT JOIN "SubclassRule" sr ON sr.id = cc.subclassRuleId
+    WHERE c.slug = ?
+    LIMIT 1
+  `).get(slug);
+  if (!row || ![6, 8, 10, 12].includes(Number(row.hitDie))) {
+    return { status: "UNRESOLVED", structured: false };
+  }
+
+  const state = parseJsonString(row.data, {});
+  const constitutionModifier = resolveConstitutionModifier(Number(state?.abilityScores?.constitution ?? 10));
+  const initialHitPoints = resolveLevelUpHitPoints({
+    hitDieSize: Number(row.hitDie),
+    constitutionModifier,
+  });
+  const now = new Date().toISOString();
+  const hitPointState = {
+    maximumHitPoints: initialHitPoints.gained,
+    currentHitPoints: initialHitPoints.gained,
+    temporaryHitPoints: 0,
+    deathSaveSuccesses: 0,
+    deathSaveFailures: 0,
+    shortRestsUsedSinceLongRest: 0,
+    lastShortRestAt: null,
+    lastLongRestAt: null,
+    revision: 0,
+  };
+  const hitDicePools = [{
+    dieSize: Number(row.hitDie),
+    maximum: Number(row.level),
+    remaining: Number(row.level),
+    source: "DERIVED",
+  }];
+
+  sqlite.prepare(`
+    INSERT INTO "CharacterHitPointState" (
+      characterId, maximumHitPoints, currentHitPoints, temporaryHitPoints,
+      deathSaveSuccesses, deathSaveFailures, shortRestsUsedSinceLongRest,
+      lastShortRestAt, lastLongRestAt, revision, backfillStatus, backfillIssues,
+      legacySnapshot, createdAt, updatedAt
+    ) VALUES (?, ?, ?, 0, 0, 0, 0, NULL, NULL, 0, 'BACKFILLED', '[]', '{}', ?, ?)
+  `).run(row.id, hitPointState.maximumHitPoints, hitPointState.currentHitPoints, now, now);
+  persistHitDicePools(row.id, hitDicePools, now);
+  const appliedBy = appliedByUserId ? getUserById(appliedByUserId) : null;
+  sqlite.prepare(`
+    INSERT INTO "CharacterHitPointAdjustment" (
+      id, characterId, requestId, adjustmentType, maximumBefore, maximumAfter,
+      currentBefore, currentAfter, delta, constitutionModifierBefore,
+      constitutionModifierAfter, totalLevel, reason, appliedByUserId,
+      appliedBySnapshot, detailsSnapshot, appliedAt
+    ) VALUES (?, ?, NULL, 'BASELINE', 0, ?, 0, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    crypto.randomUUID(), row.id, initialHitPoints.gained, initialHitPoints.gained,
+    initialHitPoints.gained, constitutionModifier, Number(row.level),
+    "PF iniziali alla creazione del personaggio", appliedBy?.id ?? null,
+    JSON.stringify(appliedBy ? {
+      id: appliedBy.id,
+      username: appliedBy.username,
+      displayName: appliedBy.displayName,
+      role: appliedBy.role,
+    } : { kind: "SYSTEM" }),
+    JSON.stringify({
+      method: initialHitPoints.method,
+      policyVersion: initialHitPoints.policyVersion,
+      hitDieSize: initialHitPoints.hitDieSize,
+    }),
+    now,
+  );
+
+  let resourcePools = [];
+  if (schema.m6Ready) {
+    const entries = [{
+      classKey: row.classKey,
+      level: Number(row.level),
+      ...(row.subclassKey ? { subclassKey: row.subclassKey } : {}),
+      isPrimary: true,
+    }];
+    const summary = resolveProgressionSummary(entries);
+    resourcePools = projectProgressionResourcePools([], summary, row.classKey);
+    persistResourcePools(row.id, resourcePools, now, {
+      characterClassId: row.characterClassId,
+      sourceClassKey: row.classKey,
+    });
+  }
+
+  const nextState = projectStructuredStateToLegacy(state, {
+    hitPointState,
+    hitDicePools,
+    resourcePools,
+  });
+  writeCharacter(slug, nextState);
+  return {
+    status: "READY",
+    structured: true,
+    hitPointMethod: initialHitPoints.method,
+    resourcePoolCount: resourcePools.length,
+  };
 }
 
 function formatSkillLabel(skillName, ability) {
@@ -2237,6 +2939,8 @@ function createEmptyItemDefinition(name = "Nuovo oggetto") {
     category: "OTHER",
     subcategory: null,
     weaponHandling: null,
+    weaponProficiencyGroup: null,
+    isLightWeapon: false,
     gloveWearMode: null,
     armorCategory: null,
     armorClassCalculation: null,
@@ -2683,6 +3387,8 @@ function serializeShopVisitItem(row, { dm = false, known = false, featureStates 
   };
   const publicDefinition = definition ? {
     category: definition.category ?? null,
+    weaponProficiencyGroup: definition.weaponProficiencyGroup ?? null,
+    isLightWeapon: !!definition.isLightWeapon,
     rarity: definition.rarity ?? null,
     stackable: !!definition.stackable,
     equippable: !!definition.equippable,
@@ -3939,6 +4645,8 @@ function buildShopImportCatalogIndex() {
     slug: item.slug,
     name: item.name,
     category: item.category,
+    weaponProficiencyGroup: item.weaponProficiencyGroup ?? null,
+    isLightWeapon: !!item.isLightWeapon,
     rarity: item.rarity ?? null,
     stackable: !!item.stackable,
     equippable: !!item.equippable,
@@ -3959,7 +4667,7 @@ function validateImportObjectKeys(value, allowedKeys, label, errors) {
 }
 
 const SHOP_IMPORT_DEFINITION_KEYS = [
-  "slug", "name", "category", "subcategory", "weaponHandling", "gloveWearMode",
+  "slug", "name", "category", "subcategory", "weaponHandling", "weaponProficiencyGroup", "isLightWeapon", "gloveWearMode",
   "armorCategory", "armorClassCalculation", "armorClassBase", "armorClassBonus", "rarity",
   "description", "playerVisible", "stackable", "equippable", "attunement", "weight", "valueCp",
   "data", "slotRules", "attacks", "modifiers", "features", "abilityRequirements", "useEffects",
@@ -3974,7 +4682,7 @@ const SHOP_IMPORT_FEATURE_KEYS = [
   "name", "kind", "description", "resetOn", "customResetLabel", "maxUses", "passiveEffects", "condition", "sortOrder",
 ];
 const SHOP_IMPORT_PASSIVE_EFFECT_KEYS = [
-  "target", "operationType", "valueMode", "value", "setMode", "setValue", "capValue", "sourceAbility",
+  "category", "target", "operationType", "valueMode", "value", "setMode", "setValue", "capValue", "sourceAbility",
   "multiplierNumerator", "multiplierDenominator", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes",
 ];
 const SHOP_IMPORT_ABILITY_REQUIREMENT_KEYS = ["ability", "minScore", "sortOrder"];
@@ -3987,6 +4695,11 @@ const SHOP_IMPORT_PASSIVE_EFFECT_VALUE_MODES = new Set(["FLAT", "ABILITY_MODIFIE
 const SHOP_IMPORT_PASSIVE_EFFECT_SET_MODES = new Set(["ABSOLUTE", "MINIMUM_FLOOR"]);
 const SHOP_IMPORT_PASSIVE_EFFECT_SOURCE_ABILITIES = new Set(ITEM_ABILITY_SCORE_VALUES);
 const SHOP_IMPORT_PASSIVE_EFFECT_ROUNDING = new Set(["FLOOR", "CEIL"]);
+const PASSIVE_EFFECT_CATEGORIES = new Set(["MODIFIER", "PROFICIENCY"]);
+const PASSIVE_EFFECT_PROFICIENCY_TARGETS = new Set([
+  "WEAPON_SIMPLE", "WEAPON_MARTIAL", "ARMOR_LIGHT", "ARMOR_MEDIUM", "ARMOR_HEAVY", "SHIELD",
+]);
+const PASSIVE_EFFECT_PROFICIENCY_KEYS = new Set(["category", "target"]);
 const SHOP_IMPORT_SLOT_SELECTION_MODES = new Set(["ALL_REQUIRED", "ANY_ONE"]);
 const SHOP_IMPORT_SLOTS = new Set([
   "HEAD", "BACK", "ARMOR", "GLOVE_LEFT", "GLOVE_RIGHT", "RING_1", "RING_2", "RING_3", "RING_4",
@@ -3995,6 +4708,7 @@ const SHOP_IMPORT_SLOTS = new Set([
 ]);
 const SHOP_IMPORT_ATTACK_KINDS = new Set(["MELEE_WEAPON", "RANGED_WEAPON", "THROWN", "SPECIAL"]);
 const SHOP_IMPORT_ATTACK_HAND_REQUIREMENTS = new Set(["ANY", "ONE_HANDED", "TWO_HANDED"]);
+const ITEM_WEAPON_PROFICIENCY_GROUPS = new Set(["SIMPLE", "MARTIAL"]);
 const SHOP_IMPORT_MODIFIER_TARGETS = new Set([
   "ARMOR_CLASS", "STRENGTH", "DEXTERITY", "CONSTITUTION", "INTELLIGENCE", "WISDOM", "CHARISMA",
   "SPEED", "INITIATIVE", "HIT_POINT_MAX",
@@ -4071,7 +4785,46 @@ function validateShopImportObjectArray(value, allowedKeys, label, errors, nested
   });
 }
 
+function validatePassiveEffectCategoryContract(effect, label, errors) {
+  const category = effect.category === undefined ? "MODIFIER" : effect.category;
+  if (!PASSIVE_EFFECT_CATEGORIES.has(category)) {
+    errors.push(`${label}.category must be MODIFIER or PROFICIENCY`);
+    return null;
+  }
+  if (category !== "PROFICIENCY") return category;
+
+  for (const key of Object.keys(effect)) {
+    if (!PASSIVE_EFFECT_PROFICIENCY_KEYS.has(key)) {
+      errors.push(`${label}.${key} is not supported for a PROFICIENCY effect`);
+    }
+  }
+  if (!hasShopImportField(effect, "target") || !PASSIVE_EFFECT_PROFICIENCY_TARGETS.has(effect.target)) {
+    errors.push(`${label}.target must be a supported proficiency category`);
+  }
+  return category;
+}
+
+function assertItemFeaturePassiveEffectCategoryContracts(features) {
+  features.forEach((feature, featureIndex) => {
+    const kind = String(feature?.kind ?? "ACTIVE").trim().toUpperCase() === "PASSIVE" ? "PASSIVE" : "ACTIVE";
+    if (kind !== "PASSIVE" || !Array.isArray(feature?.passiveEffects)) return;
+    feature.passiveEffects.forEach((effect, effectIndex) => {
+      if (!effect || typeof effect !== "object" || Array.isArray(effect)) return;
+      const errors = [];
+      validatePassiveEffectCategoryContract(
+        effect,
+        `Feature #${featureIndex + 1}.passiveEffects[${effectIndex}]`,
+        errors
+      );
+      if (errors.length > 0) throw new Error(errors.join("; "));
+    });
+  });
+}
+
 function validateShopImportPassiveEffect(effect, label, errors) {
+  const category = validatePassiveEffectCategoryContract(effect, label, errors);
+  if (category === "PROFICIENCY" || category === null) return;
+
   const target = typeof effect.target === "string" ? effect.target.trim() : "";
   const trigger = typeof effect.trigger === "string" ? effect.trigger.trim() : "";
   if (!target) errors.push(`${label}.target must be a non-empty string`);
@@ -4190,6 +4943,8 @@ function validateShopImportUseEffect(effect, label, errors) {
 
 function validateShopImportInlineDefinitionKeys(definition, label, errors) {
   validateImportObjectKeys(definition, SHOP_IMPORT_DEFINITION_KEYS, label, errors);
+  validateShopImportEnum(definition, "weaponProficiencyGroup", ITEM_WEAPON_PROFICIENCY_GROUPS, label, errors, { nullable: true });
+  validateShopImportBoolean(definition, "isLightWeapon", label, errors);
   validateShopImportObjectArray(definition.slotRules, SHOP_IMPORT_SLOT_RULE_KEYS, `${label}.slotRules`, errors, validateShopImportSlotRule);
   validateShopImportObjectArray(definition.attacks, SHOP_IMPORT_ATTACK_KEYS, `${label}.attacks`, errors, validateShopImportAttack);
   validateShopImportObjectArray(definition.modifiers, SHOP_IMPORT_MODIFIER_KEYS, `${label}.modifiers`, errors, validateShopImportModifier);
@@ -4630,6 +5385,8 @@ function readItemDefinitions() {
   const hasPlayerVisible = columnExists("ItemDefinition", "playerVisible");
   const hasValueCurrency = columnExists("ItemDefinition", "valueCurrency");
   const hasValueAmount = columnExists("ItemDefinition", "valueAmount");
+  const hasWeaponProficiencyGroup = columnExists("ItemDefinition", "weaponProficiencyGroup");
+  const hasIsLightWeapon = columnExists("ItemDefinition", "isLightWeapon");
 
   return sqlite.prepare(`
     SELECT
@@ -4637,6 +5394,8 @@ function readItemDefinitions() {
       d.slug,
       d.name,
       d.category,
+      ${hasWeaponProficiencyGroup ? "d.weaponProficiencyGroup" : "NULL AS weaponProficiencyGroup"},
+      ${hasIsLightWeapon ? "d.isLightWeapon" : "0 AS isLightWeapon"},
       d.rarity,
       d.description,
       ${hasPlayerVisible ? "d.playerVisible" : "1 AS playerVisible"},
@@ -4655,6 +5414,8 @@ function readItemDefinitions() {
     slug: row.slug,
     name: row.name,
     category: row.category,
+    weaponProficiencyGroup: row.weaponProficiencyGroup ?? null,
+    isLightWeapon: !!row.isLightWeapon,
     rarity: row.rarity ?? null,
     description: row.description ?? null,
     playerVisible: !!row.playerVisible,
@@ -4780,6 +5541,10 @@ function readItemDefinition(itemId) {
     category: base.category,
     subcategory: base.subcategory ?? null,
     weaponHandling: base.weaponHandling ?? null,
+    weaponProficiencyGroup: columnExists("ItemDefinition", "weaponProficiencyGroup")
+      ? base.weaponProficiencyGroup ?? null
+      : null,
+    isLightWeapon: columnExists("ItemDefinition", "isLightWeapon") ? !!base.isLightWeapon : false,
     gloveWearMode: base.gloveWearMode ?? null,
     armorCategory: base.armorCategory ?? null,
     armorClassCalculation: base.armorClassCalculation ?? null,
@@ -4820,9 +5585,18 @@ function normalizeItemDefinitionPayload(payload, existingId = null) {
   const rawAbilityRequirements = Array.isArray(payload?.abilityRequirements) ? payload.abilityRequirements : [];
   const rawUseEffects = Array.isArray(payload?.useEffects) ? payload.useEffects : [];
   const normalizedRarity = normalizeNullableString(payload?.rarity);
+  const rawWeaponProficiencyGroup = normalizeNullableString(payload?.weaponProficiencyGroup);
+  const weaponProficiencyGroup = rawWeaponProficiencyGroup?.toUpperCase() ?? null;
+  if (weaponProficiencyGroup && !ITEM_WEAPON_PROFICIENCY_GROUPS.has(weaponProficiencyGroup)) {
+    throw new Error("Weapon proficiency group must be SIMPLE, MARTIAL or null");
+  }
+  if (payload?.isLightWeapon !== undefined && typeof payload.isLightWeapon !== "boolean") {
+    throw new Error("isLightWeapon must be a boolean");
+  }
 
   assertNamedEntries(rawAttacks, "Attacco", ["kind", "handRequirement", "ability", "attackBonus", "damageDice", "damageType", "rangeNormal", "rangeLong", "conditionText"]);
   assertNamedEntries(rawFeatures, "Feature", ["description", "resetOn", "customResetLabel", "maxUses", "condition"]);
+  assertItemFeaturePassiveEffectCategoryContracts(rawFeatures);
 
   return {
     ...base,
@@ -4832,6 +5606,8 @@ function normalizeItemDefinitionPayload(payload, existingId = null) {
     category: String(payload?.category ?? "OTHER").trim() || "OTHER",
     subcategory: normalizeNullableString(payload?.subcategory),
     weaponHandling: normalizeNullableString(payload?.weaponHandling),
+    weaponProficiencyGroup,
+    isLightWeapon: payload?.isLightWeapon === true,
     gloveWearMode: normalizeNullableString(payload?.gloveWearMode),
     armorCategory: normalizeNullableString(payload?.armorCategory),
     armorClassCalculation: normalizeNullableString(payload?.armorClassCalculation),
@@ -4956,6 +5732,15 @@ function saveItemDefinition(payload, existingId = null) {
   const hasPlayerVisible = columnExists("ItemDefinition", "playerVisible");
   const hasValueCurrency = columnExists("ItemDefinition", "valueCurrency");
   const hasValueAmount = columnExists("ItemDefinition", "valueAmount");
+  const hasWeaponProficiencyGroup = columnExists("ItemDefinition", "weaponProficiencyGroup");
+  const hasIsLightWeapon = columnExists("ItemDefinition", "isLightWeapon");
+
+  if (
+    (!hasWeaponProficiencyGroup && normalized.weaponProficiencyGroup !== null) ||
+    (!hasIsLightWeapon && normalized.isLightWeapon)
+  ) {
+    throw new Error("La classificazione delle armi richiede l'applicazione della migrazione 20260812_item_weapon_classification.");
+  }
 
   runInTransaction(() => {
     if (existing) {
@@ -5047,6 +5832,15 @@ function saveItemDefinition(payload, existingId = null) {
         now,
         now
       );
+    }
+
+    if (hasWeaponProficiencyGroup) {
+      sqlite.prepare('UPDATE "ItemDefinition" SET weaponProficiencyGroup = ? WHERE id = ?')
+        .run(normalized.weaponProficiencyGroup, normalized.id);
+    }
+    if (hasIsLightWeapon) {
+      sqlite.prepare('UPDATE "ItemDefinition" SET isLightWeapon = ? WHERE id = ?')
+        .run(normalized.isLightWeapon ? 1 : 0, normalized.id);
     }
 
     sqlite.prepare('DELETE FROM "ItemSlotRule" WHERE itemDefinitionId = ?').run(normalized.id);
@@ -6232,6 +7026,13 @@ function buildQuickCreateItemDefinitionPayload(raw) {
 
   if (mode === "weapon") {
     const weaponHandling = String(raw?.weaponHandling ?? "ONE_HANDED").trim() || "ONE_HANDED";
+    const weaponProficiencyGroup = normalizeNullableString(raw?.weaponProficiencyGroup)?.toUpperCase() ?? null;
+    if (weaponProficiencyGroup && !ITEM_WEAPON_PROFICIENCY_GROUPS.has(weaponProficiencyGroup)) {
+      throw new Error("Weapon proficiency group must be SIMPLE, MARTIAL or null");
+    }
+    if (raw?.isLightWeapon !== undefined && typeof raw.isLightWeapon !== "boolean") {
+      throw new Error("isLightWeapon must be a boolean");
+    }
     const attackKind = String(raw?.attackKind ?? "MELEE_WEAPON").trim() || "MELEE_WEAPON";
     const damageDice = normalizeNullableString(raw?.damageDice);
     const damageType = normalizeNullableString(raw?.damageType);
@@ -6277,6 +7078,8 @@ function buildQuickCreateItemDefinitionPayload(raw) {
       equippable: true,
       stackable: false,
       weaponHandling,
+      weaponProficiencyGroup,
+      isLightWeapon: raw?.isLightWeapon === true,
       slotRules: buildQuickCreateWeaponSlotRules(weaponHandling),
       attacks,
     };
@@ -6999,6 +7802,104 @@ function writeAppStateValue(key, value) {
     .run(key, value, now, now);
 }
 
+function deleteAppStateValue(key) {
+  sqlite.prepare('DELETE FROM "AppState" WHERE "key" = ?').run(key);
+}
+
+function listAppStateValuesByPrefix(prefix) {
+  return sqlite
+    .prepare('SELECT "key", "value", "updatedAt" FROM "AppState" WHERE "key" LIKE ? ORDER BY "updatedAt", "key"')
+    .all(`${prefix}%`);
+}
+
+export function createDurableOperationReceiptStore({
+  read,
+  write,
+  remove,
+  list,
+  now = () => Date.now(),
+  ttlMs = OPERATION_RECEIPT_TTL_MS,
+  limit = OPERATION_RECEIPT_LIMIT,
+  keyPrefix = OPERATION_RECEIPT_KEY_PREFIX,
+}) {
+  if (![read, write, remove, list].every((entry) => typeof entry === "function")) {
+    throw new TypeError("Il receipt store richiede read, write, remove e list.");
+  }
+  const normalizedTtlMs = Math.max(1, Math.floor(Number(ttlMs)) || OPERATION_RECEIPT_TTL_MS);
+  const normalizedLimit = Math.max(1, Math.floor(Number(limit)) || OPERATION_RECEIPT_LIMIT);
+  const receiptKey = (identity) => `${keyPrefix}${crypto.createHash("sha256").update(String(identity)).digest("hex")}`;
+  const parseReceipt = (value) => {
+    try {
+      const receipt = typeof value === "string" ? JSON.parse(value) : value;
+      if (
+        !receipt ||
+        typeof receipt !== "object" ||
+        typeof receipt.signature !== "string" ||
+        !Number.isFinite(Number(receipt.createdAt)) ||
+        !Number.isFinite(Number(receipt.expiresAt)) ||
+        !Object.prototype.hasOwnProperty.call(receipt, "result")
+      ) return null;
+      return receipt;
+    } catch {
+      return null;
+    }
+  };
+
+  function prune() {
+    const currentTime = now();
+    const valid = [];
+    for (const row of list(keyPrefix)) {
+      const receipt = parseReceipt(row?.value);
+      if (!receipt || Number(receipt.expiresAt) <= currentTime) {
+        remove(row.key);
+        continue;
+      }
+      valid.push({ key: row.key, receipt });
+    }
+    valid.sort((left, right) =>
+      Number(left.receipt.createdAt) - Number(right.receipt.createdAt) || left.key.localeCompare(right.key)
+    );
+    while (valid.length > normalizedLimit) remove(valid.shift().key);
+  }
+
+  function lookup(identity, signature) {
+    const key = receiptKey(identity);
+    const receipt = parseReceipt(read(key));
+    if (!receipt) return { status: "miss", key };
+    if (Number(receipt.expiresAt) <= now()) {
+      remove(key);
+      return { status: "miss", key };
+    }
+    return receipt.signature === signature
+      ? { status: "match", key, receipt }
+      : { status: "conflict", key, receipt };
+  }
+
+  function save(identity, signature, result) {
+    const createdAt = now();
+    const key = receiptKey(identity);
+    const receipt = {
+      version: 1,
+      signature,
+      result,
+      createdAt,
+      expiresAt: createdAt + normalizedTtlMs,
+    };
+    write(key, JSON.stringify(receipt));
+    prune();
+    return receipt;
+  }
+
+  return { lookup, save, prune, keyFor: receiptKey };
+}
+
+const durableOperationReceipts = createDurableOperationReceiptStore({
+  read: readAppStateValue,
+  write: writeAppStateValue,
+  remove: deleteAppStateValue,
+  list: listAppStateValuesByPrefix,
+});
+
 function readJsonAppState(key, fallback) {
   const value = readAppStateValue(key);
   if (!value) return fallback;
@@ -7068,7 +7969,8 @@ function buildInitiativeCombatants(state) {
   const normalized = normalizeInitiativeTrackerState(state);
 
   const players = normalized.players.map((entry) => {
-    const character = readCharacter(entry.slug);
+    const snapshot = readCharacterSnapshot(entry.slug);
+    const character = snapshot ? serializeCharacterSnapshot(snapshot) : readCharacter(entry.slug);
     const currentHitPoints = Math.max(0, Number(character?.combatStats?.currentHitPoints ?? 0) || 0);
     const maxHitPoints = Math.max(1, Number(character?.combatStats?.hitPointMaximum ?? 0) || 1);
     const temporaryHitPoints = Math.max(0, Number(character?.combatStats?.temporaryHitPoints ?? 0) || 0);
@@ -7847,6 +8749,119 @@ function readCharacter(slug) {
     .prepare('SELECT * FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
     .get(slug);
   return normalizeCharacterRow(row);
+}
+
+function readCharacterPassiveHitPointInputs(character) {
+  const state = character?.state ?? character ?? {};
+  const slug = String(state?.slug ?? "").trim();
+  const characterCapabilities = Array.isArray(state?.capabilities) ? state.capabilities : [];
+  const inventorySchemaReady = sqlite && tableExists("CharacterItem") && tableExists("ItemDefinition") && tableExists("ItemFeature");
+  const inventory = inventorySchemaReady && slug ? (readCharacterInventoryItemsBySlug(slug) ?? []) : [];
+  const equipped = inventory.filter((item) => item?.isEquipped && item?.itemDefinitionId);
+  const definitions = new Map();
+  for (const item of equipped) {
+    if (!definitions.has(item.itemDefinitionId)) {
+      definitions.set(item.itemDefinitionId, readItemDefinition(item.itemDefinitionId));
+    }
+  }
+
+  const itemCapabilities = equipped.flatMap((item) => {
+    const definition = definitions.get(item.itemDefinitionId);
+    return (Array.isArray(definition?.features) ? definition.features : [])
+      .filter((feature) => String(feature?.kind ?? "").toUpperCase() === "PASSIVE")
+      .map((feature) => ({
+        name: feature.name,
+        kind: "passive",
+        passiveEffects: Array.isArray(feature.passiveEffects) ? feature.passiveEffects : [],
+        sourceType: "item",
+        sourceLabel: item.itemName,
+        sourceItemId: item.id,
+        sourceFeatureId: feature.id,
+      }));
+  });
+
+  const hasArmorEquipped = equipped.some((item) => definitions.get(item.itemDefinitionId)?.category === "ARMOR");
+  const hasShieldEquipped = equipped.some((item) => definitions.get(item.itemDefinitionId)?.category === "SHIELD");
+  const weapons = equipped.filter((item) => definitions.get(item.itemDefinitionId)?.category === "WEAPON");
+  const primary = weapons.find((item) => item.equippedSlots?.includes("WEAPON_HAND_RIGHT"));
+  const secondary = weapons.find((item) => item.equippedSlots?.includes("WEAPON_HAND_LEFT"));
+  const hasDualWielding = Boolean(primary?.id && secondary?.id && primary.id !== secondary.id);
+  const hasTwoHandedWeaponEquipped = weapons.some((item) => {
+    const slots = Array.isArray(item.equippedSlots) ? item.equippedSlots : [];
+    const handling = definitions.get(item.itemDefinitionId)?.weaponHandling;
+    return slots.includes("WEAPON_HAND_RIGHT") && slots.includes("WEAPON_HAND_LEFT")
+      && (handling === "TWO_HANDED" || handling === "VERSATILE");
+  });
+  const singleHandWeapon = primary && primary.id === secondary?.id ? null : primary ?? secondary ?? null;
+  const hasSingleMeleeWeaponEquipped = Boolean(
+    weapons.length === 1 && singleHandWeapon && !hasShieldEquipped
+      && definitions.get(singleHandWeapon.itemDefinitionId)?.attacks?.some((attack) => attack.kind === "MELEE_WEAPON")
+  );
+
+  return {
+    capabilities: [...characterCapabilities, ...itemCapabilities],
+    context: {
+      hasArmorEquipped,
+      hasShieldEquipped,
+      hasSingleMeleeWeaponEquipped,
+      hasDualWielding,
+      hasTwoHandedWeaponEquipped,
+    },
+  };
+}
+
+function characterForPassiveHitPointResolution(state, progression, classesOverride = null, totalLevelOverride = null) {
+  const classes = Array.isArray(classesOverride)
+    ? classesOverride
+    : Array.isArray(progression?.classes) ? progression.classes : [];
+  return {
+    ...(state ?? {}),
+    classes,
+    totalLevel: Number.isInteger(Number(totalLevelOverride))
+      ? Number(totalLevelOverride)
+      : Number(progression?.totalLevel ?? state?.totalLevel ?? state?.basicInfo?.level ?? 1),
+  };
+}
+
+function resolveCharacterPassiveHitPointBonus(state, progression, options = {}) {
+  const character = characterForPassiveHitPointResolution(
+    state,
+    progression,
+    options.classes,
+    options.totalLevel,
+  );
+  const inputs = readCharacterPassiveHitPointInputs(character);
+  return resolvePassiveHitPointBonus(character, inputs);
+}
+
+function projectPassiveHitPointSnapshot(snapshot) {
+  if (!snapshot?.schema?.passiveHitPointBonusReady || !snapshot.hitPointState) return snapshot;
+  const desired = resolveCharacterPassiveHitPointBonus(snapshot.state, snapshot.progression).bonusTotal;
+  const hitPointState = reconcilePassiveHitPoints(snapshot.hitPointState, desired);
+  return {
+    ...snapshot,
+    state: projectStructuredStateToLegacy(snapshot.state, {
+      hitPointState,
+      hitDicePools: snapshot.hitDicePools,
+      resourcePools: snapshot.resourcePools,
+    }),
+    hitPointState,
+  };
+}
+
+function readCharacterSnapshot(slug) {
+  ensureSqliteConnectionFresh();
+  const row = sqlite
+    .prepare('SELECT * FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1')
+    .get(slug);
+  if (!row) return null;
+  const vitalsResources = readCharacterVitalsResources(row.id);
+  return projectPassiveHitPointSnapshot({
+    state: normalizeCharacterRow(row),
+    revision: String(row.updatedAt ?? ""),
+    progression: readCharacterProgressionShadow(row),
+    ...vitalsResources,
+  });
 }
 
 function listCharacters() {
@@ -8686,12 +9701,39 @@ function broadcastShopVisit(io, eventName, visitRow) {
   io.to(rooms).emit(eventName, payload);
 }
 
-function writeCharacter(slug, data) {
+function broadcastCharacterInventoryUpdated(io, slug, reason, occurredAt = new Date().toISOString()) {
+  const normalizedSlug = String(slug ?? "").trim();
+  const normalizedReason = String(reason ?? "").trim();
+  if (!io || !normalizedSlug || !normalizedReason) return;
+  const payload = {
+    slug: normalizedSlug,
+    reason: normalizedReason,
+    occurredAt,
+  };
+  io.to(`char:${normalizedSlug}`).emit("character:inventory-updated", payload);
+  const statePayload = buildCharacterStatePayload(normalizedSlug);
+  if (statePayload) io.to(`char:${normalizedSlug}`).emit("character:state", statePayload);
+  return payload;
+}
+
+function nextCharacterRevision(previousRevision = null) {
+  const now = Date.now();
+  const previousTime = Date.parse(String(previousRevision ?? ""));
+  return new Date(Number.isFinite(previousTime) && previousTime >= now ? previousTime + 1 : now).toISOString();
+}
+
+function writeCharacter(slug, data, { expectedRevision = undefined } = {}) {
   const basicInfo = data?.basicInfo ?? {};
   const createdByUserId = data?.createdBy?.userId ?? null;
   const existing = sqlite
-    .prepare('SELECT id, ownerUserId, createdByUserId, createdAt, archivedAt FROM "Character" WHERE slug = ? LIMIT 1')
+    .prepare('SELECT id, ownerUserId, createdByUserId, createdAt, archivedAt, updatedAt FROM "Character" WHERE slug = ? LIMIT 1')
     .get(slug);
+
+  if (existing && expectedRevision !== undefined && String(existing.updatedAt ?? "") !== String(expectedRevision)) {
+    const error = new Error("Il personaggio e stato modificato da un'altra operazione.");
+    error.code = "REVISION_CONFLICT";
+    throw error;
+  }
 
   const payload = {
     id: existing?.id ?? slug,
@@ -8709,11 +9751,11 @@ function writeCharacter(slug, data) {
     archivedAt: existing?.archivedAt ?? null,
     data: JSON.stringify(data),
     createdAt: existing?.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    updatedAt: nextCharacterRevision(existing?.updatedAt),
   };
 
   if (existing) {
-    sqlite.prepare(`
+    const result = sqlite.prepare(`
       UPDATE "Character"
       SET
         name = ?,
@@ -8729,7 +9771,7 @@ function writeCharacter(slug, data) {
         archivedAt = ?,
         data = ?,
         updatedAt = ?
-      WHERE slug = ?
+      WHERE slug = ?${expectedRevision !== undefined ? " AND updatedAt = ?" : ""}
     `).run(
       payload.name,
       payload.characterType,
@@ -8744,9 +9786,15 @@ function writeCharacter(slug, data) {
       payload.archivedAt,
       payload.data,
       payload.updatedAt,
-      slug
+      slug,
+      ...(expectedRevision !== undefined ? [String(expectedRevision)] : [])
     );
-    return;
+    if (!result.changes) {
+      const error = new Error("Il personaggio e stato modificato da un'altra operazione.");
+      error.code = "REVISION_CONFLICT";
+      throw error;
+    }
+    return payload.updatedAt;
   }
 
   sqlite.prepare(`
@@ -8773,6 +9821,7 @@ function writeCharacter(slug, data) {
     payload.updatedAt
   );
   ensureCharacterCurrencyBalanceForCharacter(payload.id);
+  return payload.updatedAt;
 }
 
 function archiveCharacter(slug) {
@@ -9144,6 +10193,519 @@ function createEmptyCharacter({
   };
 }
 
+const CHARACTER_PATCH_MAX_BYTES = 512 * 1024;
+const CHARACTER_PATCH_MAX_DEPTH = 12;
+const CHARACTER_PATCH_FORBIDDEN_KEYS = new Set(["__proto__", "prototype", "constructor"]);
+const CHARACTER_ABILITY_KEYS = new Set([
+  "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
+]);
+const CHARACTER_PATCH_TOP_LEVEL_KEYS = new Set([
+  "basicInfo", "abilityScores", "combatStats", "proficiencies", "equipment",
+  "features", "capabilities", "pactBlade",
+]);
+
+function isPlainRecord(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function addCharacterPatchIssue(issues, path, message) {
+  if (issues.length < 40) issues.push(`${path}: ${message}`);
+}
+
+function validateCharacterPatchStructure(value, path, issues, depth = 0) {
+  if (depth > CHARACTER_PATCH_MAX_DEPTH) {
+    addCharacterPatchIssue(issues, path, `profondita massima ${CHARACTER_PATCH_MAX_DEPTH} superata`);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    if (value.length > 1_000) addCharacterPatchIssue(issues, path, "array troppo lungo");
+    value.forEach((entry, index) => validateCharacterPatchStructure(entry, `${path}[${index}]`, issues, depth + 1));
+    return;
+  }
+  if (!isPlainRecord(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un oggetto semplice");
+    return;
+  }
+  const keys = Object.keys(value);
+  if (keys.length > 250) addCharacterPatchIssue(issues, path, "troppi campi");
+  for (const key of keys) {
+    if (CHARACTER_PATCH_FORBIDDEN_KEYS.has(key)) {
+      addCharacterPatchIssue(issues, `${path}.${key}`, "campo non consentito");
+      continue;
+    }
+    validateCharacterPatchStructure(value[key], `${path}.${key}`, issues, depth + 1);
+  }
+}
+
+function validateCharacterPatchKeys(value, allowedKeys, path, issues) {
+  if (!isPlainRecord(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un oggetto");
+    return false;
+  }
+  for (const key of Object.keys(value)) {
+    if (!allowedKeys.has(key)) addCharacterPatchIssue(issues, `${path}.${key}`, "campo sconosciuto");
+  }
+  return true;
+}
+
+function validateCharacterPatchString(value, path, issues, { maxLength = 500, nullable = false } = {}) {
+  if (nullable && value === null) return;
+  if (typeof value !== "string") {
+    addCharacterPatchIssue(issues, path, nullable ? "deve essere una stringa o null" : "deve essere una stringa");
+    return;
+  }
+  if (value.length > maxLength) addCharacterPatchIssue(issues, path, `massimo ${maxLength} caratteri`);
+}
+
+function validateCharacterPatchNumber(value, path, issues, { integer = false, min = -Number.MAX_VALUE, max = Number.MAX_VALUE } = {}) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un numero finito");
+    return;
+  }
+  if (integer && !Number.isInteger(value)) addCharacterPatchIssue(issues, path, "deve essere un intero");
+  if (value < min || value > max) addCharacterPatchIssue(issues, path, `deve essere compreso tra ${min} e ${max}`);
+}
+
+function validateCharacterPatchBoolean(value, path, issues) {
+  if (typeof value !== "boolean") addCharacterPatchIssue(issues, path, "deve essere booleano");
+}
+
+function validateCharacterPatchStringArray(value, path, issues, { maxItems = 100, maxLength = 200 } = {}) {
+  if (!Array.isArray(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un array");
+    return;
+  }
+  if (value.length > maxItems) addCharacterPatchIssue(issues, path, `massimo ${maxItems} elementi`);
+  value.forEach((entry, index) => validateCharacterPatchString(entry, `${path}[${index}]`, issues, { maxLength }));
+}
+
+function validateCharacterPatchBasicInfo(value, issues) {
+  const path = "patch.basicInfo";
+  const allowed = new Set([
+    "characterName", "background", "playerName", "race", "alignment",
+    "experiencePoints", "portraitUrl",
+  ]);
+  if (!validateCharacterPatchKeys(value, allowed, path, issues)) return;
+  const limits = {
+    characterName: 120, class: 120, background: 240, playerName: 120,
+    race: 120, alignment: 120, portraitUrl: 1_024,
+  };
+  for (const [key, maxLength] of Object.entries(limits)) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchString(value[key], `${path}.${key}`, issues, { maxLength });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "experiencePoints")) {
+    validateCharacterPatchNumber(value.experiencePoints, `${path}.experiencePoints`, issues, { integer: true, min: 0, max: 100_000_000 });
+  }
+}
+
+function validateCharacterPatchAbilityScores(value, issues) {
+  const path = "patch.abilityScores";
+  if (!validateCharacterPatchKeys(value, CHARACTER_ABILITY_KEYS, path, issues)) return;
+  for (const [key, score] of Object.entries(value)) {
+    validateCharacterPatchNumber(score, `${path}.${key}`, issues, { integer: true, min: 0, max: 30 });
+  }
+}
+
+function validateCharacterPatchDeathSaves(value, issues) {
+  const path = "patch.combatStats.deathSaves";
+  if (!validateCharacterPatchKeys(value, new Set(["successes", "failures"]), path, issues)) return;
+  for (const key of ["successes", "failures"]) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchNumber(value[key], `${path}.${key}`, issues, { integer: true, min: 0, max: 3 });
+    }
+  }
+}
+
+function validateCharacterPatchRestState(value, issues) {
+  const path = "patch.combatStats.restState";
+  const allowed = new Set([
+    "maxHitDice", "hitDiceRemaining", "shortRestsUsedSinceLongRest", "lastShortRestAt", "lastLongRestAt",
+  ]);
+  if (!validateCharacterPatchKeys(value, allowed, path, issues)) return;
+  for (const key of ["maxHitDice", "hitDiceRemaining", "shortRestsUsedSinceLongRest"]) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchNumber(value[key], `${path}.${key}`, issues, { integer: true, min: 0, max: 1_000 });
+    }
+  }
+  for (const key of ["lastShortRestAt", "lastLongRestAt"]) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchString(value[key], `${path}.${key}`, issues, { maxLength: 64, nullable: true });
+    }
+  }
+}
+
+function validateCharacterPatchSpellSlots(value, issues) {
+  const path = "patch.combatStats.spellSlots";
+  if (!isPlainRecord(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un oggetto");
+    return;
+  }
+  for (const [levelKey, slots] of Object.entries(value)) {
+    const level = Number(levelKey);
+    if (!Number.isInteger(level) || level < 0 || level > 12 || String(level) !== levelKey) {
+      addCharacterPatchIssue(issues, `${path}.${levelKey}`, "livello slot non valido");
+      continue;
+    }
+    if (!Array.isArray(slots)) {
+      addCharacterPatchIssue(issues, `${path}.${levelKey}`, "deve essere un array");
+      continue;
+    }
+    if (slots.length > 100) addCharacterPatchIssue(issues, `${path}.${levelKey}`, "massimo 100 slot");
+    slots.forEach((slot, index) => {
+      const slotPath = `${path}.${levelKey}[${index}]`;
+      if (!validateCharacterPatchKeys(slot, new Set(["id", "active"]), slotPath, issues)) return;
+      if (Object.prototype.hasOwnProperty.call(slot, "id")) {
+        const validId = (typeof slot.id === "string" && slot.id.length <= 120) ||
+          (typeof slot.id === "number" && Number.isInteger(slot.id) && Number.isSafeInteger(slot.id));
+        if (!validId) addCharacterPatchIssue(issues, `${slotPath}.id`, "identificativo non valido");
+      }
+      if (!Object.prototype.hasOwnProperty.call(slot, "active")) {
+        addCharacterPatchIssue(issues, `${slotPath}.active`, "campo obbligatorio");
+      } else {
+        validateCharacterPatchBoolean(slot.active, `${slotPath}.active`, issues);
+      }
+    });
+  }
+}
+
+function validateCharacterPatchCombatStats(value, issues) {
+  const path = "patch.combatStats";
+  const allowed = new Set([
+    "armorClass", "initiative", "speed", "hitPointMaximum", "currentHitPoints", "temporaryHitPoints",
+    "hitDice", "deathSaves", "spellSlots", "restState",
+  ]);
+  if (!validateCharacterPatchKeys(value, allowed, path, issues)) return;
+  const numericLimits = {
+    armorClass: [0, 1_000], initiative: [-1_000, 1_000], speed: [0, 10_000],
+    hitPointMaximum: [0, 10_000_000], currentHitPoints: [0, 10_000_000], temporaryHitPoints: [0, 10_000_000],
+  };
+  for (const [key, [min, max]] of Object.entries(numericLimits)) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      validateCharacterPatchNumber(value[key], `${path}.${key}`, issues, { integer: true, min, max });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "hitDice")) {
+    validateCharacterPatchString(value.hitDice, `${path}.hitDice`, issues, { maxLength: 40 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "deathSaves")) validateCharacterPatchDeathSaves(value.deathSaves, issues);
+  if (Object.prototype.hasOwnProperty.call(value, "spellSlots")) validateCharacterPatchSpellSlots(value.spellSlots, issues);
+  if (Object.prototype.hasOwnProperty.call(value, "restState")) validateCharacterPatchRestState(value.restState, issues);
+}
+
+function validateCharacterPatchProficiencies(value, issues) {
+  const path = "patch.proficiencies";
+  const allowed = new Set(["proficiencyBonus", "savingThrows", "skills", "languages", "weapons"]);
+  if (!validateCharacterPatchKeys(value, allowed, path, issues)) return;
+  if (Object.prototype.hasOwnProperty.call(value, "proficiencyBonus")) {
+    validateCharacterPatchNumber(value.proficiencyBonus, `${path}.proficiencyBonus`, issues, { integer: true, min: 0, max: 20 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "savingThrows")) {
+    validateCharacterPatchStringArray(value.savingThrows, `${path}.savingThrows`, issues, { maxItems: 12, maxLength: 60 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "languages")) {
+    validateCharacterPatchStringArray(value.languages, `${path}.languages`, issues, { maxItems: 100, maxLength: 120 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "skills")) {
+    if (!Array.isArray(value.skills)) {
+      addCharacterPatchIssue(issues, `${path}.skills`, "deve essere un array");
+    } else {
+      if (value.skills.length > 100) addCharacterPatchIssue(issues, `${path}.skills`, "massimo 100 elementi");
+      value.skills.forEach((skill, index) => {
+        const skillPath = `${path}.skills[${index}]`;
+        if (!validateCharacterPatchKeys(skill, new Set(["name", "ability", "value", "proficient", "rank"]), skillPath, issues)) return;
+        if (Object.prototype.hasOwnProperty.call(skill, "name")) validateCharacterPatchString(skill.name, `${skillPath}.name`, issues, { maxLength: 120 });
+        if (Object.prototype.hasOwnProperty.call(skill, "ability")) validateCharacterPatchString(skill.ability, `${skillPath}.ability`, issues, { maxLength: 40 });
+        if (Object.prototype.hasOwnProperty.call(skill, "value")) validateCharacterPatchNumber(skill.value, `${skillPath}.value`, issues, { min: -1_000, max: 1_000 });
+        if (Object.prototype.hasOwnProperty.call(skill, "proficient")) validateCharacterPatchBoolean(skill.proficient, `${skillPath}.proficient`, issues);
+        if (Object.prototype.hasOwnProperty.call(skill, "rank")) {
+          validateCharacterPatchString(skill.rank, `${skillPath}.rank`, issues, { maxLength: 20 });
+          if (!["none", "half", "proficient", "expertise"].includes(skill.rank)) {
+            addCharacterPatchIssue(issues, `${skillPath}.rank`, "valore non supportato");
+          }
+        }
+      });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "weapons")) {
+    const weapons = value.weapons;
+    if (Array.isArray(weapons)) {
+      if (weapons.length > 100) addCharacterPatchIssue(issues, `${path}.weapons`, "massimo 100 elementi");
+      weapons.forEach((entry, index) => {
+        if (typeof entry === "string") validateCharacterPatchString(entry, `${path}.weapons[${index}]`, issues, { maxLength: 120 });
+        else if (isPlainRecord(entry)) {
+          const entryPath = `${path}.weapons[${index}]`;
+          if (!validateCharacterPatchKeys(entry, new Set(["id", "slug", "name", "group", "weaponProficiencyGroup"]), entryPath, issues)) return;
+          Object.entries(entry).forEach(([key, item]) => validateCharacterPatchString(item, `${entryPath}.${key}`, issues, { maxLength: 120 }));
+        } else addCharacterPatchIssue(issues, `${path}.weapons[${index}]`, "deve essere una stringa o un oggetto");
+      });
+    } else if (isPlainRecord(weapons)) {
+      if (Object.keys(weapons).length > 100) addCharacterPatchIssue(issues, `${path}.weapons`, "massimo 100 elementi");
+      Object.entries(weapons).forEach(([key, enabled]) => {
+        if (key.length > 120) addCharacterPatchIssue(issues, `${path}.weapons`, "identificativo troppo lungo");
+        validateCharacterPatchBoolean(enabled, `${path}.weapons.${key}`, issues);
+      });
+    } else {
+      addCharacterPatchIssue(issues, `${path}.weapons`, "deve essere un array o un oggetto");
+    }
+  }
+}
+
+function validateCharacterPatchSkillGroups(value, path, issues) {
+  if (!validateCharacterPatchKeys(value, new Set(["volonta", "incontro", "riposoBreve", "riposoLungo"]), path, issues)) return;
+  for (const [group, entries] of Object.entries(value)) {
+    if (!Array.isArray(entries)) {
+      addCharacterPatchIssue(issues, `${path}.${group}`, "deve essere un array");
+      continue;
+    }
+    if (entries.length > 100) addCharacterPatchIssue(issues, `${path}.${group}`, "massimo 100 elementi");
+    entries.forEach((entry, index) => {
+      const entryPath = `${path}.${group}[${index}]`;
+      if (!validateCharacterPatchKeys(entry, new Set(["name", "used"]), entryPath, issues)) return;
+      validateCharacterPatchString(entry.name, `${entryPath}.name`, issues, { maxLength: 2_000 });
+      validateCharacterPatchBoolean(entry.used, `${entryPath}.used`, issues);
+    });
+  }
+}
+
+function validateCharacterPatchEquipment(value, issues) {
+  const path = "patch.equipment";
+  if (!validateCharacterPatchKeys(value, new Set(["attacks", "equipment", "items", "coins"]), path, issues)) return;
+  if (Object.prototype.hasOwnProperty.call(value, "equipment")) {
+    validateCharacterPatchStringArray(value.equipment, `${path}.equipment`, issues, { maxItems: 1_000, maxLength: 500 });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "coins")) {
+    const coinsPath = `${path}.coins`;
+    if (validateCharacterPatchKeys(value.coins, new Set(["cp", "sp", "ep", "gp", "pp"]), coinsPath, issues)) {
+      Object.entries(value.coins).forEach(([key, amount]) => validateCharacterPatchNumber(amount, `${coinsPath}.${key}`, issues, { integer: true, min: 0, max: 1_000_000_000 }));
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "attacks")) {
+    if (!Array.isArray(value.attacks)) addCharacterPatchIssue(issues, `${path}.attacks`, "deve essere un array");
+    else {
+      if (value.attacks.length > 500) addCharacterPatchIssue(issues, `${path}.attacks`, "massimo 500 elementi");
+      value.attacks.forEach((attack, index) => {
+        const attackPath = `${path}.attacks[${index}]`;
+        const allowed = new Set(["name", "attackBonus", "damageDice", "damageType", "category", "hands", "range", "equipped", "skill", "skills", "skillsByType"]);
+        if (!validateCharacterPatchKeys(attack, allowed, attackPath, issues)) return;
+        for (const key of ["name", "damageDice", "damageType", "category", "hands", "range", "skill"]) {
+          if (Object.prototype.hasOwnProperty.call(attack, key)) validateCharacterPatchString(attack[key], `${attackPath}.${key}`, issues, { maxLength: key === "name" ? 200 : 500 });
+        }
+        if (Object.prototype.hasOwnProperty.call(attack, "attackBonus")) validateCharacterPatchNumber(attack.attackBonus, `${attackPath}.attackBonus`, issues, { min: -1_000, max: 1_000 });
+        if (Object.prototype.hasOwnProperty.call(attack, "equipped")) validateCharacterPatchBoolean(attack.equipped, `${attackPath}.equipped`, issues);
+        if (Object.prototype.hasOwnProperty.call(attack, "skills")) validateCharacterPatchStringArray(attack.skills, `${attackPath}.skills`, issues, { maxItems: 100, maxLength: 500 });
+        if (Object.prototype.hasOwnProperty.call(attack, "skillsByType")) validateCharacterPatchSkillGroups(attack.skillsByType, `${attackPath}.skillsByType`, issues);
+      });
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "items")) {
+    if (!Array.isArray(value.items)) addCharacterPatchIssue(issues, `${path}.items`, "deve essere un array");
+    else {
+      if (value.items.length > 1_000) addCharacterPatchIssue(issues, `${path}.items`, "massimo 1000 elementi");
+      value.items.forEach((item, index) => {
+        const itemPath = `${path}.items[${index}]`;
+        const allowed = new Set(["type", "name", "description", "equippable", "equipped", "quantity", "subtype", "dice", "skillsByType"]);
+        if (!validateCharacterPatchKeys(item, allowed, itemPath, issues)) return;
+        for (const key of ["type", "name", "description", "subtype", "dice"]) {
+          if (Object.prototype.hasOwnProperty.call(item, key)) validateCharacterPatchString(item[key], `${itemPath}.${key}`, issues, { maxLength: key === "description" ? 10_000 : 500 });
+        }
+        for (const key of ["equippable", "equipped"]) {
+          if (Object.prototype.hasOwnProperty.call(item, key)) validateCharacterPatchBoolean(item[key], `${itemPath}.${key}`, issues);
+        }
+        if (Object.prototype.hasOwnProperty.call(item, "quantity")) validateCharacterPatchNumber(item.quantity, `${itemPath}.quantity`, issues, { integer: true, min: 0, max: 1_000_000 });
+        if (Object.prototype.hasOwnProperty.call(item, "skillsByType")) validateCharacterPatchSkillGroups(item.skillsByType, `${itemPath}.skillsByType`, issues);
+      });
+    }
+  }
+}
+
+function validateCharacterPatchFeatures(value, issues) {
+  const path = "patch.features";
+  if (!Array.isArray(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un array");
+    return;
+  }
+  if (value.length > 500) addCharacterPatchIssue(issues, path, "massimo 500 elementi");
+  value.forEach((feature, index) => {
+    const featurePath = `${path}[${index}]`;
+    if (!validateCharacterPatchKeys(feature, new Set(["name", "description", "uses"]), featurePath, issues)) return;
+    validateCharacterPatchString(feature.name, `${featurePath}.name`, issues, { maxLength: 300 });
+    validateCharacterPatchString(feature.description, `${featurePath}.description`, issues, { maxLength: 30_000 });
+    if (Object.prototype.hasOwnProperty.call(feature, "uses")) validateCharacterPatchString(feature.uses, `${featurePath}.uses`, issues, { maxLength: 200 });
+  });
+}
+
+function validateCharacterPatchCapabilities(value, issues) {
+  const path = "patch.capabilities";
+  if (!Array.isArray(value)) {
+    addCharacterPatchIssue(issues, path, "deve essere un array");
+    return;
+  }
+  if (value.length > 250) addCharacterPatchIssue(issues, path, "massimo 250 elementi");
+  value.forEach((capability, index) => {
+    const capabilityPath = `${path}[${index}]`;
+    const allowed = new Set(["name", "category", "kind", "shortDescription", "description", "passiveEffects", "sourceType", "sourceLabel", "sourceItemId", "sourceFeatureId", "readOnly", "usage"]);
+    if (!validateCharacterPatchKeys(capability, allowed, capabilityPath, issues)) return;
+    for (const key of ["name", "category", "kind", "shortDescription", "description", "sourceType", "sourceLabel", "sourceItemId", "sourceFeatureId"]) {
+      if (Object.prototype.hasOwnProperty.call(capability, key)) validateCharacterPatchString(capability[key], `${capabilityPath}.${key}`, issues, { maxLength: key === "description" ? 30_000 : 500 });
+    }
+    if (Object.prototype.hasOwnProperty.call(capability, "readOnly")) validateCharacterPatchBoolean(capability.readOnly, `${capabilityPath}.readOnly`, issues);
+    if (Object.prototype.hasOwnProperty.call(capability, "usage")) {
+      const usagePath = `${capabilityPath}.usage`;
+      if (validateCharacterPatchKeys(capability.usage, new Set(["resetOn", "customLabel", "used"]), usagePath, issues)) {
+        validateCharacterPatchString(capability.usage.resetOn, `${usagePath}.resetOn`, issues, { maxLength: 40 });
+        if (Object.prototype.hasOwnProperty.call(capability.usage, "customLabel")) validateCharacterPatchString(capability.usage.customLabel, `${usagePath}.customLabel`, issues, { maxLength: 200 });
+        if (!Array.isArray(capability.usage.used)) addCharacterPatchIssue(issues, `${usagePath}.used`, "deve essere un array");
+        else {
+          if (capability.usage.used.length > 500) addCharacterPatchIssue(issues, `${usagePath}.used`, "massimo 500 elementi");
+          capability.usage.used.forEach((used, usedIndex) => validateCharacterPatchBoolean(used, `${usagePath}.used[${usedIndex}]`, issues));
+        }
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(capability, "passiveEffects")) {
+      const effectsPath = `${capabilityPath}.passiveEffects`;
+      if (!Array.isArray(capability.passiveEffects)) addCharacterPatchIssue(issues, effectsPath, "deve essere un array");
+      else {
+        if (capability.passiveEffects.length > 50) addCharacterPatchIssue(issues, effectsPath, "massimo 50 elementi");
+        capability.passiveEffects.forEach((effect, effectIndex) => {
+          const effectPath = `${effectsPath}[${effectIndex}]`;
+          const allowedEffect = new Set(["category", "target", "operationType", "valueMode", "value", "setMode", "setValue", "capValue", "sourceAbility", "sourceClassKey", "multiplierNumerator", "multiplierDenominator", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes"]);
+          if (!validateCharacterPatchKeys(effect, allowedEffect, effectPath, issues)) return;
+          const category = effect.category === undefined ? "MODIFIER" : effect.category;
+          if (!PASSIVE_EFFECT_CATEGORIES.has(category)) {
+            addCharacterPatchIssue(issues, `${effectPath}.category`, "deve essere MODIFIER o PROFICIENCY");
+            return;
+          }
+          if (category === "PROFICIENCY") {
+            for (const key of Object.keys(effect)) {
+              if (!PASSIVE_EFFECT_PROFICIENCY_KEYS.has(key)) {
+                addCharacterPatchIssue(issues, `${effectPath}.${key}`, "campo non consentito per una competenza");
+              }
+            }
+            if (!Object.prototype.hasOwnProperty.call(effect, "target")) {
+              addCharacterPatchIssue(issues, `${effectPath}.target`, "campo obbligatorio");
+            } else if (!PASSIVE_EFFECT_PROFICIENCY_TARGETS.has(effect.target)) {
+              addCharacterPatchIssue(issues, `${effectPath}.target`, "categoria di competenza non supportata");
+            }
+            return;
+          }
+          for (const key of ["target", "operationType", "valueMode", "setMode", "sourceAbility", "sourceClassKey", "rounding", "trigger", "customTargetLabel", "customTriggerLabel", "notes"]) {
+            if (Object.prototype.hasOwnProperty.call(effect, key)) validateCharacterPatchString(effect[key], `${effectPath}.${key}`, issues, { maxLength: key === "notes" ? 2_000 : 200 });
+          }
+          if (String(effect.valueMode ?? "").trim().toUpperCase() === "CLASS_LEVEL" && (typeof effect.sourceClassKey !== "string" || !Object.hasOwn(CLASS_RULES, effect.sourceClassKey))) {
+            addCharacterPatchIssue(issues, `${effectPath}.sourceClassKey`, "seleziona una classe valida per il livello di classe");
+          }
+          for (const key of ["value", "setValue", "capValue", "multiplierNumerator", "multiplierDenominator"]) {
+            if (Object.prototype.hasOwnProperty.call(effect, key)) validateCharacterPatchNumber(effect[key], `${effectPath}.${key}`, issues, { min: -1_000_000, max: 1_000_000 });
+          }
+        });
+      }
+    }
+  });
+}
+
+function validateCharacterPatchPactBlade(value, issues) {
+  const path = "patch.pactBlade";
+  if (!validateCharacterPatchKeys(value, new Set(["bondedCharacterItemId", "activeSummon"]), path, issues)) return;
+  if (Object.prototype.hasOwnProperty.call(value, "bondedCharacterItemId")) {
+    validateCharacterPatchString(value.bondedCharacterItemId, `${path}.bondedCharacterItemId`, issues, { maxLength: 200, nullable: true });
+  }
+  if (Object.prototype.hasOwnProperty.call(value, "activeSummon")) {
+    const summonPath = `${path}.activeSummon`;
+    if (validateCharacterPatchKeys(value.activeSummon, new Set(["mode", "templateId"]), summonPath, issues)) {
+      if (Object.prototype.hasOwnProperty.call(value.activeSummon, "mode")) validateCharacterPatchString(value.activeSummon.mode, `${summonPath}.mode`, issues, { maxLength: 40, nullable: true });
+      if (Object.prototype.hasOwnProperty.call(value.activeSummon, "templateId")) validateCharacterPatchString(value.activeSummon.templateId, `${summonPath}.templateId`, issues, { maxLength: 200, nullable: true });
+    }
+  }
+}
+
+export function validatePactBladeState(characterState, bondedItem = null) {
+  const issues = [];
+  const hasActiveState = characterState?.pactBlade?.bondedCharacterItemId || characterState?.pactBlade?.activeSummon?.mode || characterState?.pactBlade?.activeSummon?.templateId;
+  if (hasActiveState && !canUsePactBlade(characterState)) {
+    issues.push("patch.pactBlade: richiede Warlock di livello 3 con Patto della Lama registrato");
+    return issues;
+  }
+
+  const pactBlade = characterState?.pactBlade ?? {};
+  const bondedCharacterItemId = pactBlade?.bondedCharacterItemId ?? null;
+  const activeSummon = pactBlade?.activeSummon ?? { mode: null, templateId: null };
+  const mode = activeSummon?.mode ?? null;
+  const templateId = activeSummon?.templateId ?? null;
+
+  if (bondedCharacterItemId !== null) {
+    if (
+      !bondedItem ||
+      bondedItem.id !== bondedCharacterItemId ||
+      bondedItem.itemCategory !== "WEAPON" ||
+      bondedItem.hasMeleeAttack !== true
+    ) {
+      issues.push("patch.pactBlade.bondedCharacterItemId: deve indicare un'arma da mischia posseduta dal personaggio");
+    }
+  }
+
+  if (![null, "bonded", "template"].includes(mode)) {
+    issues.push("patch.pactBlade.activeSummon.mode: modalita non supportata");
+  } else if (mode === "bonded") {
+    if (!bondedCharacterItemId) issues.push("patch.pactBlade.activeSummon.mode: richiede un'arma legata");
+    if (templateId !== null) issues.push("patch.pactBlade.activeSummon.templateId: deve essere null per un'arma legata");
+  } else if (mode === "template") {
+    if (typeof templateId !== "string" || !PACT_BLADE_TEMPLATE_IDS.has(templateId)) {
+      issues.push("patch.pactBlade.activeSummon.templateId: modello non supportato");
+    }
+  } else if (templateId !== null) {
+    issues.push("patch.pactBlade.activeSummon.templateId: deve essere null senza evocazione");
+  }
+
+  return issues;
+}
+
+function readPactBladeBondedItem(characterSlug, characterItemId) {
+  if (!characterItemId || !tableExists("CharacterItem") || !tableExists("ItemDefinition") || !tableExists("ItemAttack")) return null;
+  const row = sqlite.prepare(`
+    SELECT ci.id, d.category AS itemCategory,
+      CASE WHEN EXISTS (
+        SELECT 1 FROM "ItemAttack" a
+        WHERE a.itemDefinitionId = ci.itemDefinitionId AND a.kind = 'MELEE_WEAPON'
+      ) THEN 1 ELSE 0 END AS hasMeleeAttack
+    FROM "CharacterItem" ci
+    INNER JOIN "Character" c ON c.id = ci.characterId
+    INNER JOIN "ItemDefinition" d ON d.id = ci.itemDefinitionId
+    WHERE c.slug = ? AND c.archivedAt IS NULL AND ci.id = ?
+    LIMIT 1
+  `).get(characterSlug, characterItemId);
+  return row ? { id: row.id, itemCategory: row.itemCategory, hasMeleeAttack: !!row.hasMeleeAttack } : null;
+}
+
+export function validateCharacterPatch(patch) {
+  const issues = [];
+  if (!isPlainRecord(patch)) return ["patch: deve essere un oggetto"];
+  let serialized;
+  try {
+    serialized = JSON.stringify(patch);
+  } catch {
+    return ["patch: contenuto non serializzabile"];
+  }
+  if (Buffer.byteLength(serialized, "utf8") > CHARACTER_PATCH_MAX_BYTES) {
+    addCharacterPatchIssue(issues, "patch", `dimensione massima ${CHARACTER_PATCH_MAX_BYTES} byte superata`);
+  }
+  validateCharacterPatchStructure(patch, "patch", issues);
+  validateCharacterPatchKeys(patch, CHARACTER_PATCH_TOP_LEVEL_KEYS, "patch", issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "basicInfo")) validateCharacterPatchBasicInfo(patch.basicInfo, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "abilityScores")) validateCharacterPatchAbilityScores(patch.abilityScores, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "combatStats")) validateCharacterPatchCombatStats(patch.combatStats, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "proficiencies")) validateCharacterPatchProficiencies(patch.proficiencies, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "equipment")) validateCharacterPatchEquipment(patch.equipment, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "features")) validateCharacterPatchFeatures(patch.features, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "capabilities")) validateCharacterPatchCapabilities(patch.capabilities, issues);
+  if (Object.prototype.hasOwnProperty.call(patch, "pactBlade")) validateCharacterPatchPactBlade(patch.pactBlade, issues);
+  return issues;
+}
+
 /** Deep merge (objects merged, arrays replaced, scalars overwritten) */
 function deepMerge(target, patch) {
   if (Array.isArray(target) && Array.isArray(patch)) {
@@ -9201,8 +10763,8 @@ function parseHitDieSize(hitDice, className) {
 
 function getFixedHitDieHealing(hitDieSize, constitutionScore) {
   const conScore = Number.isFinite(Number(constitutionScore)) ? Number(constitutionScore) : 10;
-  const conMod = Math.floor((conScore - 10) / 2);
-  return Math.max(1, Math.floor(hitDieSize / 2) + 1 + conMod);
+  const constitutionModifier = Math.floor((conScore - 10) / 2);
+  return Math.max(1, Math.floor(hitDieSize / 2) + 1 + constitutionModifier);
 }
 
 function resetCapabilityUses(capabilities, restType) {
@@ -9256,9 +10818,6 @@ const SPELL_SLOT_CONVERSION_EXCLUDED_CLASSES = new Set([
   "ladro",
   "rogue",
 ]);
-const SPELL_SLOT_CONVERSION_RECEIPT_TTL_MS = 10 * 60 * 1000;
-const SPELL_SLOT_CONVERSION_RECEIPT_LIMIT = 1_000;
-const spellSlotConversionReceipts = new Map();
 
 function normalizeSpellSlotConversionClass(value) {
   return String(value ?? "")
@@ -9331,41 +10890,48 @@ function buildSpellSlotConversionRequestSignature(targetLevel, selectionsValue, 
   });
 }
 
-function normalizeSpellSlotConversionRequestId(value) {
+function normalizeOperationRequestId(value) {
   if (typeof value !== "string") return null;
   const requestId = value.trim();
   if (requestId.length < 8 || requestId.length > 128 || !/^[A-Za-z0-9_-]+$/.test(requestId)) return null;
   return requestId;
 }
 
-function spellSlotConversionReceiptKey(userId, slug, requestId) {
-  return JSON.stringify([String(userId), slug, requestId]);
+function buildOperationReceiptIdentity(kind, userId, scope, requestId) {
+  return JSON.stringify([kind, String(userId), String(scope), requestId]);
 }
 
-function pruneSpellSlotConversionReceipts(now = Date.now()) {
-  for (const [key, receipt] of spellSlotConversionReceipts) {
-    if (receipt.expiresAt <= now) spellSlotConversionReceipts.delete(key);
+function normalizeRestExpectedRevisions(value, slugs) {
+  if (!isPlainRecord(value)) return null;
+  const normalizedSlugs = Array.from(new Set(slugs)).sort();
+  if (Object.keys(value).length !== normalizedSlugs.length) return null;
+  const revisions = {};
+  for (const slug of normalizedSlugs) {
+    const revision = value[slug];
+    if (typeof revision !== "string" || !revision.trim()) return null;
+    revisions[slug] = revision.trim();
   }
-  while (spellSlotConversionReceipts.size > SPELL_SLOT_CONVERSION_RECEIPT_LIMIT) {
-    const oldestKey = spellSlotConversionReceipts.keys().next().value;
-    if (oldestKey === undefined) break;
-    spellSlotConversionReceipts.delete(oldestKey);
-  }
+  return revisions;
 }
 
-function readSpellSlotConversionReceipt(key) {
-  pruneSpellSlotConversionReceipts();
-  return spellSlotConversionReceipts.get(key) ?? null;
-}
-
-function writeSpellSlotConversionReceipt(key, signature, result) {
-  spellSlotConversionReceipts.delete(key);
-  spellSlotConversionReceipts.set(key, {
-    signature,
-    result,
-    expiresAt: Date.now() + SPELL_SLOT_CONVERSION_RECEIPT_TTL_MS,
+function buildRestRequestSignature(restType, slugs, expectedRevisions) {
+  const normalizedSlugs = Array.from(new Set(
+    (Array.isArray(slugs) ? slugs : []).map((slug) => String(slug ?? "").trim()).filter(Boolean)
+  )).sort();
+  return JSON.stringify({
+    type: restType,
+    slugs: normalizedSlugs,
+    expectedRevisions: Object.fromEntries(normalizedSlugs.map((slug) => [slug, expectedRevisions[slug]])),
   });
-  pruneSpellSlotConversionReceipts();
+}
+
+function throwRequestIdReuse() {
+  const error = createCharacterMutationError(
+    "REQUEST_ID_REUSED",
+    "Questo identificativo richiesta e gia stato usato con un payload diverso."
+  );
+  error.statusCode = 409;
+  throw error;
 }
 
 function prepareSpellSlotConversion(character, targetLevelValue, selectionsValue) {
@@ -9472,7 +11038,7 @@ function prepareSpellSlotConversion(character, targetLevelValue, selectionsValue
   };
 }
 
-function applyCharacterRest(character, restType) {
+export function applyCharacterRest(character, restType, now = new Date()) {
   const data = character && typeof character === "object" ? character : {};
   const basicInfo = data.basicInfo ?? {};
   const combatStats = data.combatStats ?? {};
@@ -9490,25 +11056,30 @@ function applyCharacterRest(character, restType) {
 
   let nextCombatStats = {
     ...combatStats,
-    deathSaves: { successes: 0, failures: 0 },
     spellSlots: resetSpellSlotsForRest(combatStats.spellSlots ?? {}, basicInfo.class, restType),
   };
   let healingApplied = 0;
   let hitDiceSpent = 0;
+  let hitDiceRecovered = 0;
   let restApplied = true;
   let blockedReason = null;
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const nowTime = Number.isFinite(nowDate.getTime()) ? nowDate.getTime() : Date.now();
+  const nowIso = new Date(nowTime).toISOString();
 
   if (restType === "long") {
+    hitDiceRecovered = Math.max(0, maxHitDice - hitDiceRemaining);
     nextCombatStats = {
       ...nextCombatStats,
       currentHitPoints: maxHp,
       temporaryHitPoints: 0,
+      deathSaves: { successes: 0, failures: 0 },
       restState: {
         ...restState,
         maxHitDice,
         hitDiceRemaining: maxHitDice,
         shortRestsUsedSinceLongRest: 0,
-        lastLongRestAt: new Date().toISOString(),
+        lastLongRestAt: nowIso,
       },
     };
   } else {
@@ -9517,8 +11088,8 @@ function applyCharacterRest(character, restType) {
       blockedReason = "Limite di 2 riposi brevi raggiunto.";
     } else {
       const missingHp = Math.max(0, maxHp - currentHp);
-      const budget = maxHitDice > 0 ? Math.max(1, Math.floor(maxHitDice / 2)) : 0;
-      const usableHitDice = Math.min(budget, hitDiceRemaining);
+      const hitDiceBudget = maxHitDice > 0 ? Math.max(1, Math.floor(maxHitDice / 2)) : 0;
+      const usableHitDice = Math.min(hitDiceBudget, hitDiceRemaining);
       const healingPerDie = getFixedHitDieHealing(hitDieSize, data.abilityScores?.constitution);
 
       if (missingHp > 0 && usableHitDice > 0) {
@@ -9528,13 +11099,13 @@ function applyCharacterRest(character, restType) {
 
       nextCombatStats = {
         ...nextCombatStats,
-        currentHitPoints: Math.min(maxHp, currentHp + healingApplied),
+        currentHitPoints: healingApplied > 0 ? Math.min(maxHp, currentHp + healingApplied) : currentHp,
         restState: {
           ...restState,
           maxHitDice,
           hitDiceRemaining: Math.max(0, hitDiceRemaining - hitDiceSpent),
           shortRestsUsedSinceLongRest: shortRestsUsed + 1,
-          lastShortRestAt: new Date().toISOString(),
+          lastShortRestAt: nowIso,
         },
       };
     }
@@ -9555,6 +11126,7 @@ function applyCharacterRest(character, restType) {
         temporaryHitPointsAfter: Math.max(0, Math.floor(Number(combatStats.temporaryHitPoints ?? 0)) || 0),
         healingApplied: 0,
         hitDiceSpent: 0,
+        hitDiceRecovered: 0,
         hitDiceRemaining,
         hitDiceRemainingAfter: hitDiceRemaining,
         maxHitDice,
@@ -9565,6 +11137,12 @@ function applyCharacterRest(character, restType) {
   }
 
   const nextCurrentHp = Math.max(0, Math.floor(Number(nextCombatStats.currentHitPoints ?? currentHp)) || 0);
+  if (nextCurrentHp > 0) {
+    nextCombatStats = {
+      ...nextCombatStats,
+      deathSaves: { successes: 0, failures: 0 },
+    };
+  }
   const tempHpBefore = Math.max(0, Math.floor(Number(combatStats.temporaryHitPoints ?? 0)) || 0);
   const tempHpAfter = Math.max(0, Math.floor(Number(nextCombatStats.temporaryHitPoints ?? tempHpBefore)) || 0);
   const nextHitDiceRemaining = nextCombatStats.restState?.hitDiceRemaining ?? hitDiceRemaining;
@@ -9587,6 +11165,7 @@ function applyCharacterRest(character, restType) {
       temporaryHitPointsAfter: tempHpAfter,
       healingApplied,
       hitDiceSpent,
+      hitDiceRecovered,
       hitDiceRemaining,
       hitDiceRemainingAfter: nextHitDiceRemaining,
       maxHitDice,
@@ -9594,6 +11173,229 @@ function applyCharacterRest(character, restType) {
       shortRestsUsedSinceLongRestAfter: nextShortRestsUsed,
     },
   };
+}
+
+function prepareStructuredSpellSlotConversion(snapshot, targetLevel, selections) {
+  const spellcasting = snapshot?.resourcePools?.find((pool) => pool.kind === "SPELLCASTING") ?? null;
+  if (!spellcasting) {
+    return { ok: false, error: "La conversione e consentita solo per il pool Spellcasting." };
+  }
+  try {
+    const converted = convertSpellcastingPool({
+      id: spellcasting.id,
+      kind: spellcasting.kind,
+      resetPolicy: spellcasting.resetPolicy,
+      maximum: spellcasting.maximum,
+      used: spellcasting.used,
+    }, { targetLevel, selections });
+    const resourcePools = snapshot.resourcePools.map((pool) =>
+      pool.id === spellcasting.id ? { ...pool, used: converted.pool.used } : pool
+    );
+    const next = projectStructuredStateToLegacy(snapshot.state, {
+      hitPointState: snapshot.hitPointState,
+      hitDicePools: snapshot.hitDicePools,
+      resourcePools,
+    });
+    return {
+      ok: true,
+      next,
+      patch: { combatStats: { spellSlots: next.combatStats.spellSlots } },
+      resourcePools,
+      targetLevel,
+      selections,
+      cost: converted.cost,
+      pointsSpent: converted.pointsSpent,
+      excess: converted.excess,
+    };
+  } catch (error) {
+    return { ok: false, error: String(error?.message ?? error) };
+  }
+}
+
+export function applyStructuredCharacterRest(snapshot, restType, now = new Date()) {
+  if (!snapshot?.schema?.m5Ready || !snapshot.hitPointState || !Array.isArray(snapshot.hitDicePools)) {
+    const legacy = applyCharacterRest(snapshot?.state, restType, now);
+    return { ...legacy, structured: false };
+  }
+  const state = snapshot.state ?? {};
+  const beforeHp = snapshot.hitPointState;
+  const beforePools = snapshot.hitDicePools.map((pool) => ({ ...pool }));
+  const constitutionModifier = resolveConstitutionModifier(Number(state.abilityScores?.constitution ?? 10));
+  const nowDate = now instanceof Date ? now : new Date(now);
+  const nowIso = new Date(Number.isFinite(nowDate.getTime()) ? nowDate.getTime() : Date.now()).toISOString();
+  let afterHp = { ...beforeHp };
+  let afterPools = beforePools;
+  let healingApplied = 0;
+  let hitDiceSpent = 0;
+  let hitDiceRecovered = 0;
+  let hitDiceSpentBySize = {};
+  let applied = true;
+  let reason = null;
+
+  if (restType === "short") {
+    const rested = applyShortRestToHitDicePools({
+      pools: beforePools,
+      currentHitPoints: beforeHp.currentHitPoints,
+      maximumHitPoints: beforeHp.maximumHitPoints,
+      constitutionModifier,
+      shortRestsUsedSinceLongRest: beforeHp.shortRestsUsedSinceLongRest,
+    });
+    applied = rested.applied;
+    reason = rested.reason === "SHORT_REST_LIMIT_REACHED" ? "Limite di 2 riposi brevi raggiunto." : rested.reason;
+    if (applied) {
+      healingApplied = rested.healingApplied;
+      hitDiceSpent = rested.hitDiceSpent;
+      hitDiceSpentBySize = rested.hitDiceSpentBySize;
+      afterPools = rested.pools.map((pool) => ({
+        ...beforePools.find((entry) => entry.dieSize === pool.dieSize),
+        ...pool,
+      }));
+      afterHp = {
+        ...beforeHp,
+        currentHitPoints: rested.currentHitPoints,
+        deathSaveSuccesses: rested.currentHitPoints > 0 ? 0 : beforeHp.deathSaveSuccesses,
+        deathSaveFailures: rested.currentHitPoints > 0 ? 0 : beforeHp.deathSaveFailures,
+        shortRestsUsedSinceLongRest: rested.shortRestsUsedSinceLongRest,
+        lastShortRestAt: nowIso,
+        revision: beforeHp.revision + 1,
+      };
+    }
+  } else {
+    const rested = applyLongRestToHitDicePools({
+      pools: beforePools,
+      shortRestsUsedSinceLongRest: beforeHp.shortRestsUsedSinceLongRest,
+    });
+    hitDiceRecovered = rested.hitDiceRecovered;
+    afterPools = rested.pools.map((pool) => ({
+      ...beforePools.find((entry) => entry.dieSize === pool.dieSize),
+      ...pool,
+    }));
+    afterHp = {
+      ...beforeHp,
+      currentHitPoints: beforeHp.maximumHitPoints,
+      temporaryHitPoints: 0,
+      deathSaveSuccesses: 0,
+      deathSaveFailures: 0,
+      shortRestsUsedSinceLongRest: 0,
+      lastLongRestAt: nowIso,
+      revision: beforeHp.revision + 1,
+    };
+  }
+
+  if (!applied) {
+    return {
+      character: state,
+      structured: true,
+      hitPointState: beforeHp,
+      hitDicePools: beforePools,
+      resourcePools: snapshot.resourcePools ?? [],
+      summary: {
+        slug: state.slug,
+        name: state.basicInfo?.characterName ?? state.slug,
+        applied: false,
+        reason,
+        currentHitPointsBefore: beforeHp.currentHitPoints,
+        currentHitPointsAfter: beforeHp.currentHitPoints,
+        maxHitPoints: beforeHp.maximumHitPoints,
+        temporaryHitPointsBefore: beforeHp.temporaryHitPoints,
+        temporaryHitPointsAfter: beforeHp.temporaryHitPoints,
+        healingApplied: 0,
+        hitDiceSpent: 0,
+        hitDiceRecovered: 0,
+        hitDiceRemaining: beforePools.reduce((sum, pool) => sum + pool.remaining, 0),
+        hitDiceRemainingAfter: beforePools.reduce((sum, pool) => sum + pool.remaining, 0),
+        maxHitDice: beforePools.reduce((sum, pool) => sum + pool.maximum, 0),
+        shortRestsUsedSinceLongRest: beforeHp.shortRestsUsedSinceLongRest,
+        shortRestsUsedSinceLongRestAfter: beforeHp.shortRestsUsedSinceLongRest,
+      },
+    };
+  }
+
+  const beforeResources = snapshot.resourcePools ?? [];
+  let afterResources = beforeResources;
+  if (snapshot.schema.m6Ready) {
+    const reset = resetResourcePools(
+      beforeResources.map((pool) => ({
+        id: pool.id,
+        kind: pool.kind,
+        resetPolicy: pool.resetPolicy,
+        maximum: pool.maximum,
+        used: pool.used,
+      })),
+      restType === "short" ? "SHORT_REST" : "LONG_REST",
+    );
+    const resetById = new Map(reset.map((pool) => [pool.id, pool]));
+    afterResources = beforeResources.map((pool) => ({
+      ...pool,
+      used: { ...(resetById.get(pool.id)?.used ?? pool.used) },
+    }));
+  }
+  let character = projectStructuredStateToLegacy(state, {
+    hitPointState: afterHp,
+    hitDicePools: afterPools,
+    resourcePools: afterResources,
+  });
+  character = { ...character, capabilities: resetCapabilityUses(state.capabilities, restType) };
+  return {
+    character,
+    structured: true,
+    hitPointState: afterHp,
+    hitDicePools: afterPools,
+    resourcePools: afterResources,
+    summary: {
+      slug: state.slug,
+      name: state.basicInfo?.characterName ?? state.slug,
+      applied: true,
+      currentHitPointsBefore: beforeHp.currentHitPoints,
+      currentHitPointsAfter: afterHp.currentHitPoints,
+      maxHitPoints: afterHp.maximumHitPoints,
+      temporaryHitPointsBefore: beforeHp.temporaryHitPoints,
+      temporaryHitPointsAfter: afterHp.temporaryHitPoints,
+      healingApplied,
+      hitDiceSpent,
+      hitDiceSpentBySize,
+      hitDiceRecovered,
+      hitDiceRemaining: beforePools.reduce((sum, pool) => sum + pool.remaining, 0),
+      hitDiceRemainingAfter: afterPools.reduce((sum, pool) => sum + pool.remaining, 0),
+      maxHitDice: afterPools.reduce((sum, pool) => sum + pool.maximum, 0),
+      shortRestsUsedSinceLongRest: beforeHp.shortRestsUsedSinceLongRest,
+      shortRestsUsedSinceLongRestAfter: afterHp.shortRestsUsedSinceLongRest,
+      resourcePoolsReset: afterResources
+        .filter((pool, index) => JSON.stringify(pool.used) !== JSON.stringify(beforeResources[index]?.used))
+        .map((pool) => pool.poolKey),
+    },
+  };
+}
+
+export function validateRestClientOptions(payload, targetSlugs) {
+  const raw = payload?.optionsBySlug;
+  if (raw === undefined || raw === null) return;
+  if (!isPlainRecord(raw)) {
+    const error = new Error("optionsBySlug deve essere un oggetto indicizzato per slug.");
+    error.statusCode = 400;
+    throw error;
+  }
+  const allowedSlugs = new Set(targetSlugs);
+  for (const [slug, options] of Object.entries(raw)) {
+    if (CHARACTER_PATCH_FORBIDDEN_KEYS.has(slug) || !allowedSlugs.has(slug)) {
+      const error = new Error(`Opzioni di riposo riferite a un personaggio non selezionato: ${slug}.`);
+      error.statusCode = 400;
+      throw error;
+    }
+    if (!isPlainRecord(options)) {
+      const error = new Error(`Le opzioni di riposo per ${slug} devono essere un oggetto.`);
+      error.statusCode = 400;
+      throw error;
+    }
+    const unsupportedKeys = Object.keys(options).filter(
+      (key) => CHARACTER_PATCH_FORBIDDEN_KEYS.has(key) || !["hitDiceSpent", "hitDiceRollTotal"].includes(key)
+    );
+    if (unsupportedKeys.length > 0) {
+      const error = new Error(`Le opzioni di riposo per ${slug} contengono campi non supportati.`);
+      error.statusCode = 400;
+      throw error;
+    }
+  }
 }
 
 function resetCharacterItemFeatureStatesForRest(characterSlugs, restType) {
@@ -9626,49 +11428,1790 @@ function resetCharacterItemFeatureStatesForRest(characterSlugs, restType) {
   `).run(now, now, ...normalizedSlugs, ...resetValues);
 }
 
-// Optional: debounce writes per slug to avoid hammering the disk.
-// Keep the latest in-memory state so rapid patches merge with each other instead
-// of repeatedly starting from the last state already persisted to SQLite.
-const persistTimers = new Map();
-const pendingCharacterStates = new Map();
-
-function readLatestCharacterState(slug) {
-  return pendingCharacterStates.has(slug)
-    ? pendingCharacterStates.get(slug)
-    : readCharacter(slug);
+function createCharacterMutationError(code, message, snapshot = null) {
+  const error = new Error(message);
+  error.code = code;
+  error.snapshot = snapshot;
+  return error;
 }
 
-function cancelScheduledCharacterWrite(slug) {
-  const timer = persistTimers.get(slug);
-  if (timer) clearTimeout(timer);
-  persistTimers.delete(slug);
+function createProgressionError(code, message, statusCode = 400, snapshot = null) {
+  const error = createCharacterMutationError(code, message, snapshot);
+  error.statusCode = statusCode;
+  return error;
 }
 
-function scheduleWrite(slug, state) {
-  pendingCharacterStates.set(slug, state);
-  cancelScheduledCharacterWrite(slug);
-  const t = setTimeout(() => {
-    if (persistTimers.get(slug) !== t) return;
-    const latestState = pendingCharacterStates.get(slug);
-    persistTimers.delete(slug);
-    if (!latestState) return;
-    try {
-      writeCharacter(slug, latestState);
-      if (pendingCharacterStates.get(slug) === latestState) {
-        pendingCharacterStates.delete(slug);
-      }
-    } catch (e) {
-      console.error(`[server] persist failed for ${slug}:`, e);
-      if (pendingCharacterStates.get(slug) === latestState) {
-        pendingCharacterStates.delete(slug);
+function normalizeProgressionRequest(body, {
+  requireRequestId = false,
+  requireExpectedRevisions = false,
+} = {}) {
+  const targetClassValue = typeof body?.targetClassKey === "string" ? body.targetClassKey.trim() : "";
+  if (!targetClassValue) {
+    throw createProgressionError("TARGET_CLASS_KEY_REQUIRED", "targetClassKey e obbligatoria.", 400);
+  }
+  const targetClassKey = normalizeClassKey(targetClassValue) ?? targetClassValue;
+  let targetSubclassKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "targetSubclassKey")) {
+    if (body.targetSubclassKey === null) {
+      targetSubclassKey = null;
+    } else if (typeof body.targetSubclassKey === "string" && body.targetSubclassKey.trim()) {
+      const value = body.targetSubclassKey.trim();
+      targetSubclassKey = normalizeSubclassKey(value) ?? value;
+    } else {
+      throw createProgressionError("VALIDATION_ERROR", "targetSubclassKey non e valida.", 400);
+    }
+  }
+  let pactBoonKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "pactBoonKey")) {
+    pactBoonKey = normalizePactBoonKey(body.pactBoonKey);
+    if (!pactBoonKey) throw createProgressionError("INVALID_PACT_BOON", "Dono del patto non valido.", 400);
+  }
+  let draconicAncestryKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "draconicAncestryKey")) {
+    draconicAncestryKey = normalizeDraconicAncestryKey(body.draconicAncestryKey);
+    if (!draconicAncestryKey) {
+      throw createProgressionError("INVALID_DRACONIC_ANCESTRY", "draconicAncestryKey non e valida.", 400);
+    }
+  }
+  let expectedRevision;
+  if (body?.expectedRevision !== undefined && body?.expectedRevision !== null) {
+    if (typeof body.expectedRevision !== "string" || !body.expectedRevision.trim()) {
+      throw createProgressionError("VALIDATION_ERROR", "expectedRevision non e valida.", 400);
+    }
+    expectedRevision = body.expectedRevision.trim();
+  }
+  let expectedProgressionRevision;
+  if (body?.expectedProgressionRevision !== undefined && body?.expectedProgressionRevision !== null) {
+    const value = body.expectedProgressionRevision;
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+      throw createProgressionError("VALIDATION_ERROR", "expectedProgressionRevision non e valida.", 400);
+    }
+    expectedProgressionRevision = value;
+  }
+  const requestId = requireRequestId ? normalizeOperationRequestId(body?.requestId) : undefined;
+  const overrideReason = typeof body?.overrideReason === "string" ? body.overrideReason.trim() : "";
+  if (overrideReason.length > 500) {
+    throw createProgressionError("VALIDATION_ERROR", "La motivazione override non puo superare 500 caratteri.", 400);
+  }
+  if (requireRequestId && !requestId) {
+    throw createProgressionError("VALIDATION_ERROR", "Identificativo della richiesta non valido.", 400);
+  }
+  if (requireExpectedRevisions && expectedRevision === undefined) {
+    throw createProgressionError(
+      "VALIDATION_ERROR",
+      "expectedRevision e obbligatoria per applicare la progressione.",
+      400,
+    );
+  }
+  if (requireExpectedRevisions && expectedProgressionRevision === undefined) {
+    throw createProgressionError(
+      "VALIDATION_ERROR",
+      "expectedProgressionRevision e obbligatoria per applicare la progressione.",
+      400,
+    );
+  }
+  return {
+    targetClassKey,
+    ...(targetSubclassKey !== undefined ? { targetSubclassKey } : {}),
+    ...(draconicAncestryKey ? { draconicAncestryKey } : {}),
+    ...(pactBoonKey ? { pactBoonKey } : {}),
+    ...(expectedRevision !== undefined ? { expectedRevision } : {}),
+    ...(expectedProgressionRevision !== undefined ? { expectedProgressionRevision } : {}),
+    ...(requestId ? { requestId } : {}),
+    ...(overrideReason ? { overrideReason } : {}),
+  };
+}
+
+function normalizeSubclassCorrectionRequest(body, {
+  requireRequestId = false,
+  requireExpectedRevisions = false,
+  requireSubclass = false,
+} = {}) {
+  const targetClassValue = typeof body?.targetClassKey === "string" ? body.targetClassKey.trim() : "";
+  if (!targetClassValue) {
+    throw createProgressionError("TARGET_CLASS_KEY_REQUIRED", "targetClassKey e obbligatoria.", 400);
+  }
+  const targetClassKey = normalizeClassKey(targetClassValue) ?? targetClassValue;
+  let targetSubclassKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "targetSubclassKey")) {
+    const value = typeof body.targetSubclassKey === "string" ? body.targetSubclassKey.trim() : "";
+    if (!value) throw createProgressionError("INVALID_SUBCLASS", "targetSubclassKey non e valida.", 400);
+    targetSubclassKey = normalizeSubclassKey(value) ?? value;
+  } else if (requireSubclass) {
+    throw createProgressionError("SUBCLASS_REQUIRED", "Seleziona una sottoclasse.", 400);
+  }
+  let pactBoonKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "pactBoonKey")) {
+    pactBoonKey = normalizePactBoonKey(body.pactBoonKey);
+    if (!pactBoonKey) throw createProgressionError("INVALID_PACT_BOON", "Dono del patto non valido.", 400);
+  }
+  let draconicAncestryKey;
+  if (Object.prototype.hasOwnProperty.call(body ?? {}, "draconicAncestryKey")) {
+    draconicAncestryKey = normalizeDraconicAncestryKey(body.draconicAncestryKey);
+    if (!draconicAncestryKey) {
+      throw createProgressionError("INVALID_DRACONIC_ANCESTRY", "draconicAncestryKey non e valida.", 400);
+    }
+  }
+  const reason = typeof body?.reason === "string" ? body.reason.trim() : "";
+  if (reason && (reason.length < 3 || reason.length > 500)) {
+    throw createProgressionError(
+      "INVALID_REASON",
+      "La motivazione deve contenere da 3 a 500 caratteri.",
+      400,
+    );
+  }
+  let expectedRevision;
+  if (body?.expectedRevision !== undefined && body?.expectedRevision !== null) {
+    if (typeof body.expectedRevision !== "string" || !body.expectedRevision.trim()) {
+      throw createProgressionError("VALIDATION_ERROR", "expectedRevision non e valida.", 400);
+    }
+    expectedRevision = body.expectedRevision.trim();
+  }
+  let expectedProgressionRevision;
+  if (body?.expectedProgressionRevision !== undefined && body?.expectedProgressionRevision !== null) {
+    if (!Number.isInteger(body.expectedProgressionRevision) || body.expectedProgressionRevision < 0) {
+      throw createProgressionError("VALIDATION_ERROR", "expectedProgressionRevision non e valida.", 400);
+    }
+    expectedProgressionRevision = body.expectedProgressionRevision;
+  }
+  if (requireExpectedRevisions && expectedRevision === undefined) {
+    throw createProgressionError("VALIDATION_ERROR", "expectedRevision e obbligatoria.", 400);
+  }
+  if (requireExpectedRevisions && expectedProgressionRevision === undefined) {
+    throw createProgressionError("VALIDATION_ERROR", "expectedProgressionRevision e obbligatoria.", 400);
+  }
+  const requestId = requireRequestId ? normalizeOperationRequestId(body?.requestId) : undefined;
+  if (requireRequestId && !requestId) {
+    throw createProgressionError("VALIDATION_ERROR", "Identificativo della richiesta non valido.", 400);
+  }
+  return {
+    targetClassKey,
+    ...(targetSubclassKey ? { targetSubclassKey } : {}),
+    ...(draconicAncestryKey ? { draconicAncestryKey } : {}),
+    ...(pactBoonKey ? { pactBoonKey } : {}),
+    ...(reason ? { reason } : {}),
+    ...(expectedRevision !== undefined ? { expectedRevision } : {}),
+    ...(expectedProgressionRevision !== undefined ? { expectedProgressionRevision } : {}),
+    ...(requestId ? { requestId } : {}),
+  };
+}
+
+function cloneSerializable(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function resourcePoolUsedByTier(pools) {
+  const totals = {};
+  for (const pool of pools ?? []) {
+    for (const [tier, value] of Object.entries(pool.used ?? {})) {
+      totals[tier] = Number(totals[tier] ?? 0) + Number(value ?? 0);
+    }
+  }
+  return totals;
+}
+
+function resourceUsageDeltas(before, after) {
+  const beforeUsed = resourcePoolUsedByTier(before);
+  const afterUsed = resourcePoolUsedByTier(after);
+  return [...new Set([...Object.keys(beforeUsed), ...Object.keys(afterUsed)])]
+    .sort((left, right) => Number(left) - Number(right))
+    .map((tier) => ({ tier, before: Number(beforeUsed[tier] ?? 0), after: Number(afterUsed[tier] ?? 0) }))
+    .filter((entry) => entry.before > 0 || entry.after > 0);
+}
+
+function unchangedSubclassEffects(snapshot) {
+  const resources = cloneSerializable(Array.isArray(snapshot.resourcePools) ? snapshot.resourcePools : []);
+  const totalLevel = Number(snapshot.progression?.totalLevel ?? snapshot.state?.basicInfo?.level ?? 0);
+  return {
+    characterLevel: { before: totalLevel, after: totalLevel },
+    hitPoints: { before: cloneSerializable(snapshot.hitPointState ?? null), after: cloneSerializable(snapshot.hitPointState ?? null) },
+    classLevels: (snapshot.progression?.classes ?? []).map((entry) => ({
+      classKey: entry.classKey,
+      before: Number(entry.level),
+      after: Number(entry.level),
+    })),
+    spellSlots: {
+      before: resources,
+      after: resources,
+      changed: false,
+      strategy: "NONE",
+      desiredMaximum: {},
+      maximumDeltas: [],
+      preservedExpended: resourceUsageDeltas(resources, resources),
+      warnings: [],
+    },
+    manualContentPreserved: true,
+  };
+}
+
+function reconcileSubclassSpellcastingSource(pools, spellcasting, targetClassKey, targetIsActiveSource) {
+  if (!spellcasting) return { after: pools, changed: false, removeSourceClassKey: null };
+  const targetSourceExists = (spellcasting.sources ?? []).some((source) => source.sourceKey === targetClassKey);
+  if (targetIsActiveSource && !targetSourceExists) {
+    return {
+      after: pools.map((pool) => pool === spellcasting ? { ...pool, sourceClassKey: targetClassKey } : pool),
+      changed: true,
+      removeSourceClassKey: null,
+    };
+  }
+  if (!targetIsActiveSource && targetSourceExists) {
+    return {
+      after: pools.map((pool) => pool === spellcasting ? {
+          ...pool,
+          sources: (pool.sources ?? []).filter((source) => source.sourceKey !== targetClassKey),
+          sourceClassKey: null,
+        } : pool),
+      changed: true,
+      removeSourceClassKey: targetClassKey,
+    };
+  }
+  return { after: pools, changed: false, removeSourceClassKey: null };
+}
+
+function subclassResourcePoolPlan(snapshot, classesAfter, targetClassKey) {
+  const before = cloneSerializable(Array.isArray(snapshot.resourcePools) ? snapshot.resourcePools : []);
+  const summary = resolveProgressionSummary(classesAfter);
+  const activeSourceClassKeys = summary?.spellcastingSlots?.activeSourceClassKeys ?? [];
+  const targetIsActiveSource = activeSourceClassKeys.includes(targetClassKey);
+  const desiredMaximum = Object.fromEntries(
+    Object.entries(summary?.spellcastingSlots?.slots ?? {})
+      .filter(([, value]) => Number(value) > 0)
+      .map(([tierKey, value]) => [String(tierKey), Number(value)]),
+  );
+  const desiredKeys = Object.keys(desiredMaximum);
+  const spellcasting = before.find((pool) => pool.kind === "SPELLCASTING") ?? null;
+  const manualSlotPools = before.filter((pool) =>
+    ["MANUAL", "CLASS_RESOURCE"].includes(pool.kind)
+      && Object.keys(pool.maximum ?? {}).some((tierKey) => Number(pool.maximum[tierKey]) > 0),
+  );
+  const warnings = [];
+  if (manualSlotPools.length > 0) {
+    const sourcePlan = reconcileSubclassSpellcastingSource(
+      before,
+      spellcasting,
+      targetClassKey,
+      targetIsActiveSource,
+    );
+    warnings.push(
+      `Slot gia gestiti manualmente (${manualSlotPools.map((pool) => pool.label || pool.poolKey).join(", ")}): valori e consumi preservati; verifica manuale consigliata.`,
+    );
+    return {
+      before,
+      after: sourcePlan.after,
+      changed: sourcePlan.changed,
+      legacySlotsChanged: false,
+      strategy: "PRESERVE_MANUAL",
+      desiredMaximum,
+      maximumDeltas: [],
+      preservedExpended: resourceUsageDeltas(before, sourcePlan.after),
+      removeSourceClassKey: sourcePlan.removeSourceClassKey,
+      warnings,
+    };
+  }
+  if (desiredKeys.length === 0) {
+    const sourcePlan = reconcileSubclassSpellcastingSource(
+      before,
+      spellcasting,
+      targetClassKey,
+      targetIsActiveSource,
+    );
+    if (spellcasting) {
+      warnings.push("Il pool slot esistente e stato preservato integralmente; verifica manualmente la capacita dopo la correzione.");
+    }
+    return {
+      before,
+      after: sourcePlan.after,
+      changed: sourcePlan.changed,
+      legacySlotsChanged: false,
+      strategy: spellcasting ? "PRESERVE_EXISTING" : "NONE",
+      desiredMaximum,
+      maximumDeltas: [],
+      preservedExpended: resourceUsageDeltas(before, sourcePlan.after),
+      removeSourceClassKey: sourcePlan.removeSourceClassKey,
+      warnings,
+    };
+  }
+
+  let projected;
+  if (!spellcasting && !targetIsActiveSource) {
+    warnings.push("Gli slot derivati da altre classi non sono stati ricostruiti durante questa correzione.");
+    return {
+      before,
+      after: before,
+      changed: false,
+      legacySlotsChanged: false,
+      strategy: "PRESERVE_UNRELATED",
+      desiredMaximum,
+      maximumDeltas: [],
+      preservedExpended: resourceUsageDeltas(before, before),
+      warnings,
+    };
+  }
+  if (!spellcasting) {
+    projected = {
+      id: "spellcasting",
+      poolKey: "spellcasting",
+      kind: "SPELLCASTING",
+      label: "Slot Incantesimi",
+      resetPolicy: "LONG_REST",
+      revision: 0,
+      backfillStatus: "BACKFILLED",
+      maximum: { ...desiredMaximum },
+      used: Object.fromEntries(desiredKeys.map((key) => [key, 0])),
+      tiers: desiredKeys.map((tierKey, index) => ({
+        tierKey,
+        sortOrder: index,
+        derivedMaximum: desiredMaximum[tierKey],
+        maximumOverride: null,
+        maximum: desiredMaximum[tierKey],
+        used: 0,
+      })),
+      sources: [],
+      sourceClassKey: targetIsActiveSource ? targetClassKey : null,
+    };
+  } else {
+    const existingTiers = Array.isArray(spellcasting.tiers) && spellcasting.tiers.length
+      ? spellcasting.tiers.map((tier) => ({ ...tier, tierKey: String(tier.tierKey) }))
+      : Object.keys(spellcasting.maximum ?? {}).map((tierKey, index) => ({
+          tierKey,
+          sortOrder: index,
+          derivedMaximum: Number(spellcasting.maximum[tierKey]),
+          maximumOverride: null,
+          maximum: Number(spellcasting.maximum[tierKey]),
+          used: Number(spellcasting.used?.[tierKey] ?? 0),
+        }));
+    const tiersByKey = new Map(existingTiers.map((tier) => [tier.tierKey, tier]));
+    for (const tier of existingTiers) {
+      if (desiredMaximum[tier.tierKey] !== undefined || tier.maximumOverride != null) continue;
+      if (Number(tier.used ?? 0) > 0) {
+        return {
+          before,
+          after: before,
+          changed: false,
+          legacySlotsChanged: false,
+          strategy: "BLOCKED",
+          desiredMaximum,
+          maximumDeltas: [],
+          preservedExpended: resourceUsageDeltas(before, before),
+          warnings,
+          blockedReason: `La riconciliazione eliminerebbe slot consumati di livello ${tier.tierKey}. Ripristina o correggi manualmente il pool prima di procedere.`,
+        };
       }
     }
-  }, 200);
-  persistTimers.set(slug, t);
+    const keptKeys = new Set([
+      ...desiredKeys,
+      ...existingTiers.filter((tier) => tier.maximumOverride != null).map((tier) => tier.tierKey),
+    ]);
+    const projectedTiers = [...keptKeys]
+      .sort((left, right) => Number(left) - Number(right))
+      .map((tierKey, index) => {
+        const current = tiersByKey.get(tierKey);
+        const derivedMaximum = desiredMaximum[tierKey] ?? null;
+        const maximumOverride = current?.maximumOverride == null ? null : Number(current.maximumOverride);
+        const effectiveMaximum = maximumOverride ?? Number(derivedMaximum ?? 0);
+        const used = Number(current?.used ?? spellcasting.used?.[tierKey] ?? 0);
+        if (used > effectiveMaximum) {
+          return { blocked: true, tierKey, used, effectiveMaximum };
+        }
+        return {
+          ...(current ?? {}),
+          tierKey,
+          sortOrder: index,
+          derivedMaximum,
+          maximumOverride,
+          maximum: effectiveMaximum,
+          used,
+        };
+      });
+    const blocked = projectedTiers.find((tier) => tier.blocked);
+    if (blocked) {
+      return {
+        before,
+        after: before,
+        changed: false,
+        legacySlotsChanged: false,
+        strategy: "BLOCKED",
+        desiredMaximum,
+        maximumDeltas: [],
+        preservedExpended: resourceUsageDeltas(before, before),
+        warnings,
+        blockedReason: `Gli slot consumati di livello ${blocked.tierKey} (${blocked.used}) superano la nuova capacita (${blocked.effectiveMaximum}).`,
+      };
+    }
+    const removeTargetSource = !targetIsActiveSource
+      && spellcasting.sources?.some((source) => source.sourceKey === targetClassKey);
+    projected = {
+      ...spellcasting,
+      maximum: Object.fromEntries(projectedTiers.map((tier) => [tier.tierKey, tier.maximum])),
+      used: Object.fromEntries(projectedTiers.map((tier) => [tier.tierKey, tier.used])),
+      tiers: projectedTiers,
+      sources: removeTargetSource
+        ? (spellcasting.sources ?? []).filter((source) => source.sourceKey !== targetClassKey)
+        : (spellcasting.sources ?? []),
+      sourceClassKey: targetIsActiveSource ? targetClassKey : null,
+    };
+  }
+  const after = before.map((pool) => pool === spellcasting ? projected : pool);
+  if (!spellcasting) after.push(projected);
+  const beforeMaximum = spellcasting?.maximum ?? {};
+  const allTierKeys = new Set([...Object.keys(beforeMaximum), ...Object.keys(projected.maximum)]);
+  const maximumDeltas = [...allTierKeys]
+    .sort((left, right) => Number(left) - Number(right))
+    .map((tier) => ({ tier, before: Number(beforeMaximum[tier] ?? 0), after: Number(projected.maximum[tier] ?? 0) }))
+    .filter((entry) => entry.before !== entry.after);
+  const existingDerived = new Map((spellcasting?.tiers ?? []).map((tier) => [
+    String(tier.tierKey),
+    tier.derivedMaximum == null ? null : Number(tier.derivedMaximum),
+  ]));
+  const projectedDerived = new Map((projected.tiers ?? []).map((tier) => [
+    String(tier.tierKey),
+    tier.derivedMaximum == null ? null : Number(tier.derivedMaximum),
+  ]));
+  const derivedChanged = JSON.stringify([...existingDerived]) !== JSON.stringify([...projectedDerived]);
+  const targetSourceExists = spellcasting?.sources?.some((source) => source.sourceKey === targetClassKey) === true;
+  const sourceMissing = targetIsActiveSource && !targetSourceExists;
+  const removeSourceClassKey = !targetIsActiveSource && targetSourceExists ? targetClassKey : null;
+  const changed = !spellcasting || maximumDeltas.length > 0 || derivedChanged || sourceMissing || Boolean(removeSourceClassKey);
+  const effectiveAfter = changed ? after : before;
+  return {
+    before,
+    after: effectiveAfter,
+    changed,
+    legacySlotsChanged: !spellcasting || maximumDeltas.length > 0,
+    strategy: changed ? (spellcasting ? "RECONCILE_DERIVED" : "CREATE_DERIVED") : "PRESERVE_EXISTING",
+    desiredMaximum,
+    maximumDeltas,
+    preservedExpended: resourceUsageDeltas(before, effectiveAfter),
+    removeSourceClassKey,
+    warnings,
+  };
+}
+
+export function prepareCharacterSubclassCorrectionPreview(snapshot, request) {
+  if (!snapshot?.state) throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
+  if (snapshot.state.characterType !== "pg") {
+    throw createProgressionError("CHARACTER_TYPE_UNSUPPORTED", "La sottoclasse e disponibile soltanto per i PG.", 422, snapshot);
+  }
+  if (!snapshot.schema?.m5Ready || !snapshot.schema?.m6Ready) {
+    throw createProgressionError(
+      "SUBCLASS_DEPENDENCY_NOT_READY",
+      "La correzione della sottoclasse richiede prima gli schemi strutturati M5 e M6.",
+      503,
+      snapshot,
+    );
+  }
+  if (request.expectedRevision !== undefined && request.expectedRevision !== snapshot.revision) {
+    throw createProgressionError("REVISION_CONFLICT", "Il personaggio e stato modificato da un'altra operazione.", 409, snapshot);
+  }
+  const progression = snapshot.progression;
+  if (progression?.source !== "STRUCTURED" || !Array.isArray(progression.classes)) {
+    throw createProgressionError("PROGRESSION_UNAVAILABLE", "La progressione strutturata non e disponibile.", 409, snapshot);
+  }
+  if (request.expectedProgressionRevision !== undefined
+    && request.expectedProgressionRevision !== progression.progressionRevision) {
+    throw createProgressionError("PROGRESSION_REVISION_CONFLICT", "La progressione e stata modificata.", 409, snapshot);
+  }
+  const targetClassKey = normalizeClassKey(request.targetClassKey) ?? request.targetClassKey;
+  const targetClass = progression.classes.find((entry) => entry.classKey === targetClassKey) ?? null;
+  if (!targetClass) {
+    throw createProgressionError("CLASS_NOT_OWNED", "Il personaggio non possiede la classe selezionata.", 422, snapshot);
+  }
+  const classOptions = progression.classes.map((entry) => ({
+    key: entry.classKey,
+    label: entry.label ?? CLASS_RULES[entry.classKey]?.labels?.it ?? entry.classKey,
+    level: Number(entry.level),
+    subclassKey: entry.subclassKey ?? null,
+    subclassLabel: entry.subclassKey
+      ? SUBCLASS_RULES[entry.subclassKey]?.labels?.it ?? SUBCLASS_RULES[entry.subclassKey]?.labels?.en ?? entry.subclassKey
+      : null,
+    draconicAncestryKey: entry.draconicAncestryKey ?? null,
+  }));
+  const before = {
+    subclassKey: targetClass.subclassKey ?? null,
+    subclassLabel: targetClass.subclassKey
+      ? SUBCLASS_RULES[targetClass.subclassKey]?.labels?.it ?? SUBCLASS_RULES[targetClass.subclassKey]?.labels?.en ?? targetClass.subclassKey
+      : null,
+    draconicAncestryKey: targetClass.draconicAncestryKey ?? null,
+    pactBoonKey: targetClass.pactBoonKey ?? null,
+  };
+  const pactBoonRequired = targetClassKey === "warlock" && Number(targetClass.level) >= 3;
+  if (request.pactBoonKey !== undefined && (!normalizePactBoonKey(request.pactBoonKey) || !pactBoonRequired)) {
+    throw createProgressionError("PACT_BOON_NOT_APPLICABLE", "Il dono del patto richiede almeno 3 livelli da Warlock.", 422, snapshot);
+  }
+  const pactBoonKey = request.pactBoonKey ?? before.pactBoonKey;
+  const pactBoonChanged = before.pactBoonKey !== pactBoonKey;
+  const classRule = CLASS_RULES[targetClassKey] ?? null;
+  const baseEffects = unchangedSubclassEffects(snapshot);
+  const base = {
+    targetClassKey,
+    ...(request.targetSubclassKey ? { targetSubclassKey: request.targetSubclassKey } : {}),
+    classOptions,
+    subclassOptions: [],
+    pactBoonOptions: pactBoonRequired ? PACT_BOON_OPTIONS.map((entry) => ({ ...entry })) : [],
+    pactBoonRequired,
+    pactBoonKey,
+    pactBoonChanged,
+    draconicAncestryOptions: [],
+    draconicAncestryRequired: false,
+    draconicAncestryKey: before.draconicAncestryKey,
+    before,
+  };
+  if (!classRule || !Number.isInteger(classRule.subclassLevel)) {
+    return {
+      ...base,
+      status: "SUBCLASS_UNAVAILABLE",
+      canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN",
+      after: { subclassKey: null, subclassLabel: null, draconicAncestryKey: null },
+      reasonRequired: false,
+      reason: "La classe non dispone di una sottoclasse registrabile.",
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  if (Number(targetClass.level) < classRule.subclassLevel) {
+    return {
+      ...base,
+      status: "LEVEL_REQUIRED",
+      canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN",
+      after: { subclassKey: null, subclassLabel: null, draconicAncestryKey: null },
+      reasonRequired: false,
+      reason: `La sottoclasse richiede il livello ${classRule.subclassLevel} nella classe selezionata.`,
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  base.subclassOptions = progressionSubclassOptions(targetClassKey);
+  if (!request.targetSubclassKey) {
+    return {
+      ...base,
+      status: "SUBCLASS_REQUIRED",
+      canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN",
+      after: { subclassKey: null, subclassLabel: null, draconicAncestryKey: null },
+      reasonRequired: Boolean(before.subclassKey),
+      reason: "Seleziona una sottoclasse.",
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  const subclassRule = SUBCLASS_RULES[request.targetSubclassKey] ?? null;
+  if (!subclassRule || subclassRule.classKey !== targetClassKey) {
+    throw createProgressionError("INVALID_SUBCLASS", "La sottoclasse non appartiene alla classe selezionata.", 422, snapshot);
+  }
+  const draconicAncestryRequired = requiresDraconicAncestry(targetClassKey, request.targetSubclassKey);
+  if (request.draconicAncestryKey && !draconicAncestryRequired) {
+    throw createProgressionError(
+      "DRACONIC_ANCESTRY_NOT_APPLICABLE",
+      "L'antenato draconico e disponibile soltanto per la Discendenza Draconica dello Stregone.",
+      422,
+      snapshot,
+    );
+  }
+  const sameSubclass = before.subclassKey === request.targetSubclassKey;
+  const draconicAncestryKey = draconicAncestryRequired
+    ? request.draconicAncestryKey ?? (sameSubclass ? before.draconicAncestryKey : null)
+    : null;
+  const draconicChoice = {
+    draconicAncestryOptions: draconicAncestryRequired ? DRACONIC_ANCESTRY_OPTIONS.map((entry) => ({ ...entry })) : [],
+    draconicAncestryRequired,
+    draconicAncestryKey,
+  };
+  const after = {
+    subclassKey: request.targetSubclassKey,
+    subclassLabel: subclassRule.labels?.it ?? subclassRule.labels?.en ?? request.targetSubclassKey,
+    draconicAncestryKey,
+    pactBoonKey,
+  };
+  if (draconicAncestryRequired && !draconicAncestryKey) {
+    return {
+      ...base,
+      ...draconicChoice,
+      status: "DRACONIC_ANCESTRY_REQUIRED",
+      canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN",
+      after,
+      reasonRequired: false,
+      reason: "Seleziona l'antenato draconico della Discendenza Draconica.",
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  if (pactBoonRequired && !pactBoonKey) {
+    return { ...base, ...draconicChoice, after, status: "PACT_BOON_REQUIRED", canApply: false,
+      mode: before.subclassKey ? "CHANGE" : "ASSIGN", reasonRequired: false,
+      reason: "Seleziona il dono del patto del Warlock.", effects: baseEffects, warnings: [] };
+  }
+  const ancestryChanged = before.draconicAncestryKey !== draconicAncestryKey;
+  if (sameSubclass && !ancestryChanged && !pactBoonChanged) {
+    return {
+      ...base,
+      ...draconicChoice,
+      status: "ALREADY_SELECTED",
+      canApply: false,
+      mode: "CHANGE",
+      after,
+      reasonRequired: false,
+      reason: "Le scelte selezionate sono gia registrate.",
+      effects: baseEffects,
+      warnings: [],
+    };
+  }
+  const subclassChanged = !sameSubclass;
+  const mode = before.subclassKey || before.draconicAncestryKey ? "CHANGE" : "ASSIGN";
+  const classesAfter = progression.classes.map((entry) => entry.classKey === targetClassKey
+    ? {
+        ...entry,
+        subclassKey: request.targetSubclassKey,
+        subclassStatus: "SELECTED",
+        draconicAncestryKey,
+        pactBoonKey,
+      }
+    : { ...entry });
+  const resources = subclassChanged
+    ? subclassResourcePoolPlan(snapshot, classesAfter.map((entry) => ({
+        classKey: entry.classKey,
+        level: Number(entry.level),
+        ...(entry.subclassKey ? { subclassKey: entry.subclassKey } : {}),
+        isPrimary: entry.isPrimary,
+      })), targetClassKey)
+    : baseEffects.spellSlots;
+  const reasonRequired = (subclassChanged && Boolean(before.subclassKey))
+    || (ancestryChanged && Boolean(before.draconicAncestryKey))
+    || (pactBoonChanged && Boolean(before.pactBoonKey));
+  const reasonMissing = reasonRequired && !request.reason;
+  const blocked = Boolean(resources.blockedReason);
+  const warnings = [
+    "Privilegi, competenze, incantesimi e altre scelte gestite manualmente restano invariati.",
+  ];
+  return {
+    ...base,
+    ...draconicChoice,
+    status: blocked ? "RESOURCE_CONSUMPTION_CONFLICT" : reasonMissing ? "REASON_REQUIRED" : "READY",
+    canApply: !blocked && !reasonMissing,
+    mode,
+    after,
+    reasonRequired,
+    subclassChanged,
+    ancestryChanged,
+    ...(blocked || reasonMissing ? { reason: resources.blockedReason ?? "Inserisci una motivazione per correggere la scelta registrata." } : {}),
+    effects: {
+      characterLevel: { before: progression.totalLevel, after: progression.totalLevel },
+      hitPoints: { before: cloneSerializable(snapshot.hitPointState ?? null), after: cloneSerializable(snapshot.hitPointState ?? null) },
+      classLevels: progression.classes.map((entry) => ({ classKey: entry.classKey, before: Number(entry.level), after: Number(entry.level) })),
+      spellSlots: resources,
+      manualContentPreserved: true,
+    },
+    warnings,
+    classesAfter,
+  };
+}
+
+export function subclassCorrectionRequestSignature(slug, request, actorId = null) {
+  const canonical = JSON.stringify({
+    slug,
+    actorId: actorId == null ? null : String(actorId),
+    targetClassKey: request.targetClassKey,
+    targetSubclassKey: request.targetSubclassKey,
+    ...(request.draconicAncestryKey !== undefined ? { draconicAncestryKey: request.draconicAncestryKey } : {}),
+    ...(request.pactBoonKey !== undefined ? { pactBoonKey: request.pactBoonKey } : {}),
+    reason: request.reason ?? null,
+    expectedRevision: request.expectedRevision ?? null,
+    expectedProgressionRevision: request.expectedProgressionRevision ?? null,
+  });
+  return crypto.createHash("sha256").update(canonical).digest("hex");
+}
+
+function publicResourcePoolState(pool) {
+  return {
+    id: pool.id ?? pool.poolKey,
+    poolKey: pool.poolKey ?? pool.id,
+    kind: pool.kind,
+    label: pool.label ?? pool.poolKey ?? pool.id,
+    resetPolicy: pool.resetPolicy,
+    revision: Number(pool.revision ?? 0),
+    backfillStatus: pool.backfillStatus ?? "BACKFILLED",
+    maximum: { ...(pool.maximum ?? {}) },
+    used: { ...(pool.used ?? {}) },
+    ...(Array.isArray(pool.sources) ? { sources: pool.sources.map((source) => ({ ...source })) } : {}),
+  };
+}
+
+function projectProgressionResourcePools(existingPools, progressionSummary, targetClassKey) {
+  const pools = (Array.isArray(existingPools) ? existingPools : []).map(publicResourcePoolState);
+  const byKind = new Map(pools.map((pool) => [pool.kind, pool]));
+  const spellMaximum = progressionSummary?.spellcastingSlots?.slots ?? {};
+  if (Object.values(spellMaximum).some((value) => Number(value) > 0)) {
+    const current = byKind.get("SPELLCASTING") ?? {
+      id: "spellcasting",
+      poolKey: "spellcasting",
+      kind: "SPELLCASTING",
+      label: "Slot Incantesimi",
+      resetPolicy: "LONG_REST",
+      revision: 0,
+      backfillStatus: "BACKFILLED",
+      maximum: {},
+      used: {},
+      sources: [],
+    };
+    const maximum = Object.fromEntries(
+      Object.entries(spellMaximum).filter(([, value]) => Number(value) > 0).map(([key, value]) => [key, Number(value)])
+    );
+    const used = Object.fromEntries(Object.keys(maximum).map((key) => [key, Number(current.used?.[key] ?? 0)]));
+    byKind.set("SPELLCASTING", { ...current, maximum, used });
+  }
+
+  const pact = progressionSummary?.pactMagicSlots;
+  if (Number(pact?.slotCount) > 0 && Number(pact?.slotLevel) > 0) {
+    const current = byKind.get("PACT_MAGIC") ?? {
+      id: "pact-magic",
+      poolKey: "pact-magic",
+      kind: "PACT_MAGIC",
+      label: "Magia del Patto",
+      resetPolicy: "SHORT_REST",
+      revision: 0,
+      backfillStatus: "BACKFILLED",
+      maximum: {},
+      used: {},
+      sources: [],
+    };
+    const tierKey = String(pact.slotLevel);
+    const preservedUsed = Object.values(current.used ?? {}).reduce((sum, value) => sum + Number(value ?? 0), 0);
+    byKind.set("PACT_MAGIC", {
+      ...current,
+      maximum: { [tierKey]: Number(pact.slotCount) },
+      used: { [tierKey]: preservedUsed },
+    });
+  }
+
+  const projectedKinds = new Set(["SPELLCASTING", "PACT_MAGIC"]);
+  return [
+    ...pools.filter((pool) => !projectedKinds.has(pool.kind)),
+    ...["SPELLCASTING", "PACT_MAGIC"].map((kind) => byKind.get(kind)).filter(Boolean),
+  ].map((pool) => ({
+    ...pool,
+    sourceClassKey: pool.kind === "SPELLCASTING"
+      && progressionSummary?.spellcastingSlots?.activeSourceClassKeys?.includes(targetClassKey)
+      ? targetClassKey
+      : pool.kind === "PACT_MAGIC" && targetClassKey === "warlock"
+        ? targetClassKey
+        : null,
+  }));
+}
+
+export function buildCharacterProgressionEffects(snapshot, resolvedPreview) {
+  const schema = snapshot?.schema;
+  if (!schema?.m5Ready && !schema?.m6Ready) return null;
+  if (!resolvedPreview?.after) return null;
+
+  let hitPoints = null;
+  let hitDicePools = null;
+  if (schema.m5Ready) {
+    if (!snapshot.hitPointState || !Array.isArray(snapshot.hitDicePools)) {
+      return { status: "VITALS_NOT_READY", hitPoints: null, hitDicePools: null, resourcePools: null };
+    }
+    const classRule = CLASS_RULES[resolvedPreview.targetClassKey] ?? null;
+    if (!classRule?.hitDie) {
+      return { status: "VITALS_NOT_READY", hitPoints: null, hitDicePools: null, resourcePools: null };
+    }
+    const constitutionModifier = resolveConstitutionModifier(Number(snapshot.state?.abilityScores?.constitution ?? 10));
+    const gain = resolveLevelUpHitPoints({ hitDieSize: classRule.hitDie, constitutionModifier });
+    const before = { ...snapshot.hitPointState };
+    const after = {
+      ...before,
+      maximumHitPoints: before.maximumHitPoints + gain.gained,
+      currentHitPoints: before.currentHitPoints + gain.gained,
+      revision: before.revision + 1,
+    };
+    const reconciledAfter = schema.passiveHitPointBonusReady
+      ? reconcilePassiveHitPoints(
+          after,
+          resolveCharacterPassiveHitPointBonus(snapshot.state, snapshot.progression, {
+            classes: resolvedPreview.classesAfter,
+            totalLevel: resolvedPreview.after.characterLevel,
+          }).bonusTotal,
+        )
+      : after;
+    hitPoints = { before, after: reconciledAfter, ...gain };
+    const beforePools = snapshot.hitDicePools.map((pool) => ({ ...pool }));
+    const afterPools = beforePools.map((pool) => ({ ...pool }));
+    let targetPool = afterPools.find((pool) => pool.dieSize === gain.hitDieSize);
+    if (!targetPool) {
+      targetPool = { dieSize: gain.hitDieSize, maximum: 0, remaining: 0, source: "DERIVED" };
+      afterPools.push(targetPool);
+    }
+    targetPool.maximum += 1;
+    targetPool.remaining += 1;
+    afterPools.sort((left, right) => right.dieSize - left.dieSize);
+    hitDicePools = { before: beforePools, after: afterPools, addedDieSize: gain.hitDieSize };
+  }
+
+  let resourcePools = null;
+  if (schema.m6Ready) {
+    const before = (snapshot.resourcePools ?? []).map(publicResourcePoolState);
+    const after = projectProgressionResourcePools(before, resolvedPreview.after, resolvedPreview.targetClassKey);
+    resourcePools = { before, after };
+  }
+  return { status: "READY", hitPoints, hitDicePools, resourcePools };
+}
+
+function progressionDeferredEffects(preview) {
+  const deferred = [];
+  if (!preview?.effects?.hitPoints) deferred.push("HIT_POINTS");
+  if (!preview?.effects?.hitDicePools) deferred.push("HIT_DICE");
+  if (!preview?.effects?.resourcePools) deferred.push("RESOURCE_POOLS");
+  return deferred;
+}
+
+export function assertProgressionEffectsReady(preview) {
+  const deferredEffects = progressionDeferredEffects(preview);
+  if (deferredEffects.length > 0) {
+    throw createProgressionError(
+      "PROGRESSION_EFFECTS_NOT_READY",
+      `Il level-up richiede gli effetti strutturati M5/M6: ${deferredEffects.join(", ")}.`,
+      503,
+    );
+  }
+  return deferredEffects;
+}
+
+function progressionSubclassOptions(classKey) {
+  const canonicalClassKey = normalizeClassKey(classKey) ?? classKey;
+  return Object.values(SUBCLASS_RULES)
+    .filter((rule) => rule?.classKey === canonicalClassKey)
+    .map((rule) => ({
+      key: rule.key,
+      label: rule.labels?.it ?? rule.labels?.en ?? rule.key,
+      classKey: rule.classKey,
+    }))
+    .sort((left, right) => left.key.localeCompare(right.key));
+}
+
+function progressionClassOptions(classes) {
+  const owned = new Set((classes ?? []).map((entry) => entry.classKey));
+  return Object.values(CLASS_RULES)
+    .map((rule) => ({
+      key: rule.key,
+      label: rule.labels?.it ?? rule.labels?.en ?? rule.key,
+      mode: owned.has(rule.key) ? "INCREMENT_EXISTING" : "ADD_NEW_CLASS",
+      currentLevel: classes?.find((entry) => entry.classKey === rule.key)?.level ?? 0,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label, "it"));
+}
+
+const MULTICLASS_ENTRY_CHOICES = Object.freeze({
+  bard: ["Scegli un'abilità e uno strumento musicale."],
+  rogue: ["Scegli un'abilità dalla lista del ladro; ottieni competenza negli arnesi da scasso."],
+  ranger: ["Scegli un'abilità dalla lista del ranger."],
+});
+
+function progressionManualRuleNotes(resolved) {
+  if (!resolved?.after) return [];
+  const notes = [];
+  if (resolved.mode === "ADD_NEW_CLASS") {
+    notes.push("La nuova classe non concede equipaggiamento iniziale.");
+    notes.push(...(MULTICLASS_ENTRY_CHOICES[resolved.targetClassKey] ?? []));
+  }
+  if (resolved.after.spellcastingSlots?.activeSourceClassKeys?.length > 1) {
+    notes.push("Incantesimi conosciuti e preparati si determinano separatamente per ogni classe; gli slot condivisi non ampliano gli incantesimi accessibili.");
+  }
+  const classes = resolved.classesAfter ?? [];
+  const level = (key) => classes.find((entry) => entry.classKey === key)?.level ?? 0;
+  const extraAttackSources = ["barbarian", "fighter", "monk", "paladin", "ranger"].filter((key) => level(key) >= 5);
+  if (classes.some((entry) => entry.classKey === "bard" && entry.level >= 6 && entry.subclassKey === "college-of-valour")) {
+    extraAttackSources.push("bard");
+  }
+  if (extraAttackSources.length > 1) {
+    notes.push("Attacco Extra ottenuto da più classi non si cumula; solo il Guerriero aumenta esplicitamente il numero di attacchi.");
+  }
+  if (level("warlock") >= 5 && extraAttackSources.length > 0) {
+    notes.push("Se possiede la supplica Lama Assetata, questa non aggiunge attacchi al privilegio Attacco Extra.");
+  }
+  if (level("warlock") >= 1 && resolved.after.spellcastingSlots?.activeSourceClassKeys?.length > 0) {
+    notes.push("Gli slot di Magia del Patto e Incantesimi restano separati, ma possono essere usati per lanciare gli incantesimi conosciuti o preparati dell'altra fonte.");
+  }
+  if (level("barbarian") >= 1 && level("monk") >= 1) {
+    notes.push("Difesa Senza Armatura non si ottiene una seconda volta da un'altra classe.");
+  }
+  if (level("cleric") >= 2 && level("paladin") >= 3) {
+    notes.push("Incanalare Divinità offre gli effetti di entrambe le classi, ma i suoi utilizzi non si sommano automaticamente.");
+  }
+  return notes;
+}
+
+export function prepareCharacterProgressionPreview(snapshot, request) {
+  if (!snapshot?.state) {
+    throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
+  }
+  if (snapshot.state.characterType !== "pg") {
+    throw createProgressionError(
+      "CHARACTER_TYPE_UNSUPPORTED",
+      "La progressione guidata M4 e disponibile soltanto per i PG.",
+      422,
+      snapshot,
+    );
+  }
+  if (request.expectedRevision !== undefined && request.expectedRevision !== snapshot.revision) {
+    throw createProgressionError(
+      "REVISION_CONFLICT",
+      "Il personaggio e stato modificato da un'altra operazione.",
+      409,
+      snapshot,
+    );
+  }
+  const progression = snapshot.progression;
+  if (progression?.source !== "STRUCTURED" || !Array.isArray(progression.classes)) {
+    throw createProgressionError(
+      "PROGRESSION_UNAVAILABLE",
+      "La progressione strutturata del personaggio non e disponibile o richiede una risoluzione manuale.",
+      409,
+      snapshot,
+    );
+  }
+  if (
+    request.expectedProgressionRevision !== undefined
+    && request.expectedProgressionRevision !== progression.progressionRevision
+  ) {
+    throw createProgressionError(
+      "PROGRESSION_REVISION_CONFLICT",
+      "La progressione del personaggio e stata modificata da un'altra operazione.",
+      409,
+      snapshot,
+    );
+  }
+  const targetClassKey = normalizeClassKey(request.targetClassKey) ?? request.targetClassKey;
+  const currentClass = progression.classes.find((entry) => entry.classKey === targetClassKey) ?? null;
+  const requestedSubclassKey = request.targetSubclassKey;
+  if (
+    requestedSubclassKey !== undefined
+    && currentClass?.subclassKey
+    && requestedSubclassKey !== currentClass.subclassKey
+  ) {
+    throw createProgressionError(
+      "SUBCLASS_CHANGE_NOT_ALLOWED",
+      "La sottoclasse gia selezionata non puo essere cambiata durante un normale level-up.",
+      422,
+      snapshot,
+    );
+  }
+  const entries = progression.classes.map((entry) => ({
+    classKey: entry.classKey,
+    level: Number(entry.level),
+    ...(entry.subclassKey ? { subclassKey: entry.subclassKey } : {}),
+    ...(entry.draconicAncestryKey ? { draconicAncestryKey: entry.draconicAncestryKey } : {}),
+    isPrimary: entry.isPrimary,
+  }));
+  const options = requestedSubclassKey !== undefined
+    ? { targetSubclassKey: requestedSubclassKey }
+    : {};
+  let resolved = resolveClassAdvancementPreview(entries, targetClassKey, options);
+  const classOptions = progressionClassOptions(progression.classes);
+  const prerequisites = resolved.mode === "ADD_NEW_CLASS"
+    ? evaluateMulticlassPrerequisites(entries, targetClassKey, snapshot.state?.abilityScores ?? {})
+    : { status: "NOT_APPLICABLE", eligible: true, failedClassKeys: [], reason: null };
+  const targetRule = CLASS_RULES[targetClassKey] ?? null;
+  let targetClassAfter = resolved.classesAfter?.find((entry) => entry.classKey === targetClassKey) ?? null;
+  const draconicAncestryRequired = requiresDraconicAncestry(targetClassKey, targetClassAfter?.subclassKey);
+  const currentDraconicAncestryKey = currentClass?.draconicAncestryKey ?? null;
+  if (
+    request.draconicAncestryKey
+    && currentDraconicAncestryKey
+    && request.draconicAncestryKey !== currentDraconicAncestryKey
+  ) {
+    throw createProgressionError(
+      "DRACONIC_ANCESTRY_CHANGE_NOT_ALLOWED",
+      "L'antenato draconico gia registrato puo essere corretto soltanto dall'azione dedicata alla sottoclasse.",
+      422,
+      snapshot,
+    );
+  }
+  if (request.draconicAncestryKey && !draconicAncestryRequired) {
+    throw createProgressionError(
+      "DRACONIC_ANCESTRY_NOT_APPLICABLE",
+      "L'antenato draconico e disponibile soltanto per la Discendenza Draconica dello Stregone.",
+      422,
+      snapshot,
+    );
+  }
+  const draconicAncestryKey = draconicAncestryRequired
+    ? request.draconicAncestryKey ?? currentDraconicAncestryKey ?? targetClassAfter?.draconicAncestryKey ?? null
+    : null;
+  if (resolved.classesAfter) {
+    const classesAfter = resolved.classesAfter.map((entry) => entry.classKey === targetClassKey
+      ? { ...entry, draconicAncestryKey }
+      : { ...entry });
+    resolved = { ...resolved, classesAfter };
+    targetClassAfter = classesAfter.find((entry) => entry.classKey === targetClassKey) ?? null;
+  }
+  const pactBoonRequired = targetClassKey === "warlock" && Number(targetClassAfter?.level) >= 3;
+  const currentPactBoonKey = currentClass?.pactBoonKey ?? null;
+  if (request.pactBoonKey !== undefined && (!normalizePactBoonKey(request.pactBoonKey) || !pactBoonRequired)) {
+    throw createProgressionError("PACT_BOON_NOT_APPLICABLE", "Il dono del patto richiede almeno 3 livelli da Warlock.", 422, snapshot);
+  }
+  if (request.pactBoonKey && currentPactBoonKey && request.pactBoonKey !== currentPactBoonKey) {
+    throw createProgressionError("PACT_BOON_CHANGE_NOT_ALLOWED", "Correggi il dono del patto con l'azione sottoclasse.", 422, snapshot);
+  }
+  const pactBoonKey = pactBoonRequired ? request.pactBoonKey ?? currentPactBoonKey : null;
+  if (resolved.classesAfter) {
+    resolved.classesAfter = resolved.classesAfter.map((entry) => ({ ...entry,
+      pactBoonKey: entry.classKey === targetClassKey ? pactBoonKey
+        : progression.classes.find((previous) => previous.classKey === entry.classKey)?.pactBoonKey ?? null,
+    }));
+  }
+  const subclassOptions = !currentClass?.subclassKey
+    && Number.isInteger(targetRule?.subclassLevel)
+    && Number(targetClassAfter?.level) >= targetRule.subclassLevel
+    ? progressionSubclassOptions(targetClassKey)
+    : [];
+  const effects = buildCharacterProgressionEffects(snapshot, resolved);
+  const manualRuleNotes = progressionManualRuleNotes(resolved);
+  const draconicChoice = {
+    draconicAncestryOptions: draconicAncestryRequired ? DRACONIC_ANCESTRY_OPTIONS.map((entry) => ({ ...entry })) : [],
+    draconicAncestryRequired,
+    draconicAncestryKey,
+    pactBoonOptions: pactBoonRequired && !currentPactBoonKey ? PACT_BOON_OPTIONS.map((entry) => ({ ...entry })) : [],
+    pactBoonRequired,
+    pactBoonKey,
+  };
+  if (draconicAncestryRequired && !draconicAncestryKey) {
+    return {
+      ...resolved,
+      classOptions,
+      subclassOptions,
+      manualRuleNotes,
+      ...draconicChoice,
+      status: "DRACONIC_ANCESTRY_REQUIRED",
+      canApply: false,
+      reason: "Seleziona l'antenato draconico della Discendenza Draconica.",
+      prerequisites,
+      ...(effects ? { effects } : {}),
+    };
+  }
+  if (pactBoonRequired && !pactBoonKey && resolved.canAdvance === true) {
+    return { ...resolved, classOptions, subclassOptions, manualRuleNotes, ...draconicChoice,
+      status: "PACT_BOON_REQUIRED", canApply: false, reason: "Seleziona il dono del patto del Warlock.",
+      prerequisites, ...(effects ? { effects } : {}) };
+  }
+  if (effects?.status === "VITALS_NOT_READY") {
+    return {
+      ...resolved,
+      classOptions,
+      subclassOptions,
+      manualRuleNotes,
+      ...draconicChoice,
+      status: "VITALS_NOT_READY",
+      canApply: false,
+      reason: "Lo stato strutturato di PF e Dadi Vita non e pronto per la progressione.",
+      prerequisites,
+      effects,
+    };
+  }
+  const overrideAccepted = prerequisites.status === "INELIGIBLE" && Boolean(request.overrideReason);
+  const prerequisiteBlocked = resolved.mode === "ADD_NEW_CLASS"
+    && prerequisites.status !== "ELIGIBLE"
+    && !overrideAccepted;
+  return {
+    ...resolved,
+    classOptions,
+    subclassOptions,
+    manualRuleNotes,
+    ...draconicChoice,
+    canApply: resolved.canAdvance === true && !prerequisiteBlocked,
+    prerequisites: { ...prerequisites, overridden: overrideAccepted },
+    ...(prerequisiteBlocked ? {
+      status: prerequisites.status === "MANUAL" ? "MULTICLASS_PREREQUISITES_MANUAL" : "MULTICLASS_PREREQUISITES_FAILED",
+      reason: prerequisites.reason,
+    } : {}),
+    ...(effects ? { effects } : {}),
+  };
+}
+
+export function progressionRequestSignature(slug, request, actorId = null) {
+  const canonical = JSON.stringify({
+    slug,
+    actorId: actorId == null ? null : String(actorId),
+    targetClassKey: request.targetClassKey,
+    targetSubclassKey: request.targetSubclassKey === undefined ? "__PRESERVE__" : request.targetSubclassKey,
+    ...(request.draconicAncestryKey !== undefined ? { draconicAncestryKey: request.draconicAncestryKey } : {}),
+    ...(request.pactBoonKey !== undefined ? { pactBoonKey: request.pactBoonKey } : {}),
+    overrideReason: request.overrideReason ?? null,
+    expectedRevision: request.expectedRevision ?? null,
+    expectedProgressionRevision: request.expectedProgressionRevision ?? null,
+  });
+  return crypto.createHash("sha256").update(canonical).digest("hex");
+}
+
+function readCharacterLevelHistoryReceipt(characterId, requestId) {
+  return sqlite.prepare(`
+    SELECT * FROM "CharacterLevelHistory"
+    WHERE characterId = ? AND requestId = ?
+    LIMIT 1
+  `).get(characterId, requestId) ?? null;
+}
+
+function parseCharacterLevelHistoryResult(row) {
+  const result = parseJsonString(row?.resultSnapshot, null);
+  return result && typeof result === "object" && !Array.isArray(result) ? result : null;
+}
+
+function readCharacterSubclassHistoryReceipt(characterId, requestId) {
+  const subclass = sqlite.prepare(`
+    SELECT * FROM "CharacterSubclassHistory"
+    WHERE characterId = ? AND requestId = ?
+    LIMIT 1
+  `).get(characterId, requestId) ?? null;
+  if (subclass) return subclass;
+  const ancestry = sqlite.prepare(`
+    SELECT * FROM "CharacterDraconicAncestryHistory"
+    WHERE characterId = ? AND operationType = 'SUBCLASS_CORRECTION' AND requestId = ?
+    LIMIT 1
+  `).get(characterId, requestId) ?? null;
+  if (ancestry) return ancestry;
+  if (!inspectPactBoonSchema(sqlite).historyTablePresent) return null;
+  return sqlite.prepare(`SELECT * FROM "CharacterPactBoonHistory"
+    WHERE characterId = ? AND operationType = 'SUBCLASS_CORRECTION' AND requestId = ? LIMIT 1`)
+    .get(characterId, requestId) ?? null;
+}
+
+function parseCharacterSubclassHistoryResult(row) {
+  const result = parseJsonString(row?.resultSnapshot, null);
+  return result && typeof result === "object" && !Array.isArray(result) ? result : null;
+}
+
+export function legacySpellSlotsFromResourcePools(resourcePools, previousSlots = {}) {
+  const pool = (resourcePools ?? []).find((entry) => entry.kind === "SPELLCASTING")
+    ?? (resourcePools ?? []).find((entry) => entry.kind === "PACT_MAGIC")
+    ?? (resourcePools ?? []).filter((entry) => ["CLASS_RESOURCE", "MANUAL"].includes(entry.kind))[0]
+    ?? null;
+  if (!pool) return previousSlots;
+  const result = {};
+  for (const [tierKey, maximumValue] of Object.entries(pool.maximum ?? {})) {
+    const maximum = Number(maximumValue);
+    const used = Number(pool.used?.[tierKey] ?? 0);
+    const previous = Array.isArray(previousSlots?.[tierKey]) ? previousSlots[tierKey] : [];
+    result[tierKey] = Array.from({ length: maximum }, (_, index) => ({
+      ...(previous[index] ?? { id: `${pool.poolKey ?? pool.id}-${tierKey}-${index + 1}` }),
+      active: index < used,
+    }));
+  }
+  return result;
+}
+
+function projectStructuredStateToLegacy(character, { hitPointState, hitDicePools, resourcePools }) {
+  const combatStats = character?.combatStats ?? {};
+  const totalMaximumDice = (hitDicePools ?? []).reduce((sum, pool) => sum + Number(pool.maximum ?? 0), 0);
+  const totalRemainingDice = (hitDicePools ?? []).reduce((sum, pool) => sum + Number(pool.remaining ?? 0), 0);
+  return {
+    ...character,
+    combatStats: {
+      ...combatStats,
+      ...(hitPointState ? {
+        hitPointMaximum: hitPointState.maximumHitPoints,
+        currentHitPoints: hitPointState.currentHitPoints,
+        temporaryHitPoints: hitPointState.temporaryHitPoints,
+        deathSaves: {
+          successes: hitPointState.deathSaveSuccesses,
+          failures: hitPointState.deathSaveFailures,
+        },
+      } : {}),
+      ...(Array.isArray(hitDicePools) ? {
+        restState: {
+          ...(combatStats.restState ?? {}),
+          maxHitDice: totalMaximumDice,
+          hitDiceRemaining: totalRemainingDice,
+          ...(hitPointState ? {
+            shortRestsUsedSinceLongRest: hitPointState.shortRestsUsedSinceLongRest,
+            lastShortRestAt: hitPointState.lastShortRestAt,
+            lastLongRestAt: hitPointState.lastLongRestAt,
+          } : {}),
+        },
+      } : {}),
+      ...(Array.isArray(resourcePools) ? {
+        spellSlots: legacySpellSlotsFromResourcePools(resourcePools, combatStats.spellSlots),
+      } : {}),
+    },
+  };
+}
+
+export function prepareStructuredLegacyPatchSync(snapshot, next, patch) {
+  const combatPatch = patch?.combatStats && typeof patch.combatStats === "object" && !Array.isArray(patch.combatStats)
+    ? patch.combatStats
+    : null;
+  const sync = {};
+  if (snapshot.schema?.m5Ready) {
+    if (combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "hitPointMaximum")) {
+      throw createCharacterMutationError(
+        "STRUCTURED_HIT_POINT_ADJUSTMENT_REQUIRED",
+        "I PF massimi richiedono il comando dedicato di progressione o rettifica.",
+        snapshot,
+      );
+    }
+    if (combatPatch && (Object.prototype.hasOwnProperty.call(combatPatch, "hitDice") || Object.prototype.hasOwnProperty.call(combatPatch, "restState"))) {
+      throw createCharacterMutationError(
+        "STRUCTURED_REST_REQUIRED",
+        "Dadi Vita e stato dei riposi sono gestiti dal comando dedicato di riposo.",
+        snapshot,
+      );
+    }
+    const touchesHitPoints = ["currentHitPoints", "temporaryHitPoints", "deathSaves"]
+      .some((key) => combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, key));
+    const touchesCurrentHitPoints = Boolean(combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "currentHitPoints"));
+    const touchesTemporaryHitPoints = Boolean(combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "temporaryHitPoints"));
+    const touchesDeathSaves = Boolean(combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "deathSaves"));
+    const changesConstitution = Boolean(
+      patch?.abilityScores &&
+      typeof patch.abilityScores === "object" &&
+      !Array.isArray(patch.abilityScores) &&
+      Object.prototype.hasOwnProperty.call(patch.abilityScores, "constitution") &&
+      Number(snapshot.state?.abilityScores?.constitution ?? 10) !== Number(next?.abilityScores?.constitution ?? 10)
+    );
+    if (touchesHitPoints || changesConstitution) {
+      if (!snapshot.hitPointState) {
+        throw createCharacterMutationError("VITALS_NOT_READY", "Lo stato strutturato dei PF non e disponibile.", snapshot);
+      }
+      const constitutionModifierBefore = resolveConstitutionModifier(Number(snapshot.state?.abilityScores?.constitution ?? 10));
+      const constitutionModifierAfter = resolveConstitutionModifier(Number(next?.abilityScores?.constitution ?? 10));
+      const constitutionDelta = changesConstitution
+        ? (constitutionModifierAfter - constitutionModifierBefore) * Number(snapshot.progression?.totalLevel ?? 0)
+        : 0;
+      sync.hitPointState = {
+        ...snapshot.hitPointState,
+        maximumHitPoints: Math.max(0, snapshot.hitPointState.maximumHitPoints + constitutionDelta),
+        currentHitPoints: touchesCurrentHitPoints
+          ? Number(next.combatStats?.currentHitPoints ?? snapshot.hitPointState.currentHitPoints)
+          : snapshot.hitPointState.currentHitPoints,
+        temporaryHitPoints: touchesTemporaryHitPoints
+          ? Number(next.combatStats?.temporaryHitPoints ?? snapshot.hitPointState.temporaryHitPoints)
+          : snapshot.hitPointState.temporaryHitPoints,
+        deathSaveSuccesses: touchesDeathSaves
+          ? Number(next.combatStats?.deathSaves?.successes ?? snapshot.hitPointState.deathSaveSuccesses)
+          : snapshot.hitPointState.deathSaveSuccesses,
+        deathSaveFailures: touchesDeathSaves
+          ? Number(next.combatStats?.deathSaves?.failures ?? snapshot.hitPointState.deathSaveFailures)
+          : snapshot.hitPointState.deathSaveFailures,
+        revision: snapshot.hitPointState.revision + 1,
+      };
+      if (constitutionDelta !== 0) {
+        sync.hitPointState.currentHitPoints = Math.max(0, sync.hitPointState.currentHitPoints + constitutionDelta);
+        sync.hitPointAdjustment = {
+          adjustmentType: "CONSTITUTION_CHANGE",
+          maximumBefore: snapshot.hitPointState.maximumHitPoints,
+          maximumAfter: sync.hitPointState.maximumHitPoints,
+          currentBefore: snapshot.hitPointState.currentHitPoints,
+          currentAfter: sync.hitPointState.currentHitPoints,
+          delta: constitutionDelta,
+          constitutionModifierBefore,
+          constitutionModifierAfter,
+          totalLevel: Number(snapshot.progression?.totalLevel ?? 0),
+          reason: "Adeguamento automatico dei PF al modificatore di Costituzione",
+        };
+      }
+    }
+
+    const desiredPassiveBonus = resolveCharacterPassiveHitPointBonus(next, snapshot.progression).bonusTotal;
+    if (!snapshot.schema.passiveHitPointBonusReady) {
+      if (desiredPassiveBonus !== 0) {
+        throw createCharacterMutationError(
+          "PASSIVE_HIT_POINTS_NOT_READY",
+          "La persistenza dei bonus passivi ai PF richiede la migrazione dedicata.",
+          snapshot,
+        );
+      }
+    } else {
+      const beforeReconciliation = sync.hitPointState ?? snapshot.hitPointState;
+      if (!beforeReconciliation && desiredPassiveBonus !== 0) {
+        throw createCharacterMutationError("VITALS_NOT_READY", "Lo stato strutturato dei PF non e disponibile.", snapshot);
+      }
+      const reconciled = reconcilePassiveHitPoints(beforeReconciliation, desiredPassiveBonus);
+      const passiveChanged = Boolean(reconciled) && (
+        reconciled.maximumHitPoints !== beforeReconciliation.maximumHitPoints
+        || reconciled.currentHitPoints !== beforeReconciliation.currentHitPoints
+        || reconciled.passiveBonusApplied !== beforeReconciliation.passiveBonusApplied
+      );
+      if (passiveChanged) {
+        sync.hitPointState = {
+          ...reconciled,
+          revision: sync.hitPointState?.revision ?? snapshot.hitPointState.revision + 1,
+        };
+      }
+    }
+  }
+  if (snapshot.schema?.m6Ready && combatPatch && Object.prototype.hasOwnProperty.call(combatPatch, "spellSlots")) {
+    const fallbackPools = snapshot.resourcePools.filter((pool) => ["CLASS_RESOURCE", "MANUAL"].includes(pool.kind));
+    const target = snapshot.resourcePools.find((pool) => pool.kind === "SPELLCASTING")
+      ?? snapshot.resourcePools.find((pool) => pool.kind === "PACT_MAGIC")
+      ?? (fallbackPools.length === 1 ? fallbackPools[0] : null);
+    if (!target) {
+      throw createCharacterMutationError(
+        "STRUCTURED_RESOURCE_COMMAND_REQUIRED",
+        fallbackPools.length > 1
+          ? "La modifica e ambigua: seleziona un pool risorsa con il comando dedicato."
+          : "Gli slot richiedono un pool risorsa strutturato.",
+        snapshot,
+      );
+    }
+    const used = {};
+    for (const [tierKey, maximumValue] of Object.entries(target.maximum)) {
+      const slots = next.combatStats?.spellSlots?.[tierKey];
+      if (!Array.isArray(slots) || slots.length !== Number(maximumValue)) {
+        throw createCharacterMutationError(
+          "STRUCTURED_RESOURCE_CAPACITY_READ_ONLY",
+          "La capacita degli slot e derivata dalla progressione e non puo essere modificata direttamente.",
+          snapshot,
+        );
+      }
+      used[tierKey] = slots.filter((slot) => slot?.active === true).length;
+    }
+    sync.resourcePools = snapshot.resourcePools.map((pool) =>
+      pool.id === target.id ? { ...pool, used } : pool
+    );
+  }
+  return Object.keys(sync).length > 0 ? sync : null;
+}
+
+function persistHitPointAdjustment(characterId, adjustment, now, appliedBy = null) {
+  sqlite.prepare(`
+    INSERT INTO "CharacterHitPointAdjustment" (
+      id, characterId, requestId, adjustmentType, maximumBefore, maximumAfter,
+      currentBefore, currentAfter, delta, constitutionModifierBefore,
+      constitutionModifierAfter, totalLevel, reason, appliedByUserId,
+      appliedBySnapshot, detailsSnapshot, appliedAt
+    ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    crypto.randomUUID(), characterId, adjustment.adjustmentType,
+    adjustment.maximumBefore, adjustment.maximumAfter,
+    adjustment.currentBefore, adjustment.currentAfter, adjustment.delta,
+    adjustment.constitutionModifierBefore, adjustment.constitutionModifierAfter,
+    adjustment.totalLevel, adjustment.reason, appliedBy?.id ?? null,
+    JSON.stringify(appliedBy ? {
+      id: appliedBy.id,
+      username: appliedBy.username,
+      displayName: appliedBy.displayName,
+      role: appliedBy.role,
+    } : { kind: "SYSTEM" }),
+    JSON.stringify({ source: "character:update", policyVersion: "m5-v1" }),
+    now,
+  );
+}
+
+function persistResourcePoolUsage(characterId, pool, tierKey, used, now, expectedRevision) {
+  const poolResult = sqlite.prepare(`
+    UPDATE "CharacterResourcePool"
+    SET revision = revision + 1, updatedAt = ?
+    WHERE characterId = ? AND poolKey = ? AND revision = ?
+  `).run(now, characterId, pool.poolKey, expectedRevision);
+  if (poolResult.changes !== 1) {
+    throw createCharacterMutationError("RESOURCE_REVISION_CONFLICT", "Il pool risorsa e stato modificato da un'altra operazione.");
+  }
+  const tierResult = sqlite.prepare(`
+    UPDATE "CharacterResourcePoolTier"
+    SET used = ?, updatedAt = ?
+    WHERE poolId = ? AND tierKey = ?
+  `).run(used, now, pool.id, tierKey);
+  if (tierResult.changes !== 1) {
+    throw createCharacterMutationError("RESOURCE_TIER_NOT_FOUND", "Il livello del pool risorsa non e disponibile.");
+  }
+}
+
+export function prepareStructuredResourcePoolUsage(snapshot, current, { poolKey, tierKey, used, expectedPoolRevision }) {
+  if (!snapshot.schema?.m6Ready) {
+    throw createCharacterMutationError("RESOURCES_NOT_READY", "I pool risorsa strutturati non sono disponibili.", snapshot);
+  }
+  const target = snapshot.resourcePools.find((pool) => pool.poolKey === poolKey);
+  if (!target) {
+    throw createCharacterMutationError("RESOURCE_POOL_NOT_FOUND", "Il pool risorsa non esiste.", snapshot);
+  }
+  if (target.revision !== expectedPoolRevision) {
+    throw createCharacterMutationError("RESOURCE_REVISION_CONFLICT", "Il pool risorsa e stato modificato da un'altra operazione.", snapshot);
+  }
+  const maximum = Number(target.maximum?.[tierKey]);
+  if (!Number.isInteger(maximum) || maximum < 0 || !Number.isInteger(used) || used < 0 || used > maximum) {
+    throw createCharacterMutationError("RESOURCE_USAGE_INVALID", "Il valore usato supera la capacita del pool risorsa.", snapshot);
+  }
+  const updatedPool = {
+    ...target,
+    revision: target.revision + 1,
+    used: { ...target.used, [tierKey]: used },
+  };
+  const resourcePools = snapshot.resourcePools.map((pool) => pool.id === target.id ? updatedPool : pool);
+  const next = projectStructuredStateToLegacy(current, {
+    hitPointState: snapshot.hitPointState,
+    hitDicePools: snapshot.hitDicePools,
+    resourcePools,
+  });
+  return { next, updatedPool, resourcePools };
+}
+
+function persistHitPointState(characterId, state, now, expectedRevision = null) {
+  const passiveBonusReady = getCharacterVitalsResourcesSchemaInspection().passiveHitPointBonusReady;
+  if (!passiveBonusReady && Number(state.passiveBonusApplied ?? 0) !== 0) {
+    throw createCharacterMutationError(
+      "PASSIVE_HIT_POINTS_NOT_READY",
+      "La persistenza dei bonus passivi ai PF richiede la migrazione dedicata.",
+    );
+  }
+  const result = sqlite.prepare(passiveBonusReady ? `
+    UPDATE "CharacterHitPointState"
+    SET maximumHitPoints = ?, currentHitPoints = ?, temporaryHitPoints = ?,
+        deathSaveSuccesses = ?, deathSaveFailures = ?, shortRestsUsedSinceLongRest = ?,
+        lastShortRestAt = ?, lastLongRestAt = ?, revision = ?, passiveBonusApplied = ?, updatedAt = ?
+    WHERE characterId = ?${expectedRevision == null ? "" : " AND revision = ?"}
+  ` : `
+    UPDATE "CharacterHitPointState"
+    SET maximumHitPoints = ?, currentHitPoints = ?, temporaryHitPoints = ?,
+        deathSaveSuccesses = ?, deathSaveFailures = ?, shortRestsUsedSinceLongRest = ?,
+        lastShortRestAt = ?, lastLongRestAt = ?, revision = ?, updatedAt = ?
+    WHERE characterId = ?${expectedRevision == null ? "" : " AND revision = ?"}
+  `).run(
+    state.maximumHitPoints, state.currentHitPoints, state.temporaryHitPoints,
+    state.deathSaveSuccesses, state.deathSaveFailures, state.shortRestsUsedSinceLongRest,
+    state.lastShortRestAt ?? null, state.lastLongRestAt ?? null, state.revision,
+    ...(passiveBonusReady ? [Number(state.passiveBonusApplied ?? 0)] : []),
+    now,
+    characterId, ...(expectedRevision == null ? [] : [expectedRevision]),
+  );
+  if (result.changes !== 1) {
+    throw createCharacterMutationError("VITALS_REVISION_CONFLICT", "Lo stato dei PF e stato modificato da un'altra operazione.");
+  }
+}
+
+function persistHitDicePools(characterId, pools, now) {
+  const update = sqlite.prepare(`
+    UPDATE "CharacterHitDiePool"
+    SET maximum = ?, remaining = ?, source = ?, updatedAt = ?
+    WHERE characterId = ? AND dieSize = ?
+  `);
+  const insert = sqlite.prepare(`
+    INSERT INTO "CharacterHitDiePool" (
+      id, characterId, dieSize, maximum, remaining, source, legacySnapshot, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, '{}', ?, ?)
+  `);
+  for (const pool of pools) {
+    const result = update.run(pool.maximum, pool.remaining, pool.source ?? "DERIVED", now, characterId, pool.dieSize);
+    if (result.changes === 0) {
+      insert.run(crypto.randomUUID(), characterId, pool.dieSize, pool.maximum, pool.remaining, pool.source ?? "DERIVED", now, now);
+    }
+  }
+}
+
+function persistResourcePools(characterId, pools, now, { characterClassId = null, sourceClassKey = null } = {}) {
+  for (const projected of pools ?? []) {
+    let row = sqlite.prepare(`
+      SELECT * FROM "CharacterResourcePool" WHERE characterId = ? AND poolKey = ? LIMIT 1
+    `).get(characterId, projected.poolKey);
+    if (!row) {
+      const poolId = crypto.randomUUID();
+      sqlite.prepare(`
+        INSERT INTO "CharacterResourcePool" (
+          id, characterId, poolKey, kind, label, resetPolicy, revision, backfillStatus,
+          backfillIssues, metadata, ruleSnapshot, legacySnapshot, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, 0, 'BACKFILLED', '[]', '{}', '{}', '{}', ?, ?)
+      `).run(poolId, characterId, projected.poolKey, projected.kind, projected.label, projected.resetPolicy, now, now);
+      row = { id: poolId, revision: 0 };
+    } else {
+      sqlite.prepare(`
+        UPDATE "CharacterResourcePool"
+        SET label = ?, resetPolicy = ?, revision = revision + 1, updatedAt = ?
+        WHERE id = ?
+      `).run(projected.label, projected.resetPolicy, now, row.id);
+    }
+
+    const tierKeys = Object.keys(projected.maximum ?? {});
+    const projectedTiers = new Map((projected.tiers ?? []).map((tier) => [String(tier.tierKey), tier]));
+    const currentTiers = new Map(sqlite.prepare(`
+      SELECT tierKey, derivedMaximum, maximumOverride
+      FROM "CharacterResourcePoolTier" WHERE poolId = ?
+    `).all(row.id).map((tier) => [String(tier.tierKey), tier]));
+    const upsertTier = sqlite.prepare(`
+      INSERT INTO "CharacterResourcePoolTier" (
+        id, poolId, tierKey, sortOrder, derivedMaximum, maximumOverride, used, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(poolId, tierKey) DO UPDATE SET
+        sortOrder = excluded.sortOrder,
+        derivedMaximum = excluded.derivedMaximum,
+        maximumOverride = excluded.maximumOverride,
+        used = excluded.used,
+        updatedAt = excluded.updatedAt
+    `);
+    tierKeys.forEach((tierKey, index) => {
+      const projectedTier = projectedTiers.get(tierKey);
+      const currentTier = currentTiers.get(tierKey);
+      const derivedMaximum = projectedTier
+        ? projectedTier.derivedMaximum
+        : Number(projected.maximum[tierKey]);
+      const maximumOverride = projectedTier
+        ? projectedTier.maximumOverride
+        : (currentTier?.maximumOverride ?? null);
+      upsertTier.run(
+        crypto.randomUUID(), row.id, tierKey, index,
+        derivedMaximum == null ? null : Number(derivedMaximum), maximumOverride == null ? null : Number(maximumOverride),
+        Number(projected.used?.[tierKey] ?? 0), now, now,
+      );
+    });
+    if (tierKeys.length > 0 && ["SPELLCASTING", "PACT_MAGIC"].includes(projected.kind)) {
+      const placeholders = tierKeys.map(() => "?").join(", ");
+      sqlite.prepare(`
+        DELETE FROM "CharacterResourcePoolTier"
+        WHERE poolId = ? AND tierKey NOT IN (${placeholders})
+      `).run(row.id, ...tierKeys);
+    }
+    if (sourceClassKey && projected.sourceClassKey === sourceClassKey) {
+      sqlite.prepare(`
+        INSERT INTO "CharacterResourcePoolSource" (
+          id, poolId, characterClassId, sourceKey, sourceKind, ruleSnapshot, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, 'CLASS', '{}', ?, ?)
+        ON CONFLICT(poolId, sourceKey) DO UPDATE SET
+          characterClassId = excluded.characterClassId, updatedAt = excluded.updatedAt
+      `).run(crypto.randomUUID(), row.id, characterClassId, sourceClassKey, now, now);
+    }
+  }
+}
+
+// Every mutation of Character.data is committed through one FIFO queue per slug.
+// The durable Character.updatedAt value is also the optimistic revision token.
+// Dependencies are injectable so the production coordination and transactional
+// guarantees can be exercised against a disposable SQLite database.
+export function createCharacterMutationCoordinator({ readSnapshot, writeState, transact }) {
+  if (typeof readSnapshot !== "function" || typeof writeState !== "function" || typeof transact !== "function") {
+    throw new TypeError("Il coordinatore delle mutazioni richiede readSnapshot, writeState e transact.");
+  }
+
+  const queues = new Map();
+  const normalizeSlugs = (slugs) => Array.from(new Set(
+    (Array.isArray(slugs) ? slugs : []).map((slug) => String(slug ?? "").trim()).filter(Boolean)
+  ));
+
+  function enqueue(slug, mutation) {
+    const normalizedSlug = String(slug ?? "").trim();
+    const previous = queues.get(normalizedSlug) ?? Promise.resolve();
+    const task = previous.catch(() => undefined).then(mutation);
+    const tail = task.catch(() => undefined);
+    queues.set(normalizedSlug, tail);
+    tail.then(() => {
+      if (queues.get(normalizedSlug) === tail) queues.delete(normalizedSlug);
+    });
+    return task;
+  }
+
+  function enqueueMany(slugs, mutation) {
+    const normalizedSlugs = normalizeSlugs(slugs).sort();
+    const previous = normalizedSlugs.map((slug) => queues.get(slug) ?? Promise.resolve());
+    const task = Promise.all(previous.map((entry) => entry.catch(() => undefined))).then(mutation);
+    const tail = task.catch(() => undefined);
+    for (const slug of normalizedSlugs) queues.set(slug, tail);
+    tail.then(() => {
+      for (const slug of normalizedSlugs) {
+        if (queues.get(slug) === tail) queues.delete(slug);
+      }
+    });
+    return task;
+  }
+
+  function commit(slug, {
+    expectedRevision = undefined,
+    authorize = null,
+    mutate,
+    afterWrite = null,
+  }) {
+    return enqueue(slug, () => {
+      if (typeof authorize === "function") authorize();
+
+      const snapshot = readSnapshot(slug);
+      if (!snapshot) {
+        throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+      }
+      if (
+        expectedRevision !== undefined &&
+        expectedRevision !== null &&
+        String(expectedRevision) !== snapshot.revision
+      ) {
+        throw createCharacterMutationError(
+          "REVISION_CONFLICT",
+          "Il personaggio e stato modificato da un'altra operazione.",
+          snapshot
+        );
+      }
+
+      let mutation;
+      try {
+        mutation = mutate(snapshot.state, snapshot);
+      } catch (error) {
+        if (error && !error.snapshot) error.snapshot = snapshot;
+        throw error;
+      }
+      if (!mutation || mutation.write === false) {
+        return {
+          slug,
+          revision: snapshot.revision,
+          state: snapshot.state,
+          patch: mutation?.patch ?? null,
+          meta: mutation?.meta ?? null,
+          committed: false,
+        };
+      }
+
+      const nextState = mutation.state ?? mutation;
+      let revision;
+      try {
+        transact(() => {
+          revision = writeState(slug, nextState, { expectedRevision: snapshot.revision });
+          // Durable operation receipts are part of the same SQLite success boundary.
+          if (typeof afterWrite === "function") {
+            afterWrite(nextState, mutation, snapshot, revision);
+          }
+        });
+      } catch (error) {
+        if (error && !error.snapshot) error.snapshot = readSnapshot(slug) ?? snapshot;
+        throw error;
+      }
+
+      const committedSnapshot = readSnapshot(slug);
+      return {
+        slug,
+        revision: committedSnapshot?.revision ?? revision,
+        state: committedSnapshot?.state ?? nextState,
+        patch: mutation.patch ?? null,
+        meta: mutation.meta ?? null,
+        committed: true,
+      };
+    });
+  }
+
+  function commitMany(slugs, {
+    lockKeys = null,
+    authorize = null,
+    beforeRead = null,
+    prepare,
+    afterWrites = null,
+  }) {
+    const normalizedSlugs = normalizeSlugs(slugs);
+    const normalizedLockKeys = normalizeSlugs(lockKeys ?? normalizedSlugs);
+    return enqueueMany(normalizedLockKeys, () => {
+      if (typeof authorize === "function") authorize();
+      if (typeof beforeRead === "function") {
+        const earlyResult = beforeRead();
+        if (earlyResult !== undefined) return earlyResult;
+      }
+
+      const snapshots = new Map();
+      for (const slug of normalizedSlugs) {
+        const snapshot = readSnapshot(slug);
+        if (!snapshot) {
+          throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+        }
+        snapshots.set(slug, snapshot);
+      }
+
+      const prepared = prepare(snapshots);
+      if (!Array.isArray(prepared)) throw new TypeError("La preparazione multi-personaggio deve restituire un array.");
+      const revisions = new Map();
+      try {
+        transact(() => {
+          for (const entry of prepared) {
+            if (!entry || entry.write === false) continue;
+            const snapshot = snapshots.get(entry.slug);
+            if (!snapshot) throw new TypeError(`Mutazione preparata per slug non bloccato: ${entry?.slug ?? ""}`);
+            revisions.set(
+              entry.slug,
+              writeState(entry.slug, entry.state ?? entry, { expectedRevision: snapshot.revision })
+            );
+          }
+          if (typeof afterWrites === "function") afterWrites(prepared, snapshots, revisions);
+        });
+      } catch (error) {
+        if (error && !error.snapshot) {
+          const failedSlug = prepared.find((entry) => entry && entry.write !== false)?.slug;
+          error.snapshot = (failedSlug && readSnapshot(failedSlug)) || null;
+        }
+        throw error;
+      }
+
+      return prepared.map((entry) => {
+        const snapshot = snapshots.get(entry.slug);
+        const committed = entry.write !== false;
+        const committedSnapshot = committed ? readSnapshot(entry.slug) : snapshot;
+        return {
+          slug: entry.slug,
+          revision: committedSnapshot?.revision ?? revisions.get(entry.slug) ?? snapshot?.revision,
+          state: committedSnapshot?.state ?? entry.state ?? snapshot?.state,
+          patch: entry.patch ?? null,
+          meta: entry.meta ?? null,
+          committed,
+        };
+      });
+    });
+  }
+
+  return { enqueue, enqueueMany, commit, commitMany };
+}
+
+const characterMutationCoordinator = createCharacterMutationCoordinator({
+  readSnapshot: readCharacterSnapshot,
+  writeState: writeCharacter,
+  transact: runInTransaction,
+});
+
+function enqueueCharacterMutation(slug, mutation) {
+  return characterMutationCoordinator.enqueue(slug, mutation);
+}
+
+function commitCharacterMutation(slug, options) {
+  return characterMutationCoordinator.commit(slug, options);
+}
+
+export function buildCharacterStatePayload(slug, snapshotOrState = null) {
+  let snapshot = snapshotOrState?.state && snapshotOrState?.revision !== undefined
+    ? snapshotOrState
+    : readCharacterSnapshot(slug);
+  // Coordinator results contain state/revision but not the structured projection.
+  // Re-read after commit so realtime never publishes a legacy-only partial view.
+  if (snapshot?.progression === undefined && sqlite) {
+    snapshot = readCharacterSnapshot(slug) ?? snapshot;
+  }
+  if (!snapshot?.state) return null;
+
+  return {
+    slug,
+    revision: snapshot.revision,
+    state: snapshot.progression === undefined
+      ? snapshot.state
+      : serializeCharacterSnapshot(snapshot),
+  };
+}
+
+function buildCharacterPatchPayload(result) {
+  return {
+    slug: result.slug,
+    revision: result.revision,
+    patch: result.patch ?? {},
+  };
 }
 
 // ---- App ----
 async function start() {
+  ({ DatabaseSync } = await import("node:sqlite"));
+  bootstrapPersistentStorage();
+  sqlite = createSqliteConnection();
+  sqliteLastKnownMtimeMs = getSqliteDbMtimeMs();
+  ensureRaceSpeedReferenceTable();
+  ensureUserLayoutPreferenceTable();
+  ensureAppStateTable();
+  ensureCharacterBackstoryTable();
+  ensureCampaignSessionStateTable();
+  ensureCampaignEventTables();
+  ensureCampaignDocumentTables();
+  ensureGameSessionStateTable();
+  ensureCharacterCurrencyBalanceTable();
+  ensureCurrencyTransactionTable();
+  ensureChatConversationTables();
+  ensureCampaignSessionStateRow();
+  ensureGameSessionStateRow();
+  ensureInitiativeTrackerStateMigrated();
+  ensureCharacterCurrencyBalanceRows();
+  ensureLegacyCharacterCurrencyBalancesMigrated();
+  ensureLegacyCharacterChatConversationsMigrated();
+
   const app = express();
   if (TRUST_PROXY !== "0" && TRUST_PROXY.toLowerCase() !== "false") {
     app.set("trust proxy", TRUST_PROXY === "1" || TRUST_PROXY.toLowerCase() === "true" ? 1 : TRUST_PROXY);
@@ -9747,6 +13290,22 @@ async function start() {
       if (req.user.role !== role) return res.status(403).json({ error: "Forbidden" });
       next();
     };
+  }
+
+  function disconnectSocketsForSession(sessionId) {
+    if (!sessionId) return;
+    io.in(`session:${sessionId}`).disconnectSockets(true);
+  }
+
+  function disconnectSocketsForUser(userId) {
+    if (!userId) return;
+    io.in(`user:${userId}`).disconnectSockets(true);
+  }
+
+  function revokeCharacterRoomAccess(slug, userId) {
+    if (!slug || !userId) return;
+    io.to(`user:${userId}`).emit("character:access-revoked", { slug });
+    io.in(`user:${userId}`).socketsLeave(`char:${slug}`);
   }
 
   app.use("/portraits", requireAuth, express.static(PORTRAIT_DIR, {
@@ -9927,6 +13486,7 @@ async function start() {
 
   app.post("/api/auth/logout", (req, res) => {
     if (req.sessionId) deleteSessionById(req.sessionId);
+    disconnectSocketsForSession(req.sessionId);
     res.setHeader("Set-Cookie", serializeExpiredSessionCookie(req));
     return res.status(204).end();
   });
@@ -9954,6 +13514,7 @@ async function start() {
     }
 
     deleteSessionsByUserId(req.user.id);
+    disconnectSocketsForUser(req.user.id);
     const sessionId = createSession(updatedUser.id);
     res.setHeader("Set-Cookie", serializeSessionCookie(sessionId, req));
     return res.json(sanitizeUser(updatedUser, readOwnership()));
@@ -10028,6 +13589,7 @@ async function start() {
     }
 
     deleteSessionsByUserId(userId);
+    disconnectSocketsForUser(userId);
     return res.json({
       ...sanitizeUserForAdmin(updatedUser, readOwnership()),
       temporaryPassword,
@@ -10044,6 +13606,8 @@ async function start() {
     if (!result.changes) {
       return res.status(404).json({ error: "User not found" });
     }
+
+    disconnectSocketsForUser(userId);
 
     return res.status(204).end();
   });
@@ -10065,6 +13629,7 @@ async function start() {
     const slug = req.params.slug;
     const userId = req.body?.userId ?? null;
     const ownership = readOwnership();
+    const previousOwnerUserId = ownership[slug] ?? null;
 
     if (!listCharacterSlugs().includes(slug)) {
       return res.status(404).json({ error: "Character not found" });
@@ -10081,6 +13646,9 @@ async function start() {
     }
 
     writeOwnership(ownership);
+    if (previousOwnerUserId && previousOwnerUserId !== (ownership[slug] ?? null)) {
+      revokeCharacterRoomAccess(slug, previousOwnerUserId);
+    }
     return res.json({ slug, userId: ownership[slug] ?? null });
   });
 
@@ -10577,9 +14145,17 @@ async function start() {
       if (!currentOffer) return res.status(409).json({ error: "Negotiation has no offer" });
       if (shopOfferProposerSide(currentOffer) === shopActorSide(req.user)) return res.status(409).json({ error: "The other side must accept this offer" });
       acceptShopNegotiationAtomically(negotiation, currentOffer, req.user?.id ?? null, shopActorSide(req.user));
+      broadcastCharacterInventoryUpdated(
+        io,
+        negotiation.characterSlug,
+        negotiation.direction === "SHOP_TO_CHARACTER" ? "shop-purchase" : "shop-sale"
+      );
       broadcastShopNegotiationState(io, negotiation.visitId);
       const characterState = readCharacter(negotiation.characterSlug);
-      if (characterState) io.to(`char:${negotiation.characterSlug}`).emit("character:state", characterState);
+      if (characterState) {
+        const payload = buildCharacterStatePayload(negotiation.characterSlug);
+        if (payload) io.to(`char:${negotiation.characterSlug}`).emit("character:state", payload);
+      }
       return res.json(serializeShopVisitDetail(readShopVisitById(negotiation.visitId), { dm: req.user?.role === "dm" }));
     } catch (error) {
       return res.status(400).json({ error: String(error?.message ?? error) });
@@ -10792,6 +14368,7 @@ async function start() {
 
     try {
       const items = assignItemDefinitionToCharacter(slug, req.body ?? {}, req.user?.id ?? null);
+      broadcastCharacterInventoryUpdated(io, slug, "item-assigned");
       return res.status(201).json(items);
     } catch (error) {
       const message = String(error?.message ?? error);
@@ -10880,6 +14457,7 @@ async function start() {
         sqlite.prepare('DELETE FROM "CharacterItem" WHERE id = ?').run(characterItem.id);
       });
 
+      broadcastCharacterInventoryUpdated(io, character.slug, "item-removed");
       return res.status(204).end();
     });
 
@@ -10896,6 +14474,14 @@ async function start() {
       if (!item) {
         return res.status(404).json({ error: "Character item not found" });
       }
+      const reason = req.body?.featureState && typeof req.body.featureState === "object"
+        ? "feature-state-updated"
+        : req.body?.isEquipped === true
+          ? "item-equipped"
+          : req.body?.isEquipped === false
+            ? "item-unequipped"
+            : "item-updated";
+      broadcastCharacterInventoryUpdated(io, slug, reason);
       return res.json(item);
       } catch (error) {
         const message = String(error?.message ?? error);
@@ -10919,6 +14505,10 @@ async function start() {
         req.body ?? {},
         req.user?.id ?? null
       );
+      const occurredAt = new Date().toISOString();
+      for (const affectedSlug of new Set([slug, String(req.body?.toCharacterSlug ?? "").trim()])) {
+        if (affectedSlug) broadcastCharacterInventoryUpdated(io, affectedSlug, "item-transferred", occurredAt);
+      }
       return res.json(items);
     } catch (error) {
       const message = String(error?.message ?? error);
@@ -10933,7 +14523,20 @@ async function start() {
 
   app.post("/api/inventory-transactions/:transactionId/undo", requireRole("dm"), (req, res) => {
     try {
-      return res.json(undoInventoryTransfer(req.params.transactionId, req.user?.id ?? null));
+      const transaction = sqlite.prepare(`
+        SELECT fc.slug AS fromCharacterSlug, tc.slug AS toCharacterSlug
+        FROM "InventoryTransaction" t
+        LEFT JOIN "Character" fc ON fc.id = t.fromCharacterId
+        LEFT JOIN "Character" tc ON tc.id = t.toCharacterId
+        WHERE t.id = ?
+        LIMIT 1
+      `).get(req.params.transactionId);
+      const result = undoInventoryTransfer(req.params.transactionId, req.user?.id ?? null);
+      const occurredAt = new Date().toISOString();
+      for (const slug of new Set([transaction?.fromCharacterSlug, transaction?.toCharacterSlug])) {
+        if (slug) broadcastCharacterInventoryUpdated(io, slug, "item-transfer-undone", occurredAt);
+      }
+      return res.json(result);
     } catch (error) {
       const message = String(error?.message ?? error);
       const status = Number(error?.statusCode) || (/not found/i.test(message) ? 404 : 400);
@@ -10945,10 +14548,16 @@ async function start() {
     try {
       const result = undoShopOperationAtomically(req.params.operationId, req.user?.id ?? null);
       try {
+        if (result.characterSlug) {
+          broadcastCharacterInventoryUpdated(io, result.characterSlug, "shop-trade-undone");
+        }
         if (result.visitId) broadcastShopNegotiationState(io, result.visitId);
         if (result.characterSlug) {
           const state = readCharacter(result.characterSlug);
-          if (state) io.to(`char:${result.characterSlug}`).emit("character:state", state);
+          if (state) {
+            const payload = buildCharacterStatePayload(result.characterSlug);
+            if (payload) io.to(`char:${result.characterSlug}`).emit("character:state", payload);
+          }
         }
       } catch (broadcastError) {
         console.error("Shop undo committed, but realtime refresh failed", broadcastError);
@@ -10991,7 +14600,8 @@ async function start() {
         if (!row?.slug) continue;
         const state = readCharacter(row.slug);
         if (state) {
-          io.to(`char:${row.slug}`).emit("character:state", state);
+          const payload = buildCharacterStatePayload(row.slug);
+          if (payload) io.to(`char:${row.slug}`).emit("character:state", payload);
         }
       }
       return res.json({ ok: true });
@@ -11471,7 +15081,12 @@ async function start() {
       canAccessCharacter(req.user, character.slug, ownership)
     );
 
-    return res.json(characters);
+    return res.json(characters.map((character) => {
+      const snapshot = readCharacterSnapshot(character.slug);
+      return snapshot
+        ? { ...serializeCharacterSnapshot(snapshot), revision: snapshot.revision }
+        : { ...character, revision: null };
+    }));
   });
 
   app.get("/api/characters/transfer-targets", requireAuth, (_req, res) => {
@@ -11638,22 +15253,45 @@ async function start() {
     return res.json({ documents: listCampaignDocumentsForCharacterSlugs(visibleSlugs) });
   });
 
-  app.post("/api/dm/rests/apply", requireRole("dm"), (req, res) => {
+  app.post("/api/dm/rests/apply", requireRole("dm"), async (req, res) => {
     const restType = String(req.body?.type ?? "").trim().toLowerCase();
     if (restType !== "short" && restType !== "long") {
       return res.status(400).json({ error: "Tipo di riposo non valido." });
     }
+    const requestId = normalizeOperationRequestId(req.body?.requestId);
+    if (!requestId) {
+      return res.status(400).json({ code: "VALIDATION_ERROR", error: "Identificativo della richiesta non valido." });
+    }
 
-    const requestedSlugs = Array.isArray(req.body?.slugs)
-      ? req.body.slugs.map((slug) => String(slug ?? "").trim()).filter(Boolean)
-      : [];
+    const requestedSlugs = Array.from(new Set(
+      Array.isArray(req.body?.slugs)
+        ? req.body.slugs.map((slug) => String(slug ?? "").trim()).filter(Boolean)
+        : []
+    )).sort();
+    if (requestedSlugs.length === 0) {
+      return res.status(400).json({ code: "VALIDATION_ERROR", error: "Seleziona almeno un PG per il riposo." });
+    }
+    const expectedRevisions = normalizeRestExpectedRevisions(req.body?.expectedRevisions, requestedSlugs);
+    if (!expectedRevisions) {
+      return res.status(400).json({ code: "VALIDATION_ERROR", error: "Revisioni attese del roster non valide." });
+    }
+    const requestSignature = buildRestRequestSignature(restType, requestedSlugs, expectedRevisions);
+    const receiptIdentity = buildOperationReceiptIdentity("party-rest", req.user.id, "roster", requestId);
+    const preliminaryReceipt = durableOperationReceipts.lookup(receiptIdentity, requestSignature);
+    if (preliminaryReceipt.status === "conflict") {
+      return res.status(409).json({ code: "REQUEST_ID_REUSED", error: "Questo identificativo richiesta e gia stato usato con un payload diverso." });
+    }
+    if (preliminaryReceipt.status === "match") {
+      return res.json(preliminaryReceipt.receipt.result);
+    }
+
     const requestedSet = new Set(requestedSlugs);
     const targetCharacters = listCharacters()
       .filter((character) => character.characterType === "pg")
-      .filter((character) => requestedSet.size === 0 || requestedSet.has(character.slug));
+      .filter((character) => requestedSet.has(character.slug));
 
-    if (targetCharacters.length === 0) {
-      return res.status(400).json({ error: "Nessun PG valido selezionato per il riposo." });
+    if (targetCharacters.length !== requestedSlugs.length) {
+      return res.status(400).json({ error: "Uno o piu PG selezionati non sono disponibili." });
     }
     try {
       for (const character of targetCharacters) {
@@ -11663,47 +15301,132 @@ async function start() {
       return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
     }
 
-    const changedCharacters = [];
-    const summaries = [];
+    let results;
+    let restReceiptResult = null;
+    let restReceiptReplay = false;
+    try {
+      const targetSlugs = targetCharacters.map((character) => character.slug);
+      validateRestClientOptions(req.body, targetSlugs);
+      const restNow = new Date();
+      results = await characterMutationCoordinator.commitMany(targetSlugs, {
+        lockKeys: [...targetSlugs, durableOperationReceipts.keyFor(receiptIdentity)],
+        authorize: () => {
+          const session = getSessionById(req.sessionId);
+          const user = session?.userId ? getUserById(session.userId) : null;
+          if (!user || user.id !== req.user?.id || user.role !== "dm") {
+            throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non piu valida.");
+          }
+        },
+        beforeRead: () => {
+          const receiptLookup = durableOperationReceipts.lookup(receiptIdentity, requestSignature);
+          if (receiptLookup.status === "conflict") throwRequestIdReuse();
+          if (receiptLookup.status !== "match") return undefined;
+          restReceiptReplay = true;
+          restReceiptResult = receiptLookup.receipt.result;
+          return [];
+        },
+        prepare: (snapshots) => {
+          return targetSlugs.map((slug) => {
+            assertCharacterInventoryNotInActiveShopVisit({ characterSlug: slug });
+            const snapshot = snapshots.get(slug);
+            if (snapshot.revision !== expectedRevisions[slug]) {
+              throw createCharacterMutationError(
+                "REVISION_CONFLICT",
+                "Il personaggio e stato modificato da un'altra operazione.",
+                snapshot
+              );
+            }
+            const rest = applyStructuredCharacterRest(snapshot, restType, restNow);
+            return {
+              slug,
+              state: rest.character,
+              patch: null,
+              meta: {
+                summary: rest.summary,
+                structured: rest.structured,
+                hitPointState: rest.hitPointState,
+                hitDicePools: rest.hitDicePools,
+                resourcePools: rest.resourcePools,
+              },
+              write: rest.summary.applied,
+            };
+          });
+        },
+        afterWrites: (prepared, _snapshots, revisions) => {
+          if (restReceiptReplay) return;
+          resetCharacterItemFeatureStatesForRest(
+            prepared.filter((entry) => entry.write !== false).map((entry) => entry.slug),
+            restType
+          );
+          const persistedAt = restNow.toISOString();
+          for (const entry of prepared.filter((candidate) => candidate.write !== false && candidate.meta?.structured)) {
+            const snapshot = _snapshots.get(entry.slug);
+            const characterId = sqlite.prepare(`
+              SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+            `).get(entry.slug)?.id;
+            if (!characterId) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+            persistHitPointState(
+              characterId,
+              entry.meta.hitPointState,
+              persistedAt,
+              snapshot.hitPointState.revision,
+            );
+            persistHitDicePools(characterId, entry.meta.hitDicePools, persistedAt);
+            if (snapshot.schema?.m6Ready) {
+              persistResourcePools(characterId, entry.meta.resourcePools, persistedAt);
+            }
+          }
+          restReceiptResult = {
+            ok: true,
+            requestId,
+            type: restType,
+            changedSlugs: prepared.filter((entry) => entry.write !== false).map((entry) => entry.slug),
+            updatedCharacters: prepared
+              .filter((entry) => entry.write !== false)
+              .map((entry) => ({
+                ...entry.state,
+                ...(entry.meta?.structured ? {
+                  hitPointState: entry.meta.hitPointState,
+                  hitDicePools: entry.meta.hitDicePools,
+                  resourcePools: entry.meta.resourcePools,
+                } : {}),
+                revision: revisions.get(entry.slug),
+              })),
+            summaries: prepared.map((entry) => entry.meta?.summary).filter(Boolean),
+          };
+          durableOperationReceipts.save(receiptIdentity, requestSignature, restReceiptResult);
+        },
+      });
+    } catch (error) {
+      const status = error?.code === "AUTH_REQUIRED"
+        ? 401
+        : error?.code === "REQUEST_ID_REUSED" || error?.code === "REVISION_CONFLICT"
+          ? 409
+          : Number(error?.statusCode) || 400;
+      return res.status(status).json({ code: error?.code, error: String(error?.message ?? error) });
+    }
 
-    runInTransaction(() => {
-      for (const character of targetCharacters) {
-        const result = applyCharacterRest(character, restType);
-        summaries.push(result.summary);
-        if (!result.summary.applied) continue;
+    const changedSlugSet = new Set(restReceiptResult?.changedSlugs ?? []);
+    const changedCharacters = results.filter((result) => changedSlugSet.has(result.slug));
 
-        writeCharacter(result.character.slug, result.character);
-        changedCharacters.push(result.character);
+    if (!restReceiptReplay) {
+      for (const result of changedCharacters) {
+        broadcastCharacterInventoryUpdated(io, result.slug, `${restType}-rest-feature-reset`);
+        const payload = buildCharacterStatePayload(result.slug, result);
+        if (payload) io.to(`char:${result.slug}`).emit("character:state", payload);
       }
 
-      resetCharacterItemFeatureStatesForRest(
-        changedCharacters.map((character) => character.slug),
-        restType
-      );
-    });
-
-    for (const character of changedCharacters) {
-      const state = readCharacter(character.slug);
-      if (state) {
-        io.to(`char:${character.slug}`).emit("character:state", state);
+      const initiativeState = readInitiativeTrackerState();
+      if (
+        changedCharacters.some((character) =>
+          initiativeState.players.some((entry) => entry.slug === character.slug)
+        )
+      ) {
+        broadcastInitiativeTrackerState(io);
       }
     }
 
-    const initiativeState = readInitiativeTrackerState();
-    if (
-      changedCharacters.some((character) =>
-        initiativeState.players.some((entry) => entry.slug === character.slug)
-      )
-    ) {
-      broadcastInitiativeTrackerState(io);
-    }
-
-    return res.json({
-      ok: true,
-      type: restType,
-      updatedCharacters: changedCharacters.map((character) => readCharacter(character.slug)).filter(Boolean),
-      summaries,
-    });
+    return res.json(restReceiptResult);
   });
 
   app.post("/api/dm/rests/preview", requireRole("dm"), (req, res) => {
@@ -11725,14 +15448,984 @@ async function start() {
         ok: true,
         type: restType,
         summaries: [],
+        expectedRevisions: {},
       });
     }
 
-    return res.json({
-      ok: true,
-      type: restType,
-      summaries: targetCharacters.map((character) => applyCharacterRest(character, restType).summary),
-    });
+    try {
+      const targetSlugs = targetCharacters.map((character) => character.slug);
+      validateRestClientOptions(req.body, targetSlugs);
+      const restNow = new Date();
+      const snapshots = targetCharacters.map((character) => readCharacterSnapshot(character.slug));
+      return res.json({
+        ok: true,
+        type: restType,
+        expectedRevisions: Object.fromEntries(snapshots.map((snapshot) => [snapshot.state.slug, snapshot.revision])),
+        summaries: snapshots.map((snapshot) => applyStructuredCharacterRest(snapshot, restType, restNow).summary),
+      });
+    } catch (error) {
+      return res.status(Number(error?.statusCode) || 400).json({ error: String(error?.message ?? error) });
+    }
+  });
+
+  app.post("/api/dm/characters/:slug/subclass/preview", requireRole("dm"), (req, res) => {
+    if (!getCharacterSubclassCorrectionInspection().ready) {
+      return res.status(503).json({
+        code: "SUBCLASS_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per la correzione della sottoclasse.",
+      });
+    }
+    if (!getCharacterDraconicAncestryInspection().ready) {
+      return res.status(503).json({
+        code: "DRACONIC_ANCESTRY_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per l'antenato draconico.",
+      });
+    }
+    try {
+      const request = normalizeSubclassCorrectionRequest(req.body);
+      const snapshot = readCharacterSnapshot(req.params.slug);
+      const preview = prepareCharacterSubclassCorrectionPreview(snapshot, request);
+      return res.json({
+        ok: true,
+        slug: req.params.slug,
+        revision: snapshot.revision,
+        progressionRevision: snapshot.progression.progressionRevision,
+        preview,
+      });
+    } catch (error) {
+      const status = Number(error?.statusCode) || 400;
+      const latest = error?.snapshot?.state
+        ? { ...serializeCharacterSnapshot(error.snapshot), revision: error.snapshot.revision }
+        : undefined;
+      return res.status(status).json({
+        code: error?.code ?? "SUBCLASS_PREVIEW_FAILED",
+        error: String(error?.message ?? "Non e stato possibile preparare la correzione della sottoclasse."),
+        ...(latest ? { character: latest } : {}),
+      });
+    }
+  });
+
+  app.post("/api/dm/characters/:slug/subclass/apply", requireRole("dm"), async (req, res) => {
+    if (!getCharacterSubclassCorrectionInspection().ready) {
+      return res.status(503).json({
+        code: "SUBCLASS_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per la correzione della sottoclasse.",
+      });
+    }
+    if (!getCharacterDraconicAncestryInspection().ready) {
+      return res.status(503).json({
+        code: "DRACONIC_ANCESTRY_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per l'antenato draconico.",
+      });
+    }
+    let request;
+    try {
+      request = normalizeSubclassCorrectionRequest(req.body, {
+        requireRequestId: true,
+        requireExpectedRevisions: true,
+        requireSubclass: true,
+      });
+    } catch (error) {
+      return res.status(Number(error?.statusCode) || 400).json({
+        code: error?.code ?? "VALIDATION_ERROR",
+        error: String(error?.message ?? error),
+      });
+    }
+
+    const slug = req.params.slug;
+    const characterRow = sqlite.prepare(`
+      SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+    `).get(slug);
+    if (!characterRow) {
+      return res.status(404).json({ code: "CHARACTER_NOT_FOUND", error: "Personaggio non trovato." });
+    }
+    const requestSignature = subclassCorrectionRequestSignature(slug, request, req.user.id);
+    const preliminary = readCharacterSubclassHistoryReceipt(characterRow.id, request.requestId);
+    if (preliminary) {
+      if (preliminary.requestSignature !== requestSignature) {
+        return res.status(409).json({
+          code: "REQUEST_ID_REUSED",
+          error: "Questo identificativo richiesta e gia stato usato con un payload diverso.",
+        });
+      }
+      const replay = parseCharacterSubclassHistoryResult(preliminary);
+      if (!replay) {
+        return res.status(500).json({
+          code: "SUBCLASS_HISTORY_INVALID",
+          error: "Lo storico della sottoclasse contiene un risultato non valido.",
+        });
+      }
+      return res.json({ ...replay, replayed: true });
+    }
+
+    try {
+      const mutationResult = await commitCharacterMutation(slug, {
+        authorize: () => {
+          const session = getSessionById(req.sessionId);
+          const user = session?.userId ? getUserById(session.userId) : null;
+          if (!user || user.id !== req.user?.id || user.role !== "dm") {
+            throw createProgressionError("AUTH_REQUIRED", "Sessione non piu valida.", 401);
+          }
+        },
+        mutate: (current, snapshot) => {
+          const history = readCharacterSubclassHistoryReceipt(characterRow.id, request.requestId);
+          if (history) {
+            if (history.requestSignature !== requestSignature) {
+              throw createProgressionError(
+                "REQUEST_ID_REUSED",
+                "Questo identificativo richiesta e gia stato usato con un payload diverso.",
+                409,
+                snapshot,
+              );
+            }
+            const replay = parseCharacterSubclassHistoryResult(history);
+            if (!replay) {
+              throw createProgressionError("SUBCLASS_HISTORY_INVALID", "Storico sottoclasse non valido.", 500, snapshot);
+            }
+            return { write: false, meta: { replay: { ...replay, replayed: true } } };
+          }
+          const preview = prepareCharacterSubclassCorrectionPreview(snapshot, request);
+          if (preview.pactBoonRequired && !inspectPactBoonSchema(sqlite).ready) {
+            throw createProgressionError("PACT_BOON_SCHEMA_NOT_READY", "Applica prima la migrazione del dono del patto.", 503, snapshot);
+          }
+
+          if (!preview.canApply) {
+            const error = createProgressionError(
+              preview.status,
+              preview.reason ?? "La sottoclasse non puo essere registrata.",
+              422,
+              snapshot,
+            );
+            error.preview = preview;
+            throw error;
+          }
+          const classRow = sqlite.prepare(`
+            SELECT cc.*, cr.rulesetId, cr.rulesetVersion, cr.ruleSnapshot AS classRuleSnapshot
+            FROM "CharacterClass" cc
+            JOIN "ClassRule" cr ON cr.id = cc.classRuleId AND cr.classKey = cc.classKey
+            WHERE cc.characterId = ? AND cc.classKey = ?
+            LIMIT 1
+          `).get(characterRow.id, preview.targetClassKey);
+          if (!classRow || Number(classRow.level) !== Number(
+            snapshot.progression.classes.find((entry) => entry.classKey === preview.targetClassKey)?.level,
+          )) {
+            throw createProgressionError("CHARACTER_CLASS_MISSING", "La classe strutturata non e disponibile.", 409, snapshot);
+          }
+          const subclassRow = sqlite.prepare(`
+            SELECT * FROM "SubclassRule"
+            WHERE subclassKey = ? AND classRuleId = ? AND archivedAt IS NULL
+            LIMIT 1
+          `).get(request.targetSubclassKey, classRow.classRuleId);
+          if (!subclassRow) {
+            throw createProgressionError("INVALID_SUBCLASS", "La sottoclasse non appartiene alla classe selezionata.", 422, snapshot);
+          }
+          const previousSubclassRow = classRow.subclassRuleId
+            ? sqlite.prepare(`SELECT * FROM "SubclassRule" WHERE id = ? AND classRuleId = ? LIMIT 1`)
+                .get(classRow.subclassRuleId, classRow.classRuleId)
+            : null;
+          if (classRow.subclassRuleId && !previousSubclassRow) {
+            throw createProgressionError("CURRENT_SUBCLASS_INVALID", "La sottoclasse attuale non e risolvibile.", 409, snapshot);
+          }
+          const resourcesAfter = preview.effects?.spellSlots?.after ?? snapshot.resourcePools;
+          const resourcesChanged = preview.effects?.spellSlots?.changed === true;
+          const legacySlotsChanged = preview.effects?.spellSlots?.legacySlotsChanged === true;
+          const nextState = legacySlotsChanged
+            ? {
+                ...current,
+                combatStats: {
+                  ...(current.combatStats ?? {}),
+                  spellSlots: legacySpellSlotsFromResourcePools(
+                    resourcesAfter,
+                    current.combatStats?.spellSlots ?? {},
+                  ),
+                },
+              }
+            : current;
+          return {
+            state: nextState,
+            patch: legacySlotsChanged ? { combatStats: { spellSlots: nextState.combatStats?.spellSlots ?? {} } } : {},
+            meta: {
+              operationId: crypto.randomUUID(),
+              preview,
+              classRow,
+              subclassRow,
+              previousSubclassRow,
+              progressionRevisionBefore: snapshot.progression.progressionRevision,
+              characterRevisionBefore: snapshot.revision,
+              resourcesChanged,
+              resourcesAfter,
+              appliedAt: new Date().toISOString(),
+            },
+          };
+        },
+        afterWrite: (nextState, mutation, snapshot, characterRevisionAfter) => {
+          const meta = mutation.meta;
+          if (meta.replay) return;
+          const progressionRevisionAfter = meta.progressionRevisionBefore + 1;
+          const classUpdate = sqlite.prepare(`
+            UPDATE "CharacterClass"
+            SET subclassRuleId = ?, subclassStatus = 'SELECTED', draconicAncestryKey = ?,
+                source = 'SUBCLASS_CORRECTION',
+                updatedByUserId = ?, updatedAt = ?
+            WHERE id = ? AND characterId = ? AND subclassRuleId IS ?
+              AND draconicAncestryKey IS ? AND level = ?
+          `).run(
+            meta.subclassRow.id,
+            meta.preview.draconicAncestryKey ?? null,
+            req.user.id,
+            meta.appliedAt,
+            meta.classRow.id,
+            characterRow.id,
+            meta.classRow.subclassRuleId ?? null,
+            meta.classRow.draconicAncestryKey ?? null,
+            Number(meta.classRow.level),
+          );
+          if (classUpdate.changes !== 1) {
+            throw createProgressionError("PROGRESSION_REVISION_CONFLICT", "La classe e stata modificata.", 409, snapshot);
+          }
+          if (meta.preview.pactBoonChanged) {
+            sqlite.prepare('UPDATE "CharacterClass" SET pactBoonKey = ? WHERE id = ? AND characterId = ?')
+              .run(meta.preview.pactBoonKey, meta.classRow.id, characterRow.id);
+          }
+          const progressionUpdate = sqlite.prepare(`
+            UPDATE "CharacterProgression"
+            SET revision = ?, updatedAt = ?
+            WHERE characterId = ? AND revision = ?
+          `).run(
+            progressionRevisionAfter,
+            meta.appliedAt,
+            characterRow.id,
+            meta.progressionRevisionBefore,
+          );
+          if (progressionUpdate.changes !== 1) {
+            throw createProgressionError("PROGRESSION_REVISION_CONFLICT", "La progressione e stata modificata.", 409, snapshot);
+          }
+          if (meta.resourcesChanged) {
+            const changedSpellcastingPool = meta.resourcesAfter.find((pool) => pool.kind === "SPELLCASTING");
+            if (!changedSpellcastingPool) {
+              throw createProgressionError("RESOURCE_POOL_NOT_FOUND", "Il pool slot derivato non e disponibile.", 409, snapshot);
+            }
+            const removeSourceClassKey = meta.preview.effects?.spellSlots?.removeSourceClassKey;
+            if (removeSourceClassKey) {
+              sqlite.prepare(`
+                DELETE FROM "CharacterResourcePoolSource"
+                WHERE poolId = ? AND sourceKey = ?
+              `).run(changedSpellcastingPool.id, removeSourceClassKey);
+            }
+            persistResourcePools(characterRow.id, [changedSpellcastingPool], meta.appliedAt, {
+              characterClassId: meta.classRow.id,
+              sourceClassKey: changedSpellcastingPool.sourceClassKey ?? null,
+            });
+            meta.resourcesAfter = readCharacterVitalsResources(characterRow.id).resourcePools;
+          }
+          const currentClass = snapshot.progression.classes.find(
+            (entry) => entry.classKey === meta.preview.targetClassKey,
+          );
+          const afterClass = {
+            ...currentClass,
+            subclassRuleId: meta.subclassRow.id,
+            subclassKey: meta.subclassRow.subclassKey,
+            subclassStatus: "SELECTED",
+            draconicAncestryKey: meta.preview.draconicAncestryKey ?? null,
+            pactBoonKey: meta.preview.pactBoonKey ?? null,
+            source: "SUBCLASS_CORRECTION",
+          };
+          const afterProgression = {
+            ...snapshot.progression,
+            classes: snapshot.progression.classes.map((entry) =>
+              entry.classKey === afterClass.classKey ? afterClass : entry),
+            progressionRevision: progressionRevisionAfter,
+          };
+          const publicCharacter = serializeCharacterSnapshot({
+            state: nextState,
+            revision: characterRevisionAfter,
+            progression: afterProgression,
+            hitPointState: snapshot.hitPointState,
+            hitDicePools: snapshot.hitDicePools,
+            resourcePools: meta.resourcesAfter,
+          });
+          const operation = {
+            id: meta.operationId,
+            requestId: request.requestId,
+            operationType: "SUBCLASS_CORRECTION",
+            mode: meta.preview.mode,
+            targetClassKey: meta.preview.targetClassKey,
+            previousSubclassKey: meta.previousSubclassRow?.subclassKey ?? null,
+            targetSubclassKey: meta.subclassRow.subclassKey,
+            previousPactBoonKey: meta.classRow.pactBoonKey ?? null,
+            pactBoonKey: meta.preview.pactBoonKey ?? null,
+            previousDraconicAncestryKey: meta.classRow.draconicAncestryKey ?? null,
+            draconicAncestryKey: meta.preview.draconicAncestryKey ?? null,
+            classLevel: Number(meta.classRow.level),
+            totalLevel: Number(snapshot.progression.totalLevel),
+            reason: meta.preview.mode === "CHANGE" ? request.reason : null,
+            appliedAt: meta.appliedAt,
+          };
+          const result = {
+            ok: true,
+            replayed: false,
+            slug,
+            requestId: request.requestId,
+            revision: characterRevisionAfter,
+            progressionRevision: progressionRevisionAfter,
+            preview: meta.preview,
+            operation,
+            character: { ...publicCharacter, revision: characterRevisionAfter },
+          };
+          const beforeSnapshot = JSON.stringify({
+            class: currentClass,
+            totalLevel: snapshot.progression.totalLevel,
+            progressionRevision: meta.progressionRevisionBefore,
+            hitPointState: snapshot.hitPointState ?? null,
+            hitDicePools: snapshot.hitDicePools ?? [],
+            resourcePools: snapshot.resourcePools ?? [],
+            characterData: snapshot.state,
+          });
+          const afterSnapshot = JSON.stringify({
+            class: afterClass,
+            totalLevel: snapshot.progression.totalLevel,
+            progressionRevision: progressionRevisionAfter,
+            hitPointState: snapshot.hitPointState ?? null,
+            hitDicePools: snapshot.hitDicePools ?? [],
+            resourcePools: meta.resourcesAfter,
+            characterData: nextState,
+          });
+          const appliedBySnapshot = JSON.stringify({
+            id: req.user.id,
+            username: req.user.username,
+            displayName: req.user.displayName,
+            role: req.user.role,
+          });
+          if (meta.preview.subclassChanged) sqlite.prepare(`
+            INSERT INTO "CharacterSubclassHistory" (
+              id, characterId, requestId, requestSignature, mode, targetClassKey,
+              targetClassRuleId, previousSubclassKey, previousSubclassRuleId,
+              targetSubclassKey, targetSubclassRuleId, classLevel, totalLevel,
+              progressionRevisionBefore, progressionRevisionAfter,
+              characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+              requestSnapshot, beforeSnapshot, afterSnapshot, ruleSnapshot, resultSnapshot,
+              appliedByUserId, appliedBySnapshot, appliedAt
+            ) VALUES (${Array.from({ length: 27 }, () => "?").join(", ")})
+          `).run(
+            meta.operationId,
+            characterRow.id,
+            request.requestId,
+            requestSignature,
+            meta.preview.mode,
+            meta.preview.targetClassKey,
+            meta.classRow.classRuleId,
+            meta.previousSubclassRow?.subclassKey ?? null,
+            meta.previousSubclassRow?.id ?? null,
+            meta.subclassRow.subclassKey,
+            meta.subclassRow.id,
+            Number(meta.classRow.level),
+            Number(snapshot.progression.totalLevel),
+            meta.progressionRevisionBefore,
+            progressionRevisionAfter,
+            meta.characterRevisionBefore,
+            characterRevisionAfter,
+            meta.preview.mode === "CHANGE" ? request.reason : null,
+            "subclass-correction-v1",
+            JSON.stringify(request),
+            beforeSnapshot,
+            afterSnapshot,
+            JSON.stringify({
+              classRule: parseJsonString(meta.classRow.classRuleSnapshot, {}),
+              previousSubclassRule: meta.previousSubclassRow ? parseJsonString(meta.previousSubclassRow.ruleSnapshot, {}) : null,
+              targetSubclassRule: parseJsonString(meta.subclassRow.ruleSnapshot, {}),
+            }),
+            JSON.stringify(result),
+            req.user.id,
+            appliedBySnapshot,
+            meta.appliedAt,
+          );
+          if (meta.preview.ancestryChanged) {
+            sqlite.prepare(`
+              INSERT INTO "CharacterDraconicAncestryHistory" (
+                id, characterId, requestId, requestSignature, operationType, targetClassKey,
+                previousDraconicAncestryKey, targetDraconicAncestryKey,
+                progressionRevisionBefore, progressionRevisionAfter,
+                characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+                requestSnapshot, beforeSnapshot, afterSnapshot, resultSnapshot,
+                appliedByUserId, appliedBySnapshot, appliedAt
+              ) VALUES (${Array.from({ length: 21 }, () => "?").join(", ")})
+            `).run(
+              meta.preview.subclassChanged ? crypto.randomUUID() : meta.operationId,
+              characterRow.id, request.requestId, requestSignature, "SUBCLASS_CORRECTION",
+              meta.preview.targetClassKey, meta.classRow.draconicAncestryKey ?? null,
+              meta.preview.draconicAncestryKey ?? null, meta.progressionRevisionBefore,
+              progressionRevisionAfter, meta.characterRevisionBefore, characterRevisionAfter,
+              meta.classRow.draconicAncestryKey ? request.reason : null,
+              "draconic-ancestry-v1", JSON.stringify(request), beforeSnapshot, afterSnapshot,
+              JSON.stringify(result), req.user.id, appliedBySnapshot, meta.appliedAt,
+            );
+          }
+          if (meta.preview.pactBoonChanged) {
+            sqlite.prepare(`
+              INSERT INTO "CharacterPactBoonHistory" (
+                id, characterId, requestId, requestSignature, operationType, targetClassKey,
+                previousPactBoonKey, targetPactBoonKey,
+                progressionRevisionBefore, progressionRevisionAfter,
+                characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+                requestSnapshot, beforeSnapshot, afterSnapshot, resultSnapshot,
+                appliedByUserId, appliedBySnapshot, appliedAt
+              ) VALUES (${Array.from({ length: 21 }, () => "?").join(", ")})
+            `).run(
+              meta.preview.subclassChanged ? crypto.randomUUID() : meta.operationId,
+              characterRow.id, request.requestId, requestSignature, "SUBCLASS_CORRECTION",
+              meta.preview.targetClassKey, meta.classRow.pactBoonKey ?? null,
+              meta.preview.pactBoonKey ?? null, meta.progressionRevisionBefore,
+              progressionRevisionAfter, meta.characterRevisionBefore, characterRevisionAfter,
+              meta.classRow.pactBoonKey ? request.reason : null,
+              "pact-boon-v1", JSON.stringify(request), beforeSnapshot, afterSnapshot,
+              JSON.stringify(result), req.user.id, appliedBySnapshot, meta.appliedAt,
+            );
+          }
+          meta.result = result;
+        },
+      });
+      if (!mutationResult.committed && mutationResult.meta?.replay) {
+        return res.json(mutationResult.meta.replay);
+      }
+      const result = mutationResult.meta.result;
+      const statePayload = buildCharacterStatePayload(slug);
+      if (statePayload) io.to(`char:${slug}`).emit("character:state", statePayload);
+      const initiativeState = readInitiativeTrackerState();
+      if (initiativeState.players.some((entry) => entry.slug === slug)) {
+        broadcastInitiativeTrackerState(io);
+      }
+      return res.json(result);
+    } catch (error) {
+      const status = Number(error?.statusCode)
+        || (["REVISION_CONFLICT", "PROGRESSION_REVISION_CONFLICT", "REQUEST_ID_REUSED"].includes(error?.code) ? 409 : 500);
+      const latest = error?.snapshot?.state
+        ? { ...serializeCharacterSnapshot(error.snapshot), revision: error.snapshot.revision }
+        : undefined;
+      return res.status(status).json({
+        code: error?.code ?? "SUBCLASS_APPLY_FAILED",
+        error: String(error?.message ?? "Non e stato possibile registrare la sottoclasse."),
+        ...(error?.preview ? { preview: error.preview } : {}),
+        ...(latest ? { character: latest } : {}),
+      });
+    }
+  });
+
+  app.post("/api/dm/characters/:slug/progression/preview", requireRole("dm"), (req, res) => {
+    if (!getCharacterProgressionM4Inspection().ready) {
+      return res.status(503).json({
+        code: "PROGRESSION_SCHEMA_NOT_READY",
+        error: "Lo schema M4 della progressione non e ancora disponibile.",
+      });
+    }
+    if (!getCharacterDraconicAncestryInspection().ready) {
+      return res.status(503).json({
+        code: "DRACONIC_ANCESTRY_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per l'antenato draconico.",
+      });
+    }
+    try {
+      const request = normalizeProgressionRequest(req.body);
+      const snapshot = readCharacterSnapshot(req.params.slug);
+      const preview = prepareCharacterProgressionPreview(snapshot, request);
+      const deferredEffects = progressionDeferredEffects(preview);
+      return res.json({
+        ok: true,
+        slug: req.params.slug,
+        revision: snapshot.revision,
+        progressionRevision: snapshot.progression.progressionRevision,
+        preview,
+        ...(deferredEffects.length > 0 ? { deferredEffects } : {}),
+      });
+    } catch (error) {
+      const status = Number(error?.statusCode) || 400;
+      const latest = error?.snapshot?.state
+        ? { ...serializeCharacterSnapshot(error.snapshot), revision: error.snapshot.revision }
+        : undefined;
+      return res.status(status).json({
+        code: error?.code ?? "PROGRESSION_PREVIEW_FAILED",
+        error: String(error?.message ?? "Non e stato possibile calcolare l'anteprima."),
+        ...(latest ? { character: latest } : {}),
+      });
+    }
+  });
+
+  app.post("/api/dm/characters/:slug/progression/apply", requireRole("dm"), async (req, res) => {
+    if (!getCharacterProgressionM4Inspection().ready) {
+      return res.status(503).json({
+        code: "PROGRESSION_SCHEMA_NOT_READY",
+        error: "Lo schema M4 della progressione non e ancora disponibile.",
+      });
+    }
+    if (!getCharacterDraconicAncestryInspection().ready) {
+      return res.status(503).json({
+        code: "DRACONIC_ANCESTRY_SCHEMA_NOT_READY",
+        error: "Applica prima la migrazione per l'antenato draconico.",
+      });
+    }
+
+    let request;
+    try {
+      request = normalizeProgressionRequest(req.body, {
+        requireRequestId: true,
+        requireExpectedRevisions: true,
+      });
+    } catch (error) {
+      return res.status(Number(error?.statusCode) || 400).json({
+        code: error?.code ?? "VALIDATION_ERROR",
+        error: String(error?.message ?? error),
+      });
+    }
+
+    const slug = req.params.slug;
+    const characterRow = sqlite.prepare(`
+      SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+    `).get(slug);
+    if (!characterRow) {
+      return res.status(404).json({ code: "CHARACTER_NOT_FOUND", error: "Personaggio non trovato." });
+    }
+    const requestSignature = progressionRequestSignature(slug, request, req.user.id);
+    const preliminaryHistory = readCharacterLevelHistoryReceipt(characterRow.id, request.requestId);
+    if (preliminaryHistory) {
+      if (preliminaryHistory.requestSignature !== requestSignature) {
+        return res.status(409).json({
+          code: "REQUEST_ID_REUSED",
+          error: "Questo identificativo richiesta e gia stato usato con un payload diverso.",
+        });
+      }
+      const replay = parseCharacterLevelHistoryResult(preliminaryHistory);
+      if (!replay) {
+        return res.status(500).json({
+          code: "PROGRESSION_HISTORY_INVALID",
+          error: "Lo storico della progressione contiene un risultato non valido.",
+        });
+      }
+      return res.json({ ...replay, replayed: true });
+    }
+
+    try {
+      const mutationResult = await commitCharacterMutation(slug, {
+        authorize: () => {
+          const session = getSessionById(req.sessionId);
+          const user = session?.userId ? getUserById(session.userId) : null;
+          if (!user || user.id !== req.user?.id || user.role !== "dm") {
+            throw createProgressionError("AUTH_REQUIRED", "Sessione non piu valida.", 401);
+          }
+        },
+        mutate: (current, snapshot) => {
+          const history = readCharacterLevelHistoryReceipt(characterRow.id, request.requestId);
+          if (history) {
+            if (history.requestSignature !== requestSignature) {
+              throw createProgressionError(
+                "REQUEST_ID_REUSED",
+                "Questo identificativo richiesta e gia stato usato con un payload diverso.",
+                409,
+                snapshot,
+              );
+            }
+            const replay = parseCharacterLevelHistoryResult(history);
+            if (!replay) {
+              throw createProgressionError(
+                "PROGRESSION_HISTORY_INVALID",
+                "Lo storico della progressione contiene un risultato non valido.",
+                500,
+                snapshot,
+              );
+            }
+            return { write: false, meta: { replay: { ...replay, replayed: true } } };
+          }
+
+          const preview = prepareCharacterProgressionPreview(snapshot, request);
+          if (preview.pactBoonRequired && !inspectPactBoonSchema(sqlite).ready) {
+            throw createProgressionError("PACT_BOON_SCHEMA_NOT_READY", "Applica prima la migrazione del dono del patto.", 503, snapshot);
+          }
+
+          if (preview.mode === "ADD_NEW_CLASS" && !inspectCharacterProgressionMc1Database(sqlite).ready) {
+            throw createProgressionError(
+              "MULTICLASS_SCHEMA_NOT_READY",
+              "Applica prima la migrazione MC1 che abilita piu classi per personaggio.",
+              503,
+              snapshot,
+            );
+          }
+          assertProgressionEffectsReady(preview);
+          if (!preview.canApply) {
+            const error = createProgressionError(
+              preview.status,
+              preview.reason ?? "La progressione non puo essere applicata.",
+              422,
+              snapshot,
+            );
+            error.preview = preview;
+            throw error;
+          }
+
+          const currentClass = snapshot.progression.classes.find(
+            (entry) => entry.classKey === preview.targetClassKey,
+          ) ?? null;
+          const characterClassRow = currentClass ? sqlite.prepare(`
+            SELECT * FROM "CharacterClass"
+            WHERE characterId = ? AND classKey = ?
+            LIMIT 1
+          `).get(characterRow.id, currentClass.classKey) : null;
+          if (currentClass && !characterClassRow) {
+            throw createProgressionError(
+              "CHARACTER_CLASS_MISSING",
+              "La classe strutturata del personaggio non e disponibile.",
+              409,
+              snapshot,
+            );
+          }
+          const classRule = currentClass
+            ? sqlite.prepare(`SELECT * FROM "ClassRule" WHERE id = ? AND classKey = ? LIMIT 1`)
+                .get(currentClass.classRuleId, currentClass.classKey)
+            : readActiveCharacterClassRule(sqlite, preview.targetClassKey);
+          if (!classRule) {
+            throw createProgressionError(
+              "CLASS_RULE_MISSING",
+              "La regola persistita della classe non e disponibile.",
+              409,
+              snapshot,
+            );
+          }
+          const classAfter = preview.classesAfter.find((entry) => entry.classKey === preview.targetClassKey);
+          const subclassKey = classAfter?.subclassKey ?? null;
+          const subclassRule = subclassKey
+            ? sqlite.prepare(`
+                SELECT * FROM "SubclassRule"
+                WHERE subclassKey = ? AND classRuleId = ? AND archivedAt IS NULL
+                LIMIT 1
+              `).get(subclassKey, classRule.id)
+            : null;
+          if (subclassKey && !subclassRule) {
+            throw createProgressionError(
+              "INVALID_SUBCLASS",
+              "La sottoclasse selezionata non appartiene alla classe o non e disponibile.",
+              422,
+              snapshot,
+            );
+          }
+
+          const primaryClass = snapshot.progression.classes.find((entry) => entry.isPrimary)
+            ?? snapshot.progression.classes[0];
+          const primaryLabel = String(primaryClass?.label || CLASS_RULES[primaryClass?.classKey]?.labels?.it
+            || current.basicInfo?.class || primaryClass?.classKey || "");
+          let nextState = {
+            ...current,
+            basicInfo: {
+              ...(current.basicInfo ?? {}),
+              class: primaryLabel,
+              level: preview.after.characterLevel,
+            },
+          };
+          if (preview.effects?.status === "READY") {
+            nextState = projectStructuredStateToLegacy(nextState, {
+              hitPointState: preview.effects.hitPoints?.after ?? snapshot.hitPointState,
+              hitDicePools: preview.effects.hitDicePools?.after ?? snapshot.hitDicePools,
+              resourcePools: preview.effects.resourcePools?.after ?? snapshot.resourcePools,
+            });
+          }
+          return {
+            state: nextState,
+            patch: { basicInfo: { class: primaryLabel, level: preview.after.characterLevel } },
+            meta: {
+              operationId: crypto.randomUUID(),
+              preview,
+              currentClass,
+              characterClassRow,
+              characterClassId: characterClassRow?.id ?? crypto.randomUUID(),
+              classAfter,
+              classRule,
+              subclassRule,
+              progressionRevisionBefore: snapshot.progression.progressionRevision,
+              characterRevisionBefore: snapshot.revision,
+              appliedAt: new Date().toISOString(),
+            },
+          };
+        },
+        afterWrite: (nextState, mutation, snapshot, characterRevisionAfter) => {
+          const meta = mutation.meta;
+          if (meta.replay) return;
+          const progressionRevisionAfter = meta.progressionRevisionBefore + 1;
+          const classLevelBefore = meta.currentClass ? Number(meta.currentClass.level) : null;
+          const classLevelAfter = Number(meta.classAfter.level);
+          const subclassStatus = meta.subclassRule ? "SELECTED" : "NOT_YET_ELIGIBLE";
+          const draconicAncestryKey = meta.classAfter?.draconicAncestryKey ?? null;
+          const classUpdate = meta.characterClassRow
+            ? sqlite.prepare(`
+                UPDATE "CharacterClass"
+                SET level = ?, subclassRuleId = ?, subclassStatus = ?, draconicAncestryKey = ?, source = 'LEVEL_UP',
+                    ruleSnapshot = ?, updatedByUserId = ?, updatedAt = ?
+                WHERE id = ? AND characterId = ? AND level = ?
+              `).run(
+                classLevelAfter, meta.subclassRule?.id ?? null, subclassStatus, draconicAncestryKey,
+                meta.classRule.ruleSnapshot, req.user.id, meta.appliedAt,
+                meta.characterClassId, characterRow.id, classLevelBefore,
+              )
+            : sqlite.prepare(`
+                INSERT INTO "CharacterClass" (
+                  id, characterId, classRuleId, subclassRuleId, classKey, level, sortOrder,
+                  isPrimary, subclassStatus, draconicAncestryKey, source, ruleSnapshot,
+                  updatedByUserId, createdAt, updatedAt
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, 'LEVEL_UP', ?, ?, ?, ?)
+              `).run(
+                meta.characterClassId, characterRow.id, meta.classRule.id,
+                meta.subclassRule?.id ?? null, meta.preview.targetClassKey, classLevelAfter,
+                Math.max(...snapshot.progression.classes.map((entry) => Number(entry.sortOrder)), -1) + 1,
+                subclassStatus, draconicAncestryKey, meta.classRule.ruleSnapshot,
+                req.user.id, meta.appliedAt, meta.appliedAt,
+              );
+          if (classUpdate.changes !== 1) {
+            throw createProgressionError(
+              "PROGRESSION_REVISION_CONFLICT",
+              "La classe del personaggio e stata modificata da un'altra operazione.",
+              409,
+              snapshot,
+            );
+          }
+
+          if ((meta.currentClass?.pactBoonKey ?? null) !== (meta.classAfter?.pactBoonKey ?? null)) {
+            sqlite.prepare('UPDATE "CharacterClass" SET pactBoonKey = ? WHERE id = ? AND characterId = ?')
+              .run(meta.classAfter.pactBoonKey, meta.characterClassId, characterRow.id);
+          }
+          const legacySnapshot = JSON.stringify({
+            column: {
+              className: nextState.basicInfo.class,
+              level: nextState.basicInfo.level,
+            },
+            basicInfo: {
+              class: nextState.basicInfo.class,
+              level: nextState.basicInfo.level,
+            },
+          });
+          const progressionUpdate = sqlite.prepare(`
+            UPDATE "CharacterProgression"
+            SET revision = ?, backfillStatus = 'BACKFILLED', backfillIssues = '[]',
+                legacySnapshot = ?, updatedAt = ?
+            WHERE characterId = ? AND revision = ?
+          `).run(
+            progressionRevisionAfter,
+            legacySnapshot,
+            meta.appliedAt,
+            characterRow.id,
+            meta.progressionRevisionBefore,
+          );
+          if (progressionUpdate.changes !== 1) {
+            throw createProgressionError(
+              "PROGRESSION_REVISION_CONFLICT",
+              "La progressione del personaggio e stata modificata da un'altra operazione.",
+              409,
+              snapshot,
+            );
+          }
+
+          if (meta.preview.effects?.status === "READY") {
+            const effects = meta.preview.effects;
+            if (effects.hitPoints) {
+              persistHitPointState(
+                characterRow.id,
+                effects.hitPoints.after,
+                meta.appliedAt,
+                effects.hitPoints.before.revision,
+              );
+              persistHitDicePools(characterRow.id, effects.hitDicePools.after, meta.appliedAt);
+            }
+            if (effects.resourcePools) {
+              persistResourcePools(characterRow.id, effects.resourcePools.after, meta.appliedAt, {
+                characterClassId: meta.characterClassId,
+                sourceClassKey: meta.preview.targetClassKey,
+              });
+            }
+          }
+
+          const afterClass = {
+            ...(meta.currentClass ?? {
+              classKey: meta.preview.targetClassKey,
+              classRuleId: meta.classRule.id,
+              sortOrder: Math.max(...snapshot.progression.classes.map((entry) => Number(entry.sortOrder)), -1) + 1,
+              isPrimary: false,
+              label: meta.classRule.labelIt || meta.classRule.labelEn || meta.preview.targetClassKey,
+            }),
+            level: classLevelAfter,
+            subclassRuleId: meta.subclassRule?.id ?? null,
+            subclassKey: meta.subclassRule?.subclassKey ?? null,
+            subclassStatus,
+            draconicAncestryKey,
+            pactBoonKey: meta.classAfter?.pactBoonKey ?? null,
+            source: "LEVEL_UP",
+          };
+          const afterProgression = {
+            source: "STRUCTURED",
+            classes: meta.currentClass
+              ? snapshot.progression.classes.map((entry) => entry.classKey === afterClass.classKey ? afterClass : entry)
+              : [...snapshot.progression.classes, afterClass],
+            totalLevel: meta.preview.after.characterLevel,
+            progressionRevision: progressionRevisionAfter,
+            diagnostics: [],
+          };
+          const publicCharacter = serializeCharacterSnapshot({
+            state: nextState,
+            revision: characterRevisionAfter,
+            progression: afterProgression,
+            hitPointState: meta.preview.effects?.hitPoints?.after ?? snapshot.hitPointState,
+            hitDicePools: meta.preview.effects?.hitDicePools?.after ?? snapshot.hitDicePools,
+            resourcePools: meta.preview.effects?.resourcePools?.after ?? snapshot.resourcePools,
+          });
+          const operation = {
+            id: meta.operationId,
+            requestId: request.requestId,
+            operationType: "LEVEL_UP",
+            mode: meta.preview.mode,
+            targetClassKey: request.targetClassKey,
+            targetSubclassKey: meta.subclassRule?.subclassKey ?? null,
+            draconicAncestryKey,
+            classLevelBefore,
+            classLevelAfter,
+            totalLevelBefore: meta.preview.before.characterLevel,
+            totalLevelAfter: meta.preview.after.characterLevel,
+            appliedAt: meta.appliedAt,
+          };
+          const deferredEffects = progressionDeferredEffects(meta.preview);
+          const result = {
+            ok: true,
+            replayed: false,
+            slug,
+            requestId: request.requestId,
+            revision: characterRevisionAfter,
+            progressionRevision: progressionRevisionAfter,
+            preview: meta.preview,
+            operation,
+            character: { ...publicCharacter, revision: characterRevisionAfter },
+            ...(deferredEffects.length > 0 ? { deferredEffects } : {}),
+          };
+          const requestSnapshot = JSON.stringify(request);
+          const beforeSnapshot = JSON.stringify({
+            classes: snapshot.progression.classes,
+            totalLevel: snapshot.progression.totalLevel,
+            progressionRevision: meta.progressionRevisionBefore,
+            hitPointState: snapshot.hitPointState ?? null,
+            hitDicePools: snapshot.hitDicePools ?? [],
+            resourcePools: snapshot.resourcePools ?? [],
+          });
+          const afterSnapshot = JSON.stringify({
+            classes: afterProgression.classes,
+            totalLevel: afterProgression.totalLevel,
+            progressionRevision: progressionRevisionAfter,
+            hitPointState: meta.preview.effects?.hitPoints?.after ?? snapshot.hitPointState ?? null,
+            hitDicePools: meta.preview.effects?.hitDicePools?.after ?? snapshot.hitDicePools ?? [],
+            resourcePools: meta.preview.effects?.resourcePools?.after ?? snapshot.resourcePools ?? [],
+          });
+          const ruleSnapshot = JSON.stringify({
+            classRule: parseJsonString(meta.classRule.ruleSnapshot, {}),
+            subclassRule: meta.subclassRule ? parseJsonString(meta.subclassRule.ruleSnapshot, {}) : null,
+          });
+          const appliedBySnapshot = JSON.stringify({
+            id: req.user.id,
+            username: req.user.username,
+            displayName: req.user.displayName,
+            role: req.user.role,
+          });
+          const historyColumns = [
+            "id", "characterId", "requestId", "requestSignature", "operationType", "mode",
+            "targetClassKey", "targetClassRuleId", "targetSubclassKey", "targetSubclassRuleId",
+            "classLevelBefore", "classLevelAfter", "totalLevelBefore", "totalLevelAfter",
+            "progressionRevisionBefore", "progressionRevisionAfter", "characterRevisionBefore",
+            "characterRevisionAfter", "rulesetId", "rulesetVersion", "policyVersion",
+            "requestSnapshot", "beforeSnapshot", "afterSnapshot", "ruleSnapshot", "resultSnapshot",
+            "overrideReason", "appliedByUserId", "appliedBySnapshot", "hitDieSize",
+            "hitPointMethod", "hitPointsGained", "constitutionModifier", "appliedAt",
+          ];
+          const historyValues = [
+            meta.operationId, characterRow.id, request.requestId, requestSignature, "LEVEL_UP",
+            meta.preview.mode, request.targetClassKey, meta.classRule.id,
+            meta.subclassRule?.subclassKey ?? null, meta.subclassRule?.id ?? null,
+            classLevelBefore, classLevelAfter, meta.preview.before.characterLevel,
+            meta.preview.after.characterLevel, meta.progressionRevisionBefore,
+            progressionRevisionAfter, meta.characterRevisionBefore, characterRevisionAfter,
+            meta.classRule.rulesetId || CHARACTER_RULESET.id,
+            meta.classRule.rulesetVersion || CHARACTER_RULESET.version,
+            "mc1-v1", requestSnapshot,
+            beforeSnapshot, afterSnapshot, ruleSnapshot, JSON.stringify(result), request.overrideReason ?? null, req.user.id,
+            appliedBySnapshot,
+            meta.preview.effects?.hitPoints?.hitDieSize ?? null,
+            meta.preview.effects?.hitPoints?.method ?? null,
+            meta.preview.effects?.hitPoints?.gained ?? null,
+            meta.preview.effects?.hitPoints?.constitutionModifier ?? null,
+            meta.appliedAt,
+          ];
+          sqlite.prepare(`
+            INSERT INTO "CharacterLevelHistory" (
+              ${historyColumns.map((column) => `"${column}"`).join(", ")}
+            ) VALUES (${historyColumns.map(() => "?").join(", ")})
+          `).run(...historyValues);
+          const previousDraconicAncestryKey = meta.currentClass?.draconicAncestryKey ?? null;
+          if (previousDraconicAncestryKey !== draconicAncestryKey) {
+            sqlite.prepare(`
+              INSERT INTO "CharacterDraconicAncestryHistory" (
+                id, characterId, requestId, requestSignature, operationType, targetClassKey,
+                previousDraconicAncestryKey, targetDraconicAncestryKey,
+                progressionRevisionBefore, progressionRevisionAfter,
+                characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+                requestSnapshot, beforeSnapshot, afterSnapshot, resultSnapshot,
+                appliedByUserId, appliedBySnapshot, appliedAt
+              ) VALUES (${Array.from({ length: 21 }, () => "?").join(", ")})
+            `).run(
+              crypto.randomUUID(), characterRow.id, request.requestId, requestSignature,
+              "LEVEL_UP", meta.preview.targetClassKey, previousDraconicAncestryKey,
+              draconicAncestryKey, meta.progressionRevisionBefore, progressionRevisionAfter,
+              meta.characterRevisionBefore, characterRevisionAfter, null,
+              "draconic-ancestry-v1", requestSnapshot, beforeSnapshot, afterSnapshot,
+              JSON.stringify(result), req.user.id, appliedBySnapshot, meta.appliedAt,
+            );
+          }
+          const pactBoonKey = meta.classAfter?.pactBoonKey ?? null;
+          const previousPactBoonKey = meta.currentClass?.pactBoonKey ?? null;
+          if (previousPactBoonKey !== pactBoonKey) {
+            sqlite.prepare(`
+              INSERT INTO "CharacterPactBoonHistory" (
+                id, characterId, requestId, requestSignature, operationType, targetClassKey,
+                previousPactBoonKey, targetPactBoonKey,
+                progressionRevisionBefore, progressionRevisionAfter,
+                characterRevisionBefore, characterRevisionAfter, reason, policyVersion,
+                requestSnapshot, beforeSnapshot, afterSnapshot, resultSnapshot,
+                appliedByUserId, appliedBySnapshot, appliedAt
+              ) VALUES (${Array.from({ length: 21 }, () => "?").join(", ")})
+            `).run(
+              crypto.randomUUID(), characterRow.id, request.requestId, requestSignature,
+              "LEVEL_UP", meta.preview.targetClassKey, previousPactBoonKey,
+              pactBoonKey, meta.progressionRevisionBefore, progressionRevisionAfter,
+              meta.characterRevisionBefore, characterRevisionAfter, null,
+              "pact-boon-v1", requestSnapshot, beforeSnapshot, afterSnapshot,
+              JSON.stringify(result), req.user.id, appliedBySnapshot, meta.appliedAt,
+            );
+          }
+          meta.result = result;
+        },
+      });
+
+      if (!mutationResult.committed && mutationResult.meta?.replay) {
+        return res.json(mutationResult.meta.replay);
+      }
+      const result = mutationResult.meta.result;
+      const statePayload = buildCharacterStatePayload(slug);
+      if (statePayload) io.to(`char:${slug}`).emit("character:state", statePayload);
+      const initiativeState = readInitiativeTrackerState();
+      if (initiativeState.players.some((entry) => entry.slug === slug)) {
+        broadcastInitiativeTrackerState(io);
+      }
+      return res.json(result);
+    } catch (error) {
+      const status = Number(error?.statusCode)
+        || (error?.code === "REVISION_CONFLICT" || error?.code === "PROGRESSION_REVISION_CONFLICT" ? 409 : 500);
+      const latest = error?.snapshot?.state
+        ? { ...serializeCharacterSnapshot(error.snapshot), revision: error.snapshot.revision }
+        : undefined;
+      return res.status(status).json({
+        code: error?.code ?? "PROGRESSION_APPLY_FAILED",
+        error: String(error?.message ?? "Non e stato possibile applicare la progressione."),
+        ...(error?.preview ? { preview: error.preview } : {}),
+        ...(latest ? { character: latest } : {}),
+      });
+    }
   });
 
   app.get("/api/characters/:slug", requireAuth, (req, res) => {
@@ -11743,9 +16436,9 @@ async function start() {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const state = readCharacter(slug);
-    if (!state) return res.status(404).json({ error: "Character not found" });
-    return res.json(state);
+    const snapshot = readCharacterSnapshot(slug);
+    if (!snapshot) return res.status(404).json({ error: "Character not found" });
+    return res.json({ ...serializeCharacterSnapshot(snapshot), revision: snapshot.revision });
   });
 
   app.get("/api/characters/:slug/backstory", requireAuth, (req, res) => {
@@ -11990,12 +16683,14 @@ async function start() {
 
     const sourceState = readCharacter(slug);
     if (sourceState) {
-      io.to(`char:${slug}`).emit("character:state", sourceState);
+      const payload = buildCharacterStatePayload(slug);
+      if (payload) io.to(`char:${slug}`).emit("character:state", payload);
     }
     if (targetCharacter?.slug) {
       const targetState = readCharacter(targetCharacter.slug);
       if (targetState) {
-        io.to(`char:${targetCharacter.slug}`).emit("character:state", targetState);
+        const payload = buildCharacterStatePayload(targetCharacter.slug);
+        if (payload) io.to(`char:${targetCharacter.slug}`).emit("character:state", payload);
       }
     }
 
@@ -12048,7 +16743,15 @@ async function start() {
       ownerUser,
     });
 
-    writeCharacter(slug, character);
+    let progressionInitialization;
+    let vitalsResourcesInitialization;
+    runInTransaction(() => {
+      writeCharacter(slug, character);
+      progressionInitialization = initializeCreatedCharacterProgression(slug, req.user?.id ?? null);
+      if (progressionInitialization.structured) {
+        vitalsResourcesInitialization = initializeCreatedCharacterVitalsResources(slug, req.user?.id ?? null);
+      }
+    });
 
     if (ownerUserId) {
       const ownership = readOwnership();
@@ -12056,22 +16759,40 @@ async function start() {
       writeOwnership(ownership);
     }
 
+    const snapshot = readCharacterSnapshot(slug);
     return res.status(201).json({
       slug,
       characterType,
       ownerUserId,
-      character,
+      character: snapshot ? serializeCharacterSnapshot(snapshot) : character,
+      progressionInitialization,
+      vitalsResourcesInitialization,
     });
   });
 
-  app.delete("/api/characters/:slug", requireRole("dm"), (req, res) => {
+  app.delete("/api/characters/:slug", requireRole("dm"), async (req, res) => {
     const slug = req.params.slug;
 
     if (!listCharacterSlugs().includes(slug)) {
       return res.status(404).json({ error: "Character not found" });
     }
 
-    const archivedPath = archiveCharacter(slug);
+    let archivedPath;
+    try {
+      archivedPath = await enqueueCharacterMutation(slug, () => {
+        const session = getSessionById(req.sessionId);
+        const user = session?.userId ? getUserById(session.userId) : null;
+        if (!user || user.id !== req.user?.id || user.role !== "dm") {
+          throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non piu valida.");
+        }
+        return archiveCharacter(slug);
+      });
+    } catch (error) {
+      if (error?.code === "AUTH_REQUIRED") {
+        return res.status(401).json({ error: String(error.message) });
+      }
+      throw error;
+    }
     if (!archivedPath) {
       return res.status(500).json({ error: "Archive failed" });
     }
@@ -12083,6 +16804,8 @@ async function start() {
     }
 
     deleteLegacyCharacterChatConversation(slug);
+    io.to(`char:${slug}`).emit("character:access-revoked", { slug });
+    io.in(`char:${slug}`).socketsLeave(`char:${slug}`);
 
     return res.status(204).end();
   });
@@ -12184,66 +16907,328 @@ async function start() {
     pendingPresenceRemovalBySocket.set(socketId, timer);
   };
 
-  function getSocketUser(socket) {
+  function getSocketIdentity(socket) {
     const cookies = parseCookies(socket.request.headers.cookie);
     const sessionId = cookies[SESSION_COOKIE];
     const session = getSessionById(sessionId);
     if (sessionId && session) touchSession(sessionId);
-    return session?.userId ? getUserById(session.userId) : null;
+    const refreshedSession = sessionId && session ? getSessionById(sessionId) : null;
+    return {
+      sessionId: sessionId ?? null,
+      session: refreshedSession,
+      user: refreshedSession?.userId ? getUserById(refreshedSession.userId) : null,
+    };
+  }
+
+  function scheduleSocketSessionExpiry(socket, session) {
+    if (socket.data.sessionExpiryTimer) clearTimeout(socket.data.sessionExpiryTimer);
+    socket.data.sessionExpiryTimer = null;
+    if (!session?.expiresAt) return;
+
+    const remainingMs = Math.max(1, Date.parse(session.expiresAt) - Date.now());
+    const delay = Math.min(remainingMs + 25, 2_147_000_000);
+    socket.data.sessionExpiryTimer = setTimeout(() => {
+      const current = getSessionById(socket.data.sessionId);
+      if (!current || current.userId !== socket.data.user?.id) {
+        socket.emit("auth:session-revoked", { reason: "SESSION_EXPIRED" });
+        socket.disconnect(true);
+        return;
+      }
+      scheduleSocketSessionExpiry(socket, current);
+    }, delay);
+  }
+
+  function requireLiveSocketUser(socket) {
+    const session = getSessionById(socket.data.sessionId);
+    const user = session?.userId ? getUserById(session.userId) : null;
+    if (!session || !user || user.id !== socket.data.user?.id) {
+      socket.emit("auth:session-revoked", { reason: "SESSION_INVALID" });
+      socket.disconnect(true);
+      return null;
+    }
+    touchSession(session.id);
+    const refreshedSession = getSessionById(session.id);
+    socket.data.user = user;
+    scheduleSocketSessionExpiry(socket, refreshedSession);
+    return user;
+  }
+
+  function createSocketAcknowledger(acknowledge) {
+    let acknowledged = false;
+    return (response) => {
+      if (acknowledged || typeof acknowledge !== "function") return;
+      acknowledged = true;
+      acknowledge(response);
+    };
   }
 
   io.on("connection", (socket) => {
-    const user = getSocketUser(socket);
+    const identity = getSocketIdentity(socket);
+    const user = identity.user;
+    socket.data.sessionId = identity.sessionId;
     socket.data.user = user;
+    socket.data.characterSlugs = new Set();
     console.log(`[server] socket connected ${socket.id} from ${socket.handshake.address} user=${user?.username ?? "anon"}`);
     if (user?.id) {
+      socket.join(`session:${identity.sessionId}`);
       socket.join(`user:${user.id}`);
       if (user.role === "dm") socket.join("role:dm");
       socket.emit("game-session:state", readGameSessionState());
+      scheduleSocketSessionExpiry(socket, identity.session);
     }
 
-    socket.on("character:join", (slug) => {
+    socket.on("character:join", (payload, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
+      const slug = typeof payload === "string" ? payload.trim() : String(payload?.slug ?? "").trim();
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) {
+        ack({ ok: false, code: "AUTH_REQUIRED", error: "Sessione non valida." });
+        return;
+      }
       const ownership = readOwnership();
-      if (!canAccessCharacter(socket.data.user, slug, ownership)) return;
-
-      socket.join(`char:${slug}`);
-      const state = readLatestCharacterState(slug);
-      if (state) socket.emit("character:state", state);
-    });
-
-    socket.on("character:update", ({ slug, patch }) => {
-      if (!slug || !patch) return;
-
-      const ownership = readOwnership();
-      if (!canEditCharacter(socket.data.user, slug, ownership)) return;
-      if (!canUserWriteDuringSession(socket.data.user)) {
-        socket.emit("game-session:state", readGameSessionState());
+      if (!slug || !canAccessCharacter(liveUser, slug, ownership)) {
+        ack({ ok: false, code: "FORBIDDEN", error: "Accesso al personaggio non autorizzato." });
         return;
       }
 
-      const current = readLatestCharacterState(slug) || {};
-      const next = deepMerge(current, patch);
-      scheduleWrite(slug, next);
-      socket.to(`char:${slug}`).emit("character:patch", { slug, patch });
-      socket.emit("character:state", next);
+      socket.join(`char:${slug}`);
+      socket.data.characterSlugs.add(slug);
+      const statePayload = buildCharacterStatePayload(slug);
+      if (!statePayload) {
+        socket.leave(`char:${slug}`);
+        socket.data.characterSlugs.delete(slug);
+        ack({ ok: false, code: "CHARACTER_NOT_FOUND", error: "Personaggio non trovato." });
+        return;
+      }
+      socket.emit("character:state", statePayload);
+      ack({ ok: true, slug, revision: statePayload.revision, state: statePayload.state });
+    });
 
-      const initiativeState = readInitiativeTrackerState();
-      if (initiativeState.players.some((entry) => entry.slug === slug)) {
-        setTimeout(() => {
-          try {
-            broadcastInitiativeTrackerState(io);
-          } catch {}
-        }, 60);
+    socket.on("character:leave", (payload, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
+      const requestedSlug = typeof payload === "string" ? payload.trim() : String(payload?.slug ?? "").trim();
+      if (requestedSlug) {
+        socket.leave(`char:${requestedSlug}`);
+        socket.data.characterSlugs.delete(requestedSlug);
+      } else {
+        for (const slug of socket.data.characterSlugs) socket.leave(`char:${slug}`);
+        socket.data.characterSlugs.clear();
+      }
+      ack({ ok: true, slug: requestedSlug || null });
+    });
+
+    socket.on("character:update", async (payload = {}, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
+      const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
+      const patch = payload?.patch;
+      let appliedBy = null;
+      if (!slug) {
+        ack({ ok: false, code: "VALIDATION_ERROR", error: "Personaggio non valido." });
+        return;
+      }
+
+      try {
+        const result = await commitCharacterMutation(slug, {
+          expectedRevision: payload?.revision ?? payload?.expectedRevision,
+          authorize: () => {
+            const liveUser = requireLiveSocketUser(socket);
+            if (!liveUser) throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non valida.");
+            appliedBy = liveUser;
+            const ownership = readOwnership();
+            if (!canEditCharacter(liveUser, slug, ownership)) {
+              throw createCharacterMutationError("FORBIDDEN", "Modifica del personaggio non autorizzata.");
+            }
+            if (!canUserWriteDuringSession(liveUser)) {
+              socket.emit("game-session:state", readGameSessionState());
+              throw createCharacterMutationError("SESSION_CLOSED", "La sessione e chiusa. Le modifiche del personaggio sono bloccate.");
+            }
+          },
+          mutate: (current, snapshot) => {
+            const validationIssues = validateCharacterPatch(patch);
+            if (validationIssues.length > 0) {
+              const validationError = createCharacterMutationError(
+                "VALIDATION_ERROR",
+                validationIssues[0],
+                snapshot
+              );
+              validationError.issues = validationIssues;
+              throw validationError;
+            }
+            const next = deepMerge(current, patch);
+            const changesClass =
+              patch?.basicInfo &&
+              typeof patch.basicInfo === "object" &&
+              !Array.isArray(patch.basicInfo) &&
+              Object.prototype.hasOwnProperty.call(patch.basicInfo, "class");
+            if (Object.prototype.hasOwnProperty.call(patch, "pactBlade")) {
+              const bondedId = next?.pactBlade?.bondedCharacterItemId ?? null;
+              const hasPactBladeState = Boolean(
+                bondedId || next?.pactBlade?.activeSummon?.mode || next?.pactBlade?.activeSummon?.templateId
+              );
+              const pactBladeIssues = hasPactBladeState
+                ? validatePactBladeState({ ...next, classes: snapshot.progression?.classes ?? [] }, readPactBladeBondedItem(slug, bondedId))
+                : [];
+              if (pactBladeIssues.length > 0) {
+                const validationError = createCharacterMutationError("VALIDATION_ERROR", pactBladeIssues[0], snapshot);
+                validationError.issues = pactBladeIssues;
+                throw validationError;
+              }
+            }
+            const includesDeathSaves =
+              patch?.combatStats &&
+              typeof patch.combatStats === "object" &&
+              !Array.isArray(patch.combatStats) &&
+              Object.prototype.hasOwnProperty.call(patch.combatStats, "deathSaves");
+            const currentDeathSaves = current?.combatStats?.deathSaves ?? {};
+            const nextDeathSaves = next?.combatStats?.deathSaves ?? {};
+            const changesDeathSaves =
+              includesDeathSaves &&
+              (Number(currentDeathSaves.successes ?? 0) !== Number(nextDeathSaves.successes ?? 0) ||
+                Number(currentDeathSaves.failures ?? 0) !== Number(nextDeathSaves.failures ?? 0));
+            if (changesDeathSaves && Number(next?.combatStats?.currentHitPoints) !== 0) {
+              throw createCharacterMutationError(
+                "DEATH_SAVES_REQUIRE_ZERO_HP",
+                "I tiri salvezza contro morte sono modificabili solo a 0 PF.",
+                snapshot
+              );
+            }
+            const structuredSync = prepareStructuredLegacyPatchSync(snapshot, next, patch);
+            const synchronizedState = structuredSync
+              ? projectStructuredStateToLegacy(next, {
+                  hitPointState: structuredSync.hitPointState ?? snapshot.hitPointState,
+                  hitDicePools: snapshot.hitDicePools,
+                  resourcePools: structuredSync.resourcePools ?? snapshot.resourcePools,
+                })
+              : next;
+            return { state: synchronizedState, patch, meta: { structuredSync } };
+          },
+          afterWrite: (_next, mutation, snapshot) => {
+            const sync = mutation.meta?.structuredSync;
+            if (!sync) return;
+            const characterId = sqlite.prepare(`
+              SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+            `).get(slug)?.id;
+            if (!characterId) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+            const now = new Date().toISOString();
+            if (sync.hitPointState) {
+              persistHitPointState(characterId, sync.hitPointState, now, snapshot.hitPointState.revision);
+            }
+            if (sync.hitPointAdjustment) {
+              persistHitPointAdjustment(characterId, sync.hitPointAdjustment, now, appliedBy);
+            }
+            if (sync.resourcePools) persistResourcePools(characterId, sync.resourcePools, now);
+          },
+        });
+
+        const patchPayload = buildCharacterPatchPayload(result);
+        const statePayload = buildCharacterStatePayload(slug, result);
+        socket.to(`char:${slug}`).emit("character:patch", patchPayload);
+        socket.emit("character:state", statePayload);
+        ack({ ok: true, ...patchPayload, state: result.state });
+
+        const initiativeState = readInitiativeTrackerState();
+        if (initiativeState.players.some((entry) => entry.slug === slug)) {
+          setTimeout(() => {
+            try {
+              broadcastInitiativeTrackerState(io);
+            } catch {}
+          }, 60);
+        }
+      } catch (error) {
+        const snapshot = error?.snapshot ?? null;
+        const statePayload = snapshot ? buildCharacterStatePayload(slug, snapshot) : null;
+        if (statePayload) socket.emit("character:state", statePayload);
+        ack({
+          ok: false,
+          code: error?.code ?? "PERSIST_FAILED",
+          error: String(error?.message ?? "Non e stato possibile salvare il personaggio."),
+          slug,
+          revision: snapshot?.revision,
+          state: snapshot?.state,
+          ...(Array.isArray(error?.issues) ? { issues: error.issues } : {}),
+        });
       }
     });
 
-    socket.on("character:convert-spell-slots", (payload, acknowledge) => {
-      let acknowledged = false;
-      const ack = (response) => {
-        if (acknowledged || typeof acknowledge !== "function") return;
-        acknowledged = true;
-        acknowledge(response);
-      };
+    socket.on("character:update-resource-pool", async (payload = {}, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
+      const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
+      const poolKey = typeof payload?.poolKey === "string" ? payload.poolKey.trim() : "";
+      const tierKey = typeof payload?.tierKey === "string" ? payload.tierKey.trim() : "";
+      const used = Number(payload?.used);
+      const expectedPoolRevision = Number(payload?.expectedPoolRevision);
+      if (!slug || !poolKey || !tierKey || !Number.isInteger(used) || used < 0 || !Number.isInteger(expectedPoolRevision) || expectedPoolRevision < 0) {
+        ack({ ok: false, code: "VALIDATION_ERROR", error: "Aggiornamento del pool risorsa non valido." });
+        return;
+      }
+
+      try {
+        const result = await commitCharacterMutation(slug, {
+          expectedRevision: payload?.revision ?? payload?.expectedRevision,
+          authorize: () => {
+            const liveUser = requireLiveSocketUser(socket);
+            if (!liveUser) throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non valida.");
+            const ownership = readOwnership();
+            if (!canEditCharacter(liveUser, slug, ownership)) {
+              throw createCharacterMutationError("FORBIDDEN", "Modifica del personaggio non autorizzata.");
+            }
+            if (!canUserWriteDuringSession(liveUser)) {
+              socket.emit("game-session:state", readGameSessionState());
+              throw createCharacterMutationError("SESSION_CLOSED", "La sessione e chiusa. Le modifiche del personaggio sono bloccate.");
+            }
+          },
+          mutate: (current, snapshot) => {
+            const prepared = prepareStructuredResourcePoolUsage(snapshot, current, {
+              poolKey,
+              tierKey,
+              used,
+              expectedPoolRevision,
+            });
+            return { state: prepared.next, patch: {}, meta: { updatedPool: prepared.updatedPool, tierKey, used } };
+          },
+          afterWrite: (_next, mutation, snapshot) => {
+            const characterId = sqlite.prepare(`
+              SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+            `).get(slug)?.id;
+            if (!characterId) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+            persistResourcePoolUsage(
+              characterId,
+              mutation.meta.updatedPool,
+              mutation.meta.tierKey,
+              mutation.meta.used,
+              new Date().toISOString(),
+              snapshot.resourcePools.find((pool) => pool.id === mutation.meta.updatedPool.id)?.revision,
+            );
+          },
+        });
+
+        const statePayload = buildCharacterStatePayload(slug, result);
+        socket.to(`char:${slug}`).emit("character:state", statePayload);
+        socket.emit("character:state", statePayload);
+        ack({
+          ok: true,
+          slug,
+          revision: statePayload.revision,
+          state: statePayload.state,
+          pool: result.meta.updatedPool,
+        });
+      } catch (error) {
+        const snapshot = error?.snapshot ?? null;
+        const statePayload = snapshot ? buildCharacterStatePayload(slug, snapshot) : null;
+        if (statePayload) socket.emit("character:state", statePayload);
+        ack({
+          ok: false,
+          code: error?.code ?? "PERSIST_FAILED",
+          error: String(error?.message ?? "Non e stato possibile aggiornare il pool risorsa."),
+          slug,
+          revision: snapshot?.revision,
+          state: snapshot?.state,
+        });
+      }
+    });
+
+    socket.on("character:convert-spell-slots", async (payload, acknowledge) => {
+      const ack = createSocketAcknowledger(acknowledge);
       try {
       const slug = typeof payload?.slug === "string" ? payload.slug.trim() : "";
       if (!slug) {
@@ -12251,18 +17236,7 @@ async function start() {
         return;
       }
 
-      const ownership = readOwnership();
-      if (!canEditCharacter(socket.data.user, slug, ownership)) {
-        ack({ ok: false, error: "Non sei autorizzato a modificare questo personaggio." });
-        return;
-      }
-      if (!canUserWriteDuringSession(socket.data.user)) {
-        socket.emit("game-session:state", readGameSessionState());
-        ack({ ok: false, error: "La sessione \u00e8 chiusa. Le modifiche del personaggio sono bloccate." });
-        return;
-      }
-
-      const requestId = normalizeSpellSlotConversionRequestId(payload?.requestId);
+      const requestId = normalizeOperationRequestId(payload?.requestId);
       if (!requestId) {
         ack({ ok: false, error: "Identificativo della richiesta non valido." });
         return;
@@ -12281,66 +17255,103 @@ async function start() {
         ack({ ok: false, error: "La richiesta di conversione degli slot non \u00e8 valida." });
         return;
       }
-      const receiptKey = spellSlotConversionReceiptKey(socket.data.user.id, slug, requestId);
-      const existingReceipt = readSpellSlotConversionReceipt(receiptKey);
-      if (existingReceipt) {
-        if (existingReceipt.signature !== requestSignature) {
-          ack({ ok: false, error: "Questo identificativo richiesta \u00e8 gi\u00e0 stato usato con un payload diverso." });
-          return;
-        }
-        const latestState = readLatestCharacterState(slug);
-        if (latestState) socket.emit("character:state", latestState);
-        ack(existingReceipt.result);
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) {
+        ack({ ok: false, code: "AUTH_REQUIRED", error: "Sessione non valida." });
+        return;
+      }
+      const receiptIdentity = buildOperationReceiptIdentity("spell-slot-conversion", liveUser.id, slug, requestId);
+      const requestedRevision = payload?.revision ?? payload?.expectedRevision;
+      const mutationResult = await commitCharacterMutation(slug, {
+        authorize: () => {
+          const currentUser = requireLiveSocketUser(socket);
+          if (!currentUser) throw createCharacterMutationError("AUTH_REQUIRED", "Sessione non valida.");
+          const ownership = readOwnership();
+          if (!canEditCharacter(currentUser, slug, ownership)) {
+            throw createCharacterMutationError("FORBIDDEN", "Modifica del personaggio non autorizzata.");
+          }
+          if (!canUserWriteDuringSession(currentUser)) {
+            socket.emit("game-session:state", readGameSessionState());
+            throw createCharacterMutationError("SESSION_CLOSED", "La sessione e chiusa. Le modifiche del personaggio sono bloccate.");
+          }
+        },
+        mutate: (current, snapshot) => {
+          const receiptLookup = durableOperationReceipts.lookup(receiptIdentity, requestSignature);
+          if (receiptLookup.status === "conflict") throwRequestIdReuse();
+          if (receiptLookup.status === "match") {
+            return { write: false, meta: { receipt: receiptLookup.receipt.result } };
+          }
+
+          if (
+            requestedRevision !== undefined &&
+            requestedRevision !== null &&
+            String(requestedRevision) !== snapshot.revision
+          ) {
+            throw createCharacterMutationError(
+              "REVISION_CONFLICT",
+              "Il personaggio e stato modificato da un'altra operazione.",
+              snapshot
+            );
+          }
+
+          const currentSlotState = canonicalizeSpellSlotState(current?.combatStats?.spellSlots);
+          if (JSON.stringify(currentSlotState) !== JSON.stringify(expectedSlotState)) {
+            throw createCharacterMutationError(
+              "STALE_SLOT_STATE",
+              "Lo stato degli slot e cambiato. Riapri la conversione e verifica la selezione.",
+              snapshot
+            );
+          }
+          const conversion = snapshot.schema?.m6Ready
+            ? prepareStructuredSpellSlotConversion(snapshot, payload?.targetLevel, payload?.selections)
+            : prepareSpellSlotConversion(current, payload?.targetLevel, payload?.selections);
+          if (!conversion.ok) throw createCharacterMutationError("INVALID_CONVERSION", conversion.error, snapshot);
+          return { state: conversion.next, patch: conversion.patch, meta: { conversion } };
+        },
+        afterWrite: (_next, mutation) => {
+          const conversion = mutation.meta.conversion;
+          if (conversion.resourcePools) {
+            const characterId = sqlite.prepare(`
+              SELECT id FROM "Character" WHERE slug = ? AND archivedAt IS NULL LIMIT 1
+            `).get(slug)?.id;
+            if (!characterId) throw createCharacterMutationError("CHARACTER_NOT_FOUND", "Personaggio non trovato.");
+            persistResourcePools(characterId, conversion.resourcePools, new Date().toISOString());
+          }
+          const receiptResult = {
+            ok: true,
+            requestId,
+            targetLevel: conversion.targetLevel,
+            selections: conversion.selections,
+            cost: conversion.cost,
+            pointsSpent: conversion.pointsSpent,
+            excess: conversion.excess,
+          };
+          durableOperationReceipts.save(receiptIdentity, requestSignature, receiptResult);
+        },
+      });
+
+      const statePayload = buildCharacterStatePayload(slug, mutationResult);
+      socket.emit("character:state", statePayload);
+      if (!mutationResult.committed && mutationResult.meta?.receipt) {
+        ack({ ...mutationResult.meta.receipt, slug, revision: mutationResult.revision, state: mutationResult.state });
         return;
       }
 
-      const current = readLatestCharacterState(slug);
-      if (!current) {
-        ack({ ok: false, error: "Personaggio non trovato." });
-        return;
-      }
-      const currentSlotState = canonicalizeSpellSlotState(current?.combatStats?.spellSlots);
-      if (JSON.stringify(currentSlotState) !== JSON.stringify(expectedSlotState)) {
-        socket.emit("character:state", current);
-        ack({
-          ok: false,
-          code: "STALE_SLOT_STATE",
-          error: "Lo stato degli slot \u00e8 cambiato. Riapri la conversione e verifica la selezione.",
-        });
-        return;
-      }
-
-      const conversion = prepareSpellSlotConversion(current, payload?.targetLevel, payload?.selections);
-      if (!conversion.ok) {
-        ack({ ok: false, error: conversion.error });
-        return;
-      }
-
-      const pendingBeforeConversion = pendingCharacterStates.get(slug);
-      cancelScheduledCharacterWrite(slug);
-      try {
-        writeCharacter(slug, conversion.next);
-        pendingCharacterStates.delete(slug);
-      } catch (error) {
-        if (pendingBeforeConversion) scheduleWrite(slug, pendingBeforeConversion);
-        console.error(`[server] spell slot conversion persist failed for ${slug}:`, error);
-        ack({ ok: false, error: "Non \u00e8 stato possibile salvare la conversione degli slot." });
-        return;
-      }
-
-      const result = {
+      const conversion = mutationResult.meta.conversion;
+      const patchPayload = buildCharacterPatchPayload(mutationResult);
+      socket.to(`char:${slug}`).emit("character:patch", patchPayload);
+      ack({
         ok: true,
         requestId,
+        slug,
+        revision: mutationResult.revision,
+        state: mutationResult.state,
         targetLevel: conversion.targetLevel,
         selections: conversion.selections,
         cost: conversion.cost,
         pointsSpent: conversion.pointsSpent,
         excess: conversion.excess,
-      };
-      writeSpellSlotConversionReceipt(receiptKey, requestSignature, result);
-      socket.to(`char:${slug}`).emit("character:patch", { slug, patch: conversion.patch });
-      socket.emit("character:state", conversion.next);
-      ack(result);
+      });
 
       const initiativeState = readInitiativeTrackerState();
       if (initiativeState.players.some((entry) => entry.slug === slug)) {
@@ -12352,36 +17363,49 @@ async function start() {
       }
       } catch (error) {
         console.error("[server] spell slot conversion failed:", error);
-        ack({ ok: false, error: "Non \u00e8 stato possibile completare la conversione degli slot." });
+        const snapshot = error?.snapshot;
+        if (snapshot) socket.emit("character:state", buildCharacterStatePayload(payload?.slug, snapshot));
+        ack({
+          ok: false,
+          code: error?.code ?? "CONVERSION_FAILED",
+          error: String(error?.message ?? "Non e stato possibile completare la conversione degli slot."),
+          revision: snapshot?.revision,
+          state: snapshot?.state,
+        });
       }
     });
 
     socket.on("initiative:join-dm", () => {
-      if (socket.data.user?.role !== "dm") return;
+      const liveUser = requireLiveSocketUser(socket);
+      if (liveUser?.role !== "dm") return;
       socket.join("initiative:dm");
       socket.emit("initiative:state", readInitiativeTrackerState());
     });
 
     socket.on("initiative:join-character", (slug) => {
       const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) return;
       const ownership = readOwnership();
-      if (!normalizedSlug || !canAccessCharacter(socket.data.user, normalizedSlug, ownership)) return;
+      if (!normalizedSlug || !canAccessCharacter(liveUser, normalizedSlug, ownership)) return;
       socket.emit("initiative:player-state", buildPlayerInitiativeTrackerView(readInitiativeTrackerState(), normalizedSlug));
     });
 
     socket.on("initiative:update-state", (payload) => {
-      if (socket.data.user?.role !== "dm") return;
+      const liveUser = requireLiveSocketUser(socket);
+      if (liveUser?.role !== "dm") return;
       const nextState = writeInitiativeTrackerState(payload);
       broadcastInitiativeTrackerState(io, nextState);
     });
 
     socket.on("dm:private-message", ({ slug, title, message }) => {
+      const liveUser = requireLiveSocketUser(socket);
       const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
       const normalizedMessage = typeof message === "string" ? message.trim() : "";
       const normalizedTitle = typeof title === "string" ? title.trim() : "";
       const ownership = readOwnership();
 
-      if (socket.data.user?.role !== "dm" || !normalizedSlug || !normalizedMessage) return;
+      if (liveUser?.role !== "dm" || !normalizedSlug || !normalizedMessage) return;
 
       const ownerUserId = ownership[normalizedSlug];
       if (!ownerUserId) return;
@@ -12395,6 +17419,8 @@ async function start() {
     });
 
     socket.on("chat:conversation-message", ({ conversationId, text }) => {
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) return;
       const normalizedConversationId = typeof conversationId === "string" ? conversationId.trim() : "";
       const normalizedText = typeof text === "string" ? text.trim() : "";
       const ownership = readOwnership();
@@ -12403,7 +17429,7 @@ async function start() {
 
       const nextMessage = appendConversationMessage(
         normalizedConversationId,
-        socket.data.user,
+        liveUser,
         normalizedText,
         ownership
       );
@@ -12416,10 +17442,11 @@ async function start() {
     });
 
     socket.on("initiative:turn-start", ({ slug }) => {
+      const liveUser = requireLiveSocketUser(socket);
       const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
       const ownership = readOwnership();
 
-      if (socket.data.user?.role !== "dm" || !normalizedSlug) return;
+      if (liveUser?.role !== "dm" || !normalizedSlug) return;
 
       const ownerUserId = ownership[normalizedSlug];
       if (!ownerUserId) return;
@@ -12431,6 +17458,7 @@ async function start() {
     });
 
     socket.on("presence:snapshot", () => {
+      if (!requireLiveSocketUser(socket)) return;
       const payload = Array.from(viewersBySlug.entries())
         .map(([slug, set]) => ({ slug, count: set.size }))
         .filter(({ count }) => count > 0);
@@ -12438,10 +17466,12 @@ async function start() {
     });
 
     socket.on("presence:enter", ({ slug }) => {
+      const liveUser = requireLiveSocketUser(socket);
+      if (!liveUser) return;
       const ownership = readOwnership();
-      if (!slug || !canAccessCharacter(socket.data.user, slug, ownership)) return;
-      if (socket.data.user?.role !== "player") return;
-      if (ownership[slug] !== socket.data.user?.id) return;
+      if (!slug || !canAccessCharacter(liveUser, slug, ownership)) return;
+      if (liveUser.role !== "player") return;
+      if (ownership[slug] !== liveUser.id) return;
       removePendingPresenceSocketsForSlug(slug);
       cancelPendingPresenceRemoval(socket.id);
       if (!viewersBySlug.has(slug)) viewersBySlug.set(slug, new Set());
@@ -12455,6 +17485,7 @@ async function start() {
     });
 
     socket.on("disconnect", () => {
+      if (socket.data.sessionExpiryTimer) clearTimeout(socket.data.sessionExpiryTimer);
       console.log(`[server] socket disconnected ${socket.id} from ${socket.handshake.address}`);
       const slug = slugBySocket.get(socket.id);
       if (!slug) return;
@@ -12521,7 +17552,9 @@ async function start() {
   });
 }
 
-start();
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  start();
+}
 
 
 

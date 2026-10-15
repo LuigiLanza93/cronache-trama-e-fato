@@ -23,9 +23,18 @@ import {
   PASSIVE_EFFECT_SKILL_TARGET_LABELS,
   type PassiveEffectSkillTarget,
 } from "@/lib/passive-effect-skills";
+import { getPassiveEffectClassOptions } from "@/lib/passive-effect-levels";
 
 type CapabilityKind = "passive" | "active";
 type CapabilityReset = "atWill" | "encounter" | "shortRest" | "longRest" | "custom";
+type PassiveEffectCategory = "MODIFIER" | "PROFICIENCY";
+type PassiveEffectProficiencyTarget =
+  | "WEAPON_SIMPLE"
+  | "WEAPON_MARTIAL"
+  | "ARMOR_LIGHT"
+  | "ARMOR_MEDIUM"
+  | "ARMOR_HEAVY"
+  | "SHIELD";
 type PassiveEffectTarget =
   | "ARMOR_CLASS"
   | "INITIATIVE"
@@ -47,10 +56,12 @@ type PassiveEffectTarget =
   | "UNARMED_DAMAGE_ROLL"
   | "OFF_HAND_DAMAGE_ROLL"
   | PassiveEffectSkillTarget
+  | PassiveEffectProficiencyTarget
   | "CUSTOM";
 type PassiveEffectTrigger =
   | "ALWAYS"
   | "WHILE_ARMORED"
+  | "WHILE_UNARMORED"
   | "WHILE_SHIELD_EQUIPPED"
   | "WHILE_WIELDING_SINGLE_MELEE_WEAPON"
   | "WHILE_DUAL_WIELDING"
@@ -61,7 +72,8 @@ type PassiveEffectValueMode =
   | "ABILITY_MODIFIER"
   | "ABILITY_SCORE"
   | "PROFICIENCY_BONUS"
-  | "CHARACTER_LEVEL";
+  | "CHARACTER_LEVEL"
+  | "CLASS_LEVEL";
 type PassiveEffectRounding = "FLOOR" | "CEIL";
 type PassiveEffectOperationType = "BONUS" | "SET";
 type PassiveEffectSetMode = "ABSOLUTE" | "MINIMUM_FLOOR";
@@ -75,8 +87,10 @@ type PassiveEffectSourceAbility =
 
 type PassiveEffectEntry = {
   target: PassiveEffectTarget;
+  category?: PassiveEffectCategory;
   operationType?: PassiveEffectOperationType;
   valueMode?: PassiveEffectValueMode;
+  sourceClassKey?: string;
   value: number | string;
   setMode?: PassiveEffectSetMode;
   setValue?: number | string;
@@ -91,13 +105,20 @@ type PassiveEffectEntry = {
   notes?: string;
 };
 
+type SavedPassiveEffectEntry =
+  | PassiveEffectEntry
+  | {
+      category: "PROFICIENCY";
+      target: PassiveEffectProficiencyTarget;
+    };
+
 type CapabilityEntry = {
   name: string;
   category?: string;
   kind: CapabilityKind;
   shortDescription: string;
   description?: string;
-  passiveEffects?: PassiveEffectEntry[];
+  passiveEffects?: SavedPassiveEffectEntry[];
   sourceType?: "character" | "item";
   sourceLabel?: string;
   sourceItemId?: string;
@@ -168,13 +189,32 @@ const PASSIVE_TARGET_LABELS: Record<PassiveEffectTarget, string> = {
   UNARMED_ATTACK_ROLL: "Tiri per colpire senz'armi",
   UNARMED_DAMAGE_ROLL: "Danni senz'armi",
   OFF_HAND_DAMAGE_ROLL: "Danni mano secondaria",
+  WEAPON_SIMPLE: "Armi semplici",
+  WEAPON_MARTIAL: "Armi da guerra",
+  ARMOR_LIGHT: "Armature leggere",
+  ARMOR_MEDIUM: "Armature medie",
+  ARMOR_HEAVY: "Armature pesanti",
+  SHIELD: "Scudi",
   ...PASSIVE_EFFECT_SKILL_TARGET_LABELS,
   CUSTOM: "Altro",
 };
+const PASSIVE_EFFECT_CATEGORY_LABELS: Record<PassiveEffectCategory, string> = {
+  MODIFIER: "Modificatore",
+  PROFICIENCY: "Competenza",
+};
+const PASSIVE_PROFICIENCY_TARGETS: PassiveEffectProficiencyTarget[] = [
+  "WEAPON_SIMPLE",
+  "WEAPON_MARTIAL",
+  "ARMOR_LIGHT",
+  "ARMOR_MEDIUM",
+  "ARMOR_HEAVY",
+  "SHIELD",
+];
 
 const PASSIVE_TRIGGER_LABELS: Record<PassiveEffectTrigger, string> = {
   ALWAYS: "Sempre attivo",
   WHILE_ARMORED: "Finché indossa un'armatura",
+  WHILE_UNARMORED: "Finché non indossa un'armatura",
   WHILE_SHIELD_EQUIPPED: "Finché usa uno scudo",
   WHILE_WIELDING_SINGLE_MELEE_WEAPON: "Finché impugna una sola arma da mischia",
   WHILE_DUAL_WIELDING: "Finché combatte con due armi",
@@ -187,7 +227,8 @@ const PASSIVE_VALUE_MODE_LABELS: Record<PassiveEffectValueMode, string> = {
   ABILITY_MODIFIER: "Mod. caratteristica",
   ABILITY_SCORE: "Punteggio caratteristica",
   PROFICIENCY_BONUS: "Bonus competenza",
-  CHARACTER_LEVEL: "Livello personaggio",
+  CHARACTER_LEVEL: "Livello totale",
+  CLASS_LEVEL: "Livello classe",
 };
 
 const PASSIVE_SOURCE_ABILITY_LABELS: Record<PassiveEffectSourceAbility, string> = {
@@ -250,6 +291,39 @@ function getAllowedValueModesForTarget(target: PassiveEffectTarget) {
   return Object.entries(PASSIVE_VALUE_MODE_LABELS);
 }
 
+function passiveEffectValueModeOptions(
+  target: PassiveEffectTarget,
+  characterData: Parameters<typeof getPassiveEffectClassOptions>[0],
+  effect: PassiveEffectEntry
+) {
+  const modes = getAllowedValueModesForTarget(target).filter(([value]) => value !== "CLASS_LEVEL");
+  const classOptions = getPassiveEffectClassOptions(characterData).map((classOption) => ({
+    value: `CLASS_LEVEL:${classOption.classKey}`,
+    label: classOption.label,
+  }));
+
+  if (effect.valueMode === "CLASS_LEVEL" && effect.sourceClassKey) {
+    const currentValue = `CLASS_LEVEL:${effect.sourceClassKey}`;
+    if (!classOptions.some((option) => option.value === currentValue)) {
+      classOptions.push({
+        value: currentValue,
+        label: `Classe non disponibile (${effect.sourceClassKey})`,
+      });
+    }
+  }
+
+  return [
+    ...modes.map(([value, label]) => ({ value, label })),
+    ...classOptions,
+  ];
+}
+
+function passiveEffectValueModeSelectValue(effect: PassiveEffectEntry) {
+  return effect.valueMode === "CLASS_LEVEL"
+    ? `CLASS_LEVEL:${effect.sourceClassKey ?? ""}`
+    : effect.valueMode ?? "FLAT";
+}
+
 function isEditableSignedInteger(value: string) {
   return /^-?\d*$/.test(value);
 }
@@ -260,11 +334,14 @@ function normalizeDraftSignedInteger(value: number | string | undefined) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function passiveEffectSummary(effect: PassiveEffectEntry) {
+function passiveEffectSummary(effect: SavedPassiveEffectEntry, characterData: Parameters<typeof getPassiveEffectClassOptions>[0]) {
   const targetLabel =
     effect.target === "CUSTOM"
       ? effect.customTargetLabel?.trim() || "Altro"
       : PASSIVE_TARGET_LABELS[effect.target];
+  if (effect.category === "PROFICIENCY") {
+    return `Competenza: ${targetLabel}`;
+  }
   const triggerLabel =
     effect.trigger === "CUSTOM"
       ? effect.customTriggerLabel?.trim() || "Trigger personalizzato"
@@ -297,8 +374,17 @@ function passiveEffectSummary(effect: PassiveEffectEntry) {
         valueLabel = `B. Comp.${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
         break;
       case "CHARACTER_LEVEL":
-        valueLabel = `Livello${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
+        valueLabel = `Livello totale${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
         break;
+      case "CLASS_LEVEL": {
+        const sourceClassKey = effect.sourceClassKey?.trim();
+        const sourceClass = getPassiveEffectClassOptions(characterData).find(
+          (classOption) => classOption.classKey === sourceClassKey
+        );
+        const classLabel = sourceClass?.label ?? (sourceClassKey ? `Classe non disponibile (${sourceClassKey})` : "Classe non disponibile");
+        valueLabel = `${classLabel}${ratioLabel}${offset !== 0 ? ` ${signedOffset}` : ""}`;
+        break;
+      }
       default:
         break;
     }
@@ -327,7 +413,11 @@ function toFormState(entry: CapabilityEntry): CapabilityFormState {
     customLabel: entry.usage?.customLabel ?? "",
     maxUses: String(entry.usage?.used?.length ?? 1),
     passiveEffects: Array.isArray(entry.passiveEffects)
-      ? entry.passiveEffects.map((effect) => ({ ...effect }))
+      ? entry.passiveEffects.map((effect) =>
+          effect.category === "PROFICIENCY"
+            ? { ...newPassiveEffect(), category: "PROFICIENCY", target: effect.target }
+            : { ...effect }
+        )
       : [],
   };
 }
@@ -447,35 +537,61 @@ export default function Capabilities({
     };
 
     if (form.kind === "passive") {
-      const passiveEffects = form.passiveEffects
-        .map((effect) => ({
-          ...effect,
-          operationType: effect.operationType ?? "BONUS",
-          valueMode: effect.valueMode ?? "FLAT",
-          setMode: effect.setMode ?? "MINIMUM_FLOOR",
-          setValue: normalizeDraftSignedInteger(effect.setValue),
-          capValue: normalizeDraftSignedInteger(effect.capValue),
-          sourceAbility: effect.sourceAbility ?? "DEXTERITY",
-          multiplierNumerator: Number(effect.multiplierNumerator ?? 1) || 1,
-          multiplierDenominator: Math.max(1, Number(effect.multiplierDenominator ?? 1) || 1),
-          rounding: effect.rounding ?? "FLOOR",
-          value: normalizeDraftSignedInteger(effect.value) ?? 0,
-          customTargetLabel: effect.customTargetLabel?.trim() || undefined,
-          customTriggerLabel: effect.customTriggerLabel?.trim() || undefined,
-          notes: effect.notes?.trim() || undefined,
-        }))
+      const passiveEffects: SavedPassiveEffectEntry[] = form.passiveEffects
+        .map((effect): SavedPassiveEffectEntry => {
+          if (effect.category === "PROFICIENCY") {
+            return {
+              category: "PROFICIENCY",
+              target: effect.target as PassiveEffectProficiencyTarget,
+            };
+          }
+
+          const valueMode = effect.valueMode ?? "FLAT";
+          return {
+            ...effect,
+            operationType: effect.operationType ?? "BONUS",
+            valueMode,
+            ...(valueMode === "CLASS_LEVEL" && effect.sourceClassKey?.trim()
+              ? { sourceClassKey: effect.sourceClassKey.trim() }
+              : { sourceClassKey: undefined }),
+            setMode: effect.setMode ?? "MINIMUM_FLOOR",
+            setValue: normalizeDraftSignedInteger(effect.setValue),
+            capValue: normalizeDraftSignedInteger(effect.capValue),
+            sourceAbility: effect.sourceAbility ?? "DEXTERITY",
+            multiplierNumerator: Number(effect.multiplierNumerator ?? 1) || 1,
+            multiplierDenominator: Math.max(1, Number(effect.multiplierDenominator ?? 1) || 1),
+            rounding: effect.rounding ?? "FLOOR",
+            value: normalizeDraftSignedInteger(effect.value) ?? 0,
+            customTargetLabel: effect.customTargetLabel?.trim() || undefined,
+            customTriggerLabel: effect.customTriggerLabel?.trim() || undefined,
+            notes: effect.notes?.trim() || undefined,
+          };
+        })
         .filter((effect) =>
-          effect.operationType === "SET"
-            ? Number.isFinite(Number(effect.setValue))
-            : effect.valueMode !== "FLAT" || effect.value !== 0 || effect.capValue != null
+          effect.category === "PROFICIENCY" || (
+            effect.operationType === "SET"
+              ? Number.isFinite(Number(effect.setValue))
+              : effect.valueMode !== "FLAT" || effect.value !== 0 || effect.capValue != null
+          )
         );
+
+      if (
+        passiveEffects.some(
+          (effect) =>
+            effect.category === "PROFICIENCY" &&
+            !PASSIVE_PROFICIENCY_TARGETS.includes(effect.target as PassiveEffectProficiencyTarget)
+        )
+      ) {
+        setFormError("Seleziona una categoria di competenza valida.");
+        return;
+      }
 
       if (passiveEffects.some((effect) => effect.target === "CUSTOM" && !effect.customTargetLabel)) {
         setFormError("Inserisci un'etichetta per ogni bersaglio personalizzato.");
         return;
       }
 
-      if (passiveEffects.some((effect) => effect.trigger === "CUSTOM" && !effect.customTriggerLabel)) {
+      if (passiveEffects.some((effect) => effect.category !== "PROFICIENCY" && effect.trigger === "CUSTOM" && !effect.customTriggerLabel)) {
         setFormError("Inserisci un'etichetta per ogni trigger personalizzato.");
         return;
       }
@@ -483,6 +599,7 @@ export default function Capabilities({
       if (
         passiveEffects.some(
           (effect) =>
+            effect.category !== "PROFICIENCY" &&
             (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE") &&
             !effect.sourceAbility
         )
@@ -493,7 +610,17 @@ export default function Capabilities({
 
       if (
         passiveEffects.some(
+          (effect) => effect.category !== "PROFICIENCY" && effect.valueMode === "CLASS_LEVEL" && !effect.sourceClassKey
+        )
+      ) {
+        setFormError("Seleziona la classe sorgente per ogni effetto basato sul livello di classe.");
+        return;
+      }
+
+      if (
+        passiveEffects.some(
           (effect) =>
+            effect.category !== "PROFICIENCY" &&
             ABILITY_SCORE_TARGETS.has(effect.target) &&
             (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE")
         )
@@ -505,6 +632,7 @@ export default function Capabilities({
       if (
         passiveEffects.some(
           (effect) =>
+            effect.category !== "PROFICIENCY" &&
             effect.operationType === "SET" &&
             !Number.isFinite(Number(effect.setValue))
         )
@@ -516,7 +644,8 @@ export default function Capabilities({
       if (
         passiveEffects.some(
           (effect) =>
-            (effect.multiplierDenominator ?? 1) <= 0 || (effect.multiplierNumerator ?? 1) <= 0
+            effect.category !== "PROFICIENCY" &&
+            ((effect.multiplierDenominator ?? 1) <= 0 || (effect.multiplierNumerator ?? 1) <= 0)
         )
       ) {
         setFormError("Rapporto non valido: numeratore e denominatore devono essere maggiori di zero.");
@@ -796,7 +925,7 @@ export default function Capabilities({
                   <div>
                     <div className="font-medium text-primary">Effetti passivi</div>
                     <div className="text-xs text-muted-foreground">
-                      Bonus modulari con bersaglio e trigger.
+                      Modificatori numerici o competenze categoriali.
                     </div>
                   </div>
                   <Button
@@ -823,6 +952,29 @@ export default function Capabilities({
                     <div key={`passive-effect-${index}`} className="space-y-3 rounded-md border border-border/60 bg-background/60 p-3">
                       <div className="grid gap-3 sm:grid-cols-3">
                         <div>
+                          <Label className="mb-1 block">Categoria</Label>
+                          <select
+                            value={effect.category ?? "MODIFIER"}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                passiveEffects: prev.passiveEffects.map((row, rowIndex) =>
+                                  rowIndex !== index
+                                    ? row
+                                    : e.target.value === "PROFICIENCY"
+                                      ? { ...newPassiveEffect(), category: "PROFICIENCY", target: "WEAPON_SIMPLE" }
+                                      : { ...newPassiveEffect(), category: "MODIFIER", target: "ARMOR_CLASS" }
+                                ),
+                              }))
+                            }
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                          >
+                            {Object.entries(PASSIVE_EFFECT_CATEGORY_LABELS).map(([value, label]) => (
+                              <option key={value} value={value}>{label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
                           <Label className="mb-1 block">Bersaglio</Label>
                           <select
                             value={effect.target}
@@ -838,7 +990,10 @@ export default function Capabilities({
                             }
                             className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                           >
-                            {Object.entries(PASSIVE_TARGET_LABELS).map(([value, label]) => (
+                            {(effect.category === "PROFICIENCY"
+                              ? PASSIVE_PROFICIENCY_TARGETS.map((value) => [value, PASSIVE_TARGET_LABELS[value]] as const)
+                              : Object.entries(PASSIVE_TARGET_LABELS).filter(([value]) => !PASSIVE_PROFICIENCY_TARGETS.includes(value as PassiveEffectProficiencyTarget))
+                            ).map(([value, label]) => (
                               <option key={value} value={value}>
                                 {label}
                               </option>
@@ -846,32 +1001,38 @@ export default function Capabilities({
                           </select>
                         </div>
 
-                        <div>
+                        {effect.category !== "PROFICIENCY" && <div>
                           <Label className="mb-1 block">Valore</Label>
                           <select
-                            value={effect.valueMode ?? "FLAT"}
+                            value={passiveEffectValueModeSelectValue(effect)}
                             disabled={(effect.operationType ?? "BONUS") === "SET"}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const selectedValue = e.target.value;
+                              const sourceClassKey = selectedValue.startsWith("CLASS_LEVEL:")
+                                ? selectedValue.slice("CLASS_LEVEL:".length)
+                                : undefined;
                               setForm((prev) => ({
                                 ...prev,
                                 passiveEffects: prev.passiveEffects.map((row, rowIndex) =>
                                   rowIndex === index
-                                    ? { ...row, valueMode: e.target.value as PassiveEffectValueMode }
+                                    ? sourceClassKey !== undefined
+                                      ? { ...row, valueMode: "CLASS_LEVEL", sourceClassKey }
+                                      : { ...row, valueMode: selectedValue as PassiveEffectValueMode, sourceClassKey: undefined }
                                     : row
                                 ),
-                              }))
-                            }
+                              }));
+                            }}
                             className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                           >
-                            {getAllowedValueModesForTarget(effect.target).map(([value, label]) => (
+                            {passiveEffectValueModeOptions(effect.target, characterData, effect).map(({ value, label }) => (
                               <option key={value} value={value}>
                                 {label}
                               </option>
                             ))}
                           </select>
-                        </div>
+                        </div>}
 
-                        <div>
+                        {effect.category !== "PROFICIENCY" && <div>
                           <Label className="mb-1 block">Operazione</Label>
                           <select
                             value={effect.operationType ?? "BONUS"}
@@ -893,10 +1054,10 @@ export default function Capabilities({
                               </option>
                             ))}
                           </select>
-                        </div>
+                        </div>}
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      {effect.category !== "PROFICIENCY" && <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <Label className="mb-1 block">Trigger</Label>
                           <select
@@ -920,9 +1081,9 @@ export default function Capabilities({
                             ))}
                           </select>
                         </div>
-                      </div>
+                      </div>}
 
-                      {(effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE") && (
+                      {effect.category !== "PROFICIENCY" && (effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode === "ABILITY_MODIFIER" || effect.valueMode === "ABILITY_SCORE") && (
                         <div>
                           <Label className="mb-1 block">Caratteristica sorgente</Label>
                           <select
@@ -948,7 +1109,7 @@ export default function Capabilities({
                         </div>
                       )}
 
-                      {(effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode ?? "FLAT") !== "FLAT" && (
+                      {effect.category !== "PROFICIENCY" && (effect.operationType ?? "BONUS") !== "SET" && (effect.valueMode ?? "FLAT") !== "FLAT" && (
                         <div className="grid gap-3 sm:grid-cols-3">
                           <div>
                             <Label className="mb-1 block">Rapporto</Label>
@@ -1015,7 +1176,7 @@ export default function Capabilities({
                         </div>
                       )}
 
-                      {(effect.operationType ?? "BONUS") === "SET" ? (
+                      {effect.category !== "PROFICIENCY" && ((effect.operationType ?? "BONUS") === "SET" ? (
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div>
                             <Label className="mb-1 block">Modalita set</Label>
@@ -1106,9 +1267,9 @@ export default function Capabilities({
                             />
                           </div>
                         </div>
-                      )}
+                      ))}
 
-                      {effect.target === "CUSTOM" && (
+                      {effect.category !== "PROFICIENCY" && effect.target === "CUSTOM" && (
                         <div>
                           <Label className="mb-1 block">Etichetta bersaglio</Label>
                           <Input
@@ -1128,7 +1289,7 @@ export default function Capabilities({
                         </div>
                       )}
 
-                      {effect.trigger === "CUSTOM" && (
+                      {effect.category !== "PROFICIENCY" && effect.trigger === "CUSTOM" && (
                         <div>
                           <Label className="mb-1 block">Etichetta trigger</Label>
                           <Input
@@ -1148,7 +1309,7 @@ export default function Capabilities({
                         </div>
                       )}
 
-                      <div>
+                      {effect.category !== "PROFICIENCY" && <div>
                         <Label className="mb-1 block">Note</Label>
                         <Input
                           value={effect.notes ?? ""}
@@ -1164,7 +1325,7 @@ export default function Capabilities({
                           }
                           placeholder="Opzionale"
                         />
-                      </div>
+                      </div>}
 
                       <div className="flex justify-end">
                         <Button
@@ -1275,8 +1436,8 @@ export default function Capabilities({
                   <div className="space-y-2">
                     {detailCapability.passiveEffects.map((effect, index) => (
                       <div key={`detail-passive-effect-${index}`} className="rounded border border-border/70 px-3 py-2 text-muted-foreground">
-                        <div>{passiveEffectSummary(effect)}</div>
-                        {effect.notes && <div className="mt-1 text-xs">{effect.notes}</div>}
+                        <div>{passiveEffectSummary(effect, characterData)}</div>
+                        {effect.category !== "PROFICIENCY" && effect.notes && <div className="mt-1 text-xs">{effect.notes}</div>}
                       </div>
                     ))}
                   </div>

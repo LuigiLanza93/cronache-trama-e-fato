@@ -43,9 +43,12 @@ import {
   fetchCharacters,
   getOrCreateDmConversation,
   joinCharacterRoom,
+  leaveCharacterRoom,
+  onCharacterAccessRevoked,
   onConversationMessage,
   onCharacterPatch,
   onCharacterState,
+  onCharacterInventoryUpdated,
   requestPresenceSnapshot,
   subscribePresence,
 } from "@/realtime";
@@ -70,6 +73,7 @@ import {
   getDerivedPassivePerception,
   getDerivedSpellSaveDc,
 } from "@/lib/character-derived-stats";
+import { getCharacterProgressionDisplay } from "@/lib/character-progression";
 import { toast } from "@/components/ui/sonner";
 
 type CharacterState = Record<string, any>;
@@ -209,6 +213,7 @@ function toPlayerCardData(
 ): PlayerCardData | null {
   const slug = typeof state?.slug === "string" ? state.slug : "";
   if (!slug) return null;
+  const progression = getCharacterProgressionDisplay(state);
 
   return {
     slug,
@@ -216,8 +221,8 @@ function toPlayerCardData(
     characterType: state?.characterType === "png" ? "png" : "pg",
     playerName: state?.basicInfo?.playerName ?? "",
     portraitUrl: state?.basicInfo?.portraitUrl ?? "",
-    className: state?.basicInfo?.class ?? "",
-    level: typeof state?.basicInfo?.level === "number" ? state.basicInfo.level : null,
+    className: progression.classSummary,
+    level: progression.totalLevel,
     initiativeBonus: getDerivedInitiativeBonus(state, relationalInventoryItems, itemDefinitionsById),
     armorClass: getDerivedArmorClass(state, relationalInventoryItems, itemDefinitionsById),
     passivePerception: getDerivedPassivePerception(state, relationalInventoryItems, itemDefinitionsById),
@@ -260,6 +265,11 @@ function hpBarColor(hp: PlayerCardData["hp"]) {
   return "bg-rose-500";
 }
 
+function createRestRequestId() {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  return `rest_${Date.now()}_${Math.random().toString(36).slice(2, 14)}`;
+}
+
 export default function DMDashboard() {
   const { user } = useAuth();
   const { sessionState, refresh: refreshGameSession } = useGameSession();
@@ -285,10 +295,18 @@ export default function DMDashboard() {
   const [restDialogType, setRestDialogType] = useState<PartyRestType>("short");
   const [restSelectedSlugs, setRestSelectedSlugs] = useState<string[]>([]);
   const [restPreview, setRestPreview] = useState<PartyRestSummaryEntry[]>([]);
+  const [restPreviewRevisions, setRestPreviewRevisions] = useState<Record<string, string>>({});
+  const [restPreviewRefreshToken, setRestPreviewRefreshToken] = useState(0);
   const [restPreviewLoading, setRestPreviewLoading] = useState(false);
+  const restApplyRequestRef = useRef<{
+    signature: string;
+    requestId: string;
+    expectedRevisions: Record<string, string>;
+  } | null>(null);
   const joinedRoomsRef = useRef<Set<string>>(new Set());
   const itemDefinitionsByIdRef = useRef(itemDefinitionsById);
   const onlineRefreshInFlightRef = useRef(false);
+  const inventoryRefreshInFlightBySlugRef = useRef(new Map<string, { promise: Promise<void>; dirty: boolean }>());
   const conversationsRef = useRef(conversations);
   const openChatSlugsRef = useRef(openChatSlugs);
   const minimizedChatSlugsRef = useRef(minimizedChatSlugs);
@@ -405,6 +423,13 @@ export default function DMDashboard() {
   }, []);
 
   useEffect(() => {
+    const onlineSet = new Set(onlineSlugs);
+    for (const slug of joinedRoomsRef.current) {
+      if (onlineSet.has(slug)) continue;
+      leaveCharacterRoom(slug);
+      joinedRoomsRef.current.delete(slug);
+    }
+
     onlineSlugs.forEach((slug) => {
       if (joinedRoomsRef.current.has(slug)) return;
       joinedRoomsRef.current.add(slug);
@@ -505,18 +530,97 @@ export default function DMDashboard() {
     };
   }, [onlineSlugs]);
 
+  useEffect(() => () => {
+    for (const slug of joinedRoomsRef.current) leaveCharacterRoom(slug);
+    joinedRoomsRef.current.clear();
+  }, []);
+
   useEffect(() => {
-    const offState = onCharacterState((state: CharacterState) => {
-      const slug = state?.slug;
-      if (!slug) return;
-      setLiveStates((prev) => ({ ...prev, [slug]: state }));
+    const offInventoryUpdated = onCharacterInventoryUpdated(({ slug }) => {
+      if (!joinedRoomsRef.current.has(slug)) return;
+      const existing = inventoryRefreshInFlightBySlugRef.current.get(slug);
+      if (existing) {
+        existing.dirty = true;
+        return;
+      }
+
+      const request = { promise: Promise.resolve(), dirty: false };
+      request.promise = (async () => {
+        do {
+          request.dirty = false;
+          const inventoryItems = await fetchCharacterInventoryItems(slug);
+          const normalized = Array.isArray(inventoryItems) ? inventoryItems : [];
+          if (!joinedRoomsRef.current.has(slug)) return;
+          setLiveInventoryBySlug((prev) => ({ ...prev, [slug]: normalized }));
+
+          const definitionIds = Array.from(
+            new Set(
+              normalized
+                .filter((item) => item?.isEquipped && item?.itemDefinitionId)
+                .map((item) => item.itemDefinitionId)
+                .filter(
+                  (itemDefinitionId): itemDefinitionId is string =>
+                    !!itemDefinitionId && !itemDefinitionsByIdRef.current[itemDefinitionId]
+                )
+            )
+          );
+          const definitions = await Promise.all(
+            definitionIds.map(async (itemDefinitionId) => {
+              try {
+                return [itemDefinitionId, await fetchItemDefinition(itemDefinitionId)] as const;
+              } catch {
+                return null;
+              }
+            })
+          );
+          const validDefinitions = definitions.filter(
+            (entry): entry is readonly [string, ItemDefinitionEntry] => Array.isArray(entry)
+          );
+          if (validDefinitions.length > 0) {
+            setItemDefinitionsById((prev) => ({ ...prev, ...Object.fromEntries(validDefinitions) }));
+          }
+        } while (request.dirty && joinedRoomsRef.current.has(slug));
+      })().catch((error) => {
+        if (joinedRoomsRef.current.has(slug)) {
+          setErrors((prev) => [...prev, `[inventory ${slug}] ${String(error)}`]);
+        }
+      }).finally(() => {
+        if (inventoryRefreshInFlightBySlugRef.current.get(slug) === request) {
+          inventoryRefreshInFlightBySlugRef.current.delete(slug);
+        }
+      });
+
+      inventoryRefreshInFlightBySlugRef.current.set(slug, request);
     });
 
-    const offPatch = onCharacterPatch(({ slug, patch }: { slug: string; patch: any }) => {
+    return offInventoryUpdated;
+  }, []);
+
+  useEffect(() => {
+    const offAccessRevoked = onCharacterAccessRevoked((slug) => {
+      joinedRoomsRef.current.delete(slug);
+      setLiveStates((prev) => {
+        const { [slug]: _removed, ...next } = prev;
+        return next;
+      });
+      setLiveInventoryBySlug((prev) => {
+        const { [slug]: _removed, ...next } = prev;
+        return next;
+      });
+    });
+    const offState = onCharacterState(({ slug, state, revision }) => {
+      if (!slug) return;
+      setLiveStates((prev) => ({
+        ...prev,
+        [slug]: { ...(state as CharacterState), revision: revision ?? prev[slug]?.revision },
+      }));
+    });
+
+    const offPatch = onCharacterPatch(({ slug, patch, revision }: { slug: string; patch: any; revision?: string }) => {
       setLiveStates((prev) => {
         const current = prev[slug];
         if (!current) return prev;
-        return { ...prev, [slug]: applyPatch(current, patch) };
+        return { ...prev, [slug]: { ...applyPatch(current, patch), revision: revision ?? current.revision } };
       });
     });
 
@@ -526,6 +630,9 @@ export default function DMDashboard() {
       } catch {}
       try {
         offPatch();
+      } catch {}
+      try {
+        offAccessRevoked();
       } catch {}
     };
   }, []);
@@ -631,19 +738,22 @@ export default function DMDashboard() {
     if (!restDialogOpen) return;
     if (restSelectedSlugs.length === 0) {
       setRestPreview([]);
+      setRestPreviewRevisions({});
       return;
     }
 
     let active = true;
     setRestPreviewLoading(true);
+    setRestPreviewRevisions({});
+    restApplyRequestRef.current = null;
     void previewPartyRestRequest(restDialogType, restSelectedSlugs)
       .then((response) => {
         if (!active) return;
         setRestPreview(Array.isArray(response.summaries) ? response.summaries : []);
+        setRestPreviewRevisions(response.expectedRevisions ?? {});
       })
       .catch((error) => {
         if (!active) return;
-        setRestPreview([]);
         toast.error(error instanceof Error ? error.message : "Anteprima riposo non disponibile.");
       })
       .finally(() => {
@@ -653,7 +763,7 @@ export default function DMDashboard() {
     return () => {
       active = false;
     };
-  }, [restDialogOpen, restDialogType, restSelectedSlugs]);
+  }, [restDialogOpen, restDialogType, restSelectedSlugs, restPreviewRefreshToken]);
 
   const getDmConversationForSlug = (slug: string) =>
     Object.values(conversations).find(
@@ -787,9 +897,11 @@ export default function DMDashboard() {
   };
 
   const openRestDialog = (type: PartyRestType) => {
+    restApplyRequestRef.current = null;
     setRestDialogType(type);
     setRestSelectedSlugs(roster.map((player) => player.slug));
     setRestPreview([]);
+    setRestPreviewRevisions({});
     setRestDialogOpen(true);
   };
 
@@ -815,7 +927,30 @@ export default function DMDashboard() {
 
     setRestSubmitting(type);
     try {
-      const response = await applyPartyRestRequest(type, restSelectedSlugs);
+      const selectedSlugs = [...new Set(restSelectedSlugs)].sort();
+      const requestSignature = JSON.stringify({ type, slugs: selectedSlugs });
+      if (restApplyRequestRef.current?.signature !== requestSignature) {
+        const expectedRevisions = Object.fromEntries(selectedSlugs.flatMap((slug) => {
+          const revision = restPreviewRevisions[slug];
+          return typeof revision === "string" && revision.trim() ? [[slug, revision.trim()]] : [];
+        }));
+        if (Object.keys(expectedRevisions).length !== selectedSlugs.length) {
+          toast.error("Attendi il completamento dell'anteprima prima di applicare il riposo.");
+          return;
+        }
+        restApplyRequestRef.current = {
+          signature: requestSignature,
+          requestId: createRestRequestId(),
+          expectedRevisions,
+        };
+      }
+      const response = await applyPartyRestRequest(
+        type,
+        restSelectedSlugs,
+        restApplyRequestRef.current.requestId,
+        restApplyRequestRef.current.expectedRevisions
+      );
+      restApplyRequestRef.current = null;
       const updatedCharacters = Array.isArray(response.updatedCharacters)
         ? response.updatedCharacters as CharacterState[]
         : [];
@@ -834,7 +969,7 @@ export default function DMDashboard() {
       const healed = response.summaries.reduce((total, entry) => total + (entry.healingApplied ?? 0), 0);
       if (blocked.length > 0) {
         toast.warning(
-          `${label} applicato parzialmente: ${blocked.length} PG ha gia raggiunto il limite dei riposi brevi.`
+          `${label} applicato parzialmente: ${blocked.length} PG non soddisfa i requisiti del riposo.`
         );
       } else if (type === "short") {
         toast.success(`Riposo breve applicato. Cura totale: ${healed} PF.`);
@@ -843,6 +978,15 @@ export default function DMDashboard() {
       }
       setRestDialogOpen(false);
     } catch (error) {
+      const requestError = error as Error & { status?: number; code?: string };
+      if (requestError.status === 409 && requestError.code === "REVISION_CONFLICT") {
+        restApplyRequestRef.current = null;
+        setRestPreview([]);
+        setRestPreviewRevisions({});
+        setRestPreviewRefreshToken((value) => value + 1);
+        toast.error("Il personaggio è cambiato dopo l'anteprima. Anteprima aggiornata: verifica e conferma di nuovo.");
+        return;
+      }
       toast.error(error instanceof Error ? error.message : `Impossibile applicare il ${label}.`);
     } finally {
       setRestSubmitting(null);
@@ -973,7 +1117,9 @@ export default function DMDashboard() {
                 {restDialogType === "short" ? "Riposo breve del roster" : "Riposo lungo del roster"}
               </DialogTitle>
               <DialogDescription>
-                Seleziona i PG coinvolti e controlla l'anteprima prima di applicare il riposo.
+                {restDialogType === "short"
+                  ? "Seleziona i PG coinvolti: il server cura automaticamente usando fino a metà dei Dadi Vita massimi, nei limiti di quelli disponibili, con media fissa del dado + modificatore di COS. Sono consentiti al massimo due riposi brevi tra riposi lunghi."
+                  : "Seleziona i PG coinvolti e controlla l'anteprima prima di applicare il riposo."}
               </DialogDescription>
             </DialogHeader>
 
@@ -1045,11 +1191,13 @@ export default function DMDashboard() {
                                 Dadi Vita: {preview.hitDiceRemaining}/{preview.maxHitDice} {"->"}{" "}
                                 {preview.hitDiceRemainingAfter}/{preview.maxHitDice}
                                 {preview.hitDiceSpent > 0 ? ` (${preview.hitDiceSpent} spesi)` : ""}
+                                {preview.hitDiceRecovered > 0 ? ` (+${preview.hitDiceRecovered} recuperati)` : ""}
                               </div>
-                              <div>
-                                Riposi brevi: {preview.shortRestsUsedSinceLongRest} {"->"}{" "}
-                                {preview.shortRestsUsedSinceLongRestAfter}/2
-                              </div>
+                              {restDialogType === "short" ? (
+                                <div className="border-t border-border/40 pt-2 text-muted-foreground">
+                                  Cura automatica: fino a metà dei Dadi Vita massimi, nei limiti di quelli disponibili, media fissa + COS.
+                                </div>
+                              ) : null}
                             </div>
                           ) : (
                             <div className="text-muted-foreground">Anteprima non disponibile.</div>

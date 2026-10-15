@@ -2,7 +2,7 @@
 
 ## Mandatory local context
 
-- Read `codex-readme.md` before planning implementation, database, Git, release, or Railway work. It is the local operational source of truth and must be kept current when those workflows or the active work change.
+- Read `codex-readme.md` before planning implementation, database, Git, release, or Railway work. It is the local operational source of truth and must be kept current when those workflows or the active work change. It is intentionally ignored by Git: if absent in a fresh clone/worktree, use this file, `docs/codex-workspace.md`, and the relevant tracked roadmap/runbook. Reconstruct local context from verified facts; missing local notes alone do not block development. Historical notes are not evidence of current branch, test, or production state.
 - The canonical production data live on Railway at `/data/migration.db`. `prisma/migration.db` is the active local development database: on `dev`, keep its schema aligned with new migrations so features can be tested end to end. It may be freely mutated for local development, but its data are never production truth.
 - Develop and leave changes uncommitted on `dev` until the user confirms a successful test. Commit/push to `dev` only after that confirmation. Merge, push, or deploy `main` only on explicit user request. Production releases must merge `dev` into `main` with an explicit `--no-ff` merge commit so the release boundary remains visible in Git history; do not squash or fast-forward release merges by default.
 
@@ -38,6 +38,14 @@ Use `git_finalize` only for completed, verified work after explicit user test co
 
 Keep delegation depth at one. Subagents must not recursively spawn more agents unless the user explicitly requests it and the project configuration is deliberately changed.
 
+### Plus usage budget
+
+- Use at most two concurrent subagents and the smallest useful total number of agents. A concurrency cap alone does not reduce total usage: avoid duplicate investigations, redundant reviews, and splitting a simple task across agents.
+- Generic agents default to `gpt-5.6-terra` with `medium` reasoning. Keep `frontend_ui` and routine `game_rules_data` work on Terra/medium, and `git_finalize` on Terra/low. Keep Sol/high for `backend_realtime`, `database_migrations`, `quality_security`, and `release_railway` because their assigned work involves correctness or production risks.
+- Give each subagent a bounded task, relevant paths, decisions already made, and expected output. Prefer a concise handoff over inheriting the entire conversation when the task is self-contained. Reuse an existing agent for related follow-ups. Return findings and verification summaries rather than full logs; do not repeat successful checks without a new reason.
+- For complex cross-class rules, persistence design, or a demonstrated unresolved issue, the root should first integrate the evidence with Sol/high. Reserve GPT-6 Astra/medium or high for exceptional reasoning tasks; it is not a routine subagent default. Preserve specialist file instructions when using a generic agent for such a task. Custom-agent model/effort settings take precedence over spawn defaults: do not assume an explicit spawn override changes a pinned specialist.
+- Keep required quality/security review and Git/release authorization gates. Usage savings must come from focused work, not skipping required checks. Never buy credits or change billing settings as part of task routing.
+
 ## Safety and data
 
 - Do not modify Railway SQLite data unless the user explicitly asks for that exact production mutation. The local development database `prisma/migration.db` may be migrated, seeded, or changed as a normal development step on `dev`; preserve production separation and never use it to overwrite Railway.
@@ -50,7 +58,11 @@ Keep delegation depth at one. Subagents must not recursively spawn more agents u
 
 ## Verification
 
+- On Windows PowerShell use `npm.cmd`, `npx.cmd`, and `railway.cmd`; read/write text explicitly as UTF-8. Use Node 22.x as declared in `package.json`.
+- Check `git status --short --branch` before edits and preserve existing work. Read `package.json` before selecting commands; `npm.cmd run dev` starts the Express/Vite development app, while `preview` only serves the built frontend.
 - Run `npm run build` for implementation changes that can affect the shipped application.
+- For TypeScript changes, run `npx.cmd tsc -p tsconfig.app.json --noEmit --pretty false` and, when Vite configuration changes, `npx.cmd tsc -p tsconfig.node.json --noEmit --pretty false`. The root `tsconfig.json` has `files: []`; plain `tsc --noEmit` does not check its referenced projects.
 - Run `npx prisma validate` for Prisma schema changes.
+- Run `npm.cmd run test:p1` for shared rules, server, or database changes; inspect targeted test setup and use disposable databases for destructive tests. Build and tests may write artifacts: the root runs them when the read-only reviewer cannot.
 - Use targeted checks for migrations, importers, realtime flows, and authorization boundaries.
 - Report any verification that could not be run and the remaining risk.

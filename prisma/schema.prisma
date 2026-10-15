@@ -71,6 +71,11 @@ enum WeaponHandling {
   VERSATILE
 }
 
+enum WeaponProficiencyGroup {
+  SIMPLE
+  MARTIAL
+}
+
 enum GloveWearMode {
   SINGLE
   PAIR
@@ -317,6 +322,12 @@ model User {
   shopVisitsOpened ShopVisit[] @relation("ShopVisitOpenedBy")
   shopVisitsClosed ShopVisit[] @relation("ShopVisitClosedBy")
   shopOffersProposed ShopOffer[] @relation("ShopOfferProposedBy")
+  updatedCharacterClasses CharacterClass[] @relation("CharacterClassUpdatedBy")
+  appliedCharacterLevelHistory CharacterLevelHistory[] @relation("CharacterLevelHistoryAppliedBy")
+  appliedCharacterSubclassHistory CharacterSubclassHistory[] @relation("CharacterSubclassHistoryAppliedBy")
+  appliedCharacterDraconicAncestryHistory CharacterDraconicAncestryHistory[] @relation("CharacterDraconicAncestryHistoryAppliedBy")
+  appliedCharacterPactBoonHistory CharacterPactBoonHistory[] @relation("CharacterPactBoonHistoryAppliedBy")
+  appliedCharacterHitPointAdjustments CharacterHitPointAdjustment[] @relation("CharacterHitPointAdjustmentAppliedBy")
 
   @@index([role])
 }
@@ -357,11 +368,380 @@ model Character {
   shopItemKnowledge ShopItemKnowledge[]
   shopVisits ShopVisit[]
   shopNegotiations ShopNegotiation[]
+  progression CharacterProgression?
+  classes CharacterClass[]
+  levelHistory CharacterLevelHistory[]
+  subclassHistory CharacterSubclassHistory[]
+  draconicAncestryHistory CharacterDraconicAncestryHistory[]
+  pactBoonHistory CharacterPactBoonHistory[]
+  hitPointState CharacterHitPointState?
+  hitDiePools CharacterHitDiePool[]
+  hitPointAdjustments CharacterHitPointAdjustment[]
+  resourcePools CharacterResourcePool[]
 
   @@index([characterType])
   @@index([ownerUserId])
   @@index([createdByUserId])
   @@index([archivedAt])
+}
+
+model ClassRule {
+  id                     String   @id
+  classKey               String
+  labelIt                String
+  labelEn                String
+  aliases                String
+  rulesetId              String
+  rulesetVersion         String
+  sourceReference        String
+  hitDie                 Int?
+  casterKind             String?
+  spellcastingAbility    String?
+  spellcastingStartLevel Int?
+  subclassSelectionLevel Int?
+  isCustom               Boolean  @default(false)
+  isManual               Boolean  @default(false)
+  ruleSnapshot           String
+  catalogHash            String
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  subclasses      SubclassRule[]
+  characterClasses CharacterClass[]
+  levelHistory CharacterLevelHistory[] @relation("CharacterLevelHistoryTargetClassRule")
+  subclassHistory CharacterSubclassHistory[] @relation("CharacterSubclassHistoryTargetClassRule")
+
+  @@unique([rulesetId, rulesetVersion, classKey])
+  @@index([classKey])
+}
+
+model SubclassRule {
+  id                     String   @id
+  subclassKey            String
+  classRuleId            String
+  labelIt                String
+  labelEn                String
+  aliases                String
+  rulesetId              String
+  rulesetVersion         String
+  sourceReference        String
+  casterKind             String?
+  spellcastingAbility    String?
+  spellcastingStartLevel Int?
+  isCustom               Boolean  @default(false)
+  isManual               Boolean  @default(false)
+  archivedAt             DateTime?
+  ruleSnapshot           String
+  catalogHash            String
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  classRule       ClassRule        @relation(fields: [classRuleId], references: [id], onDelete: Restrict)
+  characterClasses CharacterClass[]
+  levelHistory CharacterLevelHistory[] @relation("CharacterLevelHistoryTargetSubclassRule")
+  subclassHistoryBefore CharacterSubclassHistory[] @relation("CharacterSubclassHistoryPreviousSubclassRule")
+  subclassHistoryAfter CharacterSubclassHistory[] @relation("CharacterSubclassHistoryTargetSubclassRule")
+
+  @@unique([rulesetId, rulesetVersion, subclassKey])
+  @@index([subclassKey])
+  @@index([classRuleId])
+}
+
+model CharacterProgression {
+  characterId   String   @id
+  revision      Int      @default(0)
+  backfillStatus String  @default("PENDING")
+  backfillIssues String  @default("[]")
+  legacySnapshot String  @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([backfillStatus])
+}
+
+model CharacterClass {
+  id              String   @id
+  characterId     String
+  classRuleId     String
+  subclassRuleId  String?
+  classKey         String
+  level            Int
+  sortOrder        Int
+  isPrimary        Boolean
+  subclassStatus   String   @default("UNSELECTED")
+  pactBoonKey String?
+  draconicAncestryKey String?
+  source            String   @default("LEGACY_BACKFILL")
+  ruleSnapshot      String
+  updatedByUserId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  character    Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  classRule    ClassRule     @relation(fields: [classRuleId], references: [id], onDelete: Restrict)
+  subclassRule SubclassRule? @relation(fields: [subclassRuleId], references: [id], onDelete: Restrict)
+  updatedBy    User?         @relation("CharacterClassUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  resourcePoolSources CharacterResourcePoolSource[]
+
+  @@unique([characterId, classKey])
+  @@unique([characterId, sortOrder])
+  @@index([classRuleId])
+  @@index([subclassRuleId])
+  @@index([updatedByUserId])
+}
+
+model CharacterDraconicAncestryHistory {
+  id                         String   @id
+  characterId                String
+  requestId                  String
+  requestSignature           String
+  operationType              String
+  targetClassKey             String
+  previousDraconicAncestryKey String?
+  targetDraconicAncestryKey  String?
+  progressionRevisionBefore Int
+  progressionRevisionAfter  Int
+  characterRevisionBefore   String
+  characterRevisionAfter    String
+  reason                     String?
+  policyVersion              String
+  requestSnapshot            String
+  beforeSnapshot             String
+  afterSnapshot              String
+  resultSnapshot             String
+  appliedByUserId            String?
+  appliedBySnapshot          String
+  appliedAt                  DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  appliedBy User? @relation("CharacterDraconicAncestryHistoryAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, operationType, requestId], map: "CharacterDraconicAncestryHistory_characterId_request_key")
+  @@unique([characterId, progressionRevisionAfter])
+  @@index([characterId, appliedAt])
+  @@index([appliedByUserId])
+}
+
+model CharacterLevelHistory {
+  id                         String   @id
+  characterId                String
+  requestId                  String
+  requestSignature           String
+  operationType              String   @default("LEVEL_UP")
+  mode                       String
+  targetClassKey             String
+  targetClassRuleId          String
+  targetSubclassKey          String?
+  targetSubclassRuleId       String?
+  classLevelBefore           Int?
+  classLevelAfter            Int
+  totalLevelBefore           Int
+  totalLevelAfter            Int
+  progressionRevisionBefore Int
+  progressionRevisionAfter  Int
+  characterRevisionBefore    String
+  characterRevisionAfter     String
+  rulesetId                  String
+  rulesetVersion             String
+  policyVersion              String
+  requestSnapshot            String
+  beforeSnapshot             String
+  afterSnapshot              String
+  ruleSnapshot               String
+  resultSnapshot             String
+  overrideReason             String?
+  appliedByUserId            String?
+  appliedBySnapshot          String
+  hitDieSize                 Int?
+  hitPointMethod             String?
+  hitPointsGained            Int?
+  constitutionModifier       Int?
+  appliedAt                  DateTime @default(now())
+
+  character         Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  targetClassRule    ClassRule     @relation("CharacterLevelHistoryTargetClassRule", fields: [targetClassRuleId], references: [id], onDelete: Restrict)
+  targetSubclassRule SubclassRule? @relation("CharacterLevelHistoryTargetSubclassRule", fields: [targetSubclassRuleId], references: [id], onDelete: Restrict)
+  appliedBy          User?         @relation("CharacterLevelHistoryAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, requestId])
+  @@unique([characterId, progressionRevisionAfter])
+  @@index([characterId, appliedAt])
+  @@index([targetClassRuleId])
+  @@index([targetSubclassRuleId])
+  @@index([appliedByUserId])
+}
+
+model CharacterSubclassHistory {
+  id                         String   @id
+  characterId                String
+  requestId                  String
+  requestSignature           String
+  mode                       String
+  targetClassKey             String
+  targetClassRuleId          String
+  previousSubclassKey        String?
+  previousSubclassRuleId     String?
+  targetSubclassKey          String
+  targetSubclassRuleId       String
+  classLevel                 Int
+  totalLevel                 Int
+  progressionRevisionBefore Int
+  progressionRevisionAfter  Int
+  characterRevisionBefore    String
+  characterRevisionAfter     String
+  reason                     String?
+  policyVersion              String
+  requestSnapshot            String
+  beforeSnapshot             String
+  afterSnapshot              String
+  ruleSnapshot               String
+  resultSnapshot             String
+  appliedByUserId            String?
+  appliedBySnapshot          String
+  appliedAt                  DateTime @default(now())
+
+  character            Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  targetClassRule       ClassRule     @relation("CharacterSubclassHistoryTargetClassRule", fields: [targetClassRuleId], references: [id], onDelete: Restrict)
+  previousSubclassRule  SubclassRule? @relation("CharacterSubclassHistoryPreviousSubclassRule", fields: [previousSubclassRuleId], references: [id], onDelete: Restrict)
+  targetSubclassRule    SubclassRule  @relation("CharacterSubclassHistoryTargetSubclassRule", fields: [targetSubclassRuleId], references: [id], onDelete: Restrict)
+  appliedBy             User?         @relation("CharacterSubclassHistoryAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, requestId])
+  @@unique([characterId, progressionRevisionAfter])
+  @@index([characterId, appliedAt])
+  @@index([targetClassRuleId])
+  @@index([previousSubclassRuleId])
+  @@index([targetSubclassRuleId])
+  @@index([appliedByUserId])
+}
+
+model CharacterHitPointState {
+  characterId                    String   @id
+  maximumHitPoints               Int
+  passiveBonusApplied            Int      @default(0)
+  currentHitPoints               Int
+  temporaryHitPoints             Int      @default(0)
+  deathSaveSuccesses             Int      @default(0)
+  deathSaveFailures              Int      @default(0)
+  shortRestsUsedSinceLongRest    Int      @default(0)
+  lastShortRestAt                DateTime?
+  lastLongRestAt                 DateTime?
+  revision                       Int      @default(0)
+  backfillStatus                 String   @default("PENDING")
+  backfillIssues                 String   @default("[]")
+  legacySnapshot                 String   @default("{}")
+  createdAt                      DateTime @default(now())
+  updatedAt                      DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@index([backfillStatus])
+}
+
+model CharacterHitDiePool {
+  id             String   @id
+  characterId    String
+  dieSize        Int
+  maximum        Int
+  remaining      Int
+  source         String
+  legacySnapshot String   @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, dieSize])
+  @@index([characterId])
+}
+
+model CharacterHitPointAdjustment {
+  id                         String   @id
+  characterId                String
+  requestId                  String?
+  adjustmentType             String
+  maximumBefore              Int
+  maximumAfter               Int
+  currentBefore              Int
+  currentAfter               Int
+  delta                      Int
+  constitutionModifierBefore Int?
+  constitutionModifierAfter  Int?
+  totalLevel                 Int
+  reason                     String?
+  appliedByUserId            String?
+  appliedBySnapshot          String
+  detailsSnapshot            String   @default("{}")
+  appliedAt                  DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  appliedBy User? @relation("CharacterHitPointAdjustmentAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, requestId])
+  @@index([characterId, appliedAt])
+  @@index([appliedByUserId])
+}
+
+model CharacterResourcePool {
+  id               String   @id
+  characterId      String
+  poolKey          String
+  kind             String
+  label            String
+  resetPolicy      String
+  revision         Int      @default(0)
+  backfillStatus   String   @default("PENDING")
+  backfillIssues   String   @default("[]")
+  metadata         String   @default("{}")
+  ruleSnapshot     String   @default("{}")
+  legacySnapshot   String   @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  sources CharacterResourcePoolSource[]
+  tiers CharacterResourcePoolTier[]
+
+  @@unique([characterId, poolKey])
+  @@index([characterId])
+  @@index([kind])
+  @@index([backfillStatus])
+}
+
+model CharacterResourcePoolSource {
+  id               String   @id
+  poolId           String
+  characterClassId String?
+  sourceKey        String
+  sourceKind       String
+  ruleSnapshot     String   @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  pool CharacterResourcePool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  characterClass CharacterClass? @relation(fields: [characterClassId], references: [id], onDelete: SetNull)
+
+  @@unique([poolId, sourceKey])
+  @@index([characterClassId])
+}
+
+model CharacterResourcePoolTier {
+  id                String   @id
+  poolId            String
+  tierKey            String
+  sortOrder          Int      @default(0)
+  derivedMaximum     Int?
+  maximumOverride    Int?
+  used               Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  pool CharacterResourcePool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@unique([poolId, tierKey])
+  @@index([poolId, sortOrder])
 }
 
 model CharacterBackstory {
@@ -798,6 +1178,8 @@ model ItemDefinition {
   category      ItemCategory
   subcategory   String?
   weaponHandling WeaponHandling?
+  weaponProficiencyGroup WeaponProficiencyGroup?
+  isLightWeapon Boolean      @default(false)
   gloveWearMode  GloveWearMode?
   armorCategory  ArmorCategory?
   armorClassCalculation ArmorClassCalculation?
@@ -1247,4 +1629,37 @@ model EncounterScenarioEntry {
   @@index([scenarioId, sortOrder])
   @@index([monsterId])
   @@index([entryType])
+}
+
+
+model CharacterPactBoonHistory {
+  id                         String   @id
+  characterId                String
+  requestId                  String
+  requestSignature           String
+  operationType              String
+  targetClassKey             String
+  previousPactBoonKey String?
+  targetPactBoonKey  String?
+  progressionRevisionBefore Int
+  progressionRevisionAfter  Int
+  characterRevisionBefore   String
+  characterRevisionAfter    String
+  reason                     String?
+  policyVersion              String
+  requestSnapshot            String
+  beforeSnapshot             String
+  afterSnapshot              String
+  resultSnapshot             String
+  appliedByUserId            String?
+  appliedBySnapshot          String
+  appliedAt                  DateTime @default(now())
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  appliedBy User? @relation("CharacterPactBoonHistoryAppliedBy", fields: [appliedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, operationType, requestId], map: "CharacterPactBoonHistory_characterId_request_key")
+  @@unique([characterId, progressionRevisionAfter])
+  @@index([characterId, appliedAt])
+  @@index([appliedByUserId])
 }

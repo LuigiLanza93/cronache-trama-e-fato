@@ -1,3 +1,4 @@
+import { getPassiveEffectTotalLevel, resolvePassiveEffectClassLevel } from "@/lib/passive-effect-levels";
 import { matchesSkillPassiveEffectTarget } from "@/lib/passive-effect-skills";
 
 function coerce(value: string, kind: "string" | "int" | "float") {
@@ -87,6 +88,7 @@ type PassiveEffectLike = {
     valueMode?: string;
     value?: number;
     sourceAbility?: string;
+    sourceClassKey?: string;
     multiplierNumerator?: number;
     multiplierDenominator?: number;
     rounding?: string;
@@ -187,13 +189,17 @@ function normalizeAbilityKey(value: string | undefined | null): ResolvedAbilityK
 
 function getBaseAbilityScores(characterData: any): Record<ResolvedAbilityKey, number> {
     const source = characterData?.abilityScores ?? {};
+    const finiteScore = (value: unknown) => {
+        const numeric = Number(value);
+        return Number.isFinite(numeric) ? numeric : 10;
+    };
     return {
-        strength: Number(source.STRENGTH ?? source.strength ?? source.STR ?? source.str ?? 10) || 10,
-        dexterity: Number(source.DEXTERITY ?? source.dexterity ?? source.DEX ?? source.dex ?? 10) || 10,
-        constitution: Number(source.CONSTITUTION ?? source.constitution ?? source.CON ?? source.con ?? 10) || 10,
-        intelligence: Number(source.INTELLIGENCE ?? source.intelligence ?? source.INT ?? source.int ?? 10) || 10,
-        wisdom: Number(source.WISDOM ?? source.wisdom ?? source.WIS ?? source.wis ?? 10) || 10,
-        charisma: Number(source.CHARISMA ?? source.charisma ?? source.CHA ?? source.cha ?? 10) || 10,
+        strength: finiteScore(source.STRENGTH ?? source.strength ?? source.STR ?? source.str),
+        dexterity: finiteScore(source.DEXTERITY ?? source.dexterity ?? source.DEX ?? source.dex),
+        constitution: finiteScore(source.CONSTITUTION ?? source.constitution ?? source.CON ?? source.con),
+        intelligence: finiteScore(source.INTELLIGENCE ?? source.intelligence ?? source.INT ?? source.int),
+        wisdom: finiteScore(source.WISDOM ?? source.wisdom ?? source.WIS ?? source.wis),
+        charisma: finiteScore(source.CHARISMA ?? source.charisma ?? source.CHA ?? source.cha),
     };
 }
 
@@ -203,6 +209,8 @@ function isPassiveTriggerActive(trigger: string | undefined, context: PassiveEff
             return true;
         case "WHILE_ARMORED":
             return !!context.hasArmorEquipped;
+        case "WHILE_UNARMORED":
+            return !context.hasArmorEquipped;
         case "WHILE_SHIELD_EQUIPPED":
             return !!context.hasShieldEquipped;
         case "WHILE_WIELDING_SINGLE_MELEE_WEAPON":
@@ -256,9 +264,11 @@ function resolvePassiveEffectScalarValue(
         case "ABILITY_SCORE":
             return applyScale(sourceScore);
         case "PROFICIENCY_BONUS":
-            return applyScale(proficiencyBonus(Number(characterData?.basicInfo?.level ?? 1)));
+            return applyScale(proficiencyBonus(getPassiveEffectTotalLevel(characterData)));
         case "CHARACTER_LEVEL":
-            return applyScale(Number(characterData?.basicInfo?.level ?? 1));
+            return applyScale(getPassiveEffectTotalLevel(characterData));
+        case "CLASS_LEVEL":
+            return applyScale(resolvePassiveEffectClassLevel(characterData, effect?.sourceClassKey));
         default:
             return offset;
     }
@@ -298,9 +308,11 @@ function resolvePassiveEffectScalarForAbilityTarget(
 
     switch (mode) {
         case "PROFICIENCY_BONUS":
-            return applyScale(proficiencyBonus(Number(characterData?.basicInfo?.level ?? 1)));
+            return applyScale(proficiencyBonus(getPassiveEffectTotalLevel(characterData)));
         case "CHARACTER_LEVEL":
-            return applyScale(Number(characterData?.basicInfo?.level ?? 1));
+            return applyScale(getPassiveEffectTotalLevel(characterData));
+        case "CLASS_LEVEL":
+            return applyScale(resolvePassiveEffectClassLevel(characterData, effect?.sourceClassKey));
         default:
             return offset;
     }
@@ -474,6 +486,29 @@ function proficiencyBonus(level: number): number {
     return 2; // livello 1-4
 }
 
+type SkillRank = "none" | "half" | "proficient" | "expertise";
+
+function normalizeSkillRank(skill: any): SkillRank {
+    const rank = String(skill?.rank ?? "").trim().toLowerCase();
+    if (rank === "none" || rank === "half" || rank === "proficient" || rank === "expertise") {
+        return rank;
+    }
+    return skill?.proficient ? "proficient" : "none";
+}
+
+function getSkillProficiencyContribution(rank: SkillRank, bonus: number) {
+    switch (rank) {
+        case "half":
+            return Math.floor(bonus / 2);
+        case "proficient":
+            return bonus;
+        case "expertise":
+            return bonus * 2;
+        default:
+            return 0;
+    }
+}
+
 function calculateSkillValues(
     character,
     skillsCatalog = [],
@@ -496,13 +531,24 @@ function calculateSkillValues(
     const passiveEffectContext = options.passiveEffectContext ?? {};
 
     return skillsCatalog.map((skill) => {
-        const abilityKey = normalizeAbilityKey(skill.ability) ?? normalizeAbilityKey(String(skill.ability).toUpperCase());
+        const persistedSkill = (Array.isArray(character?.proficiencies?.skills) ? character.proficiencies.skills : []).find(
+            (entry: any) =>
+                String(entry?.name ?? "").trim().toLocaleLowerCase("it-IT") ===
+                String(skill?.name ?? "").trim().toLocaleLowerCase("it-IT")
+        );
+        const effectiveSkill = {
+            ...skill,
+            ...(persistedSkill ?? {}),
+            name: skill?.name ?? persistedSkill?.name,
+            ability: skill?.ability ?? persistedSkill?.ability,
+        };
+        const abilityKey = normalizeAbilityKey(effectiveSkill.ability) ?? normalizeAbilityKey(String(effectiveSkill.ability).toUpperCase());
         const mod = abilityModifier(abilityKey ? abilityScores[abilityKey] : 10);
         const appliedEffects = passiveCapabilities
             .filter((capability) => String(capability?.kind ?? "passive").toLowerCase() === "passive")
             .flatMap((capability) =>
                 (Array.isArray(capability?.passiveEffects) ? capability.passiveEffects : [])
-                    .filter((effect) => matchesSkillPassiveEffectTarget(effect?.target, skill?.name))
+                    .filter((effect) => matchesSkillPassiveEffectTarget(effect?.target, effectiveSkill?.name))
                     .filter((effect) => isPassiveTriggerActive(effect?.trigger, passiveEffectContext))
                     .map((effect) => ({
                         effect,
@@ -547,9 +593,19 @@ function calculateSkillValues(
                 value += resolvedValue;
             });
 
+        const rank = normalizeSkillRank(effectiveSkill);
+        const characterProficiencyBonus = proficiencyBonus(Number(character?.basicInfo?.level ?? 1));
+        const proficiencyContribution = getSkillProficiencyContribution(rank, characterProficiencyBonus);
+
         return {
-            ...skill,
-            value,
+            ...effectiveSkill,
+            rank,
+            abilityModifier: mod,
+            passiveContribution: value - mod,
+            baseValue: value,
+            proficiencyBonus: characterProficiencyBonus,
+            proficiencyContribution,
+            value: value + proficiencyContribution,
         };
     });
 }
@@ -561,6 +617,8 @@ export {
     abilityModifier,
     proficiencyBonus,
     calculateSkillValues,
+    normalizeSkillRank,
+    getSkillProficiencyContribution,
     getBaseAbilityScores,
     normalizeAbilityKey,
     isPassiveTriggerActive,

@@ -1,7 +1,7 @@
 name = "game_rules_data"
 description = "RPG domain rules, character-derived statistics, items, spells, monsters, bestiary normalization, and structured game-data specialist."
 model = "gpt-5.6-terra"
-model_reasoning_effort = "high"
+model_reasoning_effort = "medium"
 developer_instructions = """
 Own the correctness of RPG domain logic and structured game data.
 Read codex-readme.md first. Railway data are canonical; prisma/migration.db is the mutable development database and should remain structurally aligned with dev, while its records and local datasets may differ from production.

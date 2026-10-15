@@ -51,6 +51,7 @@ import {
   type ItemDefinitionEntry,
 } from "@/lib/auth";
 import type { PactBladeWeaponTemplate } from "@/data/pact-blade-weapons";
+import { resolveArmorProficiency } from "@/lib/character-combat-rules";
 
 /** Select minimale, senza dipendenze extra */
 function Select({
@@ -377,6 +378,7 @@ const Inventory = ({
   setCurrencyHistoryOpen,
   currencyHistoryEntries,
   currencyHistoryLoading,
+  passiveCapabilities = [],
   showPactBladeSection,
   pactBladeState,
   pactBladeBondedWeapon,
@@ -529,6 +531,8 @@ const Inventory = ({
   const [customEquippable, setCustomEquippable] = useState(false);
   const [customStackable, setCustomStackable] = useState(false);
   const [customWeaponHandling, setCustomWeaponHandling] = useState("ONE_HANDED");
+  const [customWeaponProficiencyGroup, setCustomWeaponProficiencyGroup] = useState<"" | "SIMPLE" | "MARTIAL">("");
+  const [customIsLightWeapon, setCustomIsLightWeapon] = useState(false);
   const [customAttackKind, setCustomAttackKind] = useState("MELEE_WEAPON");
   const [customAttackBonus, setCustomAttackBonus] = useState("");
   const [customDamageDice, setCustomDamageDice] = useState("");
@@ -661,6 +665,12 @@ const Inventory = ({
     }
     return null;
   }, [pactBladeActiveMode, pactBladeBondedItem, pactBladeState?.activeSummon?.templateId, pactBladeTemplatesList]);
+  const detailArmorProficiency = detailDefinition?.armorCategory
+    ? resolveArmorProficiency(
+        { ...characterData, capabilities: passiveCapabilities },
+        { armorCategory: detailDefinition.armorCategory }
+      )
+    : null;
 
   function getPactBladeTemplateSummary(template: PactBladeWeaponTemplate) {
     const handLabel =
@@ -683,7 +693,7 @@ const Inventory = ({
     if (!rarity) return null;
     return (
       <span className="rounded-full border border-border/70 bg-background/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {rarity.replaceAll("_", " ")}
+        {rarity.replace(/_/g, " ")}
       </span>
     );
   };
@@ -757,7 +767,7 @@ const Inventory = ({
               text: chip.replace(/^qty\s+/i, ""),
             });
           } else if (["COMMON", "UNCOMMON", "RARE", "VERY_RARE", "LEGENDARY", "ARTIFACT", "UNIQUE"].includes(chip)) {
-            textBadges.push(chip.replaceAll("_", " "));
+            textBadges.push(chip.replace(/_/g, " "));
           } else {
             const categorySpec = getCategoryMetaIcon(chip);
             if (categorySpec && chip === String(chip).toUpperCase()) {
@@ -1232,6 +1242,8 @@ const Inventory = ({
     setCustomEquippable(false);
     setCustomStackable(false);
     setCustomWeaponHandling("ONE_HANDED");
+    setCustomWeaponProficiencyGroup("");
+    setCustomIsLightWeapon(false);
     setCustomAttackKind("MELEE_WEAPON");
     setCustomAttackBonus("");
     setCustomDamageDice("");
@@ -2100,6 +2112,20 @@ const Inventory = ({
                             </Select>
                           </div>
                         </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label className="mb-1 block">Gruppo competenza</Label>
+                            <Select value={customWeaponProficiencyGroup} onChange={(value) => setCustomWeaponProficiencyGroup(value as "" | "SIMPLE" | "MARTIAL")}>
+                              <option value="">Nessuna / non definita</option>
+                              <option value="SIMPLE">Arma semplice</option>
+                              <option value="MARTIAL">Arma da guerra</option>
+                            </Select>
+                          </div>
+                          <label className="flex items-end gap-2 pb-2 text-sm font-medium">
+                            <input type="checkbox" checked={customIsLightWeapon} onChange={(event) => setCustomIsLightWeapon(event.target.checked)} />
+                            Arma leggera
+                          </label>
+                        </div>
                         <div className="grid gap-3 sm:grid-cols-3">
                           <div className="space-y-2">
                             <Label className="mb-1 block">Bonus attacco</Label>
@@ -2504,12 +2530,13 @@ const Inventory = ({
 
               <div className="grid gap-2 rounded-md border border-border/60 bg-muted/15 px-3 py-3 text-muted-foreground">
                 <div><span className="font-medium text-foreground">Categoria:</span> {getCategoryLabel((getDetailEntry() as any)?.itemCategory)}</div>
-                {detailDefinition?.rarity ? <div><span className="font-medium text-foreground">Rarità:</span> {detailDefinition.rarity.replaceAll("_", " ")}</div> : null}
+                {detailDefinition?.rarity ? <div><span className="font-medium text-foreground">Rarità:</span> {detailDefinition.rarity.replace(/_/g, " ")}</div> : null}
                 {(getDetailEntry() as any)?.stackable ? <div><span className="font-medium text-foreground">Quantità:</span> {(getDetailEntry() as any)?.quantity ?? 0}</div> : null}
                 <div><span className="font-medium text-foreground">Valore indicativo:</span> {formatIndicativeValue((getDetailEntry() as any)?.suggestedValue)}</div>
                 {(getDetailEntry() as any)?.isEquipped ? <div><span className="font-medium text-foreground">Stato:</span> Equipaggiato</div> : null}
                 {detailDefinition?.weaponHandling ? <div><span className="font-medium text-foreground">Impugnatura:</span> {getWeaponHandlingLabel(detailDefinition.weaponHandling)}</div> : null}
                 {detailDefinition?.armorCategory ? <div><span className="font-medium text-foreground">Tipo armatura:</span> {getArmorCategoryLabel(detailDefinition.armorCategory)}</div> : null}
+                {detailArmorProficiency ? <div><span className="font-medium text-foreground">Competenza:</span> {detailArmorProficiency.proficient ? "Competente" : "Non competente"}{detailArmorProficiency.breakdown.length > 0 ? ` — ${detailArmorProficiency.breakdown.join(", ")}` : ""}</div> : null}
                 {detailDefinition?.gloveWearMode ? <div><span className="font-medium text-foreground">Modalità guanti:</span> {getGloveModeLabel(detailDefinition.gloveWearMode)}</div> : null}
               </div>
 
@@ -2946,6 +2973,8 @@ const Inventory = ({
 
     if (kind === "weapon") {
       quickPayload.weaponHandling = customWeaponHandling;
+      quickPayload.weaponProficiencyGroup = customWeaponProficiencyGroup || null;
+      quickPayload.isLightWeapon = customIsLightWeapon;
       quickPayload.attackKind = customAttackKind;
       quickPayload.attackBonus = customAttackBonus.trim() || null;
       quickPayload.damageDice = customDamageDice.trim() || null;
@@ -3043,7 +3072,7 @@ const Inventory = ({
 
     if (detailTarget.kind === "weapon") {
       removeAttack(detailTarget.index);
-    } else if (detailTarget.kind !== "legacyObject") {
+    } else if (detailTarget.kind === "object" || detailTarget.kind === "consumable") {
       removeStructuredItem?.(detailTarget.index);
     }
 

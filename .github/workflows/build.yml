@@ -25,5 +25,8 @@ jobs:
         env:
           DATABASE_URL: file:./prisma/migration.db
 
+      - name: Run P1 regression tests
+        run: npm run test:p1
+
       - name: Build
         run: npm run build

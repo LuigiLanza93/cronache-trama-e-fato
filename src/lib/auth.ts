@@ -35,6 +35,131 @@ export type CharacterTransferTarget = {
     characterName: string;
   };
 };
+export type CharacterProgressionPreviewRequest = {
+  targetClassKey: string;
+  targetSubclassKey?: string | null;
+  draconicAncestryKey?: string;
+  pactBoonKey?: string;
+  overrideReason?: string;
+  expectedRevision?: string;
+  expectedProgressionRevision?: number;
+};
+export type CharacterProgressionApplyRequest = CharacterProgressionPreviewRequest & {
+  requestId: string;
+  expectedRevision: string;
+  expectedProgressionRevision: number;
+};
+export type ProgressionSummaryPayload = {
+  characterLevel: number;
+  proficiencyBonus: number;
+  hitDicePools: Record<string, number>;
+  spellcastingSlots: { slots: Record<string, number> };
+  pactMagicSlots: { slotCount: number; slotLevel: number | null };
+};
+export type ProgressionResourcePoolPayload = {
+  poolKey: string;
+  kind: "SPELLCASTING" | "PACT_MAGIC" | "CLASS_RESOURCE" | "MANUAL";
+  label: string;
+  maximum: Record<string, number>;
+  used: Record<string, number>;
+};
+export type CharacterProgressionEffectsPayload = {
+  status: string;
+  hitPoints?: { before: { maximumHitPoints: number }; after: { maximumHitPoints: number }; gained: number } | null;
+  hitDicePools?: { before: Array<{ dieSize: number; maximum: number; remaining: number }>; after: Array<{ dieSize: number; maximum: number; remaining: number }> } | null;
+  resourcePools?: { before: ProgressionResourcePoolPayload[]; after: ProgressionResourcePoolPayload[] } | null;
+};
+export type DraconicAncestryOption = { key: string; label: string; damageType: string; damageLabel: string };
+export type CharacterProgressionApiResponse = {
+  ok: true;
+  slug: string;
+  revision: string;
+  progressionRevision: number;
+  preview: {
+    status: string;
+    canApply: boolean;
+    targetClassKey: string;
+    mode: "INCREMENT_EXISTING" | "ADD_NEW_CLASS";
+    before: ProgressionSummaryPayload;
+    after: ProgressionSummaryPayload | null;
+    classesAfter: Array<{ classKey: string; level: number; subclassKey?: string | null; draconicAncestryKey?: string | null; pactBoonKey?: string | null }> | null;
+    pactBoonOptions?: Array<{ key: string; label: string }>;
+    pactBoonRequired?: boolean;
+    pactBoonKey?: string | null;
+    draconicAncestryOptions?: DraconicAncestryOption[];
+    draconicAncestryRequired?: boolean;
+    draconicAncestryKey?: string | null;
+    subclassEligibility: { status: string; reason: string | null } | null;
+    subclassOptions: Array<{ key: string; label: string; classKey: string }>;
+    classOptions: Array<{ key: string; label: string; mode: "INCREMENT_EXISTING" | "ADD_NEW_CLASS"; currentLevel: number }>;
+    manualRuleNotes: string[];
+    prerequisites?: { status: string; eligible: boolean; failedClassKeys?: string[]; reason: string | null; overridden?: boolean };
+    effects?: CharacterProgressionEffectsPayload;
+    reason?: string | null;
+  };
+  deferredEffects?: string[];
+  replayed?: boolean;
+  operation?: Record<string, unknown>;
+  character?: Record<string, unknown>;
+};
+export type CharacterSubclassPreviewRequest = {
+  targetClassKey: string;
+  targetSubclassKey?: string;
+  draconicAncestryKey?: string;
+  pactBoonKey?: string;
+  reason?: string;
+  expectedRevision?: string;
+  expectedProgressionRevision?: number;
+};
+export type CharacterSubclassApplyRequest = Required<Pick<CharacterSubclassPreviewRequest, "targetClassKey" | "targetSubclassKey">> & {
+  reason?: string;
+  draconicAncestryKey?: string;
+  pactBoonKey?: string;
+  requestId: string;
+  expectedRevision: string;
+  expectedProgressionRevision: number;
+};
+export type CharacterSubclassApiResponse = {
+  ok: true;
+  slug: string;
+  revision: string;
+  progressionRevision: number;
+  requestId?: string;
+  replayed?: boolean;
+  character?: Record<string, unknown>;
+  preview: {
+    status: string;
+    canApply: boolean;
+    mode: "ASSIGN" | "CHANGE";
+    targetClassKey: string;
+    targetSubclassKey?: string;
+    classOptions: Array<{ key: string; label: string; level: number; subclassKey: string | null; subclassLabel: string | null }>;
+    subclassOptions: Array<{ key: string; label: string; classKey: string }>;
+    before: { subclassKey: string | null; subclassLabel: string | null; draconicAncestryKey?: string | null; pactBoonKey?: string | null };
+    after: { subclassKey: string | null; subclassLabel: string | null; draconicAncestryKey?: string | null; pactBoonKey?: string | null };
+    pactBoonOptions?: Array<{ key: string; label: string }>;
+    pactBoonRequired?: boolean;
+    pactBoonKey?: string | null;
+    draconicAncestryOptions?: DraconicAncestryOption[];
+    draconicAncestryRequired?: boolean;
+    draconicAncestryKey?: string | null;
+    reasonRequired: boolean;
+    effects: {
+      characterLevel: { before: number; after: number };
+      hitPoints: { before: unknown; after: unknown };
+      classLevels: unknown[];
+      spellSlots: {
+        changed: boolean;
+        maximumDeltas: Array<{ tier: string; before: number; after: number }>;
+        preservedExpended: Array<{ tier: string; before: number; after: number }>;
+        warnings: string[];
+      };
+      manualContentPreserved: boolean;
+    };
+    warnings: string[];
+    reason?: string;
+  };
+};
 export type CurrencyTransactionRequestPayload = {
   operation: "add" | "remove" | "transfer" | "convert";
   currency: keyof CurrencyBalance;
@@ -470,6 +595,7 @@ export type PartyRestSummaryEntry = {
   temporaryHitPointsAfter: number;
   healingApplied: number;
   hitDiceSpent: number;
+  hitDiceRecovered: number;
   hitDiceRemaining: number;
   hitDiceRemainingAfter: number;
   maxHitDice: number;
@@ -479,9 +605,17 @@ export type PartyRestSummaryEntry = {
 
 export type PartyRestResponse = {
   ok: true;
+  requestId: string;
   type: PartyRestType;
   updatedCharacters: Array<Record<string, unknown>>;
   summaries: PartyRestSummaryEntry[];
+};
+
+export type PartyRestPreviewResponse = {
+  ok: true;
+  type: PartyRestType;
+  summaries: PartyRestSummaryEntry[];
+  expectedRevisions: Record<string, string>;
 };
 
 export type ItemDefinitionSummary = {
@@ -489,6 +623,8 @@ export type ItemDefinitionSummary = {
   slug: string;
   name: string;
   category: string;
+  weaponProficiencyGroup: "SIMPLE" | "MARTIAL" | null;
+  isLightWeapon: boolean;
   rarity: string | null;
   description: string | null;
   playerVisible: boolean;
@@ -547,7 +683,24 @@ export type ItemFeatureEntry = {
   resetOn: string | null;
   customResetLabel: string | null;
   maxUses: number | null;
-  passiveEffects: Array<Record<string, unknown>>;
+  passiveEffects: Array<{
+    target: string;
+    category?: "MODIFIER" | "PROFICIENCY";
+    operationType?: string;
+    valueMode?: string;
+    value?: number | string;
+    setMode?: string;
+    setValue?: number | string;
+    capValue?: number | string;
+    sourceAbility?: string;
+    multiplierNumerator?: number;
+    multiplierDenominator?: number;
+    rounding?: string;
+    trigger?: string;
+    customTargetLabel?: string;
+    customTriggerLabel?: string;
+    notes?: string;
+  }>;
   condition: string;
   sortOrder: number;
 };
@@ -587,6 +740,8 @@ export type ItemDefinitionEntry = {
   category: string;
   subcategory: string | null;
   weaponHandling: string | null;
+  weaponProficiencyGroup: "SIMPLE" | "MARTIAL" | null;
+  isLightWeapon: boolean;
   gloveWearMode: string | null;
   armorCategory: string | null;
   armorClassCalculation: string | null;
@@ -728,22 +883,27 @@ async function authFetch<T>(url: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     let message = res.status === 401 ? "Unauthorized" : "Request failed";
+    let errorCode: string | undefined;
+    let errorDetails: unknown;
     try {
       const payload = await res.clone().json();
       if (typeof payload?.error === "string" && payload.error.trim()) {
         message = payload.error.trim();
       }
+      if (typeof payload?.code === "string" && payload.code.trim()) {
+        errorCode = payload.code.trim();
+      }
+      errorDetails = payload?.details;
     } catch {}
 
       const error = new Error(message) as Error & {
         status?: number;
+        code?: string;
         details?: unknown;
       };
       error.status = res.status;
-      try {
-        const payload = await res.clone().json();
-        error.details = payload?.details;
-      } catch {}
+      error.code = errorCode;
+      error.details = errorDetails;
       throw error;
     }
 
@@ -1046,15 +1206,51 @@ export function fetchSpellSlots() {
   return cacheRequest(spellSlotsRequestCache, () => authFetch<SpellSlotTable>("/api/rules/spell-slots", { method: "GET" }));
 }
 
-export function applyPartyRestRequest(type: PartyRestType, slugs?: string[]) {
+export function applyPartyRestRequest(
+  type: PartyRestType,
+  slugs: string[],
+  requestId: string,
+  expectedRevisions: Record<string, string>
+) {
   return authFetch<PartyRestResponse>("/api/dm/rests/apply", {
     method: "POST",
-    body: JSON.stringify({ type, slugs }),
+    body: JSON.stringify({ type, slugs, requestId, expectedRevisions }),
   });
 }
 
-export function previewPartyRestRequest(type: PartyRestType, slugs?: string[]) {
-  return authFetch<Omit<PartyRestResponse, "updatedCharacters">>("/api/dm/rests/preview", {
+export function previewCharacterProgressionRequest(slug: string, payload: CharacterProgressionPreviewRequest) {
+  return authFetch<CharacterProgressionApiResponse>(`/api/dm/characters/${slug}/progression/preview`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function applyCharacterProgressionRequest(slug: string, payload: CharacterProgressionApplyRequest) {
+  return authFetch<CharacterProgressionApiResponse>(`/api/dm/characters/${slug}/progression/apply`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function previewCharacterSubclassRequest(slug: string, payload: CharacterSubclassPreviewRequest) {
+  return authFetch<CharacterSubclassApiResponse>(`/api/dm/characters/${slug}/subclass/preview`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function applyCharacterSubclassRequest(slug: string, payload: CharacterSubclassApplyRequest) {
+  return authFetch<CharacterSubclassApiResponse>(`/api/dm/characters/${slug}/subclass/apply`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function previewPartyRestRequest(
+  type: PartyRestType,
+  slugs?: string[]
+) {
+  return authFetch<PartyRestPreviewResponse>("/api/dm/rests/preview", {
     method: "POST",
     body: JSON.stringify({ type, slugs }),
   });
@@ -1230,7 +1426,7 @@ export type DmShop = {
   items: DmShopItem[];
 };
 
-export type ShopFormPayload = Pick<DmShop, "externalKey" | "name" | "description" | "ownerName" | "ownerDescription" | "city" | "discountDc" | "balance">;
+export type ShopFormPayload = Pick<DmShop, "externalKey" | "name" | "description" | "ownerName" | "ownerDescription" | "city" | "dmNotes" | "discountDc" | "balance">;
 export type ShopItemFormPayload = {
   itemDefinitionId: string;
   quantity: number;
