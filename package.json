@@ -52,7 +52,9 @@
     "pact-boon:dry-run": "node scripts/apply-character-pact-boon.mjs --dry-run",
     "pact-boon:apply-local": "node scripts/apply-character-pact-boon.mjs --apply",
     "passive-hp:dry-run": "node scripts/apply-character-passive-hit-points.mjs --dry-run",
-    "passive-hp:apply-local": "node scripts/apply-character-passive-hit-points.mjs --apply"
+    "passive-hp:apply-local": "node scripts/apply-character-passive-hit-points.mjs --apply",
+    "spell:globo-cromatico:dry-run": "node scripts/apply-spell-globo-cromatico.mjs --dry-run",
+    "spell:globo-cromatico:apply-local": "node scripts/apply-spell-globo-cromatico.mjs --apply"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
