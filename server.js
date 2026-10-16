@@ -12611,6 +12611,7 @@ function projectStructuredStateToLegacy(character, { hitPointState, hitDicePools
         currentHitPoints: hitPointState.currentHitPoints,
         temporaryHitPoints: hitPointState.temporaryHitPoints,
         deathSaves: {
+          ...(isPlainRecord(combatStats.deathSaves) ? combatStats.deathSaves : {}),
           successes: hitPointState.deathSaveSuccesses,
           failures: hitPointState.deathSaveFailures,
         },
