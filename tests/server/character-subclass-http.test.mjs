@@ -243,6 +243,15 @@ describe("DM subclass correction HTTP apply", () => {
     const beforeDatabase = new DatabaseSync(databasePath, { readOnly: true });
     const beforeProtected = protectedState(beforeDatabase, character.id);
     beforeDatabase.close();
+    // These legacy fields mirror authoritative resource/wallet data on save.
+    const projectedBefore = await jsonRequest(baseUrl, `/api/characters/${character.slug}`, { cookie: dmCookie });
+    expect(projectedBefore.response.status).toBe(200);
+    beforeProtected.characterData.combatStats.spellSlots = projectedBefore.payload.combatStats.spellSlots;
+    beforeProtected.characterData.currencyBalance = projectedBefore.payload.currencyBalance;
+    expect(beforeProtected.characterData.combatStats.spellSlots["1"]).toEqual([
+      { id: "legacy:manual-1-1", active: true },
+      { id: "legacy:manual-1-2", active: false },
+    ]);
     const firstRequest = {
       targetClassKey: "rogue",
       targetSubclassKey: "thief",
@@ -327,6 +336,9 @@ describe("DM subclass correction HTTP apply", () => {
     const derivedBeforeDatabase = new DatabaseSync(databasePath, { readOnly: true });
     const derivedBefore = protectedState(derivedBeforeDatabase, derivedCharacter.id);
     derivedBeforeDatabase.close();
+    const projectedDerivedBefore = await jsonRequest(baseUrl, `/api/characters/${derivedCharacter.slug}`, { cookie: dmCookie });
+    expect(projectedDerivedBefore.response.status).toBe(200);
+    derivedBefore.characterData.currencyBalance = projectedDerivedBefore.payload.currencyBalance;
     const derivedApplied = await jsonRequest(baseUrl, `/api/dm/characters/${derivedCharacter.slug}/subclass/apply`, {
       cookie: dmCookie,
       body: {
