@@ -11889,8 +11889,13 @@ function subclassResourcePoolPlan(snapshot, classesAfter, targetClassKey) {
 
 export function prepareCharacterSubclassCorrectionPreview(snapshot, request) {
   if (!snapshot?.state) throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
-  if (snapshot.state.characterType !== "pg") {
-    throw createProgressionError("CHARACTER_TYPE_UNSUPPORTED", "La sottoclasse e disponibile soltanto per i PG.", 422, snapshot);
+  if (!["pg", "png"].includes(String(snapshot.state.characterType ?? "").toLowerCase())) {
+    throw createProgressionError(
+      "CHARACTER_TYPE_UNSUPPORTED",
+      "La sottoclasse e disponibile soltanto per PG e PNG.",
+      422,
+      snapshot,
+    );
   }
   if (!snapshot.schema?.m5Ready || !snapshot.schema?.m6Ready) {
     throw createProgressionError(
@@ -12344,10 +12349,10 @@ export function prepareCharacterProgressionPreview(snapshot, request) {
   if (!snapshot?.state) {
     throw createProgressionError("CHARACTER_NOT_FOUND", "Personaggio non trovato.", 404);
   }
-  if (snapshot.state.characterType !== "pg") {
+  if (!["pg", "png"].includes(String(snapshot.state.characterType ?? "").toLowerCase())) {
     throw createProgressionError(
       "CHARACTER_TYPE_UNSUPPORTED",
-      "La progressione guidata M4 e disponibile soltanto per i PG.",
+      "La progressione guidata e disponibile soltanto per PG e PNG.",
       422,
       snapshot,
     );

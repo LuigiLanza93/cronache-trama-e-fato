@@ -265,7 +265,7 @@ describe("M4 progression preview contract", () => {
     expect(result.subclassOptions).not.toContainEqual(expect.objectContaining({ key: "school-of-evocation" }));
   });
 
-  it("enables multiclass while still blocking PNG, stale revisions, and subclass replacement", () => {
+  it("enables multiclass and PNG progression while still blocking stale revisions and subclass replacement", () => {
     expect(prepareCharacterProgressionPreview(snapshot(), { targetClassKey: "wizard" })).toMatchObject({
       mode: "ADD_NEW_CLASS",
       status: "READY",
@@ -288,8 +288,18 @@ describe("M4 progression preview contract", () => {
       canApply: true,
       prerequisites: { status: "INELIGIBLE", overridden: true },
     });
-    expect(() => prepareCharacterProgressionPreview(snapshot({ characterType: "png" }), { targetClassKey: "fighter" }))
-      .toThrow(expect.objectContaining({ code: "CHARACTER_TYPE_UNSUPPORTED", statusCode: 422 }));
+    expect(prepareCharacterProgressionPreview(snapshot({ characterType: "png" }), {
+      targetClassKey: "fighter",
+    })).toMatchObject({
+      status: "READY",
+      canApply: true,
+      mode: "INCREMENT_EXISTING",
+      before: { characterLevel: 1 },
+      after: { characterLevel: 2 },
+    });
+    expect(() => prepareCharacterProgressionPreview(snapshot({ characterType: "legacy" }), {
+      targetClassKey: "fighter",
+    })).toThrow(expect.objectContaining({ code: "CHARACTER_TYPE_UNSUPPORTED", statusCode: 422 }));
     expect(() => prepareCharacterProgressionPreview(snapshot(), {
       targetClassKey: "fighter",
       expectedRevision: "stale",

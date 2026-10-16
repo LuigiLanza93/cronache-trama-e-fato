@@ -1,0 +1,22 @@
+{
+  "version": "1.8.1",
+  "releaseName": "Hotfix PNG e Catalogo",
+  "releasedAt": "2026-10-16",
+  "summary": "Correzioni urgenti per la progressione dei PNG e il catalogo degli incantesimi.",
+  "sections": [
+    {
+      "title": "Progressione dei PNG",
+      "items": [
+        "Il DM può ora aumentare il livello dei PNG usando la stessa anteprima sicura disponibile per i PG.",
+        "Il DM può impostare o correggere la sottoclasse di un PNG senza alterare gli altri dati della scheda.",
+        "Level-up, multiclasse, sottoclassi, punti ferita, Dadi Vita e risorse mantengono gli stessi controlli di revisione e le stesse garanzie di persistenza dei PG."
+      ]
+    },
+    {
+      "title": "Catalogo degli incantesimi",
+      "items": [
+        "Aggiunto Globo Cromatico al catalogo di Mago e Stregone, con componenti, danni e progressione agli slot superiori."
+      ]
+    }
+  ]
+}

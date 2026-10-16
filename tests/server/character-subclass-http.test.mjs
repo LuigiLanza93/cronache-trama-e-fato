@@ -101,7 +101,7 @@ function protectedState(database, characterId) {
 }
 
 describe("DM subclass correction HTTP apply", () => {
-  it("preserves a historical sheet and manual resources across apply, conflict, replay and correction", async () => {
+  it("persists PNG subclass changes while preserving historical data across conflict and replay", async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), "cronache-subclass-http-"));
     temporaryDirectories.push(directory);
     const databasePath = path.join(directory, "migration.db");
@@ -130,6 +130,10 @@ describe("DM subclass correction HTTP apply", () => {
       ORDER BY c.slug LIMIT 1
     `).get();
     expect(character).toBeTruthy();
+    const characterData = JSON.parse(database.prepare('SELECT data FROM "Character" WHERE id = ?').get(character.id).data);
+    characterData.characterType = "png";
+    database.prepare('UPDATE "Character" SET characterType = \'PNG\', data = ? WHERE id = ?')
+      .run(JSON.stringify(characterData), character.id);
     const derivedCharacter = database.prepare(`
       SELECT c.id, c.slug, c.data, cc.level AS classLevel FROM "Character" c
       JOIN "CharacterClass" cc ON cc.characterId = c.id
@@ -246,6 +250,7 @@ describe("DM subclass correction HTTP apply", () => {
     // These legacy fields mirror authoritative resource/wallet data on save.
     const projectedBefore = await jsonRequest(baseUrl, `/api/characters/${character.slug}`, { cookie: dmCookie });
     expect(projectedBefore.response.status).toBe(200);
+    expect(projectedBefore.payload.characterType).toBe("png");
     beforeProtected.characterData.combatStats.spellSlots = projectedBefore.payload.combatStats.spellSlots;
     beforeProtected.characterData.currencyBalance = projectedBefore.payload.currencyBalance;
     expect(beforeProtected.characterData.combatStats.spellSlots["1"]).toEqual([
@@ -324,6 +329,8 @@ describe("DM subclass correction HTTP apply", () => {
       JOIN "SubclassRule" sr ON sr.id = cc.subclassRuleId
       WHERE cc.characterId = ? AND cc.classKey = 'rogue'
     `).get(character.id)).toMatchObject({ subclassKey: "arcane-trickster", level: character.classLevel });
+    expect(finalDatabase.prepare('SELECT characterType FROM "Character" WHERE id = ?').get(character.id))
+      .toEqual({ characterType: "PNG" });
     expect(finalDatabase.prepare("PRAGMA integrity_check").get()).toEqual({ integrity_check: "ok" });
     finalDatabase.close();
 

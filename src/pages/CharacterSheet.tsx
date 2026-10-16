@@ -2602,7 +2602,7 @@ const CharacterSheet = () => {
           makeChangeHandler={makeChangeHandler}
           canEdit={canModifyCharacter}
           levelUpAction={
-            user?.role === "dm" && characterData.characterType === "pg" ? (
+            user?.role === "dm" ? (
               <div className="flex flex-wrap gap-2">
                 <LevelUpDialog
                   key={`level-up-${characterData.slug}`}

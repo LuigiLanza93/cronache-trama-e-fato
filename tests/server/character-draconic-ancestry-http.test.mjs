@@ -83,7 +83,7 @@ function applyMigration(script, databasePath) {
 }
 
 describe("draconic ancestry HTTP persistence", () => {
-  it("preserves owned subclasses during multiclass and audits independent ancestor corrections", async () => {
+  it("persists a PNG multiclass level-up and audits independent ancestor corrections", async () => {
     const directory = mkdtempSync(path.join(os.tmpdir(), "cronache-draconic-http-"));
     temporaryDirectories.push(directory);
     const databasePath = path.join(directory, "migration.db");
@@ -105,11 +105,14 @@ describe("draconic ancestry HTTP persistence", () => {
     expect(multiclass && historical).toBeTruthy();
     // The copied development sheet may already have been multiclassed manually.
     // Restore the test's starting condition only in this disposable database.
+    setup.prepare('UPDATE "Character" SET archivedAt = NULL WHERE id = ?').run(historical.id);
     setup.prepare("DELETE FROM CharacterClass WHERE characterId = ? AND classKey = 'sorcerer'").run(multiclass.id);
     const remainingLevel = setup.prepare("SELECT SUM(level) AS total FROM CharacterClass WHERE characterId = ?").get(multiclass.id).total;
     const multiclassData = JSON.parse(setup.prepare("SELECT data FROM Character WHERE id = ?").get(multiclass.id).data);
+    multiclassData.characterType = "png";
     multiclassData.basicInfo.level = remainingLevel;
-    setup.prepare("UPDATE Character SET level = ?, data = ? WHERE id = ?").run(remainingLevel, JSON.stringify(multiclassData), multiclass.id);
+    setup.prepare("UPDATE Character SET characterType = 'PNG', level = ?, data = ? WHERE id = ?")
+      .run(remainingLevel, JSON.stringify(multiclassData), multiclass.id);
     const legacySnapshot = JSON.parse(setup.prepare("SELECT legacySnapshot FROM CharacterProgression WHERE characterId = ?").get(multiclass.id).legacySnapshot);
     legacySnapshot.column.level = remainingLevel;
     legacySnapshot.basicInfo.level = remainingLevel;
@@ -189,6 +192,7 @@ describe("draconic ancestry HTTP persistence", () => {
       levelRequest,
     );
     expect(levelApplied.response.status, JSON.stringify(levelApplied.payload)).toBe(200);
+    expect(levelApplied.payload.character.characterType).toBe("png");
     expect(levelApplied.payload.character.classes).toEqual(expect.arrayContaining([
       expect.objectContaining({ subclass: expect.objectContaining({ subclassKey: "the-fiend" }) }),
       expect.objectContaining({
@@ -215,6 +219,7 @@ describe("draconic ancestry HTTP persistence", () => {
         draconicAncestryKey: "gold",
       },
     );
+    expect(missingPreview.response.status, JSON.stringify(missingPreview.payload)).toBe(200);
     expect(missingPreview.payload.preview).toMatchObject({
       status: "READY", subclassChanged: false, ancestryChanged: true, reasonRequired: false,
     });
@@ -287,6 +292,8 @@ describe("draconic ancestry HTTP persistence", () => {
       FROM "CharacterClass" cc JOIN "SubclassRule" sr ON sr.id = cc.subclassRuleId
       WHERE cc.characterId = ? AND cc.classKey = 'sorcerer'
     `).get(multiclass.id)).toMatchObject({ level: 1, subclassKey: "draconic-bloodline", draconicAncestryKey: "blue" });
+    expect(verify.prepare("SELECT characterType, level FROM Character WHERE id = ?").get(multiclass.id))
+      .toEqual({ characterType: "PNG", level: 6 });
     expect(verify.prepare(`
       SELECT cc.level, cc.draconicAncestryKey, sr.subclassKey
       FROM "CharacterClass" cc JOIN "SubclassRule" sr ON sr.id = cc.subclassRuleId
