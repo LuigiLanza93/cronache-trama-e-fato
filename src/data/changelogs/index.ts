@@ -1,3 +1,4 @@
+import changelog181 from "./1.8.1-png-and-catalog-hotfix.json";
 import changelog180 from "./1.8.0-levels-and-multiclass.json";
 import changelog172 from "./1.7.2-slot-conversion-and-safe-imports.json";
 import changelog171 from "./1.7.1-shops-and-trading.json";
@@ -20,7 +21,7 @@ export type ChangelogEntry = {
   sections: ChangelogSection[];
 };
 
-const changelogs = [changelog180, changelog172, changelog171, changelog160, changelog150, changelog149, changelog145, changelog100] as ChangelogEntry[];
+const changelogs = [changelog181, changelog180, changelog172, changelog171, changelog160, changelog150, changelog149, changelog145, changelog100] as ChangelogEntry[];
 
 export const changelogEntries = changelogs;
 

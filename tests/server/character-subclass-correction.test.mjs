@@ -116,6 +116,10 @@ describe("independent subclass correction preview", () => {
     const noChoice = prepareCharacterSubclassCorrectionPreview(rogueSnapshot(), { targetClassKey: "rogue" });
     expect(noChoice.status).toBe("SUBCLASS_REQUIRED");
     expect(noChoice.subclassOptions.map((entry) => entry.key)).toEqual(expect.arrayContaining(["thief", "arcane-trickster"]));
+    const invalidType = rogueSnapshot();
+    invalidType.state.characterType = undefined;
+    expect(() => prepareCharacterSubclassCorrectionPreview(invalidType, { targetClassKey: "rogue" }))
+      .toThrow(expect.objectContaining({ code: "CHARACTER_TYPE_UNSUPPORTED", statusCode: 422 }));
     expect(() => prepareCharacterSubclassCorrectionPreview(rogueSnapshot(), { targetClassKey: "wizard" }))
       .toThrowError(expect.objectContaining({ code: "CLASS_NOT_OWNED" }));
     const belowThreshold = prepareCharacterSubclassCorrectionPreview(
